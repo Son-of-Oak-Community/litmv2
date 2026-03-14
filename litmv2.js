@@ -7,7 +7,6 @@ import { HeroSheet } from "./scripts/actor/hero/hero-sheet.js";
 import { JourneyData } from "./scripts/actor/journey/journey-data.js";
 import { JourneySheet } from "./scripts/actor/journey/journey-sheet.js";
 import { DENOMINATION, DoubleSix } from "./scripts/apps/dice.js";
-import { importCharacter } from "./scripts/apps/import-character.js";
 import { LitmRoll } from "./scripts/apps/roll.js";
 import { LitmRollDialog } from "./scripts/apps/roll-dialog.js";
 import { SpendPowerApp } from "./scripts/apps/spend-power.js";
@@ -49,6 +48,7 @@ import {
 } from "./scripts/system/handlebars.js";
 import { LitmHooks } from "./scripts/system/hooks/index.js";
 import { KeyBindings } from "./scripts/system/keybindings.js";
+import { migrateWorld } from "./scripts/system/migrations.js";
 import { LitmSettings } from "./scripts/system/settings.js";
 import { Sockets } from "./scripts/system/sockets.js";
 
@@ -71,7 +71,6 @@ Hooks.once("init", () => {
 			const id = game.settings?.get("litmv2", "fellowshipId");
 			return id ? (game.actors?.get(id) ?? null) : null;
 		},
-		importCharacter,
 		LitmRollDialog,
 		LitmRoll,
 		WelcomeOverlay,
@@ -222,33 +221,8 @@ Hooks.once("i18nInit", () => {
 });
 
 // Ready Hook — needs game world + socket
-Hooks.once("ready", () => {
-	// Guard against worlds last used with an incompatible system version.
-	// game.world.systemVersion is set by Foundry itself — reliable even
-	// for worlds that predate the systemMigrationVersion setting.
-	const INCOMPATIBLE_VERSION = 29;
-	const worldSystemVersion = Number(game.world.systemVersion) || 0;
-	const welcomed = LitmSettings.welcomed;
-	if (
-		worldSystemVersion > 0 &&
-		worldSystemVersion <= INCOMPATIBLE_VERSION &&
-		welcomed
-	) {
-		ui.notifications.error(
-			game.i18n.format("LITM.Ui.world_incompatible", {
-				version: worldSystemVersion,
-			}),
-			{ permanent: true },
-		);
-		return;
-	}
-
-	// Stamp the current system version for future migration checks
-	const currentVersion = Number(game.system.version);
-	const migrationVersion = LitmSettings.systemMigrationVersion;
-	if (game.user.isGM && migrationVersion < currentVersion) {
-		LitmSettings.setSystemMigrationVersion(currentVersion);
-	}
+Hooks.once("ready", async () => {
+	await migrateWorld();
 
 	Sockets.registerListeners();
 

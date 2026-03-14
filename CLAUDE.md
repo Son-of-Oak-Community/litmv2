@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## About
 
-Legend in the Mist is a Foundry Virtual Tabletop (v13 minimum, v14 verified) system for a rustic fantasy RPG based on the Mist Engine. The system id is `litm`.
+Legend in the Mist is a Foundry Virtual Tabletop (v13 minimum, v14 verified) system for a rustic fantasy RPG based on the Mist Engine. The system id is `litmv2`.
 
 ## Commands
 
@@ -14,7 +14,7 @@ Legend in the Mist is a Foundry Virtual Tabletop (v13 minimum, v14 verified) sys
 
 ## Architecture
 
-### Entry Point (`litm.js`)
+### Entry Point (`litmv2.js`)
 
 Runs in the `init` Foundry hook. Responsibilities in order:
 
@@ -23,13 +23,13 @@ Runs in the `init` Foundry hook. Responsibilities in order:
 3. Registers `CONFIG.Dice.terms` and `CONFIG.Dice.rolls` for the custom `DoubleSix` (d6) denomination
 4. Unregisters core Foundry sheets and registers all system sheets
 5. Calls `HandlebarsHelpers.register()`, `HandlebarsPartials.register()`, `Fonts.register()`, `KeyBindings.register()`, `LitmSettings.register()`, `LitmHooks.register()`
-6. Exposes `game.litm` with references to apps, roll state, and methods
+6. Exposes `game.litmv2` with references to apps, roll state, and methods
 
 Separate hooks handle deferred registration:
 - **`i18nInit`**: `Enrichers.register()` (needs localized strings)
 - **`ready`**: `Sockets.registerListeners()` (needs game world + socket)
 
-`CONFIG.litm` is set to a `LitmConfig` instance (`scripts/system/config.js`) during init. It holds asset paths, roll config, tag regex, and other runtime settings.
+`CONFIG.litmv2` is set to a `LitmConfig` instance (`scripts/system/config.js`) during init. It holds asset paths, roll config, tag regex, and other runtime settings.
 
 ### ApplicationV2 Pattern
 
@@ -48,7 +48,7 @@ Action handlers are **private static methods** on sheet classes (e.g., `HeroShee
 
 ### Data Models
 
-All data models extend `foundry.abstract.TypeDataModel` and define schemas using `foundry.data.fields`. The shared `TagData` embedded model (used in themes) is accessed via `game.litm.data.TagData` after init.
+All data models extend `foundry.abstract.TypeDataModel` and define schemas using `foundry.data.fields`. The shared `TagData` embedded model (used in themes) is accessed via `game.litmv2.data.TagData` after init.
 
 Actor types: `hero`, `journey`, `challenge`, `fellowship`
 Item types: `theme`, `themebook`, `trope`, `backpack`, `story_theme`, `vignette`
@@ -56,24 +56,24 @@ ActiveEffect types: `story_tag`, `status_card`
 
 ### Template Paths
 
-All Handlebars template paths are prefixed with `systems/litm/`:
+All Handlebars template paths are prefixed with `systems/litmv2/`:
 
 ```javascript
 // Correct
-template: "systems/litm/templates/actor/hero.html"
+template: "systems/litmv2/templates/actor/hero.html"
 // In HTML partials
-{{> "systems/litm/templates/partials/play-tag.html"}}
+{{> "systems/litmv2/templates/partials/play-tag.html"}}
 ```
 
 ### Sockets & Multiplayer
 
-`dispatch(data)` in `scripts/utils.js` emits on `"system.litm"`. Listeners are registered in `scripts/system/sockets.js` via `Sockets.registerListeners()`.
+`dispatch(data)` in `scripts/utils.js` emits on `"system.litmv2"`. Listeners are registered in `scripts/system/sockets.js` via `Sockets.registerListeners()`.
 
 ### Roll System
 
-`LitmRollDialog` (ApplicationV2) collects tag selections and power. It calls `LitmRoll` (extends `Roll`), which uses the custom `DoubleSix` dice term (denomination `"ds"`). Roll formula and resolver can be overridden on `CONFIG.litm.roll`.
+`LitmRollDialog` (ApplicationV2) collects tag selections and power. It calls `LitmRoll` (extends `Roll`), which uses the custom `DoubleSix` dice term (denomination `"ds"`). Roll formula and resolver can be overridden on `CONFIG.litmv2.roll`.
 
-Roll dialog presence is tracked via actor flags (`actor.getFlag("litm", "rollDialogOwner")`) and displayed in the HUD overlay (`#litm-roll-dialog-hud`).
+Roll dialog presence is tracked via actor flags (`actor.getFlag("litmv2", "rollDialogOwner")`) and displayed in the HUD overlay (`#litm-roll-dialog-hud`).
 
 ## Key Conventions
 
@@ -178,4 +178,4 @@ E2E tests use Playwright in `tests/e2e/`. Specs are in `tests/e2e/specs/`, selec
 
 ### Hot Reload
 
-The system supports hot reloading for `css`, `html`, `js`, and `json` files in `templates/`, `lang/`, `litm.css`, and `litm.js`. No build step is required; edit files directly.
+The system supports hot reloading for `css`, `html`, `js`, and `json` files in `templates/`, `lang/`, `litmv2.css`, and `litmv2.js`. No build step is required; edit files directly.

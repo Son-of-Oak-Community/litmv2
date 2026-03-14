@@ -38,9 +38,10 @@
 		},
 		{
 			"id": "sheet-layout",
-			"selector": ".configure-sheet",
+			"selector": "[data-action='toggleControls']",
 			"title": "TOURS.HeroSheetBasicsLayoutTitle",
-			"content": "TOURS.HeroSheetBasicsLayoutContent"
+			"content": "TOURS.HeroSheetBasicsLayoutContent",
+			"action": "openSampleHero"
 		},
 		{
 			"id": "summary",
@@ -64,7 +65,7 @@
 		"TOURS.HeroSheetBasicsThemeTagsTitle": "Themes & Tags",
 		"TOURS.HeroSheetBasicsThemeTagsContent": "Each theme has <strong>power tags</strong> and <strong>weakness tags</strong>. Click power tags to add them to your roll. Weakness tags can be invoked by opponents or the GM.<br/><br/>Themes also have a <strong>quest</strong> and advancement tracks — check these boxes as your theme evolves through play.",
 		"TOURS.HeroSheetBasicsLayoutTitle": "Sheet Layout",
-		"TOURS.HeroSheetBasicsLayoutContent": "Click the <i class=\"fas fa-cog\"></i> cog to open sheet configuration. Here you can switch between <strong>Portrait</strong> (narrow) and <strong>Landscape</strong> (wide) layouts to suit your screen and preference.",
+		"TOURS.HeroSheetBasicsLayoutContent": "Click the <i class=\"fa-solid fa-ellipsis-vertical\"></i> menu to open the header controls. From there, select <strong>Sheet Configuration</strong> to switch between <strong>Portrait</strong> (narrow) and <strong>Landscape</strong> (wide) layouts to suit your screen and preference.",
 		"TOURS.HeroSheetBasicsSummaryTitle": "You're Ready!",
 		"TOURS.HeroSheetBasicsSummaryContent": "<strong>E</strong> = toggle edit mode<br/><strong>R</strong> = open dice roller<br/><br/>In play mode, click tags to select them for a roll, then hit the dice button. Explore edit mode to customize your hero's themes, tags, and details."
 	}

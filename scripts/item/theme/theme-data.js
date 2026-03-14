@@ -116,24 +116,6 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 		) {
 			source.level = Object.keys(CONFIG.litmv2.theme_levels)[0];
 		}
-
-		if (source.isScratched === undefined && source.isBurnt !== undefined) {
-			source.isScratched = source.isBurnt;
-		}
-		if (Array.isArray(source.powerTags)) {
-			for (const tag of source.powerTags) {
-				if (tag.isScratched === undefined && tag.isBurnt !== undefined) {
-					tag.isScratched = tag.isBurnt;
-				}
-			}
-		}
-		if (Array.isArray(source.weaknessTags)) {
-			for (const tag of source.weaknessTags) {
-				if (tag.isScratched === undefined && tag.isBurnt !== undefined) {
-					tag.isScratched = tag.isBurnt;
-				}
-			}
-		}
 		return super.migrateData(source);
 	}
 

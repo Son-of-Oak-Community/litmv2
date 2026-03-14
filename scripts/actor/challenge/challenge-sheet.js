@@ -1,4 +1,3 @@
-import { error } from "../../logger.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { confirmDelete, enrichHTML } from "../../utils.js";
 
@@ -188,11 +187,13 @@ export class ChallengeSheet extends LitmActorSheet {
 	/* -------------------------------------------- */
 
 	/**
-	 * One-time migration: sync tags string and effects on first render.
+	 * Ensure tags string and ActiveEffect documents are in sync on first render.
+	 * Handles the case where a GM typed tags in edit mode but never switched to
+	 * play mode (effects don't exist yet), or effects exist but the string is empty.
 	 * @private
 	 */
-	async #migrateTagsAndEffects() {
-		// Ensure system.tags is populated from effects if empty (reverse migration)
+	async #syncTagsAndEffects() {
+		// Ensure system.tags is populated from effects if empty
 		if (!this.system.tags) {
 			const tagString = this.#effectsToTagString();
 			if (tagString) {
@@ -200,7 +201,7 @@ export class ChallengeSheet extends LitmActorSheet {
 			}
 		}
 
-		// Ensure effects exist from string (forward migration)
+		// Ensure effects exist from string
 		if (this.system.tags?.length && !this._syncing) {
 			const hasEffects = this.document.effects.some(
 				(e) => e.type === "story_tag" || e.type === "status_card",
@@ -217,8 +218,8 @@ export class ChallengeSheet extends LitmActorSheet {
 	_onFirstRender(context, options) {
 		super._onFirstRender(context, options);
 		if (this.document.isOwner) {
-			this.#migrateTagsAndEffects().catch((err) =>
-				error("Failed to migrate challenge tags/effects", err),
+			this.#syncTagsAndEffects().catch((err) =>
+				console.error("litm | Failed to sync challenge tags/effects", err),
 			);
 		}
 		this._hookIds = {

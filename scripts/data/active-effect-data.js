@@ -31,12 +31,6 @@ export class StoryTagData extends foundry.abstract.TypeDataModel {
 		};
 	}
 
-	static migrateData(source) {
-		if (source.isScratched === undefined && source.isBurnt !== undefined) {
-			source.isScratched = source.isBurnt;
-		}
-		return super.migrateData(source);
-	}
 }
 
 export class StatusCardData extends foundry.abstract.TypeDataModel {
@@ -72,13 +66,6 @@ export class StatusCardData extends foundry.abstract.TypeDataModel {
 				{ initial: [] },
 			),
 		};
-	}
-
-	static migrateData(source) {
-		if (source.tiers && source.tiers.length !== 6) {
-			source.tiers = Array.from({ length: 6 }, (_, i) => !!source.tiers[i]);
-		}
-		return super.migrateData(source);
 	}
 
 	get currentTier() {

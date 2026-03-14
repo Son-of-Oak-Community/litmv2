@@ -32,11 +32,4 @@ export class TagData extends foundry.abstract.DataModel {
 			}),
 		};
 	}
-
-	static migrateData(source) {
-		if (source.isScratched === undefined && source.isBurnt !== undefined) {
-			source.isScratched = source.isBurnt;
-		}
-		return super.migrateData(source);
-	}
 }

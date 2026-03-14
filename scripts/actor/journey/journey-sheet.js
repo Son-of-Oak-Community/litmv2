@@ -1,4 +1,3 @@
-import { error } from "../../logger.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { confirmDelete, enrichHTML } from "../../utils.js";
 
@@ -53,52 +52,6 @@ export class JourneySheet extends LitmActorSheet {
 	/* -------------------------------------------- */
 	/*  Rendering                                   */
 	/* -------------------------------------------- */
-
-	/**
-	 * One-time migration: convert tags string to ActiveEffect documents.
-	 * @private
-	 */
-	async #migrateTagsToEffects() {
-		if (!this.system.tags?.length) return;
-		const hasEffects = this.document.effects.some(
-			(e) => e.type === "story_tag" || e.type === "status_card",
-		);
-		if (hasEffects) return;
-		const matches = Array.from(
-			this.system.tags.matchAll(CONFIG.litmv2.tagStringRe),
-		);
-		if (matches.length) {
-			await this.document.createEmbeddedDocuments(
-				"ActiveEffect",
-				matches.map(([_, name, separator, value]) => {
-					const isStatus = separator === "-";
-					const tier = Number.parseInt(value, 10);
-					return {
-						name,
-						type: isStatus ? "status_card" : "story_tag",
-						system: isStatus
-							? {
-									tiers: Array(6)
-										.fill(false)
-										.map((_, i) => i + 1 === tier),
-								}
-							: { isScratched: false, isSingleUse: false },
-					};
-				}),
-			);
-		}
-		await this.document.update({ "system.tags": "" });
-	}
-
-	/** @override */
-	_onFirstRender(context, options) {
-		super._onFirstRender(context, options);
-		if (this.document.isOwner) {
-			this.#migrateTagsToEffects().catch((err) =>
-				error("Failed to migrate journey tags to effects", err),
-			);
-		}
-	}
 
 	/** @override */
 	async _prepareContext(options) {

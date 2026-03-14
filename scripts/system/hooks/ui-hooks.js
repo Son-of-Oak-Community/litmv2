@@ -1,9 +1,7 @@
-import { error } from "../../logger.js";
 import { localize as t } from "../../utils.js";
 
 export function registerUiHooks() {
 	_iconOnlyHeaderButtons();
-	_addImportToActorSidebar();
 	_replaceLoadSpinner();
 	_listenToContentLinks();
 }
@@ -63,39 +61,6 @@ function _iconOnlyHeaderButtons() {
 			}
 		});
 	}
-}
-
-function _addImportToActorSidebar() {
-	Hooks.on("renderActorDirectory", (_app, html) => {
-		const button = document.createElement("button");
-		button.classList.add("litm--import-actor");
-		button.dataset.tooltip = t("LITM.Ui.import_actor");
-		button.ariaLabel = t("LITM.Ui.import_actor");
-		button.innerHTML = '<i class="fas fa-file-import"></i>';
-
-		button.addEventListener("click", () => {
-			const input = document.createElement("input");
-			input.type = "file";
-			input.accept = ".json";
-			input.onchange = async (event) => {
-				const file = event.target.files[0];
-				try {
-					const data = await file.text();
-					const actorData = JSON.parse(data);
-					await game.litmv2.importCharacter(actorData);
-				} catch (err) {
-					error("Failed to import actor", err.message);
-					ui.notifications.error("LITM.Ui.import_actor_failed", {
-						localize: true,
-					});
-				}
-			};
-			input.click();
-		});
-
-		const element = html[0] ?? html;
-		element.querySelector(".directory-footer").appendChild(button);
-	});
 }
 
 function _replaceLoadSpinner() {

@@ -512,7 +512,7 @@ export class WelcomeOverlay {
 
 		const tours = [];
 		for (const [id, tour] of game.tours.entries()) {
-			if (!id.startsWith("litm.")) continue;
+			if (!id.startsWith("litmv2.")) continue;
 			tours.push({
 				id,
 				title: game.i18n.localize(tour.title),
@@ -1233,7 +1233,7 @@ export class WelcomeOverlay {
 	#prepareHeroCreatedContext() {
 		const tours = [];
 		for (const [id, tour] of game.tours.entries()) {
-			if (!id.startsWith("litm.")) continue;
+			if (!id.startsWith("litmv2.")) continue;
 			tours.push({
 				id,
 				title: game.i18n.localize(tour.title),

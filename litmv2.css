@@ -83,15 +83,12 @@ body {
 	--color-litm-limit: #d9b2a9;
 	--color-litm-weakness: #edbb89;
 	--color-litm-banner: #c4b5a8;
-	--font-blackletter:
-		Ysgarth, "Modesto Condensed", "Arial Narrow Bold", sans-serif;
-	--font-packard:
-		PackardAntique, "Garamond Premier Pro", "Palatino Linotype", Palatino, serif;
+	--font-blackletter: Ysgarth, "Modesto Condensed", "Arial Narrow Bold", sans-serif;
+	--font-packard: PackardAntique, "Garamond Premier Pro", "Palatino Linotype", Palatino, serif;
 	--font-luminari: Luminari, "Germania One", STFU, cursive;
 	--font-powell: PowellAntique, PackardAntiqu, serif;
 	--font-trattatello: Trattatello, AlchemyItalic, PackardAntique, cursive;
-	--font-serif:
-		Labrada, Fraunces, LibreCaslonText, "Book Antiqua", Palatino, serif;
+	--font-serif: Labrada, Fraunces, LibreCaslonText, "Book Antiqua", Palatino, serif;
 
 	/* Foundry Styles */
 	--font-h1: var(--font-blackletter);
@@ -296,13 +293,7 @@ body {
 }
 
 /* Story/power/theme tag badges */
-:is(
-		.litm-tag,
-		.litm-powerTag,
-		.litm-themeTag,
-		.litm-relationshipTag,
-		.litm-backpack
-	) {
+:is(.litm-tag, .litm-powerTag, .litm-themeTag, .litm-relationshipTag, .litm-backpack) {
 	--tag-color: var(--color-litm-tag);
 }
 
@@ -345,30 +336,18 @@ body {
 	text-transform: uppercase;
 	color: var(--color-text-primary);
 	mask:
-		radial-gradient(
-			circle at 0 0,
+		radial-gradient(circle at 0 0,
 			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		top left,
-		radial-gradient(
-			circle at 100% 0,
+			black calc(var(--banner-notch) + 0.5px)) top left,
+		radial-gradient(circle at 100% 0,
 			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		top right,
-		radial-gradient(
-			circle at 0 100%,
+			black calc(var(--banner-notch) + 0.5px)) top right,
+		radial-gradient(circle at 0 100%,
 			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		bottom left,
-		radial-gradient(
-			circle at 100% 100%,
+			black calc(var(--banner-notch) + 0.5px)) bottom left,
+		radial-gradient(circle at 100% 100%,
 			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		bottom right;
+			black calc(var(--banner-notch) + 0.5px)) bottom right;
 	mask-size: 51% 51%;
 	mask-repeat: no-repeat;
 }
@@ -423,7 +402,7 @@ body {
 	border-bottom: none;
 }
 
-.litm .theme-card-header > .flexrow {
+.litm .theme-card-header>.flexrow {
 	flex: 1 1 auto;
 	min-width: 0;
 	flex-wrap: nowrap;
@@ -441,13 +420,7 @@ body {
 	gap: 12px;
 }
 
-:is(
-		.litm-tag,
-		.litm-powerTag,
-		.litm-themeTag,
-		.litm-relationshipTag,
-		.litm-backpack
-	).scratched {
+:is(.litm-tag, .litm-powerTag, .litm-themeTag, .litm-relationshipTag, .litm-backpack).scratched {
 	text-decoration: line-through;
 }
 
@@ -507,14 +480,11 @@ body {
 	margin-block: 0.01em 0px;
 }
 
-:is(.hero-play-mode, .challenge-play-mode, .journey-play-mode)
-	fieldset
-	> .litm-banner {
+:is(.hero-play-mode, .challenge-play-mode, .journey-play-mode) fieldset>.litm-banner {
 	font-size: var(--font-size-11);
 }
 
-:is(.challenge-play-mode, .journey-play-mode, .fellowship-play-mode)
-	.profile-img,
+:is(.challenge-play-mode, .journey-play-mode, .fellowship-play-mode) .profile-img,
 .hero-play-mode .profile-img {
 	width: 100px;
 	height: 100px;
@@ -524,8 +494,7 @@ body {
 	transition: transform 0.2s;
 }
 
-:is(.challenge-play-mode, .journey-play-mode, .fellowship-play-mode)
-	.profile-img:hover,
+:is(.challenge-play-mode, .journey-play-mode, .fellowship-play-mode) .profile-img:hover,
 .hero-play-mode .profile-img:hover {
 	transform: scale(1.05);
 }
@@ -615,14 +584,14 @@ body {
 	padding: 2rem;
 }
 
-.litm .empty-state > img,
-.litm .empty-state > button > img {
+.litm .empty-state>img,
+.litm .empty-state>button>img {
 	display: block;
 	margin: 0 auto 0.75rem;
 	opacity: 0.4;
 }
 
-.litm .empty-state > button {
+.litm .empty-state>button {
 	all: unset;
 	cursor: pointer;
 }
@@ -679,9 +648,7 @@ body {
 	margin-bottom: 1.5rem;
 }
 
-:is(.journey-play-mode, .hero-play-mode, .fellowship-play-mode)
-	.play-section
-	h3 {
+:is(.journey-play-mode, .hero-play-mode, .fellowship-play-mode) .play-section h3 {
 	font-size: var(--font-size-18);
 	margin: 0 0 0.5rem 0;
 	padding-bottom: 0.25rem;
@@ -689,9 +656,7 @@ body {
 	color: var(--color-text-primary);
 }
 
-:is(.challenge-play-mode, .journey-play-mode, .fellowship-play-mode)
-	.enriched-content
-	p:last-child {
+:is(.challenge-play-mode, .journey-play-mode, .fellowship-play-mode) .enriched-content p:last-child {
 	margin-bottom: 0;
 }
 
@@ -767,12 +732,10 @@ body {
 	border-color: var(--color-border);
 }
 
-:is(
-		.challenge-play-mode .limit-track,
-		.hero-play-mode .promise-display,
-		.hero-play-mode .progress-display,
-		.fellowship-play-mode .progress-display
-	) {
+:is(.challenge-play-mode .limit-track,
+	.hero-play-mode .promise-display,
+	.hero-play-mode .progress-display,
+	.fellowship-play-mode .progress-display) {
 	display: flex;
 }
 
@@ -1238,7 +1201,7 @@ body {
 	grid-template-rows: 0fr;
 }
 
-.litm.dice-roll .dice-tooltip > .wrapper {
+.litm.dice-roll .dice-tooltip>.wrapper {
 	overflow: hidden;
 }
 
@@ -1374,8 +1337,7 @@ body {
 .litm-spend-chat__action {
 	font-size: var(--font-size-14);
 	font-weight: 600;
-	font-family:
-		"Germania One", "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+	font-family: "Germania One", "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 }
@@ -1401,6 +1363,10 @@ body {
    Tag items, burn indicators, tier boxes, visibility toggles.
 ======================================== */
 
+.litm--story-tags {
+	color: var(--color-text-primary);
+}
+
 .litm--story-tags h3 {
 	font-size: var(--font-size-24);
 }
@@ -1424,7 +1390,7 @@ body {
 	scrollbar-gutter: stable;
 }
 
-.litm--story-tags form > section {
+.litm--story-tags form>section {
 	gap: 0.5rem;
 }
 
@@ -1485,7 +1451,7 @@ body {
 	transition: opacity 0.12s;
 }
 
-.litm--burn:checked ~ .litm--burn-indicator {
+.litm--burn:checked~.litm--burn-indicator {
 	opacity: 1;
 }
 
@@ -1671,7 +1637,7 @@ body {
 	opacity: 0.35;
 }
 
-.litm--single-use:checked ~ .litm--single-use-indicator {
+.litm--single-use:checked~.litm--single-use-indicator {
 	opacity: 1;
 }
 
@@ -1693,7 +1659,7 @@ body {
 	min-height: 0;
 }
 
-.litm-spend-power .standard-form > fieldset {
+.litm-spend-power .standard-form>fieldset {
 	flex: 1;
 	overflow-y: auto;
 	min-height: 0;
@@ -1979,6 +1945,15 @@ body {
 	justify-content: center;
 }
 
+.litm--welcome-overlay h4 {
+	font-size: var(--font-size-13, 0.8125rem);
+	color: var(--color-light-4);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin: 0;
+	text-align: center;
+}
+
 .litm--welcome-overlay__bg {
 	position: absolute;
 	inset: 0;
@@ -2062,6 +2037,7 @@ body {
 	font-size: var(--font-size-14);
 	cursor: pointer;
 	transition: 0.5s;
+	color: var(--color-warm-1);
 }
 
 .litm--welcome-overlay__btn i {
@@ -2104,14 +2080,7 @@ body {
 	max-width: 400px;
 }
 
-.litm--welcome-overlay__settings h3 {
-	font-size: var(--font-size-13, 0.8125rem);
-	color: var(--color-light-4);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	margin: 0;
-	text-align: center;
-}
+
 
 .litm--welcome-overlay__toggle {
 	display: grid;
@@ -2493,12 +2462,10 @@ body {
 .hero-created__line {
 	flex: 1;
 	height: 1px;
-	background: linear-gradient(
-		90deg,
-		transparent,
-		color-mix(in srgb, var(--color-warm-1) 30%, transparent) 50%,
-		transparent
-	);
+	background: linear-gradient(90deg,
+			transparent,
+			color-mix(in srgb, var(--color-warm-1) 30%, transparent) 50%,
+			transparent);
 }
 
 /* --- Hero Created: tours section --- */
@@ -2631,13 +2598,10 @@ body {
 	letter-spacing: 0.05em;
 	margin: 0;
 	padding: 0.5rem 0 0.25rem;
-	border-bottom: 1px solid
-		color-mix(in srgb, var(--color-border) 50%, transparent);
+	border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
 }
 
-.litm--welcome-overlay__wizard-body
-	.hero-creation__group
-	+ .hero-creation__group {
+.litm--welcome-overlay__wizard-body .hero-creation__group+.hero-creation__group {
 	margin-top: 0.5rem;
 }
 
@@ -2804,7 +2768,7 @@ body {
 	gap: 0.25rem;
 }
 
-.tag-tooltip-group > label {
+.tag-tooltip-group>label {
 	display: block;
 	width: 100%;
 	margin-bottom: 0.25rem;
@@ -3041,9 +3005,7 @@ body {
 	border-color: rgba(255, 255, 255, 0.15);
 }
 
-.litm--welcome-overlay__wizard-body
-	.custom-themekit-list
-	.themekit-link.active {
+.litm--welcome-overlay__wizard-body .custom-themekit-list .themekit-link.active {
 	background: color-mix(in srgb, var(--color-warm-1) 12%, transparent);
 	border-color: color-mix(in srgb, var(--color-warm-1) 40%, transparent);
 	color: var(--color-light-1);
@@ -3067,7 +3029,7 @@ body {
 	gap: 0.35rem;
 }
 
-.litm--welcome-overlay__wizard-body .litm-field-stacked > label {
+.litm--welcome-overlay__wizard-body .litm-field-stacked>label {
 	font-size: var(--font-size-12);
 	font-weight: bold;
 	color: var(--color-form-label);
@@ -3157,8 +3119,7 @@ body {
 
 .litm--welcome-overlay__wizard-body .tag-questions li.hint {
 	padding-left: 0.5rem;
-	border-left: 2px solid
-		color-mix(in srgb, var(--color-warm-1) 30%, transparent);
+	border-left: 2px solid color-mix(in srgb, var(--color-warm-1) 30%, transparent);
 }
 
 /* --- Quest ideas pill buttons --- */
@@ -3278,6 +3239,7 @@ body {
 }
 
 @media (prefers-reduced-transparency) {
+
 	.litm--welcome-overlay__wizard,
 	.litm--welcome-overlay__hero-created {
 		backdrop-filter: none;
@@ -3328,7 +3290,7 @@ body {
    ProseMirror secret reveal button styling.
 ======================================== */
 
-.litm section.secret > button.reveal {
+.litm section.secret>button.reveal {
 	border: none;
 	background: url("assets/media/icons/torch.svg") no-repeat center / contain;
 	width: 26px;
@@ -3348,7 +3310,7 @@ body {
 	}
 }
 
-.litm section.secret.revealed > button.reveal {
+.litm section.secret.revealed>button.reveal {
 	opacity: 1;
 	filter: drop-shadow(0 0 4px #d4911a) drop-shadow(0 0 8px #d4911a55);
 }
@@ -3361,8 +3323,7 @@ body {
 /* Dark Theme Overrides — matches both body.theme-dark (Applications: Dark)
    and .themed.theme-dark on interface elements (Interface: Dark) */
 :is(body, .themed).theme-dark {
-	--underline-url:
-		url(assets/media/underline-w.webp) center / contain no-repeat;
+	--underline-url: url(assets/media/underline-w.webp) center / contain no-repeat;
 	--litm-scratch-filter: none;
 	--color-litm-tag: #88621c;
 	--color-litm-status: #3f5a3f;
