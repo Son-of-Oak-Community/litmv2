@@ -216,11 +216,55 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		return context;
 	}
 
+	/** Whether to suppress the next change-triggered form submit (set by pointerdown pre-submit) */
+	_suppressNextChange = false;
+
 	async _onFirstRender(context, options) {
 		await super._onFirstRender(context, options);
 
 		// One-time contextmenu listener on the persistent outer element
 		this.element.addEventListener("contextmenu", this._onContext.bind(this));
+
+		// Submit the form on pointerdown when an action button is clicked while
+		// an input is focused, preventing the blur→change→re-render from detaching
+		// the button before the click event fires.
+		this.element.addEventListener(
+			"pointerdown",
+			(event) => {
+				const actionBtn = event.target.closest("[data-action]");
+				if (!actionBtn) return;
+
+				const form = this.element.querySelector("form");
+				if (!form) return;
+
+				const focused = document.activeElement;
+				if (!focused || !form.contains(focused)) return;
+				if (!["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) return;
+
+				// Prevent click from firing (per Pointer Events spec, preventDefault on
+				// pointerdown suppresses the subsequent click). We execute the action
+				// manually after the form submit, since click would otherwise fire after
+				// the render replaces the DOM.
+				event.preventDefault();
+
+				const action = actionBtn.dataset.action;
+				const dataset = { ...actionBtn.dataset };
+
+				this._suppressNextChange = true;
+				const formData = new foundry.applications.ux.FormDataExtended(form);
+				this.onSubmit(null, form, formData)
+					.then(() => {
+						const handler = this.options.actions[action];
+						const fn = typeof handler === "object" ? handler.handler : handler;
+						if (!fn) return;
+						const syntheticTarget = document.createElement("button");
+						Object.assign(syntheticTarget.dataset, dataset);
+						fn.call(this, event, syntheticTarget);
+					})
+					.catch(console.error);
+			},
+			{ capture: true },
+		);
 	}
 
 	async _onRender(context, options) {
@@ -231,8 +275,12 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const form = this.element.querySelector("form");
 		if (form) {
 			form.addEventListener("change", () => {
+				if (this._suppressNextChange) {
+					this._suppressNextChange = false;
+					return;
+				}
 				const formData = new foundry.applications.ux.FormDataExtended(form);
-				this.onSubmit(null, form, formData);
+				this.onSubmit(null, form, formData).catch(console.error);
 			});
 			form.addEventListener("submit", (event) => event.preventDefault());
 		}
@@ -441,6 +489,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				isSingleUse: isStatus ? false : (data.isSingleUse ?? false),
 				type: existing?.type ?? "tag",
 				value: isStatus ? tiers.lastIndexOf(true) + 1 : null,
+				hidden: existing?.hidden ?? false,
 			};
 		});
 

@@ -4,6 +4,7 @@
 					data-id="{{id}}" data-type="Actor" data-tooltip="{{name}}"><i class="fas fa-user"></i>{{name}}</a>
 				{{localize "LITM.Ui.moderate_roll_gm_hint"}}
 				{{localize (concat "LITM.Ui.roll_" type)}}
+				{{#if sacrificeLevel}}({{localize (concat "LITM.Ui.sacrifice_" sacrificeLevel)}}){{/if}}
 				{{localize "LITM.Terms.outcome"}}.</em></p>
 		<p class="playerOnly">
 			<em>{{localize 'LITM.Ui.moderate_roll_player_hint'}}</em>

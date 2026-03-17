@@ -52,6 +52,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		speaker,
 		modifier = 0,
 		might = "equal",
+		tradePower = 0,
+		sacrificeLevel,
+		sacrificeThemeId,
 	}) {
 		// Separate tags
 		const {
@@ -84,6 +87,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			might,
 		});
 
+		// Sacrifice rolls use only 2d6 — no Power is added.
+		const defaultFormula =
+			type === "sacrifice"
+				? "2d6"
+				: "2d6 + (@scratchedValue + @powerValue + @positiveStatusValue - @weaknessValue - @negativeStatusValue + @modifier + @mightOffset + @tradePower)";
+
 		const formula =
 			typeof CONFIG.litmv2.roll.formula === "function"
 				? CONFIG.litmv2.roll.formula({
@@ -107,8 +116,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 						might,
 						mightOffset,
 					})
-				: CONFIG.litmv2.roll.formula ||
-					"2d6 + (@scratchedValue + @powerValue + @positiveStatusValue - @weaknessValue - @negativeStatusValue + @modifier + @mightOffset)";
+				: CONFIG.litmv2.roll.formula || defaultFormula;
 
 		// Allow modules to cancel or modify the roll
 		const actor = game.actors.get(actorId);
@@ -136,6 +144,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				negativeStatusValue,
 				modifier: Number(modifier) || 0,
 				mightOffset,
+				tradePower: Number(tradePower) || 0,
 			},
 			{
 				actorId,
@@ -152,13 +161,16 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				modifier,
 				might,
 				mightOffset,
+				tradePower: Number(tradePower) || 0,
+				sacrificeLevel,
+				sacrificeThemeId,
 			},
 		);
 
 		return roll
 			.toMessage({
 				speaker,
-				flavor: title,
+				flavor: title || roll.flavor,
 			})
 			.then(async (res) => {
 				Hooks.callAll("litm.roll", roll, res);
@@ -297,7 +309,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	extractRollData(formData) {
 		const data = foundry.utils.expandObject(formData.object);
-		const { actorId, title, type, modifier, might, ...rest } = data;
+		const {
+			actorId,
+			title,
+			type,
+			modifier,
+			might,
+			tradePower,
+			sacrificeLevel,
+			sacrificeThemeId,
+			...rest
+		} = data;
 		const tags = this.getFilteredArrayFromFormData(rest);
 		return {
 			actorId,
@@ -307,6 +329,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			speaker: this.speaker,
 			modifier,
 			might,
+			tradePower: Number(tradePower) || 0,
+			sacrificeLevel: type === "sacrifice" ? sacrificeLevel : undefined,
+			sacrificeThemeId: type === "sacrifice" ? sacrificeThemeId : undefined,
 		};
 	}
 
@@ -318,6 +343,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	#modifier = 0;
 	#might = "equal";
+	#tradePower = 0;
+	#sacrificeLevel = "painful";
+	#sacrificeThemeId = null;
 	#ownerId = null;
 
 	constructor(options = {}) {
@@ -327,6 +355,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.tagState = options.tagState || [];
 		this.#modifier = options.modifier || 0;
 		this.#might = options.might || "equal";
+		this.#tradePower = options.tradePower || 0;
+		this.#sacrificeLevel = options.sacrificeLevel || "painful";
+		this.#sacrificeThemeId = options.sacrificeThemeId || null;
 		this.#ownerId = options.ownerId || null;
 
 		this.actorId = options.actorId;
@@ -334,8 +365,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.speaker =
 			options.speaker ||
 			foundry.documents.ChatMessage.getSpeaker({ actor: this.actor });
-		this.rollName = options.title || game.i18n.localize("LITM.Ui.roll_title");
-		this.type = options.type || "tracked";
+		this.rollName = options.title || "";
+		this.type = options.type || "quick";
 	}
 
 	get ownerId() {
@@ -770,6 +801,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			totalPower: this.totalPower,
 			modifier: this.#modifier,
 			might: this.#might,
+			tradePower: this.#tradePower,
+			canHedge: this.totalPower >= 2,
 			mightOptions: {
 				equal: "LITM.Ui.might_equal",
 				favored: "LITM.Ui.might_favored",
@@ -777,6 +810,14 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				imperiled: "LITM.Ui.might_imperiled",
 				extremely_imperiled: "LITM.Ui.might_extremely_imperiled",
 			},
+			sacrificeLevel: this.#sacrificeLevel,
+			sacrificeLevelOptions: {
+				painful: "LITM.Ui.sacrifice_painful",
+				scarring: "LITM.Ui.sacrifice_scarring",
+				grave: "LITM.Ui.sacrifice_grave",
+			},
+			sacrificeThemeId: this.#sacrificeThemeId,
+			sacrificeThemes: this.#ensureSacrificeThemeSelected(),
 		};
 	}
 
@@ -788,6 +829,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.element
 			.querySelector("[data-update='modifier']")
 			?.addEventListener("change", this.#handleModifierChange.bind(this));
+
+		// Setup modifier stepper buttons
+		this.element.querySelectorAll("[data-adjust='modifier']").forEach((btn) => {
+			btn.addEventListener("click", (event) => {
+				event.preventDefault();
+				const delta = Number(btn.dataset.delta) || 0;
+				const input = this.element.querySelector("[data-update='modifier']");
+				if (!input) return;
+				input.value = (Number(input.value) || 0) + delta;
+				input.dispatchEvent(new Event("change"));
+			});
+		});
 
 		// Setup might change listener
 		this.element
@@ -824,6 +877,36 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					}
 				});
 			});
+
+		// Setup trade power change listener
+		this.element
+			.querySelectorAll("input[name='tradePower']")
+			.forEach((input) => {
+				input.addEventListener(
+					"change",
+					this.#handleTradePowerChange.bind(this),
+				);
+			});
+
+		// Setup sacrifice level change listener
+		this.element
+			.querySelector("[data-update='sacrificeLevel']")
+			?.addEventListener("change", this.#handleSacrificeLevelChange.bind(this));
+
+		// Setup sacrifice theme change listener
+		this.element
+			.querySelector("[data-update='sacrificeThemeId']")
+			?.addEventListener("change", this.#handleSacrificeThemeChange.bind(this));
+
+		// Setup roll type change listener
+		this.element.querySelectorAll("input[name='type']").forEach((input) => {
+			input.addEventListener("change", this.#handleTypeChange.bind(this));
+		});
+
+		// Apply initial type-dependent visibility
+		this.#toggleSacrificeMode(this.type === "sacrifice");
+		this.#toggleTradePower(this.type === "tracked");
+		this.#updateTotalPower();
 
 		if (!this.isOwner) {
 			this.#applyReadOnlyState();
@@ -1045,6 +1128,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.tagState = [];
 		this.#modifier = 0;
 		this.#might = "equal";
+		this.#tradePower = 0;
+		this.#sacrificeLevel = "painful";
+		this.#sacrificeThemeId = null;
 		if (this.actor?.sheet?.rendered) this.actor.sheet.render(true);
 	}
 
@@ -1072,6 +1158,123 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		return result;
 	}
 
+	#handleTypeChange(event) {
+		this.type = event.currentTarget.value;
+		// Update active state on toggle bar
+		this.element
+			.querySelectorAll(".litm--roll-type-option")
+			.forEach((label) => {
+				const radio = label.querySelector("input[type='radio']");
+				label.classList.toggle("is-active", radio?.value === this.type);
+			});
+		this.#toggleSacrificeMode(this.type === "sacrifice");
+		this.#toggleTradePower(this.type === "tracked");
+		this.#dispatchUpdate();
+	}
+
+	#toggleSacrificeMode(isSacrifice) {
+		if (!this.element) return;
+		// Hide might/modifier and total power for sacrifice rolls
+		const mightFieldset = this.element
+			.querySelector("[data-update='might']")
+			?.closest("fieldset");
+		const totalPowerEl = this.element.querySelector(
+			".litm--roll-dialog-total-power",
+		);
+		const sacrificeFieldset = this.element.querySelector(
+			".litm--sacrifice-level-fieldset",
+		);
+		const tagsFieldset = this.element.querySelector(
+			".litm--roll-dialog-tags-fieldset",
+		);
+		if (mightFieldset) mightFieldset.classList.toggle("hidden", isSacrifice);
+		if (totalPowerEl) totalPowerEl.classList.toggle("hidden", isSacrifice);
+		if (sacrificeFieldset)
+			sacrificeFieldset.classList.toggle("hidden", !isSacrifice);
+		if (tagsFieldset) tagsFieldset.classList.toggle("hidden", isSacrifice);
+		// Also toggle the theme selector based on current level
+		if (isSacrifice) {
+			this.#toggleSacrificeThemeSelector(this.#sacrificeLevel);
+		} else {
+			this.#toggleSacrificeThemeSelector(null);
+		}
+	}
+
+	#handleSacrificeLevelChange(event) {
+		const select = event.currentTarget;
+		this.#sacrificeLevel = select.value;
+		this.#toggleSacrificeThemeSelector(this.#sacrificeLevel);
+		this.#dispatchUpdate();
+	}
+
+	#handleSacrificeThemeChange(event) {
+		const select = event.currentTarget;
+		this.#sacrificeThemeId = select.value || null;
+		this.#dispatchUpdate();
+	}
+
+	#ensureSacrificeThemeSelected() {
+		if (!this.actor) return {};
+		const themes = this.actor.items
+			.filter(
+				(i) =>
+					(i.type === "theme" && !i.system.isFellowship) ||
+					i.type === "story_theme",
+			)
+			.sort((a, b) => a.sort - b.sort);
+		const options = {};
+		for (const theme of themes) {
+			options[theme.id] = theme.name;
+		}
+		// Auto-select first theme if none selected
+		if (!this.#sacrificeThemeId && themes.length > 0) {
+			this.#sacrificeThemeId = themes[0].id;
+		}
+		return options;
+	}
+
+	#toggleSacrificeThemeSelector(level) {
+		if (!this.element) return;
+		const themeFieldset = this.element.querySelector(
+			".litm--sacrifice-theme-fieldset",
+		);
+		if (themeFieldset) {
+			const needsTheme = level === "painful" || level === "scarring";
+			themeFieldset.classList.toggle("hidden", !needsTheme);
+		}
+	}
+
+	#toggleTradePower(isTracked) {
+		if (!this.element) return;
+		const fieldset = this.element.querySelector(".litm--trade-power-fieldset");
+		if (fieldset) fieldset.classList.toggle("hidden", !isTracked);
+		// Reset trade power when switching away from tracked
+		if (!isTracked && this.#tradePower !== 0) {
+			this.#tradePower = 0;
+			const checked = this.element.querySelector(
+				"input[name='tradePower'][value='0']",
+			);
+			if (checked) checked.checked = true;
+		}
+	}
+
+	#handleTradePowerChange(event) {
+		const input = event.currentTarget;
+		this.#tradePower = Number(input.value) || 0;
+		// Update active state on trade power bar
+		this.element
+			.querySelectorAll(".litm--trade-power-bar .litm--roll-type-option")
+			.forEach((label) => {
+				const radio = label.querySelector("input[type='radio']");
+				label.classList.toggle(
+					"is-active",
+					radio?.value === String(this.#tradePower),
+				);
+			});
+		this.#updateTotalPower();
+		this.#dispatchUpdate();
+	}
+
 	#handleModifierChange(event) {
 		const input = event.currentTarget;
 		this.#modifier = Number(input.value) || 0;
@@ -1088,11 +1291,46 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	#updateTotalPower() {
 		if (!this.element) return;
+		const totalPower = this.totalPower;
 		const totalPowerElement = this.element.querySelector(
 			"[data-update='totalPower']",
 		);
 		if (totalPowerElement) {
-			totalPowerElement.textContent = this.totalPower;
+			const trade = this.#tradePower;
+			if (trade) {
+				const rollPower = totalPower + trade;
+				const spendPower = Math.max(totalPower - trade, 1);
+				totalPowerElement.innerHTML = `${totalPower} <span class="litm--trade-annotation">(${t("LITM.Terms.roll")}: ${rollPower >= 0 ? "+" : ""}${rollPower}, ${t("LITM.Ui.spend_power")}: ${spendPower})</span>`;
+			} else {
+				totalPowerElement.textContent = totalPower;
+			}
+		}
+
+		// Update hedge radio enabled state
+		const hedgeRadio = this.element.querySelector(
+			"input[name='tradePower'][value='1']",
+		);
+		if (hedgeRadio) {
+			const canHedge = totalPower >= 2;
+			hedgeRadio.disabled = !canHedge;
+			hedgeRadio
+				.closest(".litm--roll-type-option")
+				?.classList.toggle("is-disabled", !canHedge);
+			// If hedge is selected but no longer available, reset to none
+			if (!canHedge && this.#tradePower === 1) {
+				this.#tradePower = 0;
+				const noneRadio = this.element.querySelector(
+					"input[name='tradePower'][value='0']",
+				);
+				if (noneRadio) noneRadio.checked = true;
+				// Update active states
+				this.element
+					.querySelectorAll(".litm--trade-power-bar .litm--roll-type-option")
+					.forEach((label) => {
+						const radio = label.querySelector("input[type='radio']");
+						label.classList.toggle("is-active", radio?.value === "0");
+					});
+			}
 		}
 	}
 
@@ -1117,6 +1355,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					id: this.actor.id,
 					rollId: id,
 					type: data.type,
+					sacrificeLevel: data.sacrificeLevel,
+					sacrificeThemeId: data.sacrificeThemeId,
 					name: this.actor.name,
 					hasTooltipData:
 						tags.scratchedTags.length > 0 ||
@@ -1134,7 +1374,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				},
 			),
 			whisper: recipients,
-			flags: { litm: { id, userId, data } },
+			flags: { litmv2: { id, userId, data } },
 		});
 	}
 
@@ -1143,8 +1383,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			actorId: this.actorId,
 			characterTags: this.characterTags,
 			tagState: this.tagState,
+			type: this.type,
 			modifier: this.#modifier,
 			might: this.#might,
+			tradePower: this.#tradePower,
+			sacrificeLevel: this.#sacrificeLevel,
+			sacrificeThemeId: this.#sacrificeThemeId,
 			ownerId: this.ownerId,
 		});
 	}
@@ -1157,8 +1401,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		characterTags,
 		tagState,
 		actorId,
+		type,
 		modifier,
 		might,
+		tradePower,
+		sacrificeLevel,
+		sacrificeThemeId,
 		ownerId,
 	}) {
 		if (actorId !== this.actorId) return;
@@ -1167,8 +1415,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			this.characterTags = this.#mergeTags(this.characterTags, characterTags);
 		}
 		if (tagState) this.tagState = this.#mergeTags(this.tagState, tagState);
+		if (type !== undefined) this.type = type;
 		if (modifier !== undefined) this.#modifier = modifier;
 		if (might !== undefined) this.#might = might;
+		if (tradePower !== undefined) this.#tradePower = tradePower;
+		if (sacrificeLevel !== undefined) this.#sacrificeLevel = sacrificeLevel;
+		if (sacrificeThemeId !== undefined)
+			this.#sacrificeThemeId = sacrificeThemeId;
 		if (ownerId !== undefined) this.ownerId = ownerId;
 		this.#normalizeContributors(this.ownerId);
 

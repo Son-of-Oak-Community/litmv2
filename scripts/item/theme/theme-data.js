@@ -113,6 +113,12 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 		) {
 			source.level = Object.keys(CONFIG.litmv2.theme_levels)[0];
 		}
+		for (const tag of source.powerTags ?? []) {
+			if (!tag.id) tag.id = foundry.utils.randomID();
+		}
+		for (const tag of source.weaknessTags ?? []) {
+			if (!tag.id) tag.id = foundry.utils.randomID();
+		}
 		return super.migrateData(source);
 	}
 

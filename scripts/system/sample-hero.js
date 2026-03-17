@@ -28,6 +28,8 @@ export async function createSampleHero() {
 
 	if (!actor) return null;
 
+	await game.user.update({ character: actor.id });
+
 	info("Sample hero created:", actor.name);
 	return actor;
 }

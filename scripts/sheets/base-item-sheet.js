@@ -8,6 +8,60 @@ const { HandlebarsApplicationMixin } = foundry.applications.api;
  * Provides common functionality for all item sheet types
  */
 export class LitmItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
+	/** Whether to suppress the next change-triggered form submit (set by pointerdown pre-submit) */
+	_suppressNextChange = false;
+
+	/** @override */
+	_onChangeForm(formConfig, event) {
+		if (this._suppressNextChange) {
+			this._suppressNextChange = false;
+			return;
+		}
+		super._onChangeForm(formConfig, event);
+	}
+
+	/** @override */
+	async _onFirstRender(context, options) {
+		await super._onFirstRender(context, options);
+
+		// Prevent click from firing (per Pointer Events spec, preventDefault on
+		// pointerdown suppresses the subsequent click). We submit the form and
+		// execute the action manually, since rAF-deferred renders still fire
+		// before the click event in practice.
+		this.element.addEventListener(
+			"pointerdown",
+			(event) => {
+				const actionBtn = event.target.closest("[data-action]");
+				if (!actionBtn) return;
+
+				const form = this.form;
+				if (!form) return;
+
+				const focused = document.activeElement;
+				if (!focused || !form.contains(focused)) return;
+				if (!["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) return;
+
+				event.preventDefault();
+
+				const action = actionBtn.dataset.action;
+				const dataset = { ...actionBtn.dataset };
+
+				this._suppressNextChange = true;
+				this.submit()
+					.then(() => {
+						const handler = this.options.actions[action];
+						const fn = typeof handler === "object" ? handler.handler : handler;
+						if (!fn) return;
+						const syntheticTarget = document.createElement("button");
+						Object.assign(syntheticTarget.dataset, dataset);
+						fn.call(this, event, syntheticTarget);
+					})
+					.catch(console.error);
+			},
+			{ capture: true },
+		);
+	}
+
 	/**
 	 * Convenient reference to the item's system data
 	 * @type {TypeDataModel}

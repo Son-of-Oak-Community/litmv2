@@ -65,7 +65,7 @@
 		"TOURS.StoryTagSidebarStorySectionTitle": "Story Tags Section",
 		"TOURS.StoryTagSidebarStorySectionContent": "The top section holds <strong>story tags</strong> — shared narrative tags visible to everyone. These represent things in the fiction that any character might interact with.",
 		"TOURS.StoryTagSidebarAddButtonsTitle": "Adding Tags & Statuses",
-		"TOURS.StoryTagSidebarAddButtonsContent": "Use <i class=\"fa-solid fa-tag\"></i> to add a <strong>story tag</strong> (a simple narrative fact) or <i class=\"fa-solid fa-heart\"></i> to add a <strong>status card</strong> (a tracked condition with tiers).",
+		"TOURS.StoryTagSidebarAddButtonsContent": "Use <i class=\"fa-solid fa-scroll\"></i> to add a <strong>story tag</strong> (a simple narrative fact) or <i class=\"fa-solid fa-droplet\"></i> to add a <strong>status card</strong> (a tracked condition with tiers).",
 		"TOURS.StoryTagSidebarTagItemTitle": "Story Tags",
 		"TOURS.StoryTagSidebarTagItemContent": "A <strong>story tag</strong> is a narrative fact — e.g. \"Dark Alley\" or \"Raining\". Click the name to edit it. The <i class=\"fa-solid fa-hourglass-half\"></i> hourglass marks a tag as <strong>single-use</strong>, meaning it burns after one use.",
 		"TOURS.StoryTagSidebarStatusItemTitle": "Status Cards",

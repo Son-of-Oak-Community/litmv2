@@ -22,8 +22,10 @@ export class LitmRoll extends foundry.dice.Roll {
 		switch (this.litm.type) {
 			case "mitigate":
 				return t("LITM.Ui.roll_mitigate");
-			case "sacrifice":
-				return t("LITM.Ui.roll_sacrifice");
+			case "sacrifice": {
+				const levelKey = this.litm.sacrificeLevel || "painful";
+				return `${t(`LITM.Ui.sacrifice_${levelKey}`)} ${t("LITM.Ui.roll_sacrifice")}`;
+			}
 			case "tracked":
 				return t("LITM.Ui.roll_tracked");
 			default:
@@ -53,8 +55,12 @@ export class LitmRoll extends foundry.dice.Roll {
 		// Minimum of 1 power
 		let totalPower = Math.max(this.litm.totalPower, 1);
 
-		// If it's not a strong success, return the total power
-		// if (outcome === "consequence") return totalPower; // Removed optimization to be clearer
+		// Trade Power: reverse the roll modifier for spending
+		// Caution (-1 to roll) → +1 spending; Hedge (+1 to roll) → -1 spending
+		const tradePower = this.litm.tradePower || 0;
+		if (tradePower) {
+			totalPower = Math.max(totalPower - tradePower, 1);
+		}
 
 		// Mitigate outcomes add 1 power on a strong success
 		if (this.litm.type === "mitigate" && outcome === "success") {
@@ -128,6 +134,14 @@ export class LitmRoll extends foundry.dice.Roll {
 		};
 	}
 
+	#getSacrificeThemeName() {
+		const themeId = this.litm.sacrificeThemeId;
+		if (!themeId) return null;
+		const actor = this.actor;
+		const theme = actor?.items?.get(themeId);
+		return theme?.name || null;
+	}
+
 	get modifier() {
 		return this.options.modifier || 0;
 	}
@@ -145,12 +159,15 @@ export class LitmRoll extends foundry.dice.Roll {
 			outcome: isPrivate ? "???" : this.outcome,
 			power: isPrivate ? "???" : this.power,
 			result: isPrivate ? "???" : this.result,
-			title: this.litm.title,
+			title: this.litm.title || this.flavor,
 			tooltip: isPrivate ? "" : await this.getTooltip(),
 			total: isPrivate ? "" : Math.round(this.total * 100) / 100,
 			type: this.litm.type,
 			effect: this.effect,
 			modifier: isPrivate ? "???" : this.modifier,
+			tradePower: this.litm.tradePower || 0,
+			sacrificeLevel: this.litm.sacrificeLevel || null,
+			sacrificeThemeName: this.#getSacrificeThemeName(),
 			user: game.user.id,
 			isOwner: game.user.isGM || this.actor?.isOwner,
 			canSpendPower:
@@ -159,6 +176,12 @@ export class LitmRoll extends foundry.dice.Roll {
 					this.outcome.label === "snc" ||
 					this.outcome.label === "consequences") &&
 				this.power > 0,
+			canCompleteSacrifice:
+				this.litm.type === "sacrifice" &&
+				!!this.litm.sacrificeThemeId &&
+				(this.litm.sacrificeLevel === "painful" ||
+					this.litm.sacrificeLevel === "scarring") &&
+				!this.litm.sacrificeCompleted,
 		};
 
 		return foundry.applications.handlebars.renderTemplate(template, chatData);

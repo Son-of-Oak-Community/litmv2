@@ -18,43 +18,81 @@
 	<input type="hidden" name="actorId" value="{{actorId}}">
 
 	<div class="litm--roll-dialog-content">
+		<!-- Roll Type (primary selection) -->
+		{{#if isOwner}}
+		<div class="litm--roll-type-bar">
+			{{#each rollTypes as |label key|}}
+			<label class="litm--roll-type-option {{#if (eq key ../type)}}is-active{{/if}}">
+				<input type="radio" name="type" value="{{key}}" {{checked (eq key ../type)}} />
+				<span>{{localize label}}</span>
+			</label>
+			{{/each}}
+		</div>
+		{{/if}}
+
+		<!-- Settings + Tags grid -->
+		<div class="litm--roll-dialog-grid">
+
+		<!-- Settings column -->
+		{{#if isOwner}}
+		<div class="litm--roll-dialog-settings">
 		<!-- Title -->
-		{{#if isOwner}}
-		<input type="text" name="title" value="{{title}}" placeholder="{{localize 'LITM.Ui.roll_title'}}"
-			style="font-size: var(--font-size-18); font-weight: bold;" />
-		{{/if}}
+		<input type="text" name="title" value="{{title}}" placeholder="{{localize 'LITM.Ui.roll_title_placeholder'}}" class="litm--roll-title-input" />
 
-		<!-- Roll Type -->
-		{{#if isOwner}}
-		<fieldset>
-			<legend>{{concat (localize "LITM.Terms.roll") " " (localize "LITM.Terms.type")}}</legend>
-			<div class="form-group">
-				{{radioBoxes "type" rollTypes checked=type localize=true}}
-			</div>
+		<!-- Sacrifice Level & Theme -->
+		<fieldset class="litm--sacrifice-level-fieldset hidden">
+			<legend>{{localize "LITM.Ui.sacrifice_level"}}</legend>
+			<select name="sacrificeLevel" data-update="sacrificeLevel">
+				{{selectOptions sacrificeLevelOptions selected=sacrificeLevel localize=true}}
+			</select>
 		</fieldset>
-		{{/if}}
+		<fieldset class="litm--sacrifice-theme-fieldset hidden">
+			<legend>{{localize "LITM.Ui.sacrifice_choose_theme"}}</legend>
+			<select name="sacrificeThemeId" data-update="sacrificeThemeId">
+				{{selectOptions sacrificeThemes selected=sacrificeThemeId}}
+			</select>
+		</fieldset>
 
-		<!-- Might & Modifier -->
-		{{#if isOwner}}
+		<!-- Modifiers: Might, Modifier stepper, and Trade Power -->
 		<fieldset>
-			<legend>{{concat (localize "LITM.Terms.might") " & " (localize "LITM.Ui.modifier")}}</legend>
-			<div class="flexrow gap-md">
-				<div class="form-group flex1">
-					<label for="might-select">{{localize "LITM.Terms.might"}}</label>
-					<select id="might-select" name="might" data-update="might">
-						{{selectOptions mightOptions selected=might localize=true}}
-					</select>
-				</div>
-				<div class="form-group flex1">
-					<label for="modifier-input">{{localize "LITM.Ui.modifier"}}</label>
+			<legend>{{localize "LITM.Ui.modifiers"}}</legend>
+			<div class="litm--roll-dialog-might-row">
+				<select id="might-select" name="might" data-update="might">
+					{{selectOptions mightOptions selected=might localize=true}}
+				</select>
+				<div class="litm--modifier-stepper">
+					<button type="button" data-adjust="modifier" data-delta="-1" data-tooltip="{{localize 'LITM.Ui.decrease'}}">
+						<i class="fa-solid fa-minus"></i>
+					</button>
 					<input id="modifier-input" type="number" name="modifier" value="{{modifier}}"
 						data-update="modifier" />
+					<button type="button" data-adjust="modifier" data-delta="1" data-tooltip="{{localize 'LITM.Ui.increase'}}">
+						<i class="fa-solid fa-plus"></i>
+					</button>
+				</div>
+			</div>
+			<div class="litm--trade-power-fieldset hidden">
+				<div class="litm--roll-type-bar litm--trade-power-bar">
+					<label class="litm--roll-type-option {{#if (eq tradePower -1)}}is-active{{/if}}" data-tooltip="{{localize 'LITM.Ui.trade_caution_hint'}}">
+						<input type="radio" name="tradePower" value="-1" {{checked (eq tradePower -1)}} />
+						<span>{{localize "LITM.Ui.trade_caution"}}</span>
+					</label>
+					<label class="litm--roll-type-option {{#if (eq tradePower 0)}}is-active{{/if}}">
+						<input type="radio" name="tradePower" value="0" {{checked (eq tradePower 0)}} />
+						<span>{{localize "LITM.Ui.trade_none"}}</span>
+					</label>
+					<label class="litm--roll-type-option {{#if (eq tradePower 1)}}is-active{{/if}} {{#unless canHedge}}is-disabled{{/unless}}" data-tooltip="{{localize 'LITM.Ui.trade_hedge_hint'}}">
+						<input type="radio" name="tradePower" value="1" {{checked (eq tradePower 1)}} {{#unless canHedge}}disabled{{/unless}} />
+						<span>{{localize "LITM.Ui.trade_hedge"}}</span>
+					</label>
 				</div>
 			</div>
 		</fieldset>
+		</div>
 		{{/if}}
 
 		<!-- Tags Summary -->
+		<div class="litm--roll-dialog-tags-fieldset">
 		{{#if isGMViewer}}
 		<!-- GM Viewer: tabbed view per actor -->
 		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">
@@ -191,6 +229,9 @@
 			{{/if}}
 			{{/if}}
 		</fieldset>
+		</div>
+
+		</div><!-- /litm--roll-dialog-grid -->
 
 	</div>
 

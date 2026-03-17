@@ -106,7 +106,7 @@ body {
 }
 
 body,
-.themed.theme-light {
+.themed.theme-light:not(.chat-log) {
 	--litm-icon-filter: invert(1);
 	--color-litm-tag: #efd693;
 	--color-litm-status: #bcceb1;
@@ -143,6 +143,12 @@ body,
 	font-size: 1.1em;
 	font-weight: normal;
 	margin-block: 0.5em;
+}
+
+.litm prose-mirror {
+	resize: vertical;
+	overflow: auto;
+	min-height: 200px;
 }
 
 /* ========================================
@@ -981,6 +987,196 @@ body,
 	flex-direction: column;
 	gap: 0.5rem;
 	padding: 0.5rem;
+	container-type: inline-size;
+}
+
+/* Roll type toggle bar */
+.litm--roll-type-bar {
+	display: flex;
+	gap: 0;
+	border: 1px solid var(--color-border);
+	border-radius: 6px;
+	overflow: hidden;
+}
+
+.litm--roll-type-option {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.3rem;
+	padding: 0.4rem 0.5rem;
+	font-size: var(--font-size-14);
+	font-weight: 600;
+	cursor: pointer;
+	text-align: center;
+	background: transparent;
+	border-right: 1px solid var(--color-border);
+	transition:
+		background 0.15s,
+		color 0.15s;
+}
+
+.litm--roll-type-option:last-child {
+	border-right: none;
+}
+
+.litm--roll-type-option input[type="radio"] {
+	display: none;
+}
+
+.litm--roll-type-option:hover:not(.is-active) {
+	background: rgba(128, 128, 128, 0.1);
+}
+
+.litm--roll-type-option.is-active {
+	font-weight: bold;
+	background: rgba(128, 128, 128, 0.15);
+	box-shadow: inset 0 -2px 0 var(--color-warm-1);
+}
+
+/* Trade power bar: smaller variant */
+.litm--trade-power-fieldset {
+	margin-top: 0.5rem;
+}
+
+.litm--trade-power-bar .litm--roll-type-option {
+	font-size: var(--font-size-14);
+	font-weight: 500;
+	padding: 0.25rem 0.4rem;
+}
+
+.litm--roll-type-option.is-disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+/* Title input */
+#litm-roll-dialog .litm--roll-title-input {
+	font-size: var(--font-size-14);
+	font-weight: bold;
+}
+
+/* Grid: settings beside tags when wide enough */
+.litm--roll-dialog-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0.5rem;
+	flex: 1;
+	min-height: 0;
+}
+
+@container (min-width: 720px) {
+	.litm--roll-dialog-grid:has(.litm--roll-dialog-tags-fieldset:not(.hidden)) {
+		grid-template-columns: auto 1fr;
+	}
+}
+
+.litm--roll-dialog-settings {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+/* Compact fieldsets inside the roll dialog */
+.litm--roll-dialog-content fieldset {
+	padding: 0.4rem 0.6rem;
+	gap: 0.3rem;
+}
+
+.litm--roll-dialog-content fieldset legend {
+	font-size: var(--font-size-12);
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	opacity: 0.7;
+}
+
+/* Uniform radio/label groups */
+.litm--radio-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.15rem 0.75rem;
+	align-items: center;
+	font-size: var(--font-size-13);
+}
+
+.litm--radio-group label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+/* Might & Modifier row */
+.litm--roll-dialog-might-row {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+}
+
+.litm--roll-dialog-might-row select {
+	flex: 2;
+	font-size: var(--font-size-14);
+}
+
+/* Modifier stepper: -/value/+ */
+.litm--modifier-stepper {
+	display: flex;
+	align-items: center;
+	gap: 0;
+	flex: 0 0 auto;
+}
+
+.litm--modifier-stepper button {
+	flex: 0 0 auto;
+	width: 1.75rem;
+	height: var(--input-height);
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: var(--font-size-11);
+	border: 1px solid var(--color-border);
+	background: var(--color-form-field-background);
+	cursor: pointer;
+}
+
+.litm--modifier-stepper button:first-child {
+	border-radius: 6px 0 0 6px;
+	border-right: none;
+}
+
+.litm--modifier-stepper button:last-child {
+	border-radius: 0 6px 6px 0;
+	border-left: none;
+}
+
+.litm--modifier-stepper input[type="number"] {
+	width: 3rem;
+	text-align: center;
+	border-radius: 0;
+	-moz-appearance: textfield;
+	appearance: textfield;
+}
+
+.litm--modifier-stepper input[type="number"]::-webkit-inner-spin-button,
+.litm--modifier-stepper input[type="number"]::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+/* Trade power annotation on total power line */
+.litm--trade-annotation {
+	font-size: var(--font-size-12);
+	font-weight: normal;
+	opacity: 0.7;
+}
+
+/* Tags column fills remaining space and scrolls */
+.litm--roll-dialog-tags-fieldset {
+	min-height: 0;
+	overflow-y: auto;
 }
 
 .litm--roll-dialog-footer {
@@ -1288,6 +1484,14 @@ body,
 	padding-inline: 16px;
 }
 
+.litm.dice-roll .litm--trade-power-note {
+	font-family: var(--font-blockquote);
+	font-size: var(--font-size-12);
+	font-style: italic;
+	opacity: 0.8;
+	padding-inline: 16px;
+}
+
 .litm.dice-roll .dice-effect {
 	font-size: var(--font-size-14);
 	line-height: 1.5;
@@ -1403,6 +1607,77 @@ body,
 	color: var(--color-level-warning);
 }
 
+/* --- Track Completion Chat Cards --- */
+
+.chat-message:has(.litm-track-complete) {
+	padding: 0;
+}
+
+.chat-message:has(.litm-track-complete) .message-header {
+	padding: 4px 10px;
+	border-bottom: var(--hr-border);
+}
+
+.litm-track-complete {
+	padding: 0;
+	overflow: hidden;
+	border-radius: 0 0 var(--border-radius) var(--border-radius);
+}
+
+.litm-track-complete__header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 0.75rem;
+	font-family: var(--font-powell);
+	font-size: var(--font-size-14);
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #fff;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.litm-track-complete__body {
+	text-align: center;
+	padding: 0.6rem 0.75rem;
+	font-family: var(--font-blockquote);
+	font-size: var(--font-size-14);
+	letter-spacing: 0.03em;
+}
+
+.litm-track-complete__footer {
+	display: flex;
+	padding: 0.4rem 0.75rem;
+	background: rgba(0, 0, 0, 0.06);
+	border-top: var(--hr-border);
+}
+
+.litm-track-complete__footer button {
+	flex: 1;
+	font-size: var(--font-size-14);
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* Per-type header accent colors — warm, dark earth tones from system palette */
+.litm-track-complete--promise .litm-track-complete__header {
+	background: #7a6210;
+}
+
+.litm-track-complete--improve .litm-track-complete__header {
+	background: #3a5a34;
+}
+
+.litm-track-complete--milestone .litm-track-complete__header {
+	background: #6e4e12;
+}
+
+.litm-track-complete--abandon .litm-track-complete__header {
+	background: #583a3a;
+}
+
 /* --- Spend Power Chat Cards --- */
 
 .chat-message:has(.litm-spend-chat) {
@@ -1450,8 +1725,7 @@ body,
 .litm-spend-chat__action {
 	font-size: var(--font-size-14);
 	font-weight: 600;
-	font-family:
-		"Germania One", "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+	font-family: var(--font-blockquote);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 }
@@ -1460,9 +1734,15 @@ body,
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.35rem;
-	font-size: var(--font-size-14);
+	justify-content: center;
+	gap: 0.5rem;
+	font-size: var(--font-size-16);
 	line-height: 1.4;
+}
+
+.litm-spend-chat__body [draggable="true"] {
+	cursor: grab;
+	font-size: var(--font-size-20);
 }
 
 .litm-spend-chat__count {
@@ -4123,6 +4403,7 @@ body.theme-dark,
 	& .chat-message:has(.litm.dice-roll) {
 		--color-scheme: dark;
 		--chat-message-border-color: var(--color-cool-4);
+		--color-text-primary: var(--color-light-2);
 		background: var(--color-cool-5);
 		color: var(--color-light-2);
 		color-scheme: var(--color-scheme);
@@ -4131,7 +4412,7 @@ body.theme-dark,
 	& .chat-message:has(.litm.dice-roll) .message-header {
 		border-bottom: 1px solid var(--color-cool-4);
 		text-shadow: 0 0 2px black;
-		color: var(--color-light-2);
+		color: var(--color-light-3);
 	}
 
 	& .litm.dice-roll .dice-flavor {
@@ -4153,7 +4434,7 @@ body.theme-dark,
 	}
 
 	& .litm.dice-roll .power-total {
-		color: var(--color-light-5);
+		color: var(--color-text-primary);
 	}
 
 	& .litm.dice-roll .dice-effect {
@@ -4179,7 +4460,7 @@ body.theme-dark,
 	}
 
 	& .litm.dice-roll .part-header {
-		color: var(--color-light-3);
+		color: var(--color-text-primary);
 		border-bottom-style: dashed;
 		border-bottom-color: var(--color-cool-4);
 	}
@@ -4202,7 +4483,7 @@ body.theme-dark,
 	& .litm.dice-roll button {
 		border: 1px solid var(--color-light-5);
 		background: transparent;
-		color: var(--color-light-5);
+		color: var(--color-text-primary);
 	}
 
 	& .litm.dice-roll button:hover {
@@ -4225,9 +4506,64 @@ body.theme-dark,
 		border: 0.5px solid var(--color-light-5);
 	}
 
+	/* Track Completion Chat Cards */
+	& .chat-message:has(.litm-track-complete) {
+		--chat-message-border-color: var(--color-cool-4);
+		--color-text-primary: var(--color-light-2);
+		background: var(--color-cool-5);
+		color: var(--color-light-2);
+	}
+
+	& .chat-message:has(.litm-track-complete) .message-header {
+		border-bottom: 1px solid var(--color-cool-4);
+		text-shadow: 0 0 2px black;
+		color: var(--color-light-3);
+	}
+
+	& .litm-track-complete__header {
+		color: #fff;
+	}
+
+	& .litm-track-complete__body {
+		color: var(--color-light-2);
+	}
+
+	& .litm-track-complete__footer {
+		background: rgba(255, 255, 255, 0.03);
+		border-top-color: var(--color-cool-4);
+	}
+
+	& .litm-track-complete__footer button {
+		border: 1px solid var(--color-light-5);
+		background: transparent;
+		color: var(--color-light-5);
+	}
+
+	& .litm-track-complete__footer button:hover {
+		background: rgba(238, 155, 58, 0.1);
+		border-color: #ee9b3a;
+		color: #fff;
+	}
+
+	/* Per-type header accent colors — warmer/darker, lifted for dark bg visibility */
+	& .litm-track-complete--promise .litm-track-complete__header {
+		background: #8a7018;
+	}
+
+	& .litm-track-complete--improve .litm-track-complete__header {
+		background: #486842;
+	}
+
+	& .litm-track-complete--milestone .litm-track-complete__header {
+		background: #7e5818;
+	}
+
+	& .litm-track-complete--abandon .litm-track-complete__header {
+		background: #664444;
+	}
+
 	/* Spend Power Chat Cards */
 	& .chat-message:has(.litm-spend-chat) {
-		--color-scheme: dark;
 		--chat-message-border-color: var(--color-cool-4);
 		--color-text-primary: var(--color-light-2);
 		background: var(--color-cool-5);
@@ -4238,7 +4574,7 @@ body.theme-dark,
 	& .chat-message:has(.litm-spend-chat) .message-header {
 		border-bottom: 1px solid var(--color-cool-4);
 		text-shadow: 0 0 2px black;
-		color: var(--color-light-2);
+		color: var(--color-light-3);
 	}
 
 	& .litm-spend-chat__header img {

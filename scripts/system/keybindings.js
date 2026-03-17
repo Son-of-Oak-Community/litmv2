@@ -79,6 +79,30 @@ export class KeyBindings {
 			precedence: foundry.CONST.KEYBINDING_PRECEDENCE.NORMAL,
 		});
 
+		game.keybindings.register("litmv2", "openFellowshipSheet", {
+			name: t("LITM.Ui.open_fellowship_sheet"),
+			hint: t("LITM.Ui.open_fellowship_sheet_hint"),
+			editable: [
+				{
+					key: "KeyF",
+				},
+			],
+			onDown: () => {
+				const fellowship = game.actors.find((a) => a.type === "fellowship");
+				if (!fellowship) {
+					return ui.notifications.warn("LITM.Ui.warn_no_fellowship", {
+						localize: true,
+					});
+				}
+				const sheet = fellowship.sheet;
+				if (sheet.rendered) return sheet.close();
+				return sheet.render(true);
+			},
+			onUp: () => {},
+			restricted: false,
+			precedence: foundry.CONST.KEYBINDING_PRECEDENCE.NORMAL,
+		});
+
 		game.keybindings.register("litmv2", "openDiceRoller", {
 			name: t("LITM.Ui.dice_roller"),
 			hint: t("LITM.Ui.dice_roller_hint"),

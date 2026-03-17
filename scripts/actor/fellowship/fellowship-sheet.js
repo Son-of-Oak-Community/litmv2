@@ -1,6 +1,41 @@
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { enrichHTML, queryItemsFromPacks, toPlainObject } from "../../utils.js";
 
+const TRACK_ICONS = {
+	promise: "fa-sun",
+	improve: "fa-arrow-trend-up",
+	milestone: "fa-mountain-sun",
+	abandon: "fa-wind",
+};
+const TRACK_LABEL_KEYS = {
+	promise: "LITM.Ui.track_complete_promise",
+	improve: "LITM.Ui.track_complete_improve",
+	milestone: "LITM.Ui.track_complete_milestone",
+	abandon: "LITM.Ui.track_complete_abandon",
+};
+
+function buildTrackCompleteContent({ text, type, actorId, themeId }) {
+	const icon = TRACK_ICONS[type];
+	const label = game.i18n.localize(TRACK_LABEL_KEYS[type]);
+	const footer =
+		type === "improve" && actorId && themeId
+			? `<footer class="litm-track-complete__footer">
+				<button type="button" data-click="open-theme-advancement"
+				        data-actor-id="${actorId}" data-theme-id="${themeId}">
+					<i class="fas fa-wand-magic-sparkles"></i> ${game.i18n.localize("LITM.Ui.choose_improvement")}
+				</button>
+			</footer>`
+			: "";
+	return `<div class="litmv2 litm-track-complete litm-track-complete--${type}">
+		<header class="litm-track-complete__header">
+			<i class="fas ${icon}"></i>
+			<span>${label}</span>
+		</header>
+		<p class="litm-track-complete__body"><strong>${text}</strong></p>
+		${footer}
+	</div>`;
+}
+
 /**
  * Fellowship sheet for Legend in the Mist
  * Represents a shared fellowship actor with a fellowship theme, story themes, and story tags
@@ -189,15 +224,18 @@ export class FellowshipSheet extends LitmActorSheet {
 	}
 
 	/**
-	 * Toggle the active state of a tag in edit mode
+	 * Toggle the active state of a tag in edit mode.
+	 * Click = Scratch/Unscratch, Shift+Click = Activate/Deactivate.
 	 * @private
 	 */
 	static async #onToggleTagActive(event, target) {
-		const tagId = target.dataset.tagId;
-		const tagType = target.dataset.tagType;
-		if (!tagId) return;
+		const actionTarget = target.closest?.("[data-tag-id]") ?? target;
+		const tagId = actionTarget.dataset.tagId || actionTarget.dataset.id;
+		const tagName = actionTarget.dataset.text;
+		const tagType = actionTarget.dataset.tagType;
+		if (!tagId && !tagName) return;
 
-		const burn = event.shiftKey;
+		const scratch = !event.shiftKey;
 
 		const itemEl = target.closest("[data-item-id]") ?? target.closest(".item");
 		const itemId = itemEl?.dataset?.itemId ?? itemEl?.dataset?.id;
@@ -206,6 +244,11 @@ export class FellowshipSheet extends LitmActorSheet {
 		const item = this.document.items.get(itemId);
 		if (!item) return;
 
+		if (tagType === "themeTag") {
+			await item.update({ "system.isScratched": !item.system.isScratched });
+			return;
+		}
+
 		const tagArrayKey =
 			tagType === "weaknessTag" ? "weaknessTags" : "powerTags";
 		const systemPath =
@@ -213,11 +256,12 @@ export class FellowshipSheet extends LitmActorSheet {
 				? `system.theme.${tagArrayKey}`
 				: `system.${tagArrayKey}`;
 
+		const findTag = (t) => (tagId && t.id === tagId) || t.name === tagName;
 		const tags = (item.system[tagArrayKey] ?? []).map((t) => toPlainObject(t));
-		const tag = tags.find((t) => t.id === tagId);
+		const tag = tags.find(findTag);
 		if (!tag) return;
 
-		if (burn) tag.isScratched = !tag.isScratched;
+		if (scratch) tag.isScratched = !tag.isScratched;
 		else tag.isActive = !tag.isActive;
 		await item.update({ [systemPath]: tags });
 	}
@@ -233,12 +277,13 @@ export class FellowshipSheet extends LitmActorSheet {
 
 		const tagType = target.dataset.tagType;
 		const tagId = target.dataset.tagId;
-		if (!tagType || !tagId) return;
+		const tagName = target.dataset.text;
+		if (!tagType || (!tagId && !tagName)) return;
 
 		// Alt+Click: scratch (except weakness tags)
 		if (event.altKey) {
 			if (tagType === "weaknessTag") return;
-			return FellowshipSheet.#scratchTag.call(this, tagType, tagId);
+			return FellowshipSheet.#scratchTag.call(this, tagType, tagId, tagName);
 		}
 
 		// Regular click: add to user's hero roll dialog
@@ -247,8 +292,9 @@ export class FellowshipSheet extends LitmActorSheet {
 		const heroSheet = hero.sheet;
 		if (!heroSheet) return;
 
-		// Ensure fellowship tags are synced into the roll dialog
 		const dialog = heroSheet.rollDialogInstance;
+
+		// Sync all known tags into the roll dialog
 		const existingById = new Map(dialog.characterTags.map((t) => [t.id, t]));
 		for (const tag of heroSheet._buildAllRollTags()) {
 			if (!existingById.has(tag.id)) {
@@ -256,10 +302,25 @@ export class FellowshipSheet extends LitmActorSheet {
 			}
 		}
 
-		// Find and toggle the tag in the roll dialog
-		const tagRef = dialog.characterTags.find((t) => t.id === tagId);
+		// Find the tag by id, then by name fallback
+		let tagRef =
+			(tagId && dialog.characterTags.find((t) => t.id === tagId)) ||
+			(tagName &&
+				dialog.characterTags.find(
+					(t) => t.displayName === tagName || t.name === tagName,
+				));
+		if (!tagRef) {
+			tagRef = FellowshipSheet.#buildTagData.call(
+				this,
+				tagType,
+				tagId,
+				tagName,
+			);
+			if (tagRef) dialog.characterTags.push(tagRef);
+		}
 		if (!tagRef) return;
 
+		const resolvedId = tagRef.id;
 		const isWeaknessTag = tagRef.type === "weaknessTag";
 		const isScratched = tagRef.isScratched ?? false;
 		const selected = !!tagRef.state;
@@ -267,10 +328,10 @@ export class FellowshipSheet extends LitmActorSheet {
 		if (!selected && isScratched && !isWeaknessTag) return;
 
 		if (selected) {
-			dialog.setCharacterTagState(tagId, "");
+			dialog.setCharacterTagState(resolvedId, "");
 		} else {
 			const nextState = isWeaknessTag ? "negative" : "positive";
-			dialog.setCharacterTagState(tagId, nextState);
+			dialog.setCharacterTagState(resolvedId, nextState);
 		}
 
 		if (!dialog.rendered) {
@@ -282,41 +343,96 @@ export class FellowshipSheet extends LitmActorSheet {
 	}
 
 	/**
-	 * Toggle scratch state of a tag on this fellowship actor.
-	 * @param {string} tagType  The tag type (powerTag, themeTag)
-	 * @param {string} tagId    The tag ID
+	 * Build a roll-dialog-compatible tag object directly from this actor's items.
+	 * Used as a fallback when the hero sheet's _buildAllRollTags() doesn't include the tag.
+	 * Falls back to name matching when id is empty (legacy data without persisted tag IDs).
+	 * @param {string} tagType
+	 * @param {string} tagId
+	 * @param {string} [tagName]
+	 * @returns {object|null}
 	 * @private
 	 */
-	static async #scratchTag(tagType, tagId) {
+	static #buildTagData(tagType, tagId, tagName) {
+		if (tagType === "themeTag") {
+			const theme = this.document.items.get(tagId);
+			if (!theme) return null;
+			return {
+				id: tagId,
+				name: theme.name,
+				displayName: theme.name,
+				themeId: theme.id,
+				themeName: theme.name,
+				type: "themeTag",
+				isSingleUse: true,
+				fromFellowship: true,
+				state: "",
+				states: ",positive",
+			};
+		}
+
+		const tagArrayKey =
+			tagType === "weaknessTag" ? "weaknessTags" : "powerTags";
+		const match = (t) =>
+			(tagId && t.id === tagId) || (tagName && t.name === tagName);
+		for (const item of this.document.items) {
+			if (!["theme", "story_theme"].includes(item.type)) continue;
+			const tag = (item.system[tagArrayKey] ?? []).find(match);
+			if (!tag) continue;
+			// Use the stored id if present, otherwise generate a stable key from name
+			const id = tag.id || `${item.id}-${tag.name}`;
+			return {
+				id,
+				name: `${item.name} - ${tag.name}`,
+				displayName: tag.name,
+				themeId: item.id,
+				themeName: item.name,
+				type: tag.type ?? tagType,
+				isSingleUse: true,
+				fromFellowship: true,
+				state: "",
+				states:
+					tagType === "weaknessTag"
+						? ",negative,positive"
+						: ",positive,negative",
+			};
+		}
+		return null;
+	}
+
+	/**
+	 * Toggle scratch state of a tag on this fellowship actor.
+	 * @param {string} tagType   The tag type (powerTag, themeTag)
+	 * @param {string} tagId     The tag ID (may be empty for legacy data)
+	 * @param {string} [tagName] Tag name fallback for legacy data without persisted IDs
+	 * @private
+	 */
+	static async #scratchTag(tagType, tagId, tagName) {
 		if (tagType === "themeTag") {
 			const theme = this.document.items.get(tagId);
 			if (!theme) return;
-			const isScratched = theme.system.isScratched ?? false;
-			await this.document.updateEmbeddedDocuments("Item", [
-				{ _id: theme.id, "system.isScratched": !isScratched },
-			]);
+			await theme.update({ "system.isScratched": !theme.system.isScratched });
 			return;
 		}
 
 		const tagArrayKey =
 			tagType === "weaknessTag" ? "weaknessTags" : "powerTags";
+		const match = (t) =>
+			(tagId && t.id === tagId) || (tagName && t.name === tagName);
 
 		const parentItem = this.document.items.find(
 			(i) =>
 				["theme", "story_theme"].includes(i.type) &&
-				i.system[tagArrayKey]?.some((t) => t.id === tagId),
+				i.system[tagArrayKey]?.some(match),
 		);
 		if (!parentItem) return;
 
-		const systemPath =
-			parentItem.type === "story_theme"
-				? `system.theme.${tagArrayKey}`
-				: `system.${tagArrayKey}`;
-
-		const tags = (parentItem.system[tagArrayKey] ?? []).map((t) =>
-			toPlainObject(t),
-		);
-		const tag = tags.find((t) => t.id === tagId);
+		const isStoryTheme = parentItem.type === "story_theme";
+		const raw = parentItem.system.toObject();
+		const tags = isStoryTheme ? raw.theme[tagArrayKey] : raw[tagArrayKey];
+		const systemPath = isStoryTheme
+			? `system.theme.${tagArrayKey}`
+			: `system.${tagArrayKey}`;
+		const tag = tags.find(match);
 		if (!tag || !tag.isActive) return;
 
 		tag.isScratched = !tag.isScratched;
@@ -351,6 +467,72 @@ export class FellowshipSheet extends LitmActorSheet {
 		const updateData = {};
 		foundry.utils.setProperty(updateData, attrib, newValue);
 		await doc.update(updateData);
+
+		// Celebrate when a track reaches its maximum
+		const trackInfo = FellowshipSheet.#detectTrackCompletion(
+			attrib,
+			newValue,
+			doc,
+			this.document,
+		);
+		if (trackInfo) {
+			await foundry.documents.ChatMessage.create({
+				content: buildTrackCompleteContent(trackInfo),
+				speaker: foundry.documents.ChatMessage.getSpeaker({
+					actor: this.document,
+				}),
+			});
+		}
+	}
+
+	/**
+	 * Detect whether a track update is a completion event and return a
+	 * typed info object, or null if not a completion.
+	 * @private
+	 */
+	static #detectTrackCompletion(attrib, newValue, doc, actor) {
+		const isTheme = doc !== actor;
+		const isFellowship = isTheme && (doc.system?.isFellowship ?? false);
+
+		if (!isTheme) return null;
+
+		const themeLabel = isFellowship
+			? game.i18n.format("LITM.Ui.fellowship_theme_label", { theme: doc.name })
+			: doc.name;
+
+		// Improve (max 3)
+		if (attrib === "system.improve.value" && newValue === 3) {
+			return {
+				text: game.i18n.format("LITM.Ui.improve_complete", {
+					actor: actor.name,
+					theme: themeLabel,
+				}),
+				type: "improve",
+				actorId: doc.parent?.id ?? actor.id,
+				themeId: doc.id,
+			};
+		}
+
+		// Milestone / Abandon (max 3)
+		if (newValue === 3) {
+			const isMilestone = attrib.includes("milestone");
+			const isAbandon = attrib.includes("abandon");
+			if (isMilestone || isAbandon) {
+				const trackKey = isMilestone
+					? "LITM.Themes.milestone"
+					: "LITM.Themes.abandon";
+				return {
+					text: game.i18n.format("LITM.Ui.theme_track_complete", {
+						actor: actor.name,
+						theme: themeLabel,
+						track: game.i18n.localize(trackKey),
+					}),
+					type: isMilestone ? "milestone" : "abandon",
+				};
+			}
+		}
+
+		return null;
 	}
 
 	/**

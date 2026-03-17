@@ -53,6 +53,16 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 		};
 	}
 
+	static migrateData(source) {
+		for (const tag of source.theme?.powerTags ?? []) {
+			if (!tag.id) tag.id = foundry.utils.randomID();
+		}
+		for (const tag of source.theme?.weaknessTags ?? []) {
+			if (!tag.id) tag.id = foundry.utils.randomID();
+		}
+		return super.migrateData(source);
+	}
+
 	prepareDerivedData() {
 		for (const tag of this.theme.weaknessTags) {
 			tag.isScratched = false;

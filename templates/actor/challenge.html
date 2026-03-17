@@ -136,6 +136,12 @@
 				</button>
 			</legend>
 
+			{{#unless vignette.system.isConsequenceOnly}}
+			{{#if vignette.system.threat}}
+			<div class="threat-text">{{{vignette.system.threat}}}</div>
+			{{/if}}
+			{{/unless}}
+
 			{{#if vignette.system.consequences.length}}
 			<ul class="consequences-list">
 				{{#each vignette.system.consequences as |consequence|}}

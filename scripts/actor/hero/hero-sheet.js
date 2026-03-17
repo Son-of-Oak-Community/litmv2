@@ -2,6 +2,41 @@ import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { Sockets } from "../../system/sockets.js";
 import { enrichHTML, toPlainObject } from "../../utils.js";
 
+const TRACK_ICONS = {
+	promise: "fa-sun",
+	improve: "fa-arrow-trend-up",
+	milestone: "fa-mountain-sun",
+	abandon: "fa-wind",
+};
+const TRACK_LABEL_KEYS = {
+	promise: "LITM.Ui.track_complete_promise",
+	improve: "LITM.Ui.track_complete_improve",
+	milestone: "LITM.Ui.track_complete_milestone",
+	abandon: "LITM.Ui.track_complete_abandon",
+};
+
+function buildTrackCompleteContent({ text, type, actorId, themeId }) {
+	const icon = TRACK_ICONS[type];
+	const label = game.i18n.localize(TRACK_LABEL_KEYS[type]);
+	const footer =
+		type === "improve" && actorId && themeId
+			? `<footer class="litm-track-complete__footer">
+				<button type="button" data-click="open-theme-advancement"
+				        data-actor-id="${actorId}" data-theme-id="${themeId}">
+					<i class="fas fa-wand-magic-sparkles"></i> ${game.i18n.localize("LITM.Ui.choose_improvement")}
+				</button>
+			</footer>`
+			: "";
+	return `<div class="litmv2 litm-track-complete litm-track-complete--${type}">
+		<header class="litm-track-complete__header">
+			<i class="fas ${icon}"></i>
+			<span>${label}</span>
+		</header>
+		<p class="litm-track-complete__body"><strong>${text}</strong></p>
+		${footer}
+	</div>`;
+}
+
 /**
  * Hero sheet for Legend in the Mist
  * Represents player characters with themes, tags, and progression
@@ -875,6 +910,81 @@ export class HeroSheet extends LitmActorSheet {
 		const updateData = {};
 		foundry.utils.setProperty(updateData, attrib, newValue);
 		await doc.update(updateData);
+
+		// Celebrate when a track reaches its maximum
+		const trackInfo = HeroSheet.#detectTrackCompletion(
+			attrib,
+			newValue,
+			doc,
+			this.document,
+		);
+		if (trackInfo) {
+			await foundry.documents.ChatMessage.create({
+				content: buildTrackCompleteContent(trackInfo),
+				speaker: foundry.documents.ChatMessage.getSpeaker({
+					actor: this.document,
+				}),
+			});
+		}
+	}
+
+	/**
+	 * Detect whether a track update is a completion event and return a
+	 * typed info object, or null if not a completion.
+	 */
+	static #detectTrackCompletion(attrib, newValue, doc, actor) {
+		const isTheme = doc !== actor;
+		const isFellowship = isTheme && (doc.system?.isFellowship ?? false);
+
+		// Promise track (on the actor, max 5)
+		if (attrib === "system.promise" && newValue === 5) {
+			return {
+				text: game.i18n.format("LITM.Ui.promise_complete", {
+					actor: actor.name,
+				}),
+				type: "promise",
+			};
+		}
+
+		if (!isTheme) return null;
+
+		const themeLabel = isFellowship
+			? game.i18n.format("LITM.Ui.fellowship_theme_label", { theme: doc.name })
+			: doc.name;
+
+		// Improve (max 3)
+		if (attrib === "system.improve.value" && newValue === 3) {
+			return {
+				text: game.i18n.format("LITM.Ui.improve_complete", {
+					actor: actor.name,
+					theme: themeLabel,
+				}),
+				type: "improve",
+				actorId: doc.parent?.id ?? actor.id,
+				themeId: doc.id,
+			};
+		}
+
+		// Milestone / Abandon (max 3)
+		if (newValue === 3) {
+			const isMilestone = attrib.includes("milestone");
+			const isAbandon = attrib.includes("abandon");
+			if (isMilestone || isAbandon) {
+				const trackKey = isMilestone
+					? "LITM.Themes.milestone"
+					: "LITM.Themes.abandon";
+				return {
+					text: game.i18n.format("LITM.Ui.theme_track_complete", {
+						actor: actor.name,
+						theme: themeLabel,
+						track: game.i18n.localize(trackKey),
+					}),
+					type: isMilestone ? "milestone" : "abandon",
+				};
+			}
+		}
+
+		return null;
 	}
 
 	/* -------------------------------------------- */

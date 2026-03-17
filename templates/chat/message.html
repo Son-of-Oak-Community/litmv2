@@ -11,6 +11,8 @@
 		</div>
 		{{!-- <span class="dice-flavor ellipsis">{{flavor}}</span> --}} {{#if (eq type 'tracked')}}<span
 			class="power-total">{{power}} {{localize 'LITM.Tags.power'}}</span>{{/if}}
+		{{#if (eq tradePower -1)}}<span class="litm--trade-power-note">{{localize "LITM.Ui.trade_caution"}}</span>{{/if}}
+		{{#if (eq tradePower 1)}}<span class="litm--trade-power-note">{{localize "LITM.Ui.trade_hedge"}}</span>{{/if}}
 	</header>
 
 	<div class="dice-result-details flexcol">
@@ -29,6 +31,9 @@
 			</p>
 			{{else}}
 			<p class="outcome-description"><em>{{{localize outcome.description}}}</em></p>
+			{{#if sacrificeLevel}}
+			<p class="litm--sacrifice-price"><strong>{{localize (concat "LITM.Ui.sacrifice_" sacrificeLevel)}}</strong> — {{localize (concat "LITM.Ui.sacrifice_" sacrificeLevel "_price")}}{{#if sacrificeThemeName}} ({{sacrificeThemeName}}){{/if}}</p>
+			{{/if}}
 			{{/if}}
 		</div>
 
@@ -49,6 +54,11 @@
 		{{#if canSpendPower}}
 		<button class="litm--roll-spend-power-button noflex" data-click="spend-power">
 			<i class="fas fa-bolt"></i> {{localize 'LITM.Ui.spend_power'}}
+		</button>
+		{{/if}}
+		{{#if canCompleteSacrifice}}
+		<button class="noflex" data-click="complete-sacrifice">
+			<i class="fas fa-hand-holding-heart"></i> {{localize 'LITM.Ui.sacrifice_complete'}}
 		</button>
 		{{/if}}
 	</footer>

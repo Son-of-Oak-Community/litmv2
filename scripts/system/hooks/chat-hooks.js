@@ -29,6 +29,24 @@ export function onRenderChatMessage(app, html, _data) {
 		}
 	}
 
+	// Hide complete-sacrifice button if already completed
+	const sacrificeBtn = element.querySelector(
+		"[data-click='complete-sacrifice']",
+	);
+	if (sacrificeBtn) {
+		const roll = app.rolls?.[0];
+		if (roll?.litm?.sacrificeCompleted) {
+			sacrificeBtn.remove();
+		}
+	}
+
+	// Hide theme advancement button for non-owners
+	const advanceBtn = element.querySelector(
+		"[data-click='open-theme-advancement']",
+	);
+	if (advanceBtn && !app.isAuthor)
+		advanceBtn.closest(".litm-track-complete__footer")?.remove();
+
 	// Remove empty footer if no buttons remain
 	const footer = element.querySelector(".dice-footer");
 	if (footer && footer.querySelectorAll("button").length === 0) {
@@ -75,6 +93,9 @@ export function onRenderChatMessage(app, html, _data) {
 					// Roll
 					if (userId === game.userId) {
 						game.litmv2.LitmRollDialog.roll(data);
+						// Reset own roll dialog locally (sockets don't echo to sender)
+						const actor = game.actors.get(data.actorId);
+						if (actor?.sheet?.rendered) actor.sheet.resetRollDialog();
 					} else {
 						Sockets.dispatch("rollDice", {
 							userId,
@@ -82,10 +103,45 @@ export function onRenderChatMessage(app, html, _data) {
 						});
 					}
 
-					// Dispatch order to reset Roll Dialog
+					// Dispatch order to reset Roll Dialog on other clients
 					Sockets.dispatch("resetRollDialog", {
 						actorId: data.actorId,
 					});
+					break;
+				}
+				case "complete-sacrifice": {
+					const messageId = target.closest(".chat-message").dataset.messageId;
+					const message = game.messages.get(messageId);
+					const roll = message.rolls[0];
+					const { sacrificeLevel, sacrificeThemeId, actorId } = roll.litm;
+					const actor = game.actors.get(actorId);
+					const theme = actor?.items?.get(sacrificeThemeId);
+					if (!theme || !actor) break;
+
+					const confirmKey =
+						sacrificeLevel === "scarring"
+							? "LITM.Ui.sacrifice_confirm_scarring"
+							: "LITM.Ui.sacrifice_confirm_painful";
+
+					const confirmed = await foundry.applications.api.DialogV2.confirm({
+						window: {
+							title: t("LITM.Ui.sacrifice_confirm_title"),
+						},
+						content: `<p>${game.i18n.format(confirmKey, { theme: theme.name })}</p>`,
+						rejectClose: false,
+						modal: true,
+					});
+					if (!confirmed) break;
+
+					await _applySacrificeConsequence(
+						actor,
+						sacrificeLevel,
+						sacrificeThemeId,
+					);
+
+					// Mark sacrifice as completed so button disappears
+					roll.options.sacrificeCompleted = true;
+					await message.update({ rolls: [roll] });
 					break;
 				}
 				case "reject-moderation": {
@@ -107,8 +163,55 @@ export function onRenderChatMessage(app, html, _data) {
 					});
 					break;
 				}
+				case "open-theme-advancement": {
+					const { actorId, themeId } = target.dataset;
+					if (!actorId || !themeId) return;
+					new game.litmv2.ThemeAdvancementApp({ actorId, themeId }).render(
+						true,
+					);
+					break;
+				}
 			}
 		});
+	}
+}
+
+async function _applySacrificeConsequence(actor, level, themeId) {
+	const theme = actor.items.get(themeId);
+	if (!theme) return;
+	const themeName = theme.name;
+
+	if (level === "painful") {
+		// Scratch all power tags and the theme tag
+		const raw = theme.system.toObject();
+		const isStoryTheme = theme.type === "story_theme";
+		const powerTags = isStoryTheme ? raw.theme.powerTags : raw.powerTags;
+		const systemPath = isStoryTheme
+			? "system.theme.powerTags"
+			: "system.powerTags";
+		for (const tag of powerTags) {
+			tag.isScratched = true;
+		}
+		await actor.updateEmbeddedDocuments("Item", [
+			{
+				_id: theme.id,
+				[systemPath]: powerTags,
+				"system.isScratched": true,
+			},
+		]);
+		ui.notifications.info(
+			game.i18n.format("LITM.Ui.sacrifice_theme_scratched", {
+				theme: themeName,
+			}),
+		);
+	} else if (level === "scarring") {
+		// Remove the theme entirely
+		await actor.deleteEmbeddedDocuments("Item", [theme.id]);
+		ui.notifications.info(
+			game.i18n.format("LITM.Ui.sacrifice_theme_removed", {
+				theme: themeName,
+			}),
+		);
 	}
 }
 
@@ -174,7 +277,9 @@ function _attachContextMenuToRollMessage() {
 			},
 		});
 
-		options.unshift(...["quick", "tracked", "mitigate"].map(createTypeChange));
+		options.unshift(
+			...["quick", "tracked", "mitigate", "sacrifice"].map(createTypeChange),
+		);
 	};
 	Hooks.on("getChatMessageContextOptions", callback);
 }

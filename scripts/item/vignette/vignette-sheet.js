@@ -76,28 +76,29 @@ export class VignetteSheet extends LitmItemSheet {
 
 		// Update tags and statuses from consequences
 		if (submitData.system?.consequences) {
-			await this.#updateEffectsFromConsequences();
+			await VignetteSheet.#updateEffectsFromConsequences(this.document);
 		}
 	}
 
 	/**
 	 * Update embedded effects based on consequence text
+	 * @param {Item} doc  The vignette document
 	 * @private
 	 */
-	static async #updateEffectsFromConsequences() {
+	static async #updateEffectsFromConsequences(doc) {
 		// Delete existing tags and statuses
-		await this.document.deleteEmbeddedDocuments(
+		await doc.deleteEmbeddedDocuments(
 			"ActiveEffect",
-			this.document.effects.map((e) => e._id),
+			doc.effects.map((e) => e._id),
 		);
 
 		// Extract tags and statuses from consequence text
-		const matches = this.document.system.consequences.flatMap((string) =>
+		const matches = doc.system.consequences.flatMap((string) =>
 			Array.from(string.matchAll(CONFIG.litmv2.tagStringRe)),
 		);
 
 		// Create new embedded effects
-		await this.document.createEmbeddedDocuments(
+		await doc.createEmbeddedDocuments(
 			"ActiveEffect",
 			matches.map(([_, name, separator, value]) => {
 				if (separator === "-") {

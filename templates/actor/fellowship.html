@@ -38,7 +38,10 @@
 			<div class="flexrow noflex gap-sm">
 				<img class="noflex icon-md" src="{{theme.img}}"
 					data-tooltip="{{localize (concat 'LITM.Terms.' theme.system.level)}}" />
-				{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag}}
+				{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag
+				action="toggleTagActive"
+				tooltip=(localize "LITM.Ui.click_to_scratch_tag")
+				}}
 			</div>
 			<div class="noflex flexrow gap-xs">
 			</div>
@@ -86,7 +89,10 @@
 			<div class="theme-card item draggable" data-item-id="{{theme._id}}">
 				<div class="theme-card-header">
 					<div class="flexrow noflex gap-sm">
-						{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag}}
+						{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag
+					action="toggleTagActive"
+					tooltip=(localize "LITM.Ui.click_to_scratch_tag")
+					}}
 					</div>
 					<div class="noflex flexrow gap-xs">
 						<button type="button" data-action="editItem" data-item-id="{{theme._id}}"

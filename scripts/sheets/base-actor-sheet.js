@@ -102,6 +102,68 @@ export class LitmActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 		return context;
 	}
 
+	/** Whether to suppress the next change-triggered form submit (set by pointerdown pre-submit) */
+	_suppressNextChange = false;
+
+	/**
+	 * When the user clicks an action button while an input is focused, the browser
+	 * fires: pointerdown → blur → change → pointerup → click.
+	 * The blur/change triggers a form re-render that would detach the button before
+	 * click fires. Fix: on pointerdown, submit the form immediately and suppress
+	 * the duplicate change-triggered submit. By the time click fires the document
+	 * data is already locally updated (Foundry applies optimistic updates synchronously).
+	 * @override
+	 */
+	_onChangeForm(formConfig, event) {
+		if (this._suppressNextChange) {
+			this._suppressNextChange = false;
+			return;
+		}
+		super._onChangeForm(formConfig, event);
+	}
+
+	/** @override */
+	async _onFirstRender(context, options) {
+		await super._onFirstRender(context, options);
+
+		// Prevent click from firing (per Pointer Events spec, preventDefault on
+		// pointerdown suppresses the subsequent click). We submit the form and
+		// execute the action manually, since rAF-deferred renders still fire
+		// before the click event in practice.
+		this.element.addEventListener(
+			"pointerdown",
+			(event) => {
+				const actionBtn = event.target.closest("[data-action]");
+				if (!actionBtn) return;
+
+				const form = this.form;
+				if (!form) return;
+
+				const focused = document.activeElement;
+				if (!focused || !form.contains(focused)) return;
+				if (!["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) return;
+
+				event.preventDefault();
+
+				const action = actionBtn.dataset.action;
+				const dataset = { ...actionBtn.dataset };
+
+				this._suppressNextChange = true;
+				this.submit()
+					.then(() => {
+						const handler = this.options.actions[action];
+						const fn = typeof handler === "object" ? handler.handler : handler;
+						if (!fn) return;
+						const syntheticTarget = document.createElement("button");
+						Object.assign(syntheticTarget.dataset, dataset);
+						fn.call(this, event, syntheticTarget);
+					})
+					.catch(console.error);
+			},
+			{ capture: true },
+		);
+	}
+
 	/** @override */
 	async _onRender(context, options) {
 		await super._onRender(context, options);

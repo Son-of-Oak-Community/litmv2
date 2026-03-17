@@ -18,13 +18,15 @@ function _setupRollDialogHud() {
 			update: () => _ensureHudContainer(),
 		};
 
-		// Clean up own stale roll dialog flags before rendering HUD.
+		// Clean up stale roll dialog flags before rendering HUD.
 		// No dialog is open on a fresh page load, so clear own flags.
-		// Stale flags from other disconnected users are harmless — the HUD
-		// shows them and renderRollDialog lets anyone with permission claim.
+		// GMs also clean up flags from disconnected users.
 		for (const actor of game.actors) {
 			const flag = actor.getFlag("litmv2", "rollDialogOwner");
-			if (flag?.ownerId === game.user.id) {
+			if (!flag) continue;
+			const isOwnFlag = flag.ownerId === game.user.id;
+			const isDisconnectedUser = !game.users.get(flag.ownerId)?.active;
+			if (isOwnFlag || (game.user.isGM && isDisconnectedUser)) {
 				await actor.unsetFlag("litmv2", "rollDialogOwner");
 			}
 		}
@@ -72,7 +74,9 @@ function _renderRollDialogHud(container) {
 		game.actors
 			?.filter((a) => {
 				const flag = a.getFlag("litmv2", "rollDialogOwner");
-				return flag && flag.ownerId !== game.user.id;
+				if (!flag || flag.ownerId === game.user.id) return false;
+				// Hide entries for disconnected users
+				return game.users.get(flag.ownerId)?.active;
 			})
 			.map((a) => ({
 				actorId: a.id,
