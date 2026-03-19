@@ -1,5 +1,20 @@
+import { renderChallenge } from "./renderers/challenge-renderer.js";
+import { renderTheme } from "./renderers/theme-renderer.js";
+import { renderThemebook } from "./renderers/themebook-renderer.js";
+import { renderTrope } from "./renderers/trope-renderer.js";
+import { renderVignette } from "./renderers/vignette-renderer.js";
+
+const RENDERERS = {
+	vignette: renderVignette,
+	challenge: renderChallenge,
+	theme: renderTheme,
+	themebook: renderThemebook,
+	trope: renderTrope,
+};
+
 export class Enrichers {
 	static register() {
+		Enrichers.#enrichRender();
 		Enrichers.#enrichBold();
 		Enrichers.#enrichMight();
 		Enrichers.#enrichBanner();
@@ -17,6 +32,28 @@ export class Enrichers {
 		const t = document.createElement("template");
 		t.innerHTML = string.trim();
 		return t.content.firstChild;
+	}
+
+	static #enrichRender() {
+		CONFIG.TextEditor.enrichers.push({
+			id: "litm.render",
+			pattern: /@render\[([^\]]+)\]/gi,
+			enricher: async ([text, uuid]) => {
+				try {
+					const doc = await fromUuid(uuid);
+					if (!doc) return document.createTextNode(text);
+
+					const type = doc.type ?? doc.documentName;
+					const renderer = RENDERERS[type];
+					if (!renderer) return doc.toAnchor();
+
+					return await renderer(doc);
+				} catch (err) {
+					console.warn(`@render[${uuid}] failed:`, err);
+					return document.createTextNode(text);
+				}
+			},
+		});
 	}
 
 	static #enrichBold() {

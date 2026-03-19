@@ -395,6 +395,351 @@ body,
 	color: var(--color-text-subtle);
 }
 
+/* ── @render enricher ── inline embed cards ── */
+
+.litm-render {
+	margin: 0.75rem 0;
+}
+
+/* Shared section header — centered label with decorative lines */
+.litm-render__section-header {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	font-family: var(--font-serif);
+	font-size: var(--font-size-11);
+	font-weight: 600;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+	color: var(--color-text-secondary);
+	margin: 0.25rem 0;
+}
+
+.litm-render__section-header::before,
+.litm-render__section-header::after {
+	content: "";
+	flex: 1;
+	border-top: 1px solid var(--color-border);
+}
+
+/* Shared title */
+.litm-render__title {
+	font-family: Ysgarth, var(--font-serif);
+	font-size: var(--font-size-24);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	text-align: center;
+	margin: 0;
+	border: none;
+	padding: 0;
+}
+
+/* ── Challenge embed card ── */
+.litm-render--challenge {
+	border: 2px solid var(--color-border);
+	border-radius: 8px;
+	padding: 1.25rem 1.5rem;
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.litm-render--challenge:hover {
+	border-color: color-mix(
+		in srgb,
+		var(--color-litm-limit) 60%,
+		var(--color-border)
+	);
+}
+
+/* Header: portrait + name/stars/category */
+.litm-render--challenge__header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.litm-render--challenge__portrait {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 2px solid var(--color-border);
+	flex-shrink: 0;
+}
+
+.litm-render--challenge__header-text {
+	flex: 1;
+	text-align: center;
+}
+
+.litm-render--challenge__meta {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+}
+
+.litm-render--challenge__stars {
+	display: inline-flex;
+	gap: 2px;
+}
+
+.litm-render--challenge__stars .rating-star.empty {
+	opacity: 0.2;
+}
+
+.litm-render--challenge__category {
+	font-family: var(--font-luminari);
+	font-style: italic;
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-13);
+}
+
+/* Description */
+.litm-render--challenge__description {
+	font-family: var(--font-serif);
+	font-size: var(--font-size-14);
+	line-height: 1.6;
+	text-align: center;
+}
+
+.litm-render--challenge__description p:last-child {
+	margin-bottom: 0;
+}
+
+/* Limit items */
+.litm-render--challenge__limit-item {
+	margin-bottom: 0.35rem;
+}
+
+.litm-render--challenge__limit-item .litm-limit {
+	font-size: var(--font-size-16);
+}
+
+.litm-render--challenge__limit-icon {
+	height: 1.4em;
+	width: 1.4em;
+	position: absolute;
+	right: -0.5em;
+	top: 0.15em;
+	z-index: -1;
+}
+
+.litm-render--challenge__limit-max {
+	font-style: normal;
+	font-size: inherit;
+	font-weight: 600;
+	color: var(--color-light-2);
+}
+
+.litm-render--challenge__outcome {
+	font-style: italic;
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-13);
+	padding-left: 0.5rem;
+	margin-bottom: 0.5rem;
+}
+
+/* Tags & statuses */
+.litm-render--challenge__tags {
+	font-family: var(--font-serif);
+	font-style: italic;
+	text-align: center;
+	font-size: var(--font-size-14);
+}
+
+/* Might entries */
+.litm-render--challenge__might {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.litm-render--challenge__might-entry {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.litm-render--challenge__might-icon {
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+}
+
+/* Special features fieldset */
+.litm-render--challenge__special-features {
+	font-size: var(--font-size-13);
+}
+
+/* ── Trope embed card ── */
+
+.litm-render--trope {
+	border: 2px solid var(--color-border);
+	border-radius: 8px;
+	padding: 1rem 1.25rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.litm-render--trope__category {
+	text-align: center;
+	font-style: italic;
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-13);
+}
+
+.litm-render--trope__description {
+	font-family: var(--font-serif);
+	font-size: var(--font-size-14);
+	line-height: 1.5;
+}
+
+.litm-render--trope__description p:last-child {
+	margin-bottom: 0;
+}
+
+.litm-render--trope__kits {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.litm-render--trope__kits .themekit-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+}
+
+.litm-render--trope__kits .themekit-list li {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-family: var(--font-serif);
+	line-height: 1.4;
+}
+
+.litm-render--trope__kits .themekit-list li.optional::before {
+	content: "\25CB"; /* ○ */
+	flex-shrink: 0;
+}
+
+.litm-render--trope__kits .icon-sm {
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+}
+
+.litm-render--trope__backpack {
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+}
+
+/* ── Themebook embed card ── */
+
+.litm-render--themebook {
+	border: 2px solid var(--color-border);
+	border-radius: 8px;
+	padding: 1.25rem 1.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.litm-render--themebook__level {
+	text-align: center;
+	font-family: var(--font-luminari);
+	font-style: italic;
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-13);
+}
+
+.litm-render--themebook__title {
+	font-size: var(--font-size-28);
+	margin-top: -0.25rem;
+}
+
+.litm-render--themebook__envisioning {
+	text-align: center;
+	font-family: var(--font-serif);
+	font-weight: 600;
+	font-size: var(--font-size-12);
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--color-text-secondary);
+}
+
+.litm-render--themebook__description {
+	font-family: var(--font-serif);
+	font-size: var(--font-size-14);
+	line-height: 1.5;
+}
+
+.litm-render--themebook__description p:last-child {
+	margin-bottom: 0;
+}
+
+.litm-render--themebook__questions {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.litm-render--themebook__questions li {
+	margin-bottom: 0.25rem;
+	line-height: 1.4;
+	font-size: var(--font-size-14);
+}
+
+.litm-render--themebook__letter {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.4em;
+	height: 1.4em;
+	font-size: var(--font-size-11);
+	font-weight: 700;
+	background: var(--color-litm-banner);
+	border-radius: 3px;
+	vertical-align: middle;
+}
+
+.litm-render--themebook__quests {
+	list-style: disc;
+	padding-left: 1.5rem;
+	margin: 0;
+	font-size: var(--font-size-14);
+}
+
+.litm-render--themebook__improvements {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	font-size: var(--font-size-13);
+}
+
+.litm-render--themebook__improvements li {
+	margin-bottom: 0.35rem;
+	line-height: 1.4;
+}
+
+/* ── Theme (theme kit) embed card ── */
+
+.litm-render--theme {
+	text-align: center;
+}
+
+.litm-render--theme .theme-card-tags {
+	justify-content: center;
+}
+
 /* Theme name tags: larger, bold, uppercase */
 .litm-themeTag {
 	font-size: var(--font-size-20);
