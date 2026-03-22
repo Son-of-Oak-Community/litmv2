@@ -846,6 +846,153 @@ body,
 	line-height: 1.4;
 }
 
+/* ── Hero embed card ── */
+
+.litm-render--hero {
+	border: 2px solid var(--color-border);
+	border-radius: 8px;
+	padding: 1.25rem 1.5rem;
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.litm-render--hero:hover {
+	background: var(--color-warm-1-10);
+}
+
+.litm-render--hero__header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.litm-render--hero__portrait {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	object-fit: cover;
+	border: 2px solid var(--color-border);
+}
+
+.litm-render--hero__header-text {
+	flex: 1;
+}
+
+.litm-render--hero__promise {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: var(--font-size-11);
+	color: var(--color-text-secondary);
+}
+
+.litm-render--hero__promise-label {
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+}
+
+.litm-render--hero__promise-pips {
+	display: flex;
+	gap: 0.25rem;
+}
+
+.litm-render--hero__pip {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	border: 1.5px solid var(--color-text-secondary);
+}
+
+.litm-render--hero__pip.filled {
+	background: var(--color-text-secondary);
+}
+
+.litm-render--hero__description {
+	font-size: var(--font-size-12);
+	color: var(--color-text-secondary);
+}
+
+.litm-render--hero__themes {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+
+.litm-render--hero__theme {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.litm-render--hero__theme-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	justify-content: center;
+}
+
+.litm-render--hero__story-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+}
+
+/* ── Journey embed card ── */
+
+.litm-render--journey {
+	border: 2px solid var(--color-border);
+	border-radius: 8px;
+	padding: 1.25rem 1.5rem;
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.litm-render--journey:hover {
+	background: var(--color-warm-1-10);
+}
+
+.litm-render--journey__header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.litm-render--journey__portrait {
+	width: 64px;
+	height: 64px;
+	border-radius: 8px;
+	object-fit: cover;
+	border: 2px solid var(--color-border);
+}
+
+.litm-render--journey__header-text {
+	flex: 1;
+}
+
+.litm-render--journey__category {
+	display: block;
+	font-size: var(--font-size-11);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: var(--color-text-secondary);
+}
+
+.litm-render--journey__description {
+	font-size: var(--font-size-12);
+	color: var(--color-text-secondary);
+}
+
+.litm-render--journey__tags {
+	font-size: var(--font-size-12);
+}
+
 /* ── Theme (theme kit) embed card ── */
 
 .litm-render--theme {

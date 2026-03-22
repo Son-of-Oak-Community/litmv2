@@ -1,7 +1,7 @@
 import { error, warn } from "../logger.js";
 import { createSampleHero } from "../system/sample-hero.js";
 import { LitmSettings } from "../system/settings.js";
-import { sleep, localize as t, toQuestionOptions } from "../utils.js";
+import { localize as t, sleep, toQuestionOptions } from "../utils.js";
 
 const THEME_SLOTS = 4;
 const MODULE_ID = "legend-in-the-mist";
@@ -489,9 +489,11 @@ export class WelcomeOverlay {
 
 		// Save scroll positions before replacing content
 		const scrollPositions = new Map();
-		for (const el of container.querySelectorAll(
-			".scrollable, .litm--welcome-overlay__wizard-body",
-		)) {
+		for (
+			const el of container.querySelectorAll(
+				".scrollable, .litm--welcome-overlay__wizard-body",
+			)
+		) {
 			const key = `${el.className}|${el.dataset.tab ?? ""}`;
 			scrollPositions.set(key, el.scrollTop);
 		}
@@ -499,9 +501,11 @@ export class WelcomeOverlay {
 		container.innerHTML = html;
 
 		// Restore scroll positions
-		for (const el of container.querySelectorAll(
-			".scrollable, .litm--welcome-overlay__wizard-body",
-		)) {
+		for (
+			const el of container.querySelectorAll(
+				".scrollable, .litm--welcome-overlay__wizard-body",
+			)
+		) {
 			const key = `${el.className}|${el.dataset.tab ?? ""}`;
 			if (scrollPositions.has(key)) el.scrollTop = scrollPositions.get(key);
 		}
@@ -552,7 +556,7 @@ export class WelcomeOverlay {
 		const permissions = game.settings.get("core", "permissions");
 		const playerCanCreate =
 			permissions.ACTOR_CREATE?.includes(foundry.CONST.USER_ROLES.PLAYER) ??
-			false;
+				false;
 
 		const canCreateHero = game.user.can("ACTOR_CREATE");
 
@@ -677,14 +681,13 @@ export class WelcomeOverlay {
 		for (let i = 0; i < THEME_SLOTS; i++) {
 			const theme = themes[i];
 			const slideKey = `customTheme${i}`;
-			const isComplete =
-				theme.method === "themekit"
-					? Boolean(theme.themekitUuid)
-					: theme.method === "themebook"
-						? Boolean(theme.themebookUuid) && Boolean(theme.name)
-						: theme.method === "manual"
-							? Boolean(theme.name)
-							: false;
+			const isComplete = theme.method === "themekit"
+				? Boolean(theme.themekitUuid)
+				: theme.method === "themebook"
+				? Boolean(theme.themebookUuid) && Boolean(theme.name)
+				: theme.method === "manual"
+				? Boolean(theme.name)
+				: false;
 			const isActive = activeSlide === slideKey;
 			const tooltip = theme.name
 				? theme.name
@@ -731,10 +734,10 @@ export class WelcomeOverlay {
 		}
 		const levelOptions = isVariableLevel
 			? Object.keys(CONFIG.litmv2.theme_levels).map((key) => ({
-					value: key,
-					label: t(`LITM.Terms.${key}`),
-					selected: currentTheme.level === key,
-				}))
+				value: key,
+				label: t(`LITM.Terms.${key}`),
+				selected: currentTheme.level === key,
+			}))
 			: [];
 
 		const allPowerQs = (selectedThemebook?.system?.powerTagQuestions || []).map(
@@ -758,11 +761,11 @@ export class WelcomeOverlay {
 				.filter(([, q]) => `${q ?? ""}`.trim()),
 		);
 
-		const namePlaceholder =
-			allPowerQs[0] || t("LITM.Ui.hero_creation_theme_name");
+		const namePlaceholder = allPowerQs[0] ||
+			t("LITM.Ui.hero_creation_theme_name");
 
-		const questIdeas =
-			selectedThemebook?.system?.questIdeas?.filter(Boolean) || [];
+		const questIdeas = selectedThemebook?.system?.questIdeas?.filter(Boolean) ||
+			[];
 
 		return {
 			mode: this._appState.mode,
@@ -859,8 +862,9 @@ export class WelcomeOverlay {
 			input.addEventListener(eventName, () => {
 				const path = input.dataset.bind;
 				if (!path) return;
-				const value =
-					input.type === "number" ? Number(input.value) : input.value;
+				const value = input.type === "number"
+					? Number(input.value)
+					: input.value;
 				foundry.utils.setProperty(this._appState, path, value);
 				if (input.dataset.render === "true") {
 					this.#renderCurrentSlide();
@@ -1066,10 +1070,9 @@ export class WelcomeOverlay {
 				);
 				const theme = this._appState.custom.themes[idx];
 				if (!theme) break;
-				const uuid =
-					target.tagName === "SELECT"
-						? target.value
-						: target.dataset.uuid || "";
+				const uuid = target.tagName === "SELECT"
+					? target.value
+					: target.dataset.uuid || "";
 				theme.method = "themekit";
 				theme.themekitUuid = uuid;
 				// Populate tag options from the themekit
@@ -1115,10 +1118,9 @@ export class WelcomeOverlay {
 				);
 				const theme = this._appState.custom.themes[idx];
 				if (!theme) break;
-				const uuid =
-					target.tagName === "SELECT"
-						? target.value
-						: target.dataset.uuid || "";
+				const uuid = target.tagName === "SELECT"
+					? target.value
+					: target.dataset.uuid || "";
 				theme.method = "themebook";
 				theme.themebookUuid = uuid;
 				await this.#renderCurrentSlide();
@@ -1346,15 +1348,13 @@ export class WelcomeOverlay {
 			themebookLookup,
 		);
 
-		const reviewBackpackChoices =
-			this._appState.mode === "trope"
-				? selectedTrope?.backpackChoices || []
-				: this._appState.custom.backpackTags.filter(Boolean);
-		const reviewBackpackSelection =
-			this._appState.mode === "trope"
-				? this._appState.trope.backpackChoice || reviewBackpackChoices[0]
-				: reviewBackpackChoices[this._appState.custom.activeBackpackIndex] ||
-					null;
+		const reviewBackpackChoices = this._appState.mode === "trope"
+			? selectedTrope?.backpackChoices || []
+			: this._appState.custom.backpackTags.filter(Boolean);
+		const reviewBackpackSelection = this._appState.mode === "trope"
+			? this._appState.trope.backpackChoice || reviewBackpackChoices[0]
+			: reviewBackpackChoices[this._appState.custom.activeBackpackIndex] ||
+				null;
 
 		return {
 			logo: CONFIG.litmv2.assets.logo,
@@ -1460,8 +1460,9 @@ export class WelcomeOverlay {
 			} else if (theme.method === "themebook") {
 				const themebook = themebookLookup.get(theme.themebookUuid);
 				const bookLevel = themebook?.themeLevel || "origin";
-				const level =
-					bookLevel === "variable" ? theme.level || "origin" : bookLevel;
+				const level = bookLevel === "variable"
+					? theme.level || "origin"
+					: bookLevel;
 				themes.push({
 					level,
 					levelLabel: t(`LITM.Terms.${level}`),
@@ -1489,10 +1490,9 @@ export class WelcomeOverlay {
 		const name = this._appState.actorName || t("LITM.Ui.hero_name");
 		const items = [];
 
-		const trope =
-			this._appState.mode === "trope"
-				? await this.getTropeDoc(this._appState.trope.selectedUuid)
-				: null;
+		const trope = this._appState.mode === "trope"
+			? await this.getTropeDoc(this._appState.trope.selectedUuid)
+			: null;
 
 		if (this._appState.mode === "trope") {
 			const fixed = trope?.system?.themeKits?.fixed || [];
@@ -1637,10 +1637,11 @@ export class WelcomeOverlay {
 				);
 				const themebookName = themebookDoc?.name || "";
 				const bookLevel = themebookDoc?.system?.theme_level || "origin";
-				const level =
-					bookLevel === "variable" ? themeState.level || "origin" : bookLevel;
-				const nameValue =
-					themeState.name || themebookName || t("LITM.Ui.theme_title");
+				const level = bookLevel === "variable"
+					? themeState.level || "origin"
+					: bookLevel;
+				const nameValue = themeState.name || themebookName ||
+					t("LITM.Ui.theme_title");
 
 				const powerTags = themeState.powerTags.map((tagName, index) => ({
 					id: foundry.utils.randomID(),
@@ -1685,12 +1686,11 @@ export class WelcomeOverlay {
 		}
 
 		// Backpack item
-		const backpackTags =
-			this._appState.mode === "trope"
-				? (trope?.system?.backpackChoices || []).filter(Boolean)
-				: this._appState.custom.backpackTags.filter(Boolean);
-		const selectedBackpackTag =
-			this._appState.trope.backpackChoice || backpackTags[0];
+		const backpackTags = this._appState.mode === "trope"
+			? (trope?.system?.backpackChoices || []).filter(Boolean)
+			: this._appState.custom.backpackTags.filter(Boolean);
+		const selectedBackpackTag = this._appState.trope.backpackChoice ||
+			backpackTags[0];
 
 		items.push({
 			name: t("TYPES.Item.backpack"),
@@ -1700,10 +1700,9 @@ export class WelcomeOverlay {
 					id: foundry.utils.randomID(),
 					name: tag,
 					type: "backpack",
-					isActive:
-						this._appState.mode === "trope"
-							? tag === selectedBackpackTag
-							: index === this._appState.custom.activeBackpackIndex,
+					isActive: this._appState.mode === "trope"
+						? tag === selectedBackpackTag
+						: index === this._appState.custom.activeBackpackIndex,
 					isScratched: false,
 				})),
 			},
@@ -1788,8 +1787,8 @@ export class WelcomeOverlay {
 			for (const entry of pack.index?.contents || []) {
 				if (entry.type !== type) continue;
 				const id = entry._id ?? entry.id;
-				const uuid =
-					entry.uuid || (id ? `Compendium.${pack.collection}.${id}` : "");
+				const uuid = entry.uuid ||
+					(id ? `Compendium.${pack.collection}.${id}` : "");
 				if (!uuid) continue;
 				const level = entry.system?.theme_level || entry.system?.level || "";
 				results.push({
@@ -1845,12 +1844,12 @@ export class WelcomeOverlay {
 		);
 
 		const matching = packs.filter((pack) =>
-			(pack.metadata?.label || "").toLowerCase().startsWith(normalized),
+			(pack.metadata?.label || "").toLowerCase().startsWith(normalized)
 		);
 		if (matching.length) return matching;
 
 		return packs.filter((pack) =>
-			(pack.metadata?.label || "").toLowerCase().includes(normalized),
+			(pack.metadata?.label || "").toLowerCase().includes(normalized)
 		);
 	}
 
@@ -1874,8 +1873,8 @@ export class WelcomeOverlay {
 		const grouped = new Map();
 		const bannerImages = new Map();
 		for (const entry of entries) {
-			const category =
-				entry.category || t("LITM.Ui.hero_creation_uncategorized");
+			const category = entry.category ||
+				t("LITM.Ui.hero_creation_uncategorized");
 			// Convention: a trope whose name matches its category is a banner image source
 			if (entry.name === entry.category) {
 				if (!bannerImages.has(category)) bannerImages.set(category, entry.img);
@@ -1948,8 +1947,7 @@ export class WelcomeOverlay {
 			: [];
 		const kitUuids = [...fixed, ...optional].filter(Boolean);
 		const state = this._appState.trope.themes;
-		const same =
-			kitUuids.length === state.kitUuids.length &&
+		const same = kitUuids.length === state.kitUuids.length &&
 			kitUuids.every((uuid, index) => uuid === state.kitUuids[index]);
 		if (same) {
 			// Update tag options for existing choices
@@ -2057,25 +2055,33 @@ export class WelcomeOverlay {
 		const sections = [];
 		if (power.length) {
 			sections.push(
-				`<div class="tag-tooltip-group"><label>${t(
-					"LITM.Tags.power_tags",
-				)}</label>${power
-					.map(
-						(n) => `<span class="litm-powerTag" data-text="${n}">${n}</span>`,
+				`<div class="tag-tooltip-group"><label>${
+					t(
+						"LITM.Tags.power_tags",
 					)
-					.join(" ")}</div>`,
+				}</label>${
+					power
+						.map(
+							(n) => `<span class="litm-powerTag" data-text="${n}">${n}</span>`,
+						)
+						.join(" ")
+				}</div>`,
 			);
 		}
 		if (weakness.length) {
 			sections.push(
-				`<div class="tag-tooltip-group"><label>${t(
-					"LITM.Tags.weakness_tags",
-				)}</label>${weakness
-					.map(
-						(n) =>
-							`<span class="litm-weaknessTag" data-text="${n}">${n}</span>`,
+				`<div class="tag-tooltip-group"><label>${
+					t(
+						"LITM.Tags.weakness_tags",
 					)
-					.join(" ")}</div>`,
+				}</label>${
+					weakness
+						.map(
+							(n) =>
+								`<span class="litm-weaknessTag" data-text="${n}">${n}</span>`,
+						)
+						.join(" ")
+				}</div>`,
 			);
 		}
 		return `<div class="litmv2 tag-tooltip-content">${sections.join("")}</div>`;
@@ -2432,7 +2438,7 @@ export class WelcomeOverlay {
 			navigation: true,
 			width: 1920,
 			height: 1080,
-			initial: { x: 1669, y: 853, scale: 0.7 },
+			initial: { x: 1490, y: 839, scale: 0.7 },
 			grid: { type: 0 },
 			tokenVision: false,
 			environment: { globalLight: { enabled: true } },
