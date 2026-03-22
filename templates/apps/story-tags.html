@@ -1,13 +1,34 @@
 {{#*inline 'tagItem' tag source editable isGM}}
-<li
-	class="litm--tag-item litm--{{ifThen (eq tag.type 'status') 'status' 'tag'}}{{#if tag.hidden}} litm--tag-hidden{{/if}} litm-{{tag.type}}"
-	data-tag-item data-id="{{tag.id}}" data-type="{{source}}" draggable="true"
-	data-tooltip="{{localize (concat 'LITM.Terms.' tag.type)}}: {{tag.name}}{{#if (and (eq tag.type 'status') tag.value)}}{{concat '-' tag.value}}{{/if}}"
-	data-text="{{tag.name}}{{#if (eq tag.type 'status')}}-{{tag.value}}{{/if}}">
-	<input type="hidden" name="{{source}}.{{tag.id}}.tagType" value="{{tag.type}}" />
-	<input type="hidden" name="{{source}}.{{tag.id}}.limitId" value="{{tag.limitId}}" />
-	<input class="litm--tag-item-name {{ifThen editable 'litm--locked' ''}}" data-focus="select"
-		name="{{source}}.{{tag.id}}.name" value="{{tag.name}}" {{ifThen editable "" "readonly"}} />
+<li class="litm--tag-row{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-item data-id="{{tag.id}}" data-type="{{source}}">
+	<span
+		class="litm--tag-item litm--{{ifThen (eq tag.type 'status') 'status' 'tag'}} litm-{{tag.type}}"
+		draggable="true"
+		data-tooltip="{{localize (concat 'LITM.Terms.' tag.type)}}: {{tag.name}}{{#if (and (eq tag.type 'status') tag.value)}}{{concat '-' tag.value}}{{/if}}"
+		data-text="{{tag.name}}{{#if (eq tag.type 'status')}}-{{tag.value}}{{/if}}">
+		<input type="hidden" name="{{source}}.{{tag.id}}.tagType" value="{{tag.type}}" />
+		<input type="hidden" name="{{source}}.{{tag.id}}.limitId" value="{{tag.limitId}}" />
+		<input class="litm--tag-item-name {{ifThen editable 'litm--locked' ''}}" data-focus="select"
+			name="{{source}}.{{tag.id}}.name" value="{{tag.name}}" {{ifThen editable "" "readonly"}} />
+		{{#if (eq tag.type "tag")}}
+		<label class="litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
+			<input class="litm--single-use" type="checkbox" name="{{source}}.{{tag.id}}.isSingleUse" {{disabled (not editable)}}
+				{{checked tag.isSingleUse}} />
+			<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
+		</label>
+		{{/if}}
+		{{#if (eq tag.type "status")}}
+		<div class="litm--tag-item-status">
+			{{#each tag.values as |status|}}
+			<label class="litm--tier-label">
+				<input name="{{../source}}.{{../tag.id}}.values" type="checkbox" value="{{add @index 1}}" {{disabled (not
+					../editable)}} {{checked status}} />
+				<img class="litm--tier-box" aria-hidden="true"
+					src="systems/litmv2/assets/media/checkbox{{ifThen status '-c' ''}}.svg" />
+			</label>
+			{{/each}}
+		</div>
+		{{/if}}
+	</span>
 	{{#if editable}}
 	{{#if (eq source "story")}}
 	<button type="button" class="litm--visibility-toggle" data-action="toggle-visibility" data-id="{{tag.id}}"
@@ -25,42 +46,18 @@
 		<i class="fa-solid fa-xmark" aria-hidden="true"></i>
 	</button>
 	{{/if}}
-	{{#if (eq tag.type "tag")}}
-	<label class="litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
-		<input class="litm--single-use" type="checkbox" name="{{source}}.{{tag.id}}.isSingleUse" {{disabled (not editable)}}
-			{{checked tag.isSingleUse}} />
-		<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
-	</label>
-	{{/if}}
-	{{#if (eq tag.type "status")}}
-	<div class="litm--tag-item-status">
-		{{#each tag.values as |status|}}
-		<label class="litm--tier-label">
-			<input name="{{../source}}.{{../tag.id}}.values" type="checkbox" value="{{add @index 1}}" {{disabled (not
-				../editable)}} {{checked status}} />
-			<img class="litm--tier-box" aria-hidden="true"
-				src="systems/litmv2/assets/media/checkbox{{ifThen status '-c' ''}}.svg" />
-		</label>
-		{{/each}}
-	</div>
-	{{/if}}
 </li>
 {{/inline}}
 
-{{#*inline 'sectionActions' id editable showLimit}}
+{{#*inline 'sectionActions' id editable}}
 {{#if editable}}
 <div class="litm--section-actions-bottom">
-	<button type="button" class="litm--action-bottom" data-action="add-tag" data-id="{{id}}" data-tooltip="{{localize 'LITM.Ui.add_tag'}}">
-		<i class="fa-solid fa-scroll" aria-hidden="true"></i> {{localize "LITM.Terms.tag"}}
+	<input type="text" class="litm--quick-add-input" data-section-id="{{id}}"
+		placeholder="{{localize 'LITM.Ui.quick_add_placeholder'}}" />
+	<button type="button" class="litm--quick-add-btn" data-action="quick-add" data-id="{{id}}"
+		data-tooltip="{{localize 'LITM.Ui.quick_add_tooltip'}}">
+		<i class="fa-solid fa-plus" aria-hidden="true"></i> {{localize "LITM.Ui.quick_add_btn"}}
 	</button>
-	<button type="button" class="litm--action-bottom" data-action="add-status" data-id="{{id}}" data-tooltip="{{localize 'LITM.Ui.add_status'}}">
-		<i class="fa-solid fa-droplet" aria-hidden="true"></i> {{localize "LITM.Terms.status"}}
-	</button>
-	{{#if showLimit}}
-	<button type="button" class="litm--action-bottom" data-action="add-limit" data-id="{{id}}" data-tooltip="{{localize 'LITM.Ui.add_limit'}}">
-		<i class="fa-solid fa-shield" aria-hidden="true"></i> {{localize "LITM.Terms.limit"}}
-	</button>
-	{{/if}}
 </div>
 {{/if}}
 {{/inline}}
@@ -140,7 +137,7 @@
 				{{/each}}
 			</ul>
 			{{#if isOwner}}
-			{{> sectionActions id=id editable=true showLimit=false}}
+			{{> sectionActions id=id editable=true}}
 			{{/if}}
 		</div>
 	</div>
@@ -181,7 +178,7 @@
 						{{> tagItem tag=tag source="story" editable=../isGM isGM=../isGM}}
 						{{/each}}
 					</ul>
-					{{> sectionActions id="story" editable=isGM showLimit=true}}
+					{{> sectionActions id="story" editable=isGM}}
 				</section>
 			</div>
 

@@ -56,6 +56,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			"add-limit": StoryTagSidebar.#onAddLimit,
 			"remove-limit": StoryTagSidebar.#onRemoveLimit,
 			"toggle-collapse": StoryTagSidebar.#onToggleCollapse,
+			"quick-add": StoryTagSidebar.#onQuickAdd,
 		},
 	};
 
@@ -385,6 +386,18 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			form.addEventListener("submit", (event) => event.preventDefault());
 		}
 
+		// Quick-add inputs — Enter to add tag/status
+		this.element.querySelectorAll(".litm--quick-add-input").forEach((input) => {
+			input.addEventListener("keydown", (event) => {
+				if (event.key === "Enter") {
+					event.preventDefault();
+					this.#quickAddFromInput(input, input.dataset.sectionId);
+				}
+			});
+			// Prevent change events from triggering form submission
+			input.addEventListener("change", (event) => event.stopPropagation());
+		});
+
 		// Focus select
 		this.element.querySelectorAll("[data-focus]").forEach((el) => {
 			el.addEventListener("focus", (event) => event.currentTarget.select());
@@ -407,7 +420,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			});
 		});
 
-		// Double-click row to edit tag name
+		// Double-click row to edit tag name; modifier-click shortcuts
 		this.element.querySelectorAll("[data-tag-item]").forEach((li) => {
 			const input = li.querySelector(".litm--tag-item-name");
 			if (!input) return;
@@ -426,6 +439,24 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				input.focus();
 				input.select();
 			});
+
+			// Shift+Click → toggle visibility, Alt+Click → remove
+			li.addEventListener("click", (event) => {
+				if (event.target.closest("button, label, input, .litm--tag-item-status"))
+					return;
+				const tagId = li.dataset.id;
+				if (event.shiftKey) {
+					event.preventDefault();
+					event.stopPropagation();
+					if (isStory) this._toggleTagVisibility(tagId);
+					else this._toggleEffectVisibility(tagId, source);
+				} else if (event.altKey) {
+					event.preventDefault();
+					event.stopPropagation();
+					this.removeTag({ dataset: { id: tagId, type: source } });
+				}
+			});
+
 			input.addEventListener("blur", () => {
 				input.classList.add("litm--locked");
 			});
@@ -522,8 +553,28 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		}
 	}
 
+	/**
+	 * Blur any focused input inside the form so that the change event fires
+	 * and the form submits before the window closes or minimizes.
+	 */
+	_flushActiveInput() {
+		const form = this.element?.querySelector("form");
+		if (!form) return;
+		const focused = document.activeElement;
+		if (!focused || !form.contains(focused)) return;
+		if (["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) {
+			focused.blur();
+		}
+	}
+
 	_onClose(options) {
+		this._flushActiveInput();
 		return super._onClose(options);
+	}
+
+	async minimize() {
+		this._flushActiveInput();
+		return super.minimize();
 	}
 
 	/* -------------------------------------------- */
@@ -826,6 +877,84 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	static #onAddStatus(_event, target) {
 		const id = target.dataset.id;
 		this.addTag(id, "status");
+	}
+
+	static #onQuickAdd(_event, target) {
+		const sectionId = target.dataset.id;
+		const input = this.element.querySelector(
+			`.litm--quick-add-input[data-section-id="${sectionId}"]`,
+		);
+		if (!input) return;
+		this.#quickAddFromInput(input, sectionId);
+	}
+
+	/**
+	 * Parse the quick-add input value and create the appropriate tag, status, or limit.
+	 * Plain text → tag. Suffix -N (1-6) → status with tiers 1-N. Suffix :N → limit with max N.
+	 */
+	async #quickAddFromInput(input, sectionId) {
+		const raw = input.value.trim();
+		if (!raw) return;
+
+		// Limit: "name:N" — only for story tags, GM only
+		const limitMatch = raw.match(/^(.+):(\d+)$/);
+		if (limitMatch && sectionId === "story" && game.user.isGM) {
+			const label = limitMatch[1].trim();
+			const max = limitMatch[2];
+			const limits = [
+				...(this.config.limits ?? []),
+				{ id: foundry.utils.randomID(), label, max, value: 0 },
+			];
+			input.value = "";
+			await this.setLimits(limits);
+			this.#refocusQuickAdd(sectionId);
+			return;
+		}
+
+		// Status: "name-N" where N is 1-6
+		const statusMatch = raw.match(/^(.+)-([1-6])$/);
+		let name, type, values;
+
+		if (statusMatch) {
+			name = statusMatch[1].trim();
+			type = "status";
+			const tier = Number.parseInt(statusMatch[2], 10);
+			values = Array.from({ length: 6 }, (_, i) => i < tier);
+		} else {
+			name = raw;
+			type = "tag";
+			values = Array(6).fill().map(() => null);
+		}
+
+		const tag = {
+			name,
+			values,
+			type,
+			isScratched: false,
+			isSingleUse: false,
+			hidden: game.user.isGM,
+			id: foundry.utils.randomID(),
+		};
+
+		input.value = "";
+
+		if (sectionId === "story") {
+			if (game.user.isGM) await this.setTags([...this.tags, tag]);
+			else await this.#broadcastUpdate("tags", [...this.tags, tag]);
+		} else {
+			await this.#addTagToActor({ id: sectionId, tag });
+		}
+
+		this.#refocusQuickAdd(sectionId);
+	}
+
+	#refocusQuickAdd(sectionId) {
+		requestAnimationFrame(() => {
+			const newInput = this.element?.querySelector(
+				`.litm--quick-add-input[data-section-id="${sectionId}"]`,
+			);
+			newInput?.focus();
+		});
 	}
 
 	static #onOpenSheet(_event, target) {

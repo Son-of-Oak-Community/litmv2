@@ -283,18 +283,6 @@ export class HeroSheet extends LitmActorSheet {
 	 * @protected
 	 */
 	static #onOpenRollDialog(_event, _target) {
-		const existingById = new Map(
-			this.rollDialogInstance.characterTags.map((tag) => [tag.id, tag]),
-		);
-		const allNewTags = this._buildAllRollTags().map((tag) => {
-			const existing = existingById.get(tag.id);
-			return {
-				...tag,
-				state: existing?.state ?? tag.state,
-				contributorId: existing?.contributorId ?? null,
-			};
-		});
-		this.rollDialogInstance.characterTags = allNewTags;
 		this.renderRollDialog();
 	}
 
@@ -738,13 +726,17 @@ export class HeroSheet extends LitmActorSheet {
 	 * @param {object} tag The weakness tag
 	 */
 	async gainImprovement(tag) {
-		const parentTheme = this.document.items.find(
+		const owner = tag.fromFellowship
+			? this.system.fellowshipActor
+			: this.document;
+		if (!owner) return;
+		const parentTheme = owner.items.find(
 			(i) =>
 				["theme", "story_theme"].includes(i.type) &&
 				i.system.weaknessTags?.some((t) => t.id === tag.id),
 		);
 		if (parentTheme) {
-			await this.document.updateEmbeddedDocuments("Item", [
+			await owner.updateEmbeddedDocuments("Item", [
 				{
 					_id: parentTheme.id,
 					"system.improve.value": parentTheme.system.improve.value + 1,
@@ -1078,6 +1070,20 @@ export class HeroSheet extends LitmActorSheet {
 	 * @param {object} options Render options
 	 */
 	renderRollDialog(options = {}) {
+		const existingById = new Map(
+			this.rollDialogInstance.characterTags.map((tag) => [tag.id, tag]),
+		);
+		this.rollDialogInstance.characterTags = this._buildAllRollTags().map(
+			(tag) => {
+				const existing = existingById.get(tag.id);
+				return {
+					...tag,
+					state: existing?.state ?? tag.state,
+					contributorId: existing?.contributorId ?? null,
+				};
+			},
+		);
+
 		const activeOwnerId =
 			this.document.getFlag("litmv2", "rollDialogOwner")?.ownerId || null;
 		const activeOwner = activeOwnerId ? game.users.get(activeOwnerId) : null;

@@ -2453,8 +2453,20 @@ body,
 	margin: 0 4px;
 }
 
-.litm--story-tags ul.plain .litm--tag-item + .litm--tag-item {
+.litm--story-tags ul.plain .litm--tag-row + .litm--tag-row {
 	margin-top: -0.15em;
+}
+
+/* Tag row wrapper — holds buttons outside the badge element */
+.litm--tag-row {
+	display: flex;
+	align-items: center;
+	gap: 0;
+}
+
+.litm--tag-row > .litm--tag-item {
+	flex: 1;
+	min-width: 0;
 }
 
 /* Limit groups — small gap between them */
@@ -2708,7 +2720,7 @@ body,
 }
 
 /* Compact button style — shared by visibility toggles, add-tag, and any tag-row buttons */
-.litm--story-tags button:not(.litm--add-actor-btn):not(.litm--action-bottom),
+.litm--story-tags button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn),
 .litm--story-tags .litm--visibility-toggle {
 	padding: 0 0.35em;
 	min-height: unset;
@@ -2722,8 +2734,8 @@ body,
 }
 
 /* Tag-row inline buttons — ghost style, no background/border */
-.litm--story-tags .litm--tag-item button,
-.litm--story-tags .litm--tag-item .litm--visibility-toggle,
+.litm--story-tags .litm--tag-row button,
+.litm--story-tags .litm--tag-row .litm--visibility-toggle,
 .litm--story-tags .litm--limit-header .litm--tag-action-btn {
 	background: none;
 	border: none;
@@ -2732,27 +2744,29 @@ body,
 	transition: color 0.15s;
 }
 
-.litm--story-tags .litm--tag-item button:hover,
-.litm--story-tags .litm--tag-item .litm--visibility-toggle:hover,
+.litm--story-tags .litm--tag-row button:hover,
+.litm--story-tags .litm--tag-row .litm--visibility-toggle:hover,
 .litm--story-tags .litm--limit-header .litm--tag-action-btn:hover {
 	background: none;
 	color: var(--color-text-primary);
 }
 
 /* Tag-row buttons — hidden by default, shown on hover */
-.litm--story-tags .litm--tag-item .litm--visibility-toggle,
-.litm--story-tags .litm--tag-item .litm--tag-action-btn,
-.litm--story-tags .litm--tag-item .litm--single-use-label,
+.litm--story-tags .litm--tag-row .litm--visibility-toggle,
+.litm--story-tags .litm--tag-row .litm--tag-action-btn,
+.litm--story-tags .litm--tag-row .litm--single-use-label,
+.litm--story-tags .litm--limit-header .litm--tag-action-btn,
 .litm--story-tags .litm--header-visibility {
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 0.15s;
 }
 
-.litm--story-tags .litm--tag-item:hover .litm--visibility-toggle,
-.litm--story-tags .litm--tag-item:hover .litm--tag-action-btn,
-.litm--story-tags .litm--tag-item:hover .litm--single-use-label,
-.litm--story-tags .litm--tag-item.litm--tag-hidden .litm--visibility-toggle,
+.litm--story-tags .litm--tag-row:hover .litm--visibility-toggle,
+.litm--story-tags .litm--tag-row:hover .litm--tag-action-btn,
+.litm--story-tags .litm--tag-row:hover .litm--single-use-label,
+.litm--story-tags .litm--tag-row.litm--tag-hidden .litm--visibility-toggle,
+.litm--story-tags .litm--limit-header:hover .litm--tag-action-btn,
 .litm--story-tags .litm--section-header:hover .litm--header-visibility,
 .litm--story-tags .litm--actor-hidden .litm--header-visibility {
 	opacity: 1;
@@ -2761,7 +2775,7 @@ body,
 }
 
 /* Always show single-use indicator when checked */
-.litm--story-tags .litm--tag-item:has(.litm--single-use:checked)
+.litm--story-tags .litm--tag-row:has(.litm--single-use:checked)
 	.litm--single-use-label {
 	opacity: 1;
 	pointer-events: auto;
@@ -2829,43 +2843,54 @@ body,
 	overflow: hidden;
 }
 
-/* Bottom action buttons — full-width row that acts as a section divider */
+/* Quick-add row — compact input + button matching old action-button height */
 .litm--section-actions-bottom {
 	display: flex;
+	align-items: stretch;
 	gap: 0;
 	margin-top: 2px;
 }
 
-.litm--section-actions-bottom button {
-	flex: 1;
-	background: var(--color-text-primary-5);
+input[type="text"].litm--quick-add-input,
+.litm--quick-add-btn {
+	font-size: var(--font-size-14);
+	line-height: 1.4;
+	padding: 0.25em 0.5em;
+	height: var(--input-height);
+	min-height: unset;
 	border: 1px solid var(--color-text-primary-15);
-	border-radius: 0;
+	box-shadow: none;
+}
+
+.litm--quick-add-input {
+	flex: 1;
+	border-radius: var(--border-radius) 0 0 var(--border-radius);
+	background: var(--color-text-primary-5);
+	color: var(--color-text-primary);
+}
+
+.litm--quick-add-input::placeholder {
 	color: var(--color-text-primary-40);
-	font-size: var(--font-size-13);
-	padding: 0.2em 0.5em;
+}
+
+.litm--quick-add-input:focus-visible {
+	outline: none;
+	background: var(--input-background-color);
+	border-color: var(--color-text-primary-40);
+}
+
+.litm--quick-add-btn {
+	flex: none;
+	border-left: none;
+	border-radius: 0 var(--border-radius) var(--border-radius) 0;
+	background: var(--color-text-primary-5);
+	color: var(--color-text-primary-40);
 	transition:
 		background 0.15s,
 		color 0.15s;
 }
 
-.litm--section-actions-bottom button + button {
-	border-left: none;
-}
-
-.litm--section-actions-bottom button:first-child {
-	border-radius: var(--border-radius) 0 0 var(--border-radius);
-}
-
-.litm--section-actions-bottom button:last-child {
-	border-radius: 0 var(--border-radius) var(--border-radius) 0;
-}
-
-.litm--section-actions-bottom button:only-child {
-	border-radius: var(--border-radius);
-}
-
-.litm--section-actions-bottom button:hover {
+.litm--quick-add-btn:hover {
 	background: var(--color-text-primary-12);
 	color: var(--color-text-primary);
 }
@@ -4728,7 +4753,7 @@ body,
 .litm--welcome-overlay__wizard-body .tag-questions-details > summary::before {
 	content: "\f059";
 	/* fa-circle-question */
-	font-family: "Font Awesome 6 Free";
+	font-family: var(--font-awesome);
 	font-weight: 900;
 	font-size: var(--font-size-11);
 	color: var(--color-warm-1);
