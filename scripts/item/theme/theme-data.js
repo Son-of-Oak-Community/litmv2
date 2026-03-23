@@ -25,33 +25,13 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 			powerTags: new fields.ArrayField(
 				new fields.EmbeddedDataField(abstract.TagData),
 				{
-					initial: () =>
-						Array(2)
-							.fill()
-							.map(() => ({
-								id: foundry.utils.randomID(),
-								name: "",
-								question: "",
-								isActive: false,
-								isScratched: false,
-								type: "powerTag",
-							})),
+					initial: () => [],
 				},
 			),
 			weaknessTags: new fields.ArrayField(
 				new fields.EmbeddedDataField(abstract.TagData),
 				{
-					initial: () =>
-						Array(1)
-							.fill()
-							.map(() => ({
-								id: foundry.utils.randomID(),
-								name: "",
-								question: "",
-								isActive: false,
-								isScratched: false,
-								type: "weaknessTag",
-							})),
+					initial: () => [],
 				},
 			),
 			improve: new fields.SchemaField({
@@ -108,7 +88,7 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 
 	static migrateData(source) {
 		if (
-			source.level === undefined ||
+			"level" in source &&
 			!Object.keys(CONFIG.litmv2.theme_levels).includes(source.level)
 		) {
 			source.level = Object.keys(CONFIG.litmv2.theme_levels)[0];
