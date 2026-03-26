@@ -86,11 +86,9 @@ export class Enrichers {
 				const key = might.toLowerCase();
 				if (!mights.has(key)) return document.createTextNode(text);
 				return Enrichers.#html(
-					`<img class="litm--might-icon" src="systems/litmv2/assets/media/icons/${key}.svg" alt="${
-						Enrichers.#esc(
-							key,
-						)
-					}" />`,
+					`<img class="litm--might-icon" src="systems/litmv2/assets/media/icons/${key}.svg" alt="${Enrichers.#esc(
+						key,
+					)}" />`,
 				);
 			},
 		});
@@ -146,42 +144,32 @@ export class Enrichers {
 				const valueHtml = value
 					? `<img src="systems/litmv2/assets/media/icons/limit.svg"
 							style="height:1.4em;width:1.4em;position:absolute;right:-0.5em;top:-0.05em;z-index:-1;" /> <span
-							style="font-style:normal;font-size:inherit;font-weight:600;color:var(--color-light-2);position:relative;top:-0.13em;right:-0.1em;">${
-						esc(
-							value,
-						)
-					}</span>`
+							style="font-style:normal;font-size:inherit;font-weight:600;color:var(--color-light-2);position:relative;top:-0.13em;right:-0.1em;">${esc(
+								value,
+							)}</span>`
 					: "";
 				return Enrichers.#html(
-					`<span class="litm-limit" data-text="${
-						esc(
-							clean,
-						)
-					}" data-tooltip="${tooltip}" draggable="true">${
-						esc(
-							clean,
-						)
-					}${valueHtml}</span>`,
+					`<span class="litm-limit" data-text="${esc(
+						clean,
+					)}" data-tooltip="${tooltip}" draggable="true">${esc(
+						clean,
+					)}${valueHtml}</span>`,
 				);
 			}
 			// Statuses: [name-N] or [name-]
 			if (separator === "-") {
 				const cleanStatus = value ? `-${value}` : "";
 				return Enrichers.#html(
-					`<span class="litm-status" draggable="true" data-tooltip="${tooltip}" data-text="${
-						esc(
-							name,
-						)
-					}${esc(cleanStatus)}">${esc(name)}${esc(cleanStatus)}</span>`,
+					`<span class="litm-status" draggable="true" data-tooltip="${tooltip}" data-text="${esc(
+						name,
+					)}${esc(cleanStatus)}">${esc(name)}${esc(cleanStatus)}</span>`,
 				);
 			}
 			// Plain tags: [name]
 			return Enrichers.#html(
-				`<span class="litm-tag" draggable="true" data-tooltip="${tooltip}" data-text="${
-					esc(
-						name,
-					)
-				}">${esc(name)}</span>`,
+				`<span class="litm-tag" draggable="true" data-tooltip="${tooltip}" data-text="${esc(
+					name,
+				)}">${esc(name)}</span>`,
 			);
 		};
 		CONFIG.TextEditor.enrichers.push({

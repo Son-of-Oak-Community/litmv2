@@ -201,6 +201,7 @@
 			"confirm_delete_content": "Er du sikker på at du vil slette {thing}?",
 			"confirm_delete_title": "Bekreft Sletting",
 			"context_remove_all_tags": "<span class=\"reference\">Høyreklikk</span> for å fjerne alle narrative merker",
+			"right_click_reduce_status": "<span class=\"reference\">Høyreklikk</span> for å redusere med 1",
 			"dice_roller": "Terningkast",
 			"dice_roller_hint": "Åpner terningkast-vinduet for denne karakteren.",
 			"open_fellowship_sheet": "Åpne Fellesskap-ark",

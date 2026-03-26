@@ -1019,7 +1019,7 @@ export class HeroSheet extends LitmActorSheet {
 			},
 		});
 
-		if (!chosenLoot || !chosenLoot.length) return;
+		if (!chosenLoot?.length) return;
 
 		const backpack = this.document.items.find((i) => i.type === "backpack");
 
