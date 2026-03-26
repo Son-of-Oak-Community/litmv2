@@ -88,6 +88,7 @@ export class Sockets {
 		Sockets.on("storyTagsRender", () => {
 			const sidebar = game.litmv2.storyTags;
 			if (sidebar?.rendered) {
+				sidebar.invalidateCache();
 				sidebar.render();
 				sidebar.refreshRollDialogs();
 			} else {

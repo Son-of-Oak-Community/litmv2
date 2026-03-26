@@ -101,8 +101,7 @@ export async function renderHero(actor) {
 			themeEl.appendChild(tagSpan(theme.name, "litm-themeTag"));
 
 			// Power tags
-			const powerTags =
-				theme.system.powerTags?.filter((tag) => tag.name) ?? [];
+			const powerTags = theme.system.powerTags?.filter((tag) => tag.name) ?? [];
 			if (powerTags.length) {
 				const tagsRow = document.createElement("div");
 				tagsRow.classList.add("litm-render--hero__theme-tags");
@@ -141,7 +140,9 @@ export async function renderHero(actor) {
 			section.appendChild(tagSpan(tag.name, "litm-tag"));
 		}
 		for (const status of statuses) {
-			const name = status.value ? `${status.name}-${status.value}` : status.name;
+			const name = status.value
+				? `${status.name}-${status.value}`
+				: status.name;
 			section.appendChild(tagSpan(name, "litm-status"));
 		}
 

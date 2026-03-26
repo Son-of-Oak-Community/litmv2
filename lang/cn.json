@@ -201,6 +201,7 @@
 			"confirm_delete_content": "确定要删除{thing}吗?",
 			"confirm_delete_title": "确认删除",
 			"context_remove_all_tags": "<span class='reference'>右键单击</span>以移除所有故事标签",
+			"right_click_reduce_status": "<span class='reference'>右键单击</span>减少1级",
 			"dice_roller": "骰盘",
 			"dice_roller_hint": "如果角色已关联到用户，则可以打开骰盘",
 			"open_fellowship_sheet": "打开团契表",

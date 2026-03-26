@@ -70,17 +70,18 @@ function _ensureHudContainer() {
 }
 
 function _renderRollDialogHud(container) {
-	const entries = game.actors
-		?.filter((a) => {
-			const flag = a.getFlag("litmv2", "rollDialogOwner");
-			if (!flag || flag.ownerId === game.user.id) return false;
-			// Hide entries for disconnected users
-			return game.users.get(flag.ownerId)?.active;
-		})
-		.map((a) => ({
-			actorId: a.id,
-			ownerId: a.getFlag("litmv2", "rollDialogOwner").ownerId,
-		})) || [];
+	const entries =
+		game.actors
+			?.filter((a) => {
+				const flag = a.getFlag("litmv2", "rollDialogOwner");
+				if (!flag || flag.ownerId === game.user.id) return false;
+				// Hide entries for disconnected users
+				return game.users.get(flag.ownerId)?.active;
+			})
+			.map((a) => ({
+				actorId: a.id,
+				ownerId: a.getFlag("litmv2", "rollDialogOwner").ownerId,
+			})) || [];
 
 	if (!entries.length) {
 		container.innerHTML = "";
@@ -101,12 +102,10 @@ function _renderRollDialogHud(container) {
 					<img class="litm-roll-dialog-hud__img" src="${img}" alt="" />
 					<span class="litm-roll-dialog-hud__text">
 						<span class="litm-roll-dialog-hud__title">${actorName}</span>
-						<span class="litm-roll-dialog-hud__meta">${
-				game.i18n.format(
-					"LITM.Ui.opened_by",
-					{ name: ownerName },
-				)
-			}</span>
+						<span class="litm-roll-dialog-hud__meta">${game.i18n.format(
+							"LITM.Ui.opened_by",
+							{ name: ownerName },
+						)}</span>
 					</span>
 				</button>
 			`;
@@ -162,7 +161,7 @@ function _popoutTagsSidebar() {
 function _renderWelcomeScreen() {
 	Hooks.once("ready", () => {
 		WelcomeOverlay.showOnReady().catch((err) =>
-			error("Failed to show welcome overlay", err)
+			error("Failed to show welcome overlay", err),
 		);
 	});
 }

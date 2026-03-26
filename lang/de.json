@@ -201,6 +201,7 @@
 			"confirm_delete_content": "Sind sie sicher, dass Sie das entfernen wollen {thing}?",
 			"confirm_delete_title": "Entfernen bestätigen",
 			"context_remove_all_tags": "<span class='reference'>Rechtsklick</span> um alle Geschichtsmerkmale zu entfernen",
+			"right_click_reduce_status": "<span class='reference'>Rechtsklick</span> um 1 zu reduzieren",
 			"dice_roller": "Würfelwurf Generator",
 			"dice_roller_hint": "Öffnet den Würfelwurf Dialog, wenn ein Charakter dem Spielenden zugeordnet wurde.",
 			"open_fellowship_sheet": "Gemeinschaftsbogen öffnen",

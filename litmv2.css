@@ -2720,7 +2720,10 @@ body,
 }
 
 /* Compact button style — shared by visibility toggles, add-tag, and any tag-row buttons */
-.litm--story-tags button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn),
+.litm--story-tags
+button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(
+	.litm--quick-add-btn
+),
 .litm--story-tags .litm--visibility-toggle {
 	padding: 0 0.35em;
 	min-height: unset;

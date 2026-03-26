@@ -201,6 +201,7 @@
 			"confirm_delete_content": "¿Seguro que quieres eliminar este/a {thing}?",
 			"confirm_delete_title": "Confirmar borrado",
 			"context_remove_all_tags": "<span class='reference'>Click derecho</span> para eliminar todas las etiquetas de historia",
+			"right_click_reduce_status": "<span class='reference'>Click derecho</span> para reducir en 1",
 			"dice_roller": "Lanzador de dados",
 			"dice_roller_hint": "Abre la ventana de lanzamiento de dados si el personaje está enlazado al usuario.",
 			"open_fellowship_sheet": "Abrir hoja de Hermandad",

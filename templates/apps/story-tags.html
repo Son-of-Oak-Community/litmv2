@@ -1,10 +1,10 @@
 {{#*inline 'tagItem' tag source editable isGM}}
-<li class="litm--tag-row{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-item data-id="{{tag.id}}" data-type="{{source}}">
+<li class="litm--tag-row{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-item data-id="{{tag.id}}" data-type="{{source}}"
+	data-text="{{tag.name}}{{#if (eq tag.type 'status')}}-{{tag.value}}{{/if}}">
 	<span
 		class="litm--tag-item litm--{{ifThen (eq tag.type 'status') 'status' 'tag'}} litm-{{tag.type}}"
 		draggable="true"
-		data-tooltip="{{localize (concat 'LITM.Terms.' tag.type)}}: {{tag.name}}{{#if (and (eq tag.type 'status') tag.value)}}{{concat '-' tag.value}}{{/if}}"
-		data-text="{{tag.name}}{{#if (eq tag.type 'status')}}-{{tag.value}}{{/if}}">
+		data-tooltip="{{localize (concat 'LITM.Terms.' tag.type)}}: {{tag.name}}{{#if (and (eq tag.type 'status') tag.value)}}{{concat '-' tag.value}}{{/if}}">
 		<input type="hidden" name="{{source}}.{{tag.id}}.tagType" value="{{tag.type}}" />
 		<input type="hidden" name="{{source}}.{{tag.id}}.limitId" value="{{tag.limitId}}" />
 		<input class="litm--tag-item-name {{ifThen editable 'litm--locked' ''}}" data-focus="select"
@@ -17,7 +17,7 @@
 		</label>
 		{{/if}}
 		{{#if (eq tag.type "status")}}
-		<div class="litm--tag-item-status">
+		<div class="litm--tag-item-status" {{#if editable}}data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}"{{/if}}>
 			{{#each tag.values as |status|}}
 			<label class="litm--tier-label">
 				<input name="{{../source}}.{{../tag.id}}.values" type="checkbox" value="{{add @index 1}}" {{disabled (not

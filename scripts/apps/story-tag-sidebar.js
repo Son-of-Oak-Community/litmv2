@@ -442,7 +442,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 			// Shift+Click → toggle visibility, Alt+Click → remove
 			li.addEventListener("click", (event) => {
-				if (event.target.closest("button, label, input, .litm--tag-item-status"))
+				if (
+					event.target.closest("button, label, input, .litm--tag-item-status")
+				)
 					return;
 				const tagId = li.dataset.id;
 				if (event.shiftKey) {
@@ -919,11 +921,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			name = statusMatch[1].trim();
 			type = "status";
 			const tier = Number.parseInt(statusMatch[2], 10);
-			values = Array.from({ length: 6 }, (_, i) => i < tier);
+			values = Array.from({ length: 6 }, (_, i) => i === tier - 1);
 		} else {
 			name = raw;
 			type = "tag";
-			values = Array(6).fill().map(() => null);
+			values = Array(6)
+				.fill()
+				.map(() => null);
 		}
 
 		const tag = {
@@ -1063,6 +1067,20 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/* -------------------------------------------- */
 
 	_onContext(event) {
+		// Right-click on status tier boxes → reduce by 1
+		const statusTarget = event.target.closest(".litm--tag-item-status");
+		if (statusTarget) {
+			const row = statusTarget.closest("[data-tag-item]");
+			if (row) {
+				event.preventDefault();
+				event.stopPropagation();
+				const source = row.dataset.type;
+				const tagId = row.dataset.id;
+				if (source && tagId) this.#reduceStatus(source, tagId);
+				return;
+			}
+		}
+
 		const target = event.target.closest("[data-context]");
 		if (!target) return;
 
@@ -1086,6 +1104,50 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/* -------------------------------------------- */
 	/*  Tag CRUD (Private)                          */
 	/* -------------------------------------------- */
+
+	async #reduceStatus(source, tagId) {
+		if (source === "story") {
+			if (!game.user.isGM) return;
+			const tag = this.config.tags.find((t) => t.id === tagId);
+			if (!tag || tag.type !== "status") return;
+
+			const tiers = tag.values ?? new Array(6).fill(false);
+			if (!tiers.some(Boolean)) return;
+
+			// Shift all marks left by 1 (same logic as StatusCardData#calculateReduction)
+			const newTiers = Array(6).fill(false);
+			for (let i = 0; i < 6; i++) {
+				if (tiers[i]) {
+					const newIndex = i - 1;
+					if (newIndex >= 0) newTiers[newIndex] = true;
+				}
+			}
+
+			const updatedTags = this.config.tags.map((t) => {
+				if (t.id !== tagId) return t;
+				return {
+					...t,
+					values: newTiers,
+					value: newTiers.lastIndexOf(true) + 1,
+				};
+			});
+			await this.setTags(updatedTags);
+		} else {
+			const actor = game.actors.get(source);
+			if (!actor?.isOwner) return;
+
+			const effect = actor.effects.get(tagId);
+			if (!effect || effect.type !== "status_card") return;
+			if (!effect.system.tiers.some(Boolean)) return;
+
+			const newTiers = effect.system.calculateReduction(1);
+			await actor.updateEmbeddedDocuments("ActiveEffect", [
+				{ _id: tagId, "system.tiers": newTiers },
+			]);
+			await this.#recalculateChallengeLimits(source);
+			this.#broadcastRender();
+		}
+	}
 
 	async #recalculateChallengeLimits(actorId) {
 		const actor = game.actors.get(actorId);
@@ -1326,6 +1388,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		// If "this" IS the popout, we also need to tell the sidebar to render.
 		const sidebar = ui.combat;
 		if (sidebar && sidebar !== this) {
+			sidebar.invalidateCache();
 			sidebar.render();
 		} else {
 			this.render();

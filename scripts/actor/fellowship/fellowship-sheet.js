@@ -394,7 +394,7 @@ export class FellowshipSheet extends LitmActorSheet {
 			? `system.theme.${tagArrayKey}`
 			: `system.${tagArrayKey}`;
 		const tag = tags.find(match);
-		if (!tag || !tag.isActive) return;
+		if (!tag?.isActive) return;
 
 		tag.isScratched = !tag.isScratched;
 		await parentItem.update({ [systemPath]: tags });
