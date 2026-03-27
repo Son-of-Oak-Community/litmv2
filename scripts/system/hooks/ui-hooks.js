@@ -1,9 +1,11 @@
 import { localize as t } from "../../utils.js";
+import { SceneTagDialog } from "../../apps/scene-tag-dialog.js";
 
 export function registerUiHooks() {
 	_iconOnlyHeaderButtons();
 	_replaceLoadSpinner();
 	_listenToContentLinks();
+	_addSceneTagsTool();
 }
 
 function _iconOnlyHeaderButtons() {
@@ -75,6 +77,20 @@ function _replaceLoadSpinner() {
 		if (!img) return;
 		img.src = CONFIG.litmv2.assets.marshal_crest;
 		img.classList.remove("fa-spin");
+	});
+}
+
+function _addSceneTagsTool() {
+	Hooks.on("getSceneControlButtons", (controls) => {
+		if (!controls.notes) return;
+		controls.notes.tools["scene-tags"] = {
+			name: "scene-tags",
+			title: "LITM.Ui.scene_tags",
+			icon: "fa-solid fa-tags",
+			order: Object.keys(controls.notes.tools).length,
+			button: true,
+			onClick: () => new SceneTagDialog().render(true),
+		};
 	});
 }
 

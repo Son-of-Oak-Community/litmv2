@@ -1,0 +1,73 @@
+<div class="flexcol litm--scene-tag-dialog-body">
+<p class="litm--scene-tag-hint">{{hint}}</p>
+
+<div class="litm--scene-tags-list standard-form">
+	{{#if limits.length}}
+	<fieldset class="litm--scene-tag-section">
+		<legend>{{localize "LITM.Ui.scene_limits"}}</legend>
+		{{#each limits as |limit|}}
+		<div class="litm--scene-tag-row flexrow litm-limit" data-id="{{limit.id}}">
+			<input type="text" name="limits.{{limit.id}}.label" value="{{limit.label}}" />
+			<input type="number" name="limits.{{limit.id}}.max" value="{{limit.max}}" min="1" class="litm--limit-max" />
+			<button type="button" class="litm--tag-action-btn" data-action="remove-limit" data-id="{{limit.id}}"
+				data-tooltip="{{localize 'LITM.Ui.remove'}}" aria-label="{{localize 'LITM.Ui.remove'}}">
+				<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+			</button>
+		</div>
+		{{/each}}
+	</fieldset>
+	{{/if}}
+
+	{{#if tags.length}}
+	<fieldset class="litm--scene-tag-section gap-xs">
+		<legend>{{localize "LITM.Ui.scene_tags"}}</legend>
+		{{#each tags as |tag|}}
+		<div class="litm--scene-tag-row flexrow gap-sm" data-id="{{tag.id}}">
+			<span class="litm--{{ifThen (eq tag.type 'status') 'status' 'tag'}} litm-{{tag.type}}">
+				<input type="text" name="tags.{{tag.id}}.name" value="{{tag.name}}" />
+				{{#if (eq tag.type "tag")}}
+				<label class="litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
+					<input class="litm--single-use" type="checkbox" name="tags.{{tag.id}}.isSingleUse"
+						{{checked tag.isSingleUse}} />
+					<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
+				</label>
+				{{/if}}
+				{{#if (eq tag.type "status")}}
+				<div class="litm--tag-item-status">
+					{{#each tag.values as |status|}}
+					<label class="litm--tier-label">
+						<input name="tags.{{tag.id}}.values" type="checkbox" value="{{add @index 1}}"
+							{{checked status}} />
+						<img class="litm--tier-box" aria-hidden="true"
+							src="systems/litmv2/assets/media/checkbox{{ifThen status '-c' ''}}.svg" />
+					</label>
+					{{/each}}
+				</div>
+				{{/if}}
+			</span>
+			{{#if ../limits.length}}
+			<select name="tags.{{tag.id}}.limitId" class="litm--limit-select">
+				{{#each tag.limitOptions}}
+				<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+				{{/each}}
+			</select>
+			{{/if}}
+			<button type="button" class="litm--tag-action-btn" data-action="remove-tag" data-id="{{tag.id}}"
+				data-tooltip="{{localize 'LITM.Ui.remove'}}" aria-label="{{localize 'LITM.Ui.remove'}}">
+				<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+			</button>
+		</div>
+		{{/each}}
+	</fieldset>
+	{{/if}}
+</div>
+
+<div class="litm--section-actions-bottom">
+	<input type="text" class="litm--quick-add-input"
+		placeholder="{{localize 'LITM.Ui.quick_add_placeholder'}}" />
+	<button type="button" class="litm--quick-add-btn" data-action="quick-add"
+		data-tooltip="{{localize 'LITM.Ui.quick_add_tooltip'}}">
+		<i class="fa-solid fa-plus" aria-hidden="true"></i> {{localize "LITM.Ui.quick_add_btn"}}
+	</button>
+</div>
+</div>
