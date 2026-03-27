@@ -1,7 +1,7 @@
 <section class="standard-form trope-sheet scrollable">
 	<!-- Header -->
 	<header class="img-name">
-		<img src="{{document.img}}" data-edit="img" data-action="editImage" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
+		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
 		<input type="text" id="name" name="name" value="{{document.name}}" required
 			placeholder="{{localize 'LITM.Ui.trope_name'}}" />
 	</header>
@@ -43,8 +43,8 @@
 					</span>
 				</div>
 				<button type="button" style="flex:none;" data-action="removeEntry" data-path="system.themeKits.fixed"
-					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -70,8 +70,8 @@
 					</span>
 				</div>
 				<button type="button" style="flex:none;" data-action="removeEntry" data-path="system.themeKits.optional"
-					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -92,8 +92,8 @@
 				<input class="flex1" type="text" name="system.backpackChoices.{{@index}}" value="{{choice}}"
 					placeholder="{{localize 'LITM.Ui.backpack_choice_placeholder'}}" />
 				<button type="button" style="flex:none;" data-action="removeEntry" data-path="system.backpackChoices"
-					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}

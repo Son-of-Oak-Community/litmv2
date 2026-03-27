@@ -99,7 +99,7 @@
 			{{#each gmViewerTabs as |tab|}}
 			<a class="item {{tab.cssClass}}" data-action="tab" data-group="gm-viewer" data-tab="{{tab.id}}">
 				{{#if tab.actorImg}}<img src="{{tab.actorImg}}" alt="{{tab.label}}" />{{/if}}
-				{{#if tab.icon}}<i class="{{tab.icon}}"></i>{{/if}}
+				{{#if tab.icon}}<i class="{{tab.icon}}" aria-hidden="true"></i>{{/if}}
 				<span>{{tab.label}}</span>
 			</a>
 			{{/each}}
@@ -198,7 +198,7 @@
 				</p>
 				{{else}}
 				<p class="litm--roll-dialog-actor-label">
-					<i class="fa-solid fa-tags"></i>
+					<i class="fa-solid fa-tags" aria-hidden="true"></i>
 					<span>{{localize "LITM.Tags.story"}}</span>
 				</p>
 				{{/if}}
@@ -245,11 +245,11 @@
 		<div class="form-footer flexrow gap-md" style="align-items: center;">
 			{{#if isOwner}}
 			<button type="button" class="flex1" data-action="sendToNarrator">
-				<i class="fa-solid fa-envelope"></i>
+				<i class="fa-solid fa-envelope" aria-hidden="true"></i>
 				{{localize "LITM.Ui.send_to_narrator"}}
 			</button>
 			<button type="submit" class="flex1 bright">
-				<i class="fa-solid fa-dice"></i>
+				<i class="fa-solid fa-dice" aria-hidden="true"></i>
 				{{localize "LITM.Ui.roll"}}
 			</button>
 			{{/if}}

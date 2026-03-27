@@ -25,7 +25,7 @@
 					<input type="radio" name="activeBackpack" data-action="selectActiveBackpack"
 						data-index="{{index}}" {{#if isActive}}checked{{/if}} />
 				</label>
-				<input type="text" data-bind="custom.backpackTags.{{index}}" value="{{value}}"
+				<input type="text" data-bind="custom.backpackTags.{{index}}" value="{{value}}" aria-label="{{localize 'LITM.Ui.backpack_choice_placeholder'}}"
 					placeholder="{{localize 'LITM.Ui.backpack_choice_placeholder'}}" />
 				{{#if isActive}}
 				<span class="backpack-slot__active-label">{{localize "LITM.Ui.hero_creation_backpack_active"}}</span>

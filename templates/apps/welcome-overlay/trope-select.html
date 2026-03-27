@@ -7,13 +7,13 @@
 		<section class="hero-creation__split">
 			<div class="hero-creation__list">
 				<div>
-					<input type="search" placeholder="{{localize 'LITM.Ui.hero_creation_search_tropes'}}"
+					<input type="search" placeholder="{{localize 'LITM.Ui.hero_creation_search_tropes'}}" aria-label="{{localize 'LITM.Ui.hero_creation_search_tropes'}}"
 						data-bind="search.tropes" data-render="true" value="{{search.tropes}}" />
 				</div>
 				<div class="hero-creation__list-body scrollable">
 					{{#unless hasTropes}}
 					<div class="hero-creation__empty-state">
-						<i class="fa-solid fa-triangle-exclamation"></i>
+						<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
 						<p>{{localize "LITM.Ui.hero_creation_no_tropes"}}</p>
 					</div>
 					{{else}}
@@ -56,7 +56,7 @@
 					<ul class="themekit-list">
 						{{#each selectedTrope.fixed as |kit|}}
 						<li {{#if kit.tagTooltip}}data-tooltip="{{kit.tagTooltip}}" {{/if}}><img class="noflex icon-sm"
-								src="{{kit.img}}" /> {{kit.name}}</li>
+								src="{{kit.img}}" alt="" aria-hidden="true" /> {{kit.name}}</li>
 						{{/each}}
 					</ul>
 				</fieldset>
@@ -68,7 +68,7 @@
 						<label class="checkbox trope-optional-kit" {{#if kit.tagTooltip}}data-tooltip="{{kit.tagTooltip}}" {{/if}}>
 							<input type="radio" name="tropeOptional" value="{{kit.uuid}}" data-uuid="{{kit.uuid}}" {{#if (or (eq
 								kit.uuid ../state.trope.optionalUuid) (and (not ../state.trope.optionalUuid) @first))}}checked{{/if}} />
-							<span><img class="noflex icon-sm" src="{{kit.img}}" /> {{kit.name}}</span>
+							<span><img class="noflex icon-sm" src="{{kit.img}}" alt="" aria-hidden="true" /> {{kit.name}}</span>
 						</label>
 						{{/each}}
 					</div>

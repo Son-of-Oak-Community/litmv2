@@ -278,7 +278,7 @@
 						<button type="button" class="progress-box {{#if checked}}checked{{/if}}"
 							data-action="adjustProgress" data-index="{{@index}}" data-effect-id="{{tag.id}}"
 							aria-pressed="{{#if checked}}true{{else}}false{{/if}}">
-							<img src="systems/litmv2/assets/media/checkbox{{ifThen checked '-c' ''}}.svg" />
+							<img src="systems/litmv2/assets/media/checkbox{{ifThen checked '-c' ''}}.svg" alt="" aria-hidden="true" />
 						</button>
 						{{/each}}
 					</div>

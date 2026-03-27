@@ -216,6 +216,18 @@ body,
 	border: 0;
 }
 
+/* System-wide focus indicator for keyboard navigation */
+:where(.litm, .litm-landscape) button:focus-visible,
+:where(.litm, .litm-landscape) a:focus-visible,
+:where(.litm, .litm-landscape) [tabindex="0"]:focus-visible,
+:where(.litm, .litm-landscape) select:focus-visible,
+:where(.litm, .litm-landscape) input:not([type="hidden"]):focus-visible,
+:where(.litm, .litm-landscape) textarea:focus-visible,
+:where(.litm, .litm-landscape) litm-super-checkbox:focus-visible {
+	outline: 2px solid var(--color-litm-tag);
+	outline-offset: 2px;
+}
+
 /* Gap utilities */
 .gap-xs {
 	gap: 0.25rem;

@@ -1,6 +1,6 @@
 <section class="standard-form themebook-sheet scrollable">
 	<header class="img-name">
-		<img src="{{document.img}}" data-edit="img" data-action="editImage" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
+		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
 		<input type="text" id="type" name="name" value="{{document.name}}"
 			placeholder="{{localize 'LITM.Ui.themebook_type'}}" />
 	</header>
@@ -36,8 +36,8 @@
 				<input class="flex1" type="text" name="system.envisioningTags.{{@index}}" value="{{tag}}"
 					placeholder="{{localize 'LITM.Ui.themebook_tag'}}" />
 				<button type="button" style="flex:none;" data-action="removeEntry" data-path="system.envisioningTags"
-					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -67,8 +67,8 @@
 				<input class="flex1" type="text" name="system.powerTagQuestions.{{entry.index}}"
 					value="{{entry.question}}" placeholder="{{localize 'LITM.Ui.themebook_question'}}" />
 				<button type="button" style="flex:none;" data-action="removeEntry" data-path="system.powerTagQuestions"
-					data-index="{{entry.index}}" data-tooltip="{{localize 'LITM.Ui.remove_question'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-index="{{entry.index}}" data-tooltip="{{localize 'LITM.Ui.remove_question'}}" aria-label="{{localize 'LITM.Ui.remove_question'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -91,8 +91,8 @@
 					value="{{entry.question}}" placeholder="{{localize 'LITM.Ui.themebook_question'}}" />
 				<button type="button" style="flex:none;" data-action="removeEntry"
 					data-path="system.weaknessTagQuestions" data-index="{{entry.index}}"
-					data-tooltip="{{localize 'LITM.Ui.remove_question'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-tooltip="{{localize 'LITM.Ui.remove_question'}}" aria-label="{{localize 'LITM.Ui.remove_question'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -113,8 +113,8 @@
 				<input class="flex1" type="text" name="system.questIdeas.{{@index}}" value="{{idea}}"
 					placeholder="{{localize 'LITM.Ui.themebook_quest_idea'}}" />
 				<button type="button" style="flex:none;" data-action="removeEntry" data-path="system.questIdeas"
-					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -141,8 +141,8 @@
 				</div>
 				<button type="button" style="flex:none;" data-action="removeEntry"
 					data-path="system.specialImprovements" data-index="{{@index}}"
-					data-tooltip="{{localize 'LITM.Ui.remove_improvement'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-tooltip="{{localize 'LITM.Ui.remove_improvement'}}" aria-label="{{localize 'LITM.Ui.remove_improvement'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
