@@ -263,25 +263,33 @@ function _registerChatCommands() {
 function _attachContextMenuToRollMessage() {
 	const callback = (_, options) => {
 		// Add context menu option to change roll types
-		const createTypeChange = (type) => ({
-			label: `${t("LITM.Ui.change_roll_type")}: ${t(`LITM.Ui.roll_${type}`)}`,
-			icon: "fas fa-dice",
-			visible: (li) => {
+		const createTypeChange = (type) => {
+			const label = `${t("LITM.Ui.change_roll_type")}: ${t(`LITM.Ui.roll_${type}`)}`;
+			const isVisible = (li) => {
 				return (
 					!!li.querySelector(".litm.dice-roll[data-type]") &&
 					!li.querySelector(`[data-type='${type}']`)
 				);
-			},
-			onClick: (_event, li) => {
+			};
+			const handler = (_event, li) => {
 				const message = game.messages.get(li.dataset.messageId);
 				const roll = message.rolls[0];
 				roll.options.type = type;
 				message.update({ rolls: [roll] });
-			},
-		});
+			};
+			return {
+				label, // v14
+				name: label, // v13
+				icon: '<i class="fas fa-dice"></i>',
+				visible: isVisible, // v14
+				condition: isVisible, // v13
+				onClick: handler, // v14
+				callback: (li, event) => handler(event, li), // v13 (reversed args)
+			};
+		};
 
 		options.unshift(
-			...["quick", "tracked", "mitigate", "sacrifice"].map(createTypeChange),
+			...["quick", "tracked", "mitigate"].map(createTypeChange),
 		);
 	};
 	Hooks.on("getChatMessageContextOptions", callback);
