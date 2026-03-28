@@ -35,8 +35,8 @@
 	<div class="grid-2col">
 		<!-- Moment of Fulfillment -->
 		{{#if momentOfFulfillmentVisible.length}}
-		<fieldset>
-			<legend>{{localize "LITM.Hero.moment_of_fulfillment"}}</legend>
+		<fieldset class="litm--receded">
+			<legend class="litm-banner">{{localize "LITM.Hero.moment_of_fulfillment"}}</legend>
 			<ul class="plain" style="gap: 0px">
 				{{#each momentOfFulfillmentVisible as |moment|}}
 				<li class="flexcol gap-sm" style="margin-bottom: 0.5rem">
@@ -125,7 +125,7 @@
 	</div>
 	{{else}}
 	<div class="empty-state">
-		<i class="fa-solid fa-book icon-xl" aria-hidden="true"></i>
+		<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
 		<p class="hint">{{localize "LITM.Ui.no_themes"}}</p>
 	</div>
 	{{/if}}
@@ -204,13 +204,13 @@
 		</fieldset>
 		{{else}}
 		<div class="empty-state">
-			<i class="fa-solid fa-bag-shopping icon-xl" aria-hidden="true"></i>
+			<img height="64" width="64" src="systems/litmv2/assets/media/icons/backpack.svg" alt="" aria-hidden="true" />
 			<p class="hint">{{localize "LITM.Ui.no_backpack"}}</p>
 		</div>
 		{{/if}}
 
 		<!-- Story Tags & Statuses -->
-		<fieldset>
+		<fieldset class="litm--receded">
 			<legend class="litm-banner theme-card__book">
 				{{localize "LITM.Terms.story_tags_statuses"}}
 			</legend>

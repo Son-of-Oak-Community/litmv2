@@ -164,8 +164,8 @@
 		{{/each}}
 	</div>
 	{{else}}
-	<div style="text-align: center; padding: 2rem;">
-		<i class="fa-solid fa-book icon-xl" aria-hidden="true"></i>
+	<div class="empty-state">
+		<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
 		<p class="hint">{{localize "LITM.Ui.no_themes"}}</p>
 	</div>
 	{{/if}}
@@ -241,8 +241,8 @@
 			{{/if}}
 		</fieldset>
 		{{else}}
-		<div style="text-align: center; padding: 2rem;">
-			<i class="fa-solid fa-bag-shopping icon-xl"></i>
+		<div class="empty-state">
+			<img height="64" width="64" src="systems/litmv2/assets/media/icons/backpack.svg" alt="" aria-hidden="true" />
 			<p class="hint">{{localize "LITM.Ui.no_backpack"}}</p>
 		</div>
 		{{/if}}

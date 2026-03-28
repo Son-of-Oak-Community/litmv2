@@ -149,8 +149,7 @@
 			<!-- Fellowship Tags (grouped by theme) -->
 			{{#if fellowshipTagGroups.length}}
 			{{#each fellowshipTagGroups as |group|}}
-			<div class="litm--roll-dialog-theme-group"
-				style="{{#if @first}}margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--color-border);{{/if}}">
+			<div class="litm--roll-dialog-theme-group {{#if @first}}litm--roll-dialog-section-break{{/if}}">
 				<p class="litm--roll-dialog-actor-label">
 					{{#if group.themeImg}}
 					<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
@@ -170,7 +169,7 @@
 
 			<!-- Contributed Tags (from other characters) -->
 			{{#each contributedTagGroups as |contributor|}}
-			<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--color-border);">
+			<div class="litm--roll-dialog-section-break">
 				<p class="litm--roll-dialog-actor-label">
 					{{#if contributor.actorImg}}<img src="{{contributor.actorImg}}"
 						alt="{{contributor.actorName}}" />{{/if}}
@@ -191,7 +190,7 @@
 
 			<!-- Story Tags & Statuses (grouped by source) -->
 			{{#each storyTagGroups as |group|}}
-			<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--color-border);">
+			<div class="litm--roll-dialog-section-break">
 				{{#if group.actorName}}
 				<p class="litm--roll-dialog-actor-label">
 					<img src="{{group.actorImg}}" alt="{{group.actorName}}" />
@@ -214,7 +213,7 @@
 			<!-- GM Tags (grouped by actor) -->
 			{{#if isGM}}
 			{{#each gmTagGroups as |group|}}
-			<div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--color-border);">
+			<div class="litm--roll-dialog-section-break">
 				<p class="litm--roll-dialog-actor-label">
 					<img src="{{group.actorImg}}" alt="{{group.actorName}}" />
 					<span>{{group.actorName}}</span>
