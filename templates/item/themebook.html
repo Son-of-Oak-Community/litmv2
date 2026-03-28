@@ -1,18 +1,12 @@
 <section class="standard-form themebook-sheet scrollable">
 	<header class="img-name">
-		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
+		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" role="button" tabindex="0" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}" />
 		<input type="text" id="type" name="name" value="{{document.name}}"
 			placeholder="{{localize 'LITM.Ui.themebook_type'}}" />
 	</header>
 
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Ui.themebook_details"}}</span>
-			<button type="button" class="noflex" data-action="addEntry" data-path="system.envisioningTags"
-				data-tooltip="{{localize 'LITM.Ui.add_tag'}}" aria-label="{{localize 'LITM.Ui.add_tag'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Ui.themebook_details" action="addEntry" path="system.envisioningTags" tooltip="LITM.Ui.add_tag"}}
 		<div class="form-group">
 			<div class="form-field">
 				<label for="theme_level">{{localize "LITM.Ui.theme_level"}}</label>
@@ -53,13 +47,7 @@
 	</fieldset>
 
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Ui.power_tag_questions"}}</span>
-			<button type="button" class="noflex" data-action="addEntry" data-path="system.powerTagQuestions"
-				data-tooltip="{{localize 'LITM.Ui.add_question'}}" aria-label="{{localize 'LITM.Ui.add_question'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Ui.power_tag_questions" action="addEntry" path="system.powerTagQuestions" tooltip="LITM.Ui.add_question"}}
 		<ul class="plain">
 			{{#each powerTagQuestions as |entry|}}
 			<li class="form-group">
@@ -76,13 +64,7 @@
 	</fieldset>
 
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Ui.weakness_tag_questions"}}</span>
-			<button type="button" class="noflex" data-action="addEntry" data-path="system.weaknessTagQuestions"
-				data-tooltip="{{localize 'LITM.Ui.add_question'}}" aria-label="{{localize 'LITM.Ui.add_question'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Ui.weakness_tag_questions" action="addEntry" path="system.weaknessTagQuestions" tooltip="LITM.Ui.add_question"}}
 		<ul class="plain">
 			{{#each weaknessTagQuestions as |entry|}}
 			<li class="form-group">
@@ -100,13 +82,7 @@
 	</fieldset>
 
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Ui.quest_ideas"}}</span>
-			<button type="button" class="noflex" data-action="addEntry" data-path="system.questIdeas"
-				data-tooltip="{{localize 'LITM.Ui.add_tag'}}" aria-label="{{localize 'LITM.Ui.add_tag'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Ui.quest_ideas" action="addEntry" path="system.questIdeas" tooltip="LITM.Ui.add_tag"}}
 		<ul class="plain">
 			{{#each system.questIdeas as |idea|}}
 			<li class="form-group">
@@ -122,14 +98,7 @@
 	</fieldset>
 
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Ui.special_improvements"}}</span>
-			<button type="button" class="noflex" data-action="addEntry" data-path="system.specialImprovements"
-				data-tooltip="{{localize 'LITM.Ui.add_improvement'}}"
-				aria-label="{{localize 'LITM.Ui.add_improvement'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Ui.special_improvements" action="addEntry" path="system.specialImprovements" tooltip="LITM.Ui.add_improvement"}}
 		<ul class="plain">
 			{{#each system.specialImprovements as |improvement|}}
 			<li class="form-group" style="align-items:flex-start;">
@@ -137,6 +106,7 @@
 					<input type="text" name="system.specialImprovements.{{@index}}.name" value="{{improvement.name}}"
 						placeholder="{{localize 'LITM.Ui.improvement_name'}}" />
 					<textarea name="system.specialImprovements.{{@index}}.description" rows="2"
+						aria-label="{{localize 'LITM.Ui.improvement_description'}}"
 						placeholder="{{localize 'LITM.Ui.improvement_description'}}">{{improvement.description}}</textarea>
 				</div>
 				<button type="button" style="flex:none;" data-action="removeEntry"

@@ -85,11 +85,11 @@
 				{{#each storyTags as |tag|}}
 				{{#if (eq tag.type "status")}}
 				<span class="litm-status{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}"
-					data-tag-id="{{tag.id}}" draggable="true"
+					data-tag-id="{{tag.id}}" draggable="true" tabindex="0"
 					data-text="{{tag.name}}-{{tag.value}}">{{tag.name}}-{{tag.value}}</span>
 				{{else}}
 				<span class="litm-tag{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}"
-					data-tag-id="{{tag.id}}" draggable="true" data-text="{{tag.name}}">{{tag.name}}</span>
+					data-tag-id="{{tag.id}}" draggable="true" tabindex="0" data-text="{{tag.name}}">{{tag.name}}</span>
 				{{/if}}
 				{{/each}}
 			</div>

@@ -288,9 +288,7 @@ function _attachContextMenuToRollMessage() {
 			};
 		};
 
-		options.unshift(
-			...["quick", "tracked", "mitigate"].map(createTypeChange),
-		);
+		options.unshift(...["quick", "tracked", "mitigate"].map(createTypeChange));
 	};
 	Hooks.on("getChatMessageContextOptions", callback);
 }

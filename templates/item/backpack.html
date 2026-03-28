@@ -7,6 +7,8 @@
 			alt="{{document.name}}"
 			data-edit="img"
 			data-action="editImage"
+			role="button"
+			tabindex="0"
 			data-tooltip="{{localize 'LITM.Ui.edit_image'}}"
 		/>
 		<input
@@ -20,18 +22,7 @@
 
 	<!-- Tags -->
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Tags.contents"}}</span>
-			<button
-				type="button"
-				class="noflex"
-				data-action="addTag"
-				data-tooltip="{{localize 'LITM.Ui.add_tag'}}"
-				aria-label="{{localize 'LITM.Ui.add_tag'}}"
-			>
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Tags.contents" action="addTag" tooltip="LITM.Ui.add_tag"}}
 		{{#if backpack.length}}
 		<ul class="plain">
 			{{#each backpack as |tag|}}

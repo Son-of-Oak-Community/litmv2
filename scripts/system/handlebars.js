@@ -43,6 +43,7 @@ export class HandlebarsPartials {
 		"systems/litmv2/templates/partials/vignette-card-edit.html",
 		"systems/litmv2/templates/partials/vignette-card-play.html",
 		"systems/litmv2/templates/partials/rating-star.html",
+		"systems/litmv2/templates/partials/control-legend.html",
 		"systems/litmv2/templates/partials/icon-fellowship-hint.html",
 		"systems/litmv2/templates/apps/welcome-overlay/wizard-footer.html",
 	];

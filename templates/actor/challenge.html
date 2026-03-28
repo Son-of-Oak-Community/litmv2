@@ -1,7 +1,7 @@
 <section class="standard-form scrollable">
 	<!-- Header -->
 	<header class="img-name">
-		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
+		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" role="button" tabindex="0" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}" />
 
 		<input type="text" name="name" id="name" value="{{document.name}}" required
 			style="padding: 0.5rem; border: 1px solid var(--color-border); border-radius: 3px;" />
@@ -37,12 +37,7 @@
 
 	<!-- Limits -->
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Terms.limits"}}</span>
-			<button type="button" class="noflex" data-action="addLimit" data-tooltip="{{localize 'LITM.Ui.add_limit'}}" aria-label="{{localize 'LITM.Ui.add_limit'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Terms.limits" action="addLimit" tooltip="LITM.Ui.add_limit"}}
 
 		{{#if limits.length}}
 		<ul class="plain">
@@ -78,24 +73,19 @@
 	<!-- Tags & Statuses -->
 	<fieldset>
 		<legend>{{localize "LITM.Terms.tags_statuses"}}</legend>
-		<textarea name="system.tags" rows="3"
+		<textarea name="system.tags" rows="3" aria-label="{{localize 'LITM.Terms.tags_statuses'}}"
 			placeholder="{{localize 'LITM.Ui.tags_format_hint'}}">{{tagsString}}</textarea>
 	</fieldset>
 
 	<!-- Might -->
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Terms.might"}}</span>
-			<button type="button" class="noflex" data-action="addMight" data-tooltip="{{localize 'LITM.Ui.add_might'}}" aria-label="{{localize 'LITM.Ui.add_might'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Terms.might" action="addMight" tooltip="LITM.Ui.add_might"}}
 
 		{{#if might.length}}
 		<ul class="plain">
 			{{#each might as |entry|}}
 			<li class="form-group gap-sm" style="align-items: center;">
-				<select class="flex0" name="system.might.{{@index}}.level">
+				<select class="flex0" name="system.might.{{@index}}.level" aria-label="{{localize 'LITM.Terms.might'}}">
 					{{selectOptions ../mightOptions selected=entry.level localize=true}}
 				</select>
 				<input class="flex1" type="text" name="system.might.{{@index}}.description" value="{{entry.description}}"

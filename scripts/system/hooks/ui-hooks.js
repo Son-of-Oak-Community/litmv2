@@ -1,5 +1,5 @@
-import { localize as t } from "../../utils.js";
 import { SceneTagDialog } from "../../apps/scene-tag-dialog.js";
+import { localize as t } from "../../utils.js";
 
 export function registerUiHooks() {
 	_iconOnlyHeaderButtons();

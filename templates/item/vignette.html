@@ -18,7 +18,8 @@
 			<p class="hint">{{localize "LITM.Ui.consequences_only_hint"}}</p>
 		</div>
 		{{#unless isConsequenceOnly}}
-		<textarea name="system.threat" rows="3" placeholder="{{localize 'LITM.Ui.vignette_description_placeholder'}}"
+		<textarea name="system.threat" rows="3" aria-label="{{localize 'LITM.Terms.threat'}}"
+			placeholder="{{localize 'LITM.Ui.vignette_description_placeholder'}}"
 			style="resize: vertical;">{{system.threat}}</textarea>
 		{{else}}
 		<input type="hidden" name="system.threat" value="{{system.threat}}" />
@@ -27,18 +28,13 @@
 
 	<!-- Consequences -->
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Terms.consequences"}}</span>
-			<button type="button" class="noflex" data-action="addConsequence"
-				data-tooltip="{{localize 'LITM.Ui.add_consequence'}}" aria-label="{{localize 'LITM.Ui.add_consequence'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Terms.consequences" action="addConsequence" tooltip="LITM.Ui.add_consequence"}}
 		{{#if consequences.length}}
 		<ul class="plain">
 			{{#each consequences as |consequence|}}
 			<li class="form-group gap-sm" style="align-items: flex-start;">
-				<textarea name="system.consequences.{{@index}}" rows="2" placeholder="{{localize 'LITM.Ui.name_consequence'}}"
+				<textarea name="system.consequences.{{@index}}" rows="2" aria-label="{{localize 'LITM.Ui.name_consequence'}}"
+					placeholder="{{localize 'LITM.Ui.name_consequence'}}"
 					style="resize: vertical;">{{consequence}}</textarea>
 
 				<button type="button" style="flex:none;" data-action="removeConsequence" data-index="{{@index}}"

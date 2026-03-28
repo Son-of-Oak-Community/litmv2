@@ -74,6 +74,14 @@ export function LitmSheetMixin(Base) {
 				},
 				{ capture: true },
 			);
+
+			this.element.addEventListener("keydown", (event) => {
+				if (event.key !== "Enter" && event.key !== " ") return;
+				const actionEl = event.target.closest("[data-action]");
+				if (!actionEl) return;
+				event.preventDefault();
+				actionEl.click();
+			});
 		}
 
 		/** @override */
