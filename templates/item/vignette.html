@@ -1,7 +1,7 @@
 <section class="standard-form scrollable">
 	<!-- Header -->
 	<header class="img-name">
-		<i class="fa-solid fa-skull-crossbones" style="font-size: var(--font-size-24)"></i>
+		<i class="fa-solid fa-skull-crossbones" aria-hidden="true" style="font-size: var(--font-size-24)"></i>
 		<input class="flex1" type="text" name="name" value="{{document.name}}" required
 			placeholder="{{localize 'LITM.Ui.vignette_name'}}" />
 	</header>
@@ -54,7 +54,7 @@
 		{{/if}}
 		{{#if effects.length}}
 		<p class="hint gap-sm" style="display: flex; align-items: center;">
-			<i class="fa-solid fa-info-circle"></i>
+			<i class="fa-solid fa-info-circle" aria-hidden="true"></i>
 			{{localize "LITM.Ui.vignette_generates"}} {{effects.length}} {{localize "LITM.Ui.tags_statuses"}}
 		</p>
 		{{/if}}

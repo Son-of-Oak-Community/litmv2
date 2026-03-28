@@ -1,7 +1,7 @@
 <section class="standard-form scrollable">
 	<!-- Theme Title and Status -->
 	<header class="img-name">
-		<img src="{{document.img}}" data-tooltip="{{localize (concat 'LITM.Terms.' system.level)}}" />
+		<img src="{{document.img}}" alt="{{localize (concat 'LITM.Terms.' system.level)}}" data-tooltip="{{localize (concat 'LITM.Terms.' system.level)}}" />
 		<input class="datalist" type="text" name="name" id="name" value="{{document.name}}" required
 			placeholder="{{#if themeTagQuestion}}{{themeTagQuestion}}{{else}}{{localize 'LITM.Ui.theme_title'}}{{/if}}" />
 	</header>
@@ -65,8 +65,9 @@
 				<!-- Hidden fields for validation -->
 				<input type="hidden" name="system.powerTags.{{@index}}.type" value="{{tag.type}}" />
 				<input type="hidden" name="system.powerTags.{{@index}}.id" value="{{tag.id}}" />
-				<button style="flex:none;" type="button" data-action="removeTag" data-type="powerTag" data-index="{{@index}}">
-					<i class="fa-solid fa-trash"></i>
+				<button style="flex:none;" type="button" data-action="removeTag" data-type="powerTag" data-index="{{@index}}"
+					data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -100,8 +101,8 @@
 				<input type="hidden" name="system.weaknessTags.{{@index}}.isScratched" data-dtype="Boolean"
 					value="{{tag.isScratched}}" />
 				<button style="flex:none;" type="button" data-action="removeTag" data-type="weaknessTag"
-					data-index="{{@index}}">
-					<i class="fa-solid fa-trash"></i>
+					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -138,8 +139,8 @@
 						placeholder="{{localize 'LITM.Ui.improvement_description'}}">{{improvement.description}}</textarea>
 				</div>
 				<button type="button" style="flex:none;" data-action="removeSpecialImprovement" data-index="{{@index}}"
-					data-tooltip="{{localize 'LITM.Ui.remove_improvement'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-tooltip="{{localize 'LITM.Ui.remove_improvement'}}" aria-label="{{localize 'LITM.Ui.remove_improvement'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}

@@ -1,7 +1,7 @@
 <section class="standard-form story-theme-sheet scrollable">
 	<!-- Header -->
 	<header class="img-name">
-		<img src="{{document.img}}" data-edit="img" data-action="editImage" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
+		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
 		<input type="text" id="name" name="name" value="{{document.name}}" required
 			placeholder="{{localize 'LITM.Ui.story_theme_name'}}" />
 	</header>
@@ -34,13 +34,13 @@
 				{{!-- <label class="checkbox noflex" data-tooltip="{{localize 'LITM.Tags.burnt'}}">
 					<input type="checkbox" name="system.theme.powerTags.{{@index}}.isScratched" {{checked
 						tag.isScratched}} data-dtype="Boolean" />
-					<i class="fa-solid fa-fire"></i>
+					<i class="fa-solid fa-fire" aria-hidden="true"></i>
 				</label> --}}
 				<input type="hidden" name="system.theme.powerTags.{{@index}}.type" value="{{tag.type}}" />
 				<input type="hidden" name="system.theme.powerTags.{{@index}}.id" value="{{tag.id}}" />
 				<button type="button" style="flex:none;" data-action="removePowerTag" data-type="powerTag"
-					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -69,8 +69,8 @@
 				<input type="hidden" name="system.theme.weaknessTags.{{@index}}.isActive" data-dtype="Boolean"
 					value="{{tag.isActive}}" />
 				<button type="button" style="flex:none;" data-action="removePowerTag" data-type="weaknessTag"
-					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}">
-					<i class="fa-solid fa-trash"></i>
+					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}

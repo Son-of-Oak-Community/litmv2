@@ -14,7 +14,7 @@
 					</legend>
 					<div class="theme-card-header">
 						<div class="flexrow noflex gap-sm">
-							<img class="noflex icon-md" src="systems/litmv2/assets/media/icons/{{kitLevel}}.svg"
+							<img class="noflex icon-md" src="systems/litmv2/assets/media/icons/{{kitLevel}}.svg" alt="" aria-hidden="true"
 								data-tooltip="{{localize (concat 'LITM.Terms.' kitLevel)}}" />
 							<span class="litm-tag" data-text="{{kitName}}">{{kitName}}</span>
 						</div>
@@ -22,11 +22,11 @@
 
 					<div class="theme-card__progress">
 						<span class="theme-card__progress-item {{#if (gte powerTagCount 2)}}complete{{/if}}">
-							<i class="fa-solid {{#if (gte powerTagCount 2)}}fa-circle-check{{else}}fa-circle{{/if}}"></i>
+							<i class="fa-solid {{#if (gte powerTagCount 2)}}fa-circle-check{{else}}fa-circle{{/if}}" aria-hidden="true"></i>
 							{{powerTagCount}}/2 {{localize "LITM.Tags.power_tags"}}
 						</span>
 						<span class="theme-card__progress-item {{#if hasWeakness}}complete{{/if}}">
-							<i class="fa-solid {{#if hasWeakness}}fa-circle-check{{else}}fa-circle{{/if}}"></i>
+							<i class="fa-solid {{#if hasWeakness}}fa-circle-check{{else}}fa-circle{{/if}}" aria-hidden="true"></i>
 							{{#if hasWeakness}}1{{else}}0{{/if}}/1 {{localize "LITM.Tags.weakness_tags"}}
 						</span>
 					</div>
@@ -47,7 +47,7 @@
 								<input type="checkbox" value="{{name}}" data-action="toggleTropePowerTag"
 									data-index="{{@../index}}" {{#if checked}}checked{{/if}}
 									aria-label="{{name}}" />
-								<img class="litm-tag-check"
+								<img class="litm-tag-check" alt="" aria-hidden="true"
 									src="systems/litmv2/assets/media/{{#if checked}}checkbox-c{{else}}checkbox{{/if}}.svg" />
 								<span class="litm-powerTag {{#unless checked}}unselected{{/unless}}"
 									data-text="{{name}}" aria-hidden="true">{{name}}</span>
@@ -75,7 +75,7 @@
 								<input type="checkbox" value="{{name}}" data-action="toggleTropeWeaknessTag"
 									data-index="{{@../index}}" {{#if checked}}checked{{/if}}
 									aria-label="{{name}}" />
-								<img class="litm-tag-check"
+								<img class="litm-tag-check" alt="" aria-hidden="true"
 									src="systems/litmv2/assets/media/{{#if checked}}checkbox-c{{else}}checkbox{{/if}}.svg" />
 								<span class="litm-weaknessTag {{#unless checked}}unselected{{/unless}}"
 									data-text="{{name}}" aria-hidden="true">{{name}}</span>

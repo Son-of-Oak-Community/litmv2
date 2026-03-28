@@ -7,7 +7,7 @@
 			<li>
 				<label class="flexrow gap-sm" style="align-items: center; cursor: pointer;">
 					<input class="noflex" type="radio" name="choice" value="{{this.uuid}}" data-type="themebook" {{#if @first}}checked{{/if}} />
-					<img class="noflex icon-sm" src="{{this.img}}" />
+					<img class="noflex icon-sm" src="{{this.img}}" alt="" aria-hidden="true" />
 					<span class="flex1">{{this.name}}</span>
 				</label>
 			</li>
@@ -24,7 +24,7 @@
 			<li>
 				<label class="flexrow gap-sm" style="align-items: center; cursor: pointer;">
 					<input class="noflex" type="radio" name="choice" value="{{this.uuid}}" data-type="themekit" {{#if this.firstKit}}checked{{/if}} />
-					<img class="noflex icon-sm" src="{{this.img}}" />
+					<img class="noflex icon-sm" src="{{this.img}}" alt="" aria-hidden="true" />
 					<span class="flex1">{{this.name}}</span>
 				</label>
 			</li>

@@ -1,17 +1,34 @@
 <section class="standard-form scrollable">
 	<!-- Header -->
 	<header class="img-name">
-		<img class="profile-img noflex" src="{{document.img}}" data-edit="img" data-action="editImage"
-			data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
-		<input class="flex1" type="text" name="name" value="{{name}}" placeholder="{{localize 'LITM.Ui.backpack_name'}}" />
+		<img
+			class="profile-img noflex"
+			src="{{document.img}}"
+			alt="{{document.name}}"
+			data-edit="img"
+			data-action="editImage"
+			data-tooltip="{{localize 'LITM.Ui.edit_image'}}"
+		/>
+		<input
+			class="flex1"
+			type="text"
+			name="name"
+			value="{{name}}"
+			placeholder="{{localize 'LITM.Ui.backpack_name'}}"
+		/>
 	</header>
 
 	<!-- Tags -->
 	<fieldset>
 		<legend class="control flexrow gap-sm">
 			<span class="flex1">{{localize "LITM.Tags.contents"}}</span>
-			<button type="button" class="noflex" data-action="addTag" data-tooltip="{{localize 'LITM.Ui.add_tag'}}"
-				aria-label="{{localize 'LITM.Ui.add_tag'}}">
+			<button
+				type="button"
+				class="noflex"
+				data-action="addTag"
+				data-tooltip="{{localize 'LITM.Ui.add_tag'}}"
+				aria-label="{{localize 'LITM.Ui.add_tag'}}"
+			>
 				<i class="fa-solid fa-plus" aria-hidden="true"></i>
 			</button>
 		</legend>
@@ -19,20 +36,43 @@
 		<ul class="plain">
 			{{#each backpack as |tag|}}
 			<li class="form-group {{#unless tag.isActive}}inactive{{/unless}}">
-				<input type="checkbox" name="system.contents.{{@index}}.isActive" {{checked tag.isActive}}
-					data-dtype="Boolean" />
+				<input
+					type="checkbox"
+					name="system.contents.{{@index}}.isActive"
+					{{checked
+					tag.isActive}}
+					data-dtype="Boolean"
+				/>
 
-				<input class="flex1" type="text" name="system.contents.{{@index}}.name" value="{{tag.name}}"
-					placeholder="{{localize 'LITM.Ui.tag_name'}}" />
+				<input
+					class="flex1"
+					type="text"
+					name="system.contents.{{@index}}.name"
+					value="{{tag.name}}"
+					placeholder="{{localize 'LITM.Ui.tag_name'}}"
+				/>
 
-				{{!-- <label class="checkbox noflex" data-tooltip="{{localize 'LITM.Tags.burnt'}}">
-					<input type="checkbox" name="system.contents.{{@index}}.isScratched" {{checked tag.isScratched}}
-						data-dtype="Boolean" />
-					<i class="fa-solid fa-fire"></i>
-				</label> --}}
+				{{!--
+				<label class="checkbox noflex" data-tooltip="{{localize 'LITM.Tags.burnt'}}">
+					<input
+						type="checkbox"
+						name="system.contents.{{@index}}.isScratched"
+						{{checked
+						tag.isScratched}}
+						data-dtype="Boolean"
+					/>
+					<i class="fa-solid fa-fire" aria-hidden="true"></i>
+				</label>
+				--}}
 
-				<button style="flex:none;" type="button" data-action="removeTag" data-index="{{@index}}"
-					data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+				<button
+					style="flex: none"
+					type="button"
+					data-action="removeTag"
+					data-index="{{@index}}"
+					data-tooltip="{{localize 'LITM.Ui.remove_tag'}}"
+					aria-label="{{localize 'LITM.Ui.remove_tag'}}"
+				>
 					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 
@@ -43,7 +83,7 @@
 			{{/each}}
 		</ul>
 		{{else}}
-		<p class="hint" style="text-align: center; padding: 1rem;">{{localize "LITM.Ui.no_items"}}</p>
+		<p class="hint" style="text-align: center; padding: 1rem">{{localize "LITM.Ui.no_items"}}</p>
 		{{/if}}
 	</fieldset>
 </section>

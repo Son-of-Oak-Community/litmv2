@@ -5,7 +5,7 @@
 			{{#progress-buttons system.quest.tracks.abandon.value 3}}
 			<button type="button" class="progress-box {{#if @checked}}checked{{/if}}" data-action="adjustProgress"
 				data-index="{{@index}}" aria-pressed="{{#if @checked}}true{{else}}false{{/if}}">
-				<img src="systems/litmv2/assets/media/checkbox{{ifThen @checked '-c' ''}}.svg" />
+				<img src="systems/litmv2/assets/media/checkbox{{ifThen @checked '-c' ''}}.svg" alt="" aria-hidden="true" />
 			</button>
 			{{/progress-buttons}}
 		</div>
@@ -24,7 +24,7 @@
 			{{#progress-buttons system.improve.value 3}}
 			<button type="button" class="progress-box {{#if @checked}}checked{{/if}}" data-action="adjustProgress"
 				data-index="{{@index}}" aria-pressed="{{#if @checked}}true{{else}}false{{/if}}">
-				<img src="systems/litmv2/assets/media/checkbox{{ifThen @checked '-c' ''}}.svg" />
+				<img src="systems/litmv2/assets/media/checkbox{{ifThen @checked '-c' ''}}.svg" alt="" aria-hidden="true" />
 			</button>
 			{{/progress-buttons}}
 		</div>
@@ -36,7 +36,7 @@
 			{{#progress-buttons system.quest.tracks.milestone.value 3}}
 			<button type="button" class="progress-box {{#if @checked}}checked{{/if}}" data-action="adjustProgress"
 				data-index="{{@index}}" aria-pressed="{{#if @checked}}true{{else}}false{{/if}}">
-				<img src="systems/litmv2/assets/media/checkbox{{ifThen @checked '-c' ''}}.svg" />
+				<img src="systems/litmv2/assets/media/checkbox{{ifThen @checked '-c' ''}}.svg" alt="" aria-hidden="true" />
 			</button>
 			{{/progress-buttons}}
 		</div>

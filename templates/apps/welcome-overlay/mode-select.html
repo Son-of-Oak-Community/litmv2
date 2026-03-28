@@ -8,7 +8,7 @@
 			<button type="button" class="litm--welcome-overlay__mode-card {{#if (eq mode 'trope')}}active{{/if}}"
 				data-action="selectMode" data-mode="trope">
 				<div class="mode-card__icon">
-					<i class="fa-solid fa-masks-theater"></i>
+					<i class="fa-solid fa-masks-theater" aria-hidden="true"></i>
 				</div>
 				<h3>{{localize "LITM.Ui.hero_creation_mode_trope"}}</h3>
 				<p>{{localize "LITM.Ui.hero_creation_mode_trope_hint"}}</p>
@@ -22,7 +22,7 @@
 			<button type="button" class="litm--welcome-overlay__mode-card {{#if (eq mode 'custom')}}active{{/if}}"
 				data-action="selectMode" data-mode="custom">
 				<div class="mode-card__icon">
-					<i class="fa-solid fa-scroll"></i>
+					<i class="fa-solid fa-scroll" aria-hidden="true"></i>
 				</div>
 				<h3>{{localize "LITM.Ui.hero_creation_mode_custom"}}</h3>
 				<p>{{localize "LITM.Ui.hero_creation_mode_custom_hint"}}</p>

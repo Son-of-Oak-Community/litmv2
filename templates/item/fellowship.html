@@ -1,7 +1,7 @@
 <section class="standard-form fellowship-sheet scrollable">
 	<!-- Header -->
 	<header class="img-name">
-		<img class="profile-img noflex" src="{{document.img}}" data-edit="img" data-action="editImage"
+		<img class="profile-img noflex" src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage"
 			data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
 		<input type="text" id="name" name="name" value="{{document.name}}" required
 			placeholder="{{localize 'LITM.Ui.fellowship_name'}}" />
@@ -35,13 +35,13 @@
 				{{!-- <label class="checkbox noflex" data-tooltip="{{localize 'LITM.Tags.burnt'}}">
 					<input type="checkbox" name="system.theme.powerTags.{{@index}}.isScratched" {{checked
 						tag.isScratched}} data-dtype="Boolean" />
-					<i class="fa-solid fa-fire"></i>
+					<i class="fa-solid fa-fire" aria-hidden="true"></i>
 				</label> --}}
 				<input type="hidden" name="system.theme.powerTags.{{@index}}.type" value="{{tag.type}}" />
 				<input type="hidden" name="system.theme.powerTags.{{@index}}.id" value="{{tag.id}}" />
 				<button type="button" style="flex:none;" data-action="removePowerTag" data-type="powerTag"
 					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}">
-					<i class="fa-solid fa-trash"></i>
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}
@@ -71,7 +71,7 @@
 					value="{{tag.isActive}}" />
 				<button type="button" style="flex:none;" data-action="removePowerTag" data-type="weaknessTag"
 					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}">
-					<i class="fa-solid fa-trash"></i>
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>
 			{{/each}}

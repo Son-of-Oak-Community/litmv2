@@ -5,12 +5,12 @@
 		<p class="litm--welcome-overlay__message">{{localize "LITM.Ui.gm_welcome_message"}}</p>
 		{{#if playerCanCreate}}
 		<div class="litm--welcome-overlay__enabled-badge">
-			<i class="fa-solid fa-check"></i> {{localize "LITM.Ui.gm_welcome_creation_enabled"}}
+			<i class="fa-solid fa-check" aria-hidden="true"></i> {{localize "LITM.Ui.gm_welcome_creation_enabled"}}
 		</div>
 		{{else}}
 		<div class="litm--welcome-overlay__cta-row">
 			<button type="button" class="litm--welcome-overlay__btn" data-action="enablePlayerCreation">
-				<i class="fa-solid fa-users"></i> {{localize "LITM.Ui.gm_welcome_enable_creation"}}
+				<i class="fa-solid fa-users" aria-hidden="true"></i> {{localize "LITM.Ui.gm_welcome_enable_creation"}}
 			</button>
 		</div>
 		{{/if}} {{#if tours.length}}
@@ -40,14 +40,14 @@
 			<h4>{{localize "LITM.Ui.welcome_settings_heading"}}</h4>
 			<label class="litm--welcome-overlay__toggle" data-action="toggleCustomDice">
 				<span class="litm--welcome-overlay__toggle-label">
-					<i class="fa-solid fa-dice"></i> {{localize "LITM.Ui.welcome_custom_dice"}}
+					<i class="fa-solid fa-dice" aria-hidden="true"></i> {{localize "LITM.Ui.welcome_custom_dice"}}
 				</span>
 				<span class="litm--welcome-overlay__toggle-hint">{{localize "LITM.Ui.welcome_custom_dice_hint"}}</span>
 				<span class="litm--welcome-overlay__switch {{#if customDiceEnabled}}active{{/if}}"></span>
 			</label>
 			<label class="litm--welcome-overlay__toggle" data-action="togglePopoutTags">
 				<span class="litm--welcome-overlay__toggle-label">
-					<i class="fa-solid fa-window-restore"></i> {{localize "LITM.Ui.welcome_popout_tags"}}
+					<i class="fa-solid fa-window-restore" aria-hidden="true"></i> {{localize "LITM.Ui.welcome_popout_tags"}}
 				</span>
 				<span class="litm--welcome-overlay__toggle-hint">{{localize "LITM.Ui.welcome_popout_tags_hint"}}</span>
 				<span class="litm--welcome-overlay__switch {{#if popoutTagsEnabled}}active{{/if}}"></span>

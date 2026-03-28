@@ -7,11 +7,11 @@
 		<fieldset>
 			<legend>{{localize "LITM.Ui.hero_creation_review_identity"}}</legend>
 			<div class="flexrow gap-sm">
-				<input type="text" data-bind="actorName" value="{{actorName}}"
+				<input type="text" data-bind="actorName" value="{{actorName}}" aria-label="{{localize 'LITM.Ui.hero_name_placeholder'}}"
 					placeholder="{{localize 'LITM.Ui.hero_name_placeholder'}}" style="flex: 1" />
 				<button type="button" class="litm--welcome-overlay__btn" data-action="suggestHeroName"
-					data-tooltip="{{localize 'LITM.Ui.hero_creation_suggest_name'}}">
-					<i class="fa-solid fa-dice"></i>
+					data-tooltip="{{localize 'LITM.Ui.hero_creation_suggest_name'}}" aria-label="{{localize 'LITM.Ui.hero_creation_suggest_name'}}">
+					<i class="fa-solid fa-dice" aria-hidden="true"></i>
 				</button>
 			</div>
 			{{#if tropeName}}
@@ -31,7 +31,7 @@
 				</legend>
 				<div class="theme-card-header">
 					<div class="flexrow noflex gap-sm">
-						<img class="noflex icon-md" src="systems/litmv2/assets/media/icons/{{theme.level}}.svg"
+						<img class="noflex icon-md" src="systems/litmv2/assets/media/icons/{{theme.level}}.svg" alt="" aria-hidden="true"
 							data-tooltip="{{theme.levelLabel}}" />
 						<span class="litm-tag" data-text="{{theme.name}}">{{theme.name}}</span>
 					</div>

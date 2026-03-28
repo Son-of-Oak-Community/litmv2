@@ -48,17 +48,17 @@
 	<footer class="dice-footer flexrow">
 		{{#if (and (eq type 'tracked') (eq outcome.label 'success'))}}
 		<button type="button" class="noflex" data-click="push-roll">
-			<i class="fas fa-arrow-up"></i> {{localize 'LITM.Ui.push_roll'}}
+			<i class="fas fa-arrow-up" aria-hidden="true"></i> {{localize 'LITM.Ui.push_roll'}}
 		</button>
 		{{/if}}
 		{{#if canSpendPower}}
 		<button type="button" class="litm--roll-spend-power-button noflex" data-click="spend-power">
-			<i class="fas fa-bolt"></i> {{localize 'LITM.Ui.spend_power'}}
+			<i class="fas fa-bolt" aria-hidden="true"></i> {{localize 'LITM.Ui.spend_power'}}
 		</button>
 		{{/if}}
 		{{#if canCompleteSacrifice}}
 		<button type="button" class="noflex" data-click="complete-sacrifice">
-			<i class="fas fa-hand-holding-heart"></i> {{localize 'LITM.Ui.sacrifice_complete'}}
+			<i class="fas fa-hand-holding-heart" aria-hidden="true"></i> {{localize 'LITM.Ui.sacrifice_complete'}}
 		</button>
 		{{/if}}
 	</footer>
