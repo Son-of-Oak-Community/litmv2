@@ -153,6 +153,10 @@
 					{{/unless}}
 				</div>
 
+				{{#if theme.hasCustomImage}}
+				<img class="theme-card__img" src="{{theme.img}}" alt="{{theme.name}}" />
+				{{/if}}
+
 				{{> systems/litmv2/templates/partials/play-theme-tags.html theme}}
 
 				<div>{{{ theme.system.description }}}</div>

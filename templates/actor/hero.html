@@ -200,6 +200,10 @@
 					{{/unless}}
 				</div>
 
+				{{#if theme.hasCustomImage}}
+				<img class="theme-card__img" src="{{theme.img}}" alt="{{theme.name}}" />
+				{{/if}}
+
 				{{> systems/litmv2/templates/partials/edit-theme-tags-activatable.html theme}}
 
 				<div>

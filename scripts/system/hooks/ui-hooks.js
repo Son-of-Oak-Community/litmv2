@@ -89,7 +89,7 @@ function _addSceneTagsTool() {
 			icon: "fa-solid fa-tags",
 			order: Object.keys(controls.notes.tools).length,
 			button: true,
-			onClick: () => new SceneTagDialog().render(true),
+			onChange: () => new SceneTagDialog().render(true),
 		};
 	});
 }

@@ -374,6 +374,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 			isScratched: data.system.isScratched,
 		};
 		data.levelLabel = game.i18n.localize(`LITM.Terms.${data.system.level}`);
+		data.hasCustomImage = data.img !== CONFIG.litmv2.assets.icons.default;
 		return data;
 	}
 

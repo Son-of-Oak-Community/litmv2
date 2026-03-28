@@ -100,66 +100,42 @@ body,
 	--color-warm-1-50: color-mix(in srgb, var(--color-warm-1) 50%, transparent);
 
 	/* Alpha-variant colors: --color-text-primary */
-	--color-text-primary-5: color-mix(
-		in srgb,
-		var(--color-text-primary) 5%,
-		transparent
-	);
-	--color-text-primary-8: color-mix(
-		in srgb,
-		var(--color-text-primary) 8%,
-		transparent
-	);
-	--color-text-primary-10: color-mix(
-		in srgb,
-		var(--color-text-primary) 10%,
-		transparent
-	);
-	--color-text-primary-12: color-mix(
-		in srgb,
-		var(--color-text-primary) 12%,
-		transparent
-	);
-	--color-text-primary-15: color-mix(
-		in srgb,
-		var(--color-text-primary) 15%,
-		transparent
-	);
-	--color-text-primary-20: color-mix(
-		in srgb,
-		var(--color-text-primary) 20%,
-		transparent
-	);
-	--color-text-primary-25: color-mix(
-		in srgb,
-		var(--color-text-primary) 25%,
-		transparent
-	);
-	--color-text-primary-30: color-mix(
-		in srgb,
-		var(--color-text-primary) 30%,
-		transparent
-	);
-	--color-text-primary-40: color-mix(
-		in srgb,
-		var(--color-text-primary) 40%,
-		transparent
-	);
-	--color-text-primary-45: color-mix(
-		in srgb,
-		var(--color-text-primary) 45%,
-		transparent
-	);
-	--color-text-primary-55: color-mix(
-		in srgb,
-		var(--color-text-primary) 55%,
-		transparent
-	);
-	--color-text-primary-70: color-mix(
-		in srgb,
-		var(--color-text-primary) 70%,
-		transparent
-	);
+	--color-text-primary-5: color-mix(in srgb,
+			var(--color-text-primary) 5%,
+			transparent);
+	--color-text-primary-8: color-mix(in srgb,
+			var(--color-text-primary) 8%,
+			transparent);
+	--color-text-primary-10: color-mix(in srgb,
+			var(--color-text-primary) 10%,
+			transparent);
+	--color-text-primary-12: color-mix(in srgb,
+			var(--color-text-primary) 12%,
+			transparent);
+	--color-text-primary-15: color-mix(in srgb,
+			var(--color-text-primary) 15%,
+			transparent);
+	--color-text-primary-20: color-mix(in srgb,
+			var(--color-text-primary) 20%,
+			transparent);
+	--color-text-primary-25: color-mix(in srgb,
+			var(--color-text-primary) 25%,
+			transparent);
+	--color-text-primary-30: color-mix(in srgb,
+			var(--color-text-primary) 30%,
+			transparent);
+	--color-text-primary-40: color-mix(in srgb,
+			var(--color-text-primary) 40%,
+			transparent);
+	--color-text-primary-45: color-mix(in srgb,
+			var(--color-text-primary) 45%,
+			transparent);
+	--color-text-primary-55: color-mix(in srgb,
+			var(--color-text-primary) 55%,
+			transparent);
+	--color-text-primary-70: color-mix(in srgb,
+			var(--color-text-primary) 70%,
+			transparent);
 
 	/* Alpha-variant colors: --color-border */
 	--color-border-15: color-mix(in srgb, var(--color-border) 15%, transparent);
@@ -168,57 +144,39 @@ body,
 	--color-border-50: color-mix(in srgb, var(--color-border) 50%, transparent);
 
 	/* Alpha-variant colors: --color-text-subtle */
-	--color-text-subtle-8: color-mix(
-		in srgb,
-		var(--color-text-subtle) 8%,
-		transparent
-	);
-	--color-text-subtle-10: color-mix(
-		in srgb,
-		var(--color-text-subtle) 10%,
-		transparent
-	);
+	--color-text-subtle-8: color-mix(in srgb,
+			var(--color-text-subtle) 8%,
+			transparent);
+	--color-text-subtle-10: color-mix(in srgb,
+			var(--color-text-subtle) 10%,
+			transparent);
 
 	/* Alpha-variant colors: --color-litm-limit-accent */
-	--color-litm-limit-accent-12: color-mix(
-		in srgb,
-		var(--color-litm-limit-accent) 12%,
-		transparent
-	);
-	--color-litm-limit-accent-20: color-mix(
-		in srgb,
-		var(--color-litm-limit-accent) 20%,
-		transparent
-	);
+	--color-litm-limit-accent-12: color-mix(in srgb,
+			var(--color-litm-limit-accent) 12%,
+			transparent);
+	--color-litm-limit-accent-20: color-mix(in srgb,
+			var(--color-litm-limit-accent) 20%,
+			transparent);
 
 	/* Alpha-variant colors: --color-data-background */
-	--color-data-background-40: color-mix(
-		in srgb,
-		var(--color-data-background) 40%,
-		transparent
-	);
+	--color-data-background-40: color-mix(in srgb,
+			var(--color-data-background) 40%,
+			transparent);
 
 	/* Blended colors: two-color mixes centralized here */
-	--color-litm-limit-border-hover: color-mix(
-		in srgb,
-		var(--color-litm-limit) 60%,
-		var(--color-border)
-	);
-	--color-fieldset-border-30: color-mix(
-		in srgb,
-		var(--color-fieldset-border) 30%,
-		transparent
-	);
-	--color-overlay-hover: color-mix(
-		in srgb,
-		var(--color-data-background) 80%,
-		var(--color-text-primary)
-	);
-	--color-overlay-hover-strong: color-mix(
-		in srgb,
-		var(--color-data-background) 70%,
-		var(--color-text-primary)
-	);
+	--color-litm-limit-border-hover: color-mix(in srgb,
+			var(--color-litm-limit) 60%,
+			var(--color-border));
+	--color-fieldset-border-30: color-mix(in srgb,
+			var(--color-fieldset-border) 30%,
+			transparent);
+	--color-overlay-hover: color-mix(in srgb,
+			var(--color-data-background) 80%,
+			var(--color-text-primary));
+	--color-overlay-hover-strong: color-mix(in srgb,
+			var(--color-data-background) 70%,
+			var(--color-text-primary));
 	--color-warm-1-light: color-mix(in srgb, var(--color-warm-1) 70%, white);
 
 	/* Overlay colors */
@@ -307,13 +265,11 @@ body,
 	--color-litm-track-abandon: #583a3a;
 	--color-litm-track-limit: #6e3a3a;
 	--underline-url: url(assets/media/underline.webp) center / contain no-repeat;
-	--sidebar-background: url("/systems/litmv2/assets/media/sheet-background.webp")
-		repeat;
+	--sidebar-background: url("/systems/litmv2/assets/media/sheet-background.webp") repeat;
 }
 
 .chat-message {
-	--chat-message-background: url("/systems/litmv2/assets/media/sheet-background.webp")
-		repeat;
+	--chat-message-background: url("/systems/litmv2/assets/media/sheet-background.webp") repeat;
 }
 
 /* ========================================
@@ -369,16 +325,23 @@ body,
 	border: 0;
 }
 
-/* System-wide focus indicator for keyboard navigation */
+/* System-wide focus indicator for keyboard navigation.
+   Inputs with custom focus styles (tag names, limit labels, quick-add)
+   are excluded from the global outline rule. */
 :where(.litm, .litm-landscape) button:focus-visible,
 :where(.litm, .litm-landscape) a:focus-visible,
 :where(.litm, .litm-landscape) [tabindex="0"]:focus-visible,
 :where(.litm, .litm-landscape) select:focus-visible,
-:where(.litm, .litm-landscape) input:not([type="hidden"]):focus-visible,
+:where(.litm, .litm-landscape) input:not([type="hidden"]):not([type="checkbox"]):not(.litm--tag-item-name):not(.litm--quick-add-input):not(.litm--limit-label):not(.litm--limit-max):focus-visible,
 :where(.litm, .litm-landscape) textarea:focus-visible,
 :where(.litm, .litm-landscape) litm-super-checkbox:focus-visible {
 	outline: 2px solid var(--color-litm-tag);
 	outline-offset: 2px;
+}
+
+/* Suppress outline on scene-tag-dialog inputs (they have their own focus style) */
+.litm--scene-tag-dialog .litm--scene-tag-row input:focus-visible {
+	outline: none;
 }
 
 /* Gap utilities */
@@ -524,13 +487,11 @@ body,
 }
 
 /* Story/power/theme tag badges */
-:is(
-		.litm-tag,
-		.litm-powerTag,
-		.litm-themeTag,
-		.litm-relationshipTag,
-		.litm-backpack
-	) {
+:is(.litm-tag,
+	.litm-powerTag,
+	.litm-themeTag,
+	.litm-relationshipTag,
+	.litm-backpack) {
 	--tag-color: var(--color-litm-tag);
 }
 
@@ -573,30 +534,18 @@ body,
 	text-transform: uppercase;
 	color: var(--color-text-primary);
 	mask:
-		radial-gradient(
-			circle at 0 0,
+		radial-gradient(circle at 0 0,
 			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		top left,
-		radial-gradient(
-			circle at 100% 0,
+			black calc(var(--banner-notch) + 0.5px)) top left,
+		radial-gradient(circle at 100% 0,
 			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		top right,
-		radial-gradient(
-			circle at 0 100%,
+			black calc(var(--banner-notch) + 0.5px)) top right,
+		radial-gradient(circle at 0 100%,
 			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		bottom left,
-		radial-gradient(
-			circle at 100% 100%,
+			black calc(var(--banner-notch) + 0.5px)) bottom left,
+		radial-gradient(circle at 100% 100%,
 			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		bottom right;
+			black calc(var(--banner-notch) + 0.5px)) bottom right;
 	mask-size: 51% 51%;
 	mask-repeat: no-repeat;
 }
@@ -714,12 +663,9 @@ body,
 	text-align: center;
 }
 
-:is(
-		.litm-render--challenge__description,
-		.litm-render--trope__description,
-		.litm-render--themebook__description
-	)
-	p:last-child {
+:is(.litm-render--challenge__description,
+	.litm-render--trope__description,
+	.litm-render--themebook__description) p:last-child {
 	margin-bottom: 0;
 }
 
@@ -1127,6 +1073,13 @@ body,
 	padding: 0.75rem;
 }
 
+.litm .theme-card__img {
+	width: 100%;
+	max-height: 150px;
+	object-fit: cover;
+	border-radius: var(--border-radius);
+}
+
 .litm .theme-card-header {
 	position: relative;
 	display: flex;
@@ -1137,7 +1090,7 @@ body,
 	border-bottom: none;
 }
 
-.litm .theme-card-header > .flexrow {
+.litm .theme-card-header>.flexrow {
 	flex: 1 1 auto;
 	min-width: 0;
 	flex-wrap: nowrap;
@@ -1155,13 +1108,11 @@ body,
 	gap: 12px;
 }
 
-:is(
-		.litm-tag,
-		.litm-powerTag,
-		.litm-themeTag,
-		.litm-relationshipTag,
-		.litm-backpack
-	).scratched {
+:is(.litm-tag,
+	.litm-powerTag,
+	.litm-themeTag,
+	.litm-relationshipTag,
+	.litm-backpack).scratched {
 	text-decoration: line-through;
 }
 
@@ -1217,55 +1168,38 @@ body,
    special improvements list, empty state, progress display.
 ======================================== */
 
-:is(
-		.litm-challenge-sheet,
-		.litm-fellowship-sheet,
-		.litm-hero-sheet,
-		.litm-journey-sheet
-	)
-	.window-content {
+:is(.litm-challenge-sheet,
+	.litm-fellowship-sheet,
+	.litm-hero-sheet,
+	.litm-journey-sheet) .window-content {
 	padding: 0px 16px 1rem;
 }
 
-:is(
-		.litm-challenge-sheet,
-		.litm-fellowship-sheet,
-		.litm-hero-sheet,
-		.litm-journey-sheet
-	)
-	[data-application-part="form"]
-	> *:first-child {
+:is(.litm-challenge-sheet,
+	.litm-fellowship-sheet,
+	.litm-hero-sheet,
+	.litm-journey-sheet) [data-application-part="form"]>*:first-child {
 	margin-top: 0.5rem;
 }
 
-:is(
-		.hero-play-mode,
-		.challenge-play-mode,
-		.fellowship-play-mode,
-		.journey-play-mode
-	)
-	fieldset
-	> .litm-banner {
+:is(.hero-play-mode,
+	.challenge-play-mode,
+	.fellowship-play-mode,
+	.journey-play-mode) fieldset>.litm-banner {
 	font-size: var(--font-size-11);
 }
 
-:is(
-		.hero-play-mode,
-		.challenge-play-mode,
-		.fellowship-play-mode,
-		.journey-play-mode
-	)
-	h1 {
+:is(.hero-play-mode,
+	.challenge-play-mode,
+	.fellowship-play-mode,
+	.journey-play-mode) h1 {
 	margin: 0px;
 }
 
-:is(
-		.challenge-play-mode,
-		.fellowship-play-mode,
-		.hero-play-mode,
-		.journey-play-mode
-	)
-	.profile-img {
+:is(.challenge-play-mode,
+	.fellowship-play-mode,
+	.hero-play-mode,
+	.journey-play-mode) .profile-img {
 	width: 100px;
 	height: 100px;
 	border-radius: var(--radius-circle);
@@ -1275,24 +1209,17 @@ body,
 	margin-left: 3px;
 }
 
-:is(
-		.challenge-play-mode,
-		.fellowship-play-mode,
-		.hero-play-mode,
-		.journey-play-mode
-	)
-	.profile-img:hover {
+:is(.challenge-play-mode,
+	.fellowship-play-mode,
+	.hero-play-mode,
+	.journey-play-mode) .profile-img:hover {
 	transform: scale(1.05);
 }
 
-:is(
-		.challenge-play-mode,
-		.fellowship-play-mode,
-		.hero-play-mode,
-		.journey-play-mode
-	)
-	.enriched-content
-	> p:first-child {
+:is(.challenge-play-mode,
+	.fellowship-play-mode,
+	.hero-play-mode,
+	.journey-play-mode) .enriched-content>p:first-child {
 	margin-top: 0px;
 }
 
@@ -1364,7 +1291,7 @@ body,
 	padding-left: 0;
 }
 
-.litm .theme-card-tags + .flexcol:has(.special-improvements-list) {
+.litm .theme-card-tags+.flexcol:has(.special-improvements-list) {
 	margin-top: 0.35rem;
 }
 
@@ -1389,14 +1316,14 @@ body,
 	padding: 2rem;
 }
 
-.litm .empty-state > img,
-.litm .empty-state > button > img {
+.litm .empty-state>img,
+.litm .empty-state>button>img {
 	display: block;
 	margin: 0 auto 0.75rem;
 	opacity: 0.4;
 }
 
-.litm .empty-state > button {
+.litm .empty-state>button {
 	all: unset;
 	cursor: pointer;
 }
@@ -1408,12 +1335,12 @@ body,
 	gap: 0.75rem;
 }
 
-.hero-play-mode fieldset.litm--receded > legend {
+.hero-play-mode fieldset.litm--receded>legend {
 	font-size: var(--font-size-13);
 	color: var(--color-text-secondary);
 }
 
-.hero-play-mode fieldset.litm--receded > legend.litm-banner {
+.hero-play-mode fieldset.litm--receded>legend.litm-banner {
 	--banner-bg: var(--color-border-30);
 	font-size: var(--font-size-11);
 }
@@ -1474,9 +1401,7 @@ body,
 	margin-bottom: 1.5rem;
 }
 
-:is(.journey-play-mode, .hero-play-mode, .fellowship-play-mode)
-	.play-section
-	h3 {
+:is(.journey-play-mode, .hero-play-mode, .fellowship-play-mode) .play-section h3 {
 	font-size: var(--font-size-18);
 	margin: 0 0 0.5rem 0;
 	padding-bottom: 0.25rem;
@@ -1484,9 +1409,7 @@ body,
 	color: var(--color-text-primary);
 }
 
-:is(.challenge-play-mode, .journey-play-mode, .fellowship-play-mode)
-	.enriched-content
-	p:last-child {
+:is(.challenge-play-mode, .journey-play-mode, .fellowship-play-mode) .enriched-content p:last-child {
 	margin-bottom: 0;
 }
 
@@ -1564,12 +1487,10 @@ body,
 	border-color: var(--color-border);
 }
 
-:is(
-		.challenge-play-mode .limit-track,
-		.litm-hero-sheet .promise-display,
-		.litm-hero-sheet .progress-display,
-		.litm-fellowship-sheet .progress-display
-	) {
+:is(.challenge-play-mode .limit-track,
+	.litm-hero-sheet .promise-display,
+	.litm-hero-sheet .progress-display,
+	.litm-fellowship-sheet .progress-display) {
 	display: flex;
 }
 
@@ -2118,15 +2039,12 @@ body,
    Roll results, outcome colors, spend-power cards.
 ======================================== */
 
-.chat-message:has(
-		:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)
-	) {
+.chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)) {
 	padding: 0;
 	contain: layout style;
 }
 
-.chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat))
-	.message-header {
+.chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)) .message-header {
 	padding: 4px 10px;
 	border-bottom: var(--hr-border);
 }
@@ -2253,7 +2171,7 @@ body,
 	grid-template-rows: 0fr;
 }
 
-.litm.dice-roll .dice-tooltip > .wrapper {
+.litm.dice-roll .dice-tooltip>.wrapper {
 	overflow: hidden;
 }
 
@@ -2554,18 +2472,18 @@ body,
 .litm--grid-col-story {
 	margin-bottom: 0.5rem;
 	padding-bottom: 0.5rem;
-	border-bottom: 2px groove var(--color-light-2);
+	border-bottom: var(--hr-border);
 }
 
 /* Category boundary: party → scene */
 .litm--grid-col-scene {
 	margin-top: 0.5rem;
 	padding-top: 0.5rem;
-	border-top: 2px groove var(--color-light-2);
+	border-top: var(--hr-border);
 }
 
 /* Between actors of the same category */
-.litm--grid-col section[data-actor-type] + section[data-actor-type] {
+.litm--grid-col section[data-actor-type]+section[data-actor-type] {
 	margin-top: 0.35rem;
 }
 
@@ -2581,7 +2499,7 @@ body,
 	margin: 0 4px;
 }
 
-.litm--story-tags ul.plain .litm--tag-row + .litm--tag-row {
+.litm--story-tags ul.plain .litm--tag-row+.litm--tag-row {
 	margin-top: -0.15em;
 }
 
@@ -2592,13 +2510,13 @@ body,
 	gap: 0;
 }
 
-.litm--tag-row > .litm--tag-item {
+.litm--tag-row>.litm--tag-item {
 	flex: 1;
 	min-width: 0;
 }
 
 /* Limit groups — small gap between them */
-.litm--limit-group + .litm--limit-group {
+.litm--limit-group+.litm--limit-group {
 	margin-top: 0.2rem;
 }
 
@@ -2747,7 +2665,7 @@ body,
 	cursor: grab;
 	font-size: var(--font-size-16);
 
-	& > * {
+	&>* {
 		position: relative;
 		z-index: 1;
 	}
@@ -2761,6 +2679,7 @@ body,
 	line-height: 0;
 	cursor: pointer;
 	padding: 5px;
+	margin: -5px;
 }
 
 .litm--burn {
@@ -2780,7 +2699,7 @@ body,
 	transition: opacity var(--transition-fast);
 }
 
-.litm--burn:checked ~ .litm--burn-indicator {
+.litm--burn:checked~.litm--burn-indicator {
 	opacity: 1;
 }
 
@@ -2833,9 +2752,10 @@ body,
 	min-width: 6rem;
 	width: 100%;
 
+	&:focus,
 	&:focus-visible {
 		outline: none;
-		box-shadow: 0 1px 0 var(--input-background-color);
+		box-shadow: none;
 	}
 
 	&.litm--locked {
@@ -2894,10 +2814,7 @@ body,
 }
 
 /* Compact button style — shared by visibility toggles, add-tag, and any tag-row buttons */
-.litm--story-tags
-button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(
-	.litm--quick-add-btn
-):not(.litm--load-scene-btn),
+.litm--story-tags button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn):not(.litm--load-scene-btn),
 .litm--story-tags .litm--visibility-toggle {
 	padding: 0.2em 0.35em;
 	min-height: 24px;
@@ -2952,8 +2869,7 @@ button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(
 }
 
 /* Always show single-use indicator when checked */
-.litm--story-tags .litm--tag-row:has(.litm--single-use:checked)
-	.litm--single-use-label {
+.litm--story-tags .litm--tag-row:has(.litm--single-use:checked) .litm--single-use-label {
 	opacity: 1;
 	pointer-events: auto;
 	cursor: pointer;
@@ -3260,7 +3176,7 @@ input[type="text"].litm--quick-add-input,
 	opacity: 0.35;
 }
 
-.litm--single-use:checked ~ .litm--single-use-indicator {
+.litm--single-use:checked~.litm--single-use-indicator {
 	opacity: 1;
 }
 
@@ -3282,7 +3198,7 @@ input[type="text"].litm--quick-add-input,
 	min-height: 0;
 }
 
-.litm-spend-power .standard-form > fieldset {
+.litm-spend-power .standard-form>fieldset {
 	flex: 1;
 	overflow-y: auto;
 	min-height: 0;
@@ -4113,12 +4029,10 @@ input[type="text"].litm--quick-add-input,
 .hero-created__line {
 	flex: 1;
 	height: 1px;
-	background: linear-gradient(
-		90deg,
-		transparent,
-		var(--color-border-light-tertiary, #7a7971) 50%,
-		transparent
-	);
+	background: linear-gradient(90deg,
+			transparent,
+			var(--color-border-light-tertiary, #7a7971) 50%,
+			transparent);
 	opacity: 0.4;
 }
 
@@ -4320,9 +4234,7 @@ input[type="text"].litm--quick-add-input,
 	border-bottom: 1px solid var(--color-border-50);
 }
 
-.litm--welcome-overlay__wizard-body
-	.hero-creation__group
-	+ .hero-creation__group {
+.litm--welcome-overlay__wizard-body .hero-creation__group+.hero-creation__group {
 	margin-top: 0.75rem;
 }
 
@@ -4518,7 +4430,7 @@ input[type="text"].litm--quick-add-input,
 	gap: 0.25rem;
 }
 
-.tag-tooltip-group > label {
+.tag-tooltip-group>label {
 	display: block;
 	width: 100%;
 	margin-bottom: 0.25rem;
@@ -4769,9 +4681,7 @@ input[type="text"].litm--quick-add-input,
 	color: var(--color-text-primary);
 }
 
-.litm--welcome-overlay__wizard-body
-	.custom-themekit-list
-	.themekit-link.active {
+.litm--welcome-overlay__wizard-body .custom-themekit-list .themekit-link.active {
 	background: var(--color-warm-1-10);
 	color: var(--color-text-emphatic);
 	font-weight: 600;
@@ -4782,14 +4692,8 @@ input[type="text"].litm--quick-add-input,
 	transition: opacity var(--transition-normal) ease;
 }
 
-.litm--welcome-overlay__wizard-body
-	.custom-themekit-list
-	.themekit-link:hover
-	img,
-.litm--welcome-overlay__wizard-body
-	.custom-themekit-list
-	.themekit-link.active
-	img {
+.litm--welcome-overlay__wizard-body .custom-themekit-list .themekit-link:hover img,
+.litm--welcome-overlay__wizard-body .custom-themekit-list .themekit-link.active img {
 	opacity: 0.8;
 }
 
@@ -4807,7 +4711,7 @@ input[type="text"].litm--quick-add-input,
 	gap: 0.35rem;
 }
 
-.litm--welcome-overlay__wizard-body .litm-field-stacked > label {
+.litm--welcome-overlay__wizard-body .litm-field-stacked>label {
 	font-size: var(--font-size-12);
 	font-weight: bold;
 	color: var(--color-form-label);
@@ -4915,7 +4819,7 @@ input[type="text"].litm--quick-add-input,
 	margin: 0 0 0.25rem;
 }
 
-.litm--welcome-overlay__wizard-body .tag-questions-details > summary {
+.litm--welcome-overlay__wizard-body .tag-questions-details>summary {
 	cursor: pointer;
 	list-style: none;
 	display: flex;
@@ -4923,7 +4827,7 @@ input[type="text"].litm--quick-add-input,
 	gap: 0.35rem;
 }
 
-.litm--welcome-overlay__wizard-body .tag-questions-details > summary::before {
+.litm--welcome-overlay__wizard-body .tag-questions-details>summary::before {
 	content: "\f059";
 	/* fa-circle-question */
 	font-family: var(--font-awesome);
@@ -4933,16 +4837,12 @@ input[type="text"].litm--quick-add-input,
 	transition: transform var(--transition-slow) ease;
 }
 
-.litm--welcome-overlay__wizard-body
-	.tag-questions-details[open]
-	> summary::before {
+.litm--welcome-overlay__wizard-body .tag-questions-details[open]>summary::before {
 	content: "\f13a";
 	/* fa-circle-chevron-down */
 }
 
-.litm--welcome-overlay__wizard-body
-	.tag-questions-details
-	> summary::-webkit-details-marker {
+.litm--welcome-overlay__wizard-body .tag-questions-details>summary::-webkit-details-marker {
 	display: none;
 }
 
@@ -5167,6 +5067,7 @@ input[type="text"].litm--quick-add-input,
 }
 
 @media (prefers-reduced-transparency) {
+
 	.litm--welcome-overlay__wizard,
 	.litm--welcome-overlay__hero-created {
 		backdrop-filter: none;
@@ -5217,7 +5118,7 @@ input[type="text"].litm--quick-add-input,
    ProseMirror secret reveal button styling.
 ======================================== */
 
-.litm section.secret > button.reveal {
+.litm section.secret>button.reveal {
 	border: none;
 	background: url("assets/media/icons/torch.svg") no-repeat center / contain;
 	width: 26px;
@@ -5237,7 +5138,7 @@ input[type="text"].litm--quick-add-input,
 	}
 }
 
-.litm section.secret.revealed > button.reveal {
+.litm section.secret.revealed>button.reveal {
 	opacity: 1;
 	filter: drop-shadow(0 0 4px #d4911a) drop-shadow(0 0 8px #d4911a55);
 }
@@ -5251,24 +5152,16 @@ input[type="text"].litm--quick-add-input,
 	background: unset;
 }
 
-:is(body, .themed).theme-light
-	.litm.application:not(.theme-dark)
-	.window-header {
+:is(body, .themed).theme-light .litm.application:not(.theme-dark) .window-header {
 	color: var(--color-dark-2);
 	border-bottom: var(--sidebar-separator);
 }
 
-:is(body, .themed).theme-light
-	.litm.application:not(.theme-dark)
-	.window-header
-	.window-title {
+:is(body, .themed).theme-light .litm.application:not(.theme-dark) .window-header .window-title {
 	color: var(--color-dark-2);
 }
 
-:is(body, .themed).theme-light
-	.litm.application:not(.theme-dark)
-	.window-header
-	button.header-control {
+:is(body, .themed).theme-light .litm.application:not(.theme-dark) .window-header button.header-control {
 	--button-text-color: var(--color-dark-3);
 }
 
@@ -5382,6 +5275,7 @@ body.theme-dark .application:not(.theme-light),
 	--background: var(--color-cool-5-90);
 	--underline-url:
 		url(assets/media/underline-w.webp) center / contain no-repeat;
+	--hr-border: 1px solid var(--color-warm-1-25);
 	--litm-icon-filter: none;
 	--color-litm-tag: #946a1e;
 	--color-litm-status: #4a5e3d;
@@ -5404,7 +5298,7 @@ body.theme-dark .application:not(.theme-light),
 	--color-litm-chat-accent-25: rgba(238, 155, 58, 0.25);
 
 	& .hint img,
-	& .empty-state > img {
+	& .empty-state>img {
 		filter: invert(1) sepia(0.3) hue-rotate(305deg);
 	}
 
@@ -5429,20 +5323,15 @@ body.theme-dark .application:not(.theme-light),
 	}
 
 	& .hero-created__line {
-		background: linear-gradient(
-			90deg,
-			transparent,
-			var(--color-warm-1-30) 50%,
-			transparent
-		);
+		background: linear-gradient(90deg,
+				transparent,
+				var(--color-warm-1-30) 50%,
+				transparent);
 		opacity: 1;
 	}
 
 	/* Chat message container overrides — shared across all chat card types */
-	&
-		.chat-message:has(
-			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)
-		) {
+	& .chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)) {
 		--color-scheme: dark;
 		--chat-message-border-color: var(--color-litm-chat-border);
 		--color-text-primary: var(--color-light-2);
@@ -5451,11 +5340,7 @@ body.theme-dark .application:not(.theme-light),
 		color-scheme: var(--color-scheme);
 	}
 
-	&
-		.chat-message:has(
-			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)
-		)
-		.message-header {
+	& .chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)) .message-header {
 		border-bottom: 1px solid var(--color-litm-chat-border);
 		text-shadow: 0 0 2px black;
 		color: var(--color-light-3);
@@ -5619,7 +5504,8 @@ body.theme-dark .application:not(.theme-light),
 
 /* Scene Tag Dialog */
 .litm--scene-tag-dialog-body {
-	overflow: hidden;
+	overflow: clip;
+	overflow-clip-margin: 4px;
 }
 
 .litm--scene-tag-dialog .litm--scene-tags-list {
@@ -5630,6 +5516,15 @@ body.theme-dark .application:not(.theme-light),
 
 .litm--scene-tag-dialog .litm--section-actions-bottom {
 	flex: none;
+	margin-top: 0.5rem;
+}
+
+.litm--scene-tag-dialog .litm--quick-add-input {
+	border-radius: var(--border-radius) 0 0 var(--border-radius);
+}
+
+.litm--scene-tag-dialog .litm--quick-add-btn {
+	border-radius: 0 var(--border-radius) var(--border-radius) 0;
 }
 
 .litm--scene-tag-dialog .litm--scene-tag-hint {
@@ -5644,7 +5539,7 @@ body.theme-dark .application:not(.theme-light),
 	margin-bottom: 0.25rem;
 }
 
-.litm--scene-tag-dialog .litm--scene-tag-row > span {
+.litm--scene-tag-dialog .litm--scene-tag-row>span {
 	flex: 1;
 	min-width: 0;
 }
@@ -5653,6 +5548,12 @@ body.theme-dark .application:not(.theme-light),
 	background: transparent;
 	border: none;
 	box-shadow: none;
+
+	&:focus,
+	&:focus-visible {
+		outline: none;
+		box-shadow: none;
+	}
 }
 
 .litm--scene-tag-dialog .litm--limit-max {
