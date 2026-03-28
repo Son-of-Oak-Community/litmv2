@@ -1,0 +1,9 @@
+<legend class="control flexrow gap-sm">
+	<span class="flex1">{{localize label}}</span>
+	<button type="button" class="noflex" data-action="{{action}}"
+		{{#if type}}data-type="{{type}}"{{/if}}
+		{{#if path}}data-path="{{path}}"{{/if}}
+		data-tooltip="{{localize tooltip}}" aria-label="{{localize tooltip}}">
+		<i class="fa-solid fa-plus" aria-hidden="true"></i>
+	</button>
+</legend>

@@ -110,10 +110,16 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 					name: tagData.name ?? existing.name,
 					limitId: tagData.limitId || null,
 					isSingleUse: tagData.isSingleUse ?? existing.isSingleUse,
-					values: existing.type === "status" ? SceneTagDialog.#toTiers(
-					Array.isArray(tagData.values) ? tagData.values
-						: tagData.values != null ? [tagData.values] : [],
-				) : existing.values,
+					values:
+						existing.type === "status"
+							? SceneTagDialog.#toTiers(
+									Array.isArray(tagData.values)
+										? tagData.values
+										: tagData.values != null
+											? [tagData.values]
+											: [],
+								)
+							: existing.values,
 				});
 			}
 		}

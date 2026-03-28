@@ -3,7 +3,7 @@
 	data-text="{{tag.name}}{{#if (eq tag.type 'status')}}-{{tag.value}}{{/if}}">
 	<span
 		class="litm--tag-item litm--{{ifThen (eq tag.type 'status') 'status' 'tag'}} litm-{{tag.type}}"
-		draggable="true"
+		draggable="true" tabindex="0"
 		data-tooltip="{{localize (concat 'LITM.Terms.' tag.type)}}: {{tag.name}}{{#if (and (eq tag.type 'status') tag.value)}}{{concat '-' tag.value}}{{/if}}">
 		<input type="hidden" name="{{source}}.{{tag.id}}.tagType" value="{{tag.type}}" />
 		<input type="hidden" name="{{source}}.{{tag.id}}.limitId" value="{{tag.limitId}}" />

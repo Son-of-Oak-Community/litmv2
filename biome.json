@@ -16,6 +16,9 @@
 			},
 			"suspicious": {
 				"noDuplicateProperties": "off"
+			},
+			"style": {
+				"noDescendingSpecificity": "off"
 			}
 		},
 		"includes": ["**", "!**/check-keys.js", "!**/diff.js"]

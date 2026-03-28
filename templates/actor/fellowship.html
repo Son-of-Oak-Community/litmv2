@@ -1,8 +1,8 @@
 <section class="standard-form scrollable">
 	<!-- Header -->
 	<header class="img-name">
-		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage"
-			data-tooltip="{{localize 'LITM.Ui.edit_image'}}"
+		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" role="button" tabindex="0"
+			data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}"
 			style="width: 100px; height: 100px; border-radius: 4px; object-fit: cover;" />
 		<div class="form-group stacked">
 			<input type="text" name="name" id="name" value="{{document.name}}" required
@@ -64,13 +64,7 @@
 
 	<!-- Story Themes -->
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Terms.story_themes"}}</span>
-			<button type="button" class="noflex" data-action="addStoryTheme"
-				data-tooltip="{{localize 'LITM.Terms.add'}}" aria-label="{{localize 'LITM.Terms.add'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Terms.story_themes" action="addStoryTheme" tooltip="LITM.Terms.add"}}
 		{{#if storyThemes.length}}
 
 		<div class="grid-2col">

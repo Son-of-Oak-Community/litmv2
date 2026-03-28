@@ -351,7 +351,9 @@ export class WelcomeOverlay {
 
 		// GM auto-creates sample hero on plain dismiss (not tour start)
 		if (!skipSampleHero && game.user.isGM) {
-			createSampleHero().catch(() => {});
+			createSampleHero().catch((err) =>
+				warn("Failed to create sample hero", err),
+			);
 		}
 
 		await this.#animateExit();

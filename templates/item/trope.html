@@ -1,7 +1,7 @@
 <section class="standard-form trope-sheet scrollable">
 	<!-- Header -->
 	<header class="img-name">
-		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
+		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" role="button" tabindex="0" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}" />
 		<input type="text" id="name" name="name" value="{{document.name}}" required
 			placeholder="{{localize 'LITM.Ui.trope_name'}}" />
 	</header>
@@ -79,13 +79,7 @@
 	</fieldset>
 
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Ui.backpack_choices"}}</span>
-			<button type="button" class="noflex" data-action="addEntry" data-path="system.backpackChoices"
-				data-tooltip="{{localize 'LITM.Ui.add_tag'}}" aria-label="{{localize 'LITM.Ui.add_tag'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Ui.backpack_choices" action="addEntry" path="system.backpackChoices" tooltip="LITM.Ui.add_tag"}}
 		<ul class="plain">
 			{{#each system.backpackChoices as |choice|}}
 			<li class="form-group">

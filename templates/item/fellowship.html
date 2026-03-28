@@ -1,8 +1,8 @@
 <section class="standard-form fellowship-sheet scrollable">
 	<!-- Header -->
 	<header class="img-name">
-		<img class="profile-img noflex" src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage"
-			data-tooltip="{{localize 'LITM.Ui.edit_image'}}" />
+		<img class="profile-img noflex" src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" role="button" tabindex="0"
+			data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}" />
 		<input type="text" id="name" name="name" value="{{document.name}}" required
 			placeholder="{{localize 'LITM.Ui.fellowship_name'}}" />
 	</header>
@@ -18,13 +18,7 @@
 
 	<!-- Power Tags -->
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Tags.power_tags"}}</span>
-			<button type="button" class="noflex" data-action="addPowerTag" data-type="powerTag"
-				data-tooltip="{{localize 'LITM.Ui.add_power_tag'}}" aria-label="{{localize 'LITM.Ui.add_power_tag'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Tags.power_tags" action="addPowerTag" type="powerTag" tooltip="LITM.Ui.add_power_tag"}}
 		<ul class="plain">
 			{{#each system.theme.powerTags as |tag|}}
 			<li class="form-group {{#unless tag.isActive}}inactive{{/unless}}">
@@ -50,14 +44,7 @@
 
 	<!-- Weakness Tags -->
 	<fieldset>
-		<legend class="control flexrow gap-sm">
-			<span class="flex1">{{localize "LITM.Tags.weakness_tags"}}</span>
-			<button type="button" class="noflex" data-action="addPowerTag" data-type="weaknessTag"
-				data-tooltip="{{localize 'LITM.Ui.add_weakness_tag'}}"
-				aria-label="{{localize 'LITM.Ui.add_weakness_tag'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</legend>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Tags.weakness_tags" action="addPowerTag" type="weaknessTag" tooltip="LITM.Ui.add_weakness_tag"}}
 		<ul class="plain">
 			{{#each system.theme.weaknessTags as |tag|}}
 			<li class="form-group">

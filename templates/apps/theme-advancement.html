@@ -20,7 +20,7 @@
 		{{#if specialImprovementOptions.length}}
 		<div class="form-group">
 			<select data-role="special-improvement-select" data-descriptions="{{toJSON specialImprovementDescriptions}}"
-				style="flex: 1;">
+				aria-label="{{localize 'LITM.Ui.special_improvements'}}" style="flex: 1;">
 				{{selectOptions specialImprovementOptions blank="—"}}
 			</select>
 			<button type="button" data-action="addSpecialImprovement"
@@ -43,7 +43,7 @@
 		{{#if canSelect}}
 		{{#if inactivePowerTags.length}}
 		<div class="form-group">
-			<select data-role="inactive-power-tag-select" style="flex: 1;">
+			<select data-role="inactive-power-tag-select" aria-label="{{localize 'LITM.Tags.power_tags'}}" style="flex: 1;">
 				{{selectOptions inactivePowerTags blank="—"}}
 			</select>
 			<button type="button" data-action="activatePowerTag"
@@ -55,7 +55,7 @@
 		{{/if}}
 		<div class="form-group">
 			<select data-role="power-tag-question-select" data-questions="{{toJSON powerQuestionTexts}}"
-				style="flex: 0 0 auto; width: fit-content;">
+				aria-label="{{localize 'LITM.Ui.power_tag_questions'}}" style="flex: 0 0 auto; width: fit-content;">
 				{{selectOptions powerQuestionOptions blank="—"}}
 			</select>
 			<input type="text" style="flex: 1;" placeholder="{{localize 'LITM.Ui.name_power'}}" aria-label="{{localize 'LITM.Ui.name_power'}}" />
@@ -74,7 +74,7 @@
 		{{#if canSelect}}
 		{{#if inactiveWeaknessTags.length}}
 		<div class="form-group">
-			<select data-role="inactive-weakness-tag-select" style="flex: 1;">
+			<select data-role="inactive-weakness-tag-select" aria-label="{{localize 'LITM.Tags.weakness_tags'}}" style="flex: 1;">
 				{{selectOptions inactiveWeaknessTags blank="—"}}
 			</select>
 			<button type="button" data-action="activateWeaknessTag"
@@ -86,7 +86,7 @@
 		{{/if}}
 		<div class="form-group">
 			<select data-role="weakness-tag-question-select" data-questions="{{toJSON weaknessQuestionTexts}}"
-				style="flex: 0 0 auto; width: fit-content;">
+				aria-label="{{localize 'LITM.Ui.weakness_tag_questions'}}" style="flex: 0 0 auto; width: fit-content;">
 				{{selectOptions weaknessQuestionOptions blank="—"}}
 			</select>
 			<input type="text" style="flex: 1;" placeholder="{{localize 'LITM.Ui.name_weakness'}}" aria-label="{{localize 'LITM.Ui.name_weakness'}}" />
