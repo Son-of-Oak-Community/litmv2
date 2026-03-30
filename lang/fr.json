@@ -126,12 +126,12 @@
 			"addon": "Fiche d'Extension"
 		},
 		"Settings": {
-			"custom_dice": "Themed Dice",
-			"custom_dice_hint": "Use the custom Legend in the Mist dice visuals instead of standard d6s. Requires the Dice So Nice module.",
-			"popout_tags_sidebar": "Auto Pop-out Tags Sidebar",
-			"popout_tags_sidebar_hint": "Automatically open the Tags sidebar in a pop-out window on load.",
-			"story_tags": "Story Tags",
-			"welcome_screen": "Welcome Screen"
+			"custom_dice": "Dés Thématiques",
+			"custom_dice_hint": "Utilisez les dés personnalisés de Legend in the Mist à la place des dés à six faces standard. Nécessite le module Dice So Nice.",
+			"popout_tags_sidebar": "Ouverture Auto de l'onglet Tags",
+			"popout_tags_sidebar_hint": "Ouvrir automatiquement l'onglet Tags dans une fenêtre contextuelle au chargement de la page.",
+			"story_tags": "Tags d'Histoire",
+			"welcome_screen": "Écran d'Accueil"
 		},
 		"Tags": {
 			"burn": "Scratch",
