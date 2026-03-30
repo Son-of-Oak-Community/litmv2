@@ -1,15 +1,15 @@
 {
 	"LITM": {
 		"Challenges": {
-			"attacker": "Attacker",
-			"barrier-hazard": "Barrier or Hazard",
+			"attacker": "Attaquant",
+			"barrier-hazard": "Obstacle ou Danger",
 			"charge": "Charge",
-			"countdown": "Countdown",
-			"mystery": "Mystery",
-			"pursuer": "Pursuer",
-			"quarry": "Quarry",
-			"temptation": "Temptation",
-			"watcher": "Watcher"
+			"countdown": "Compte à Rebours",
+			"mystery": "Mystère",
+			"pursuer": "Poursuivant",
+			"quarry": "Proie",
+			"temptation": "Tentation",
+			"watcher": "Observateur"
 		},
 		"Effects": {
 			"advance": {
