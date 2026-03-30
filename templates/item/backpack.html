@@ -43,18 +43,11 @@
 					placeholder="{{localize 'LITM.Ui.tag_name'}}"
 				/>
 
-				{{!--
-				<label class="checkbox noflex" data-tooltip="{{localize 'LITM.Tags.burnt'}}">
-					<input
-						type="checkbox"
-						name="system.contents.{{@index}}.isScratched"
-						{{checked
-						tag.isScratched}}
-						data-dtype="Boolean"
-					/>
-					<i class="fa-solid fa-fire" aria-hidden="true"></i>
+				<label class="litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
+					<input class="litm--single-use" type="checkbox" name="system.contents.{{@index}}.isSingleUse"
+						{{checked tag.isSingleUse}} data-dtype="Boolean" />
+					<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
 				</label>
-				--}}
 
 				<button
 					style="flex: none"

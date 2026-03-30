@@ -660,20 +660,35 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			if (limitTarget && !dropTarget) {
 				const limitId = limitTarget.dataset.limitId;
 				const source = limitTarget.dataset.source;
+				const isExternal = !data.sourceId;
 
 				if (source === "story") {
-					// Update story tag's limitId
-					const tags = this.config.tags.map((t) =>
-						t.id === data.sourceId ? { ...t, limitId } : t,
-					);
-					if (game.user.isGM) await this.setTags(tags);
-					else this.#broadcastUpdate("tags", tags);
+					if (isExternal) {
+						// Add new story tag with limitId
+						const newTag = { ...data, id: data.id ?? foundry.utils.randomID(), limitId };
+						const tags = [...this.config.tags, newTag];
+						if (game.user.isGM) await this.setTags(tags);
+						else this.#broadcastUpdate("tags", tags);
+					} else {
+						// Update existing story tag's limitId
+						const tags = this.config.tags.map((t) =>
+							t.id === data.sourceId ? { ...t, limitId } : t,
+						);
+						if (game.user.isGM) await this.setTags(tags);
+						else this.#broadcastUpdate("tags", tags);
+					}
 					return;
 				}
 
-				// Update actor effect's limitId
 				const actor = game.actors.get(source);
 				if (!actor?.isOwner) return;
+
+				if (isExternal) {
+					// Create new effect on the actor with limitId
+					// #addTagToActor handles recalculate + broadcast internally
+					return this.#addTagToActor({ id: source, tag: { ...data, limitId } });
+				}
+				// Update existing actor effect's limitId
 				if (!actor.effects.has(data.sourceId)) return;
 				await actor.updateEmbeddedDocuments("ActiveEffect", [
 					{ _id: data.sourceId, "system.limitId": limitId },
@@ -1386,19 +1401,21 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			: new Array(6).fill(false);
 
 		const maxSort = Math.max(0, ...actor.effects.map((e) => e.sort ?? 0));
+		const systemData =
+			type === "status"
+				? { tiers, isHidden: game.user.isGM }
+				: {
+						isScratched: tag.isScratched ?? false,
+						isSingleUse: tag.isSingleUse ?? false,
+						isHidden: game.user.isGM,
+					};
+		if (tag.limitId) systemData.limitId = tag.limitId;
 		const [created] = await actor.createEmbeddedDocuments("ActiveEffect", [
 			{
 				name: tag.name,
 				type: type === "status" ? "status_card" : "story_tag",
 				sort: maxSort + 1000,
-				system:
-					type === "status"
-						? { tiers, isHidden: game.user.isGM }
-						: {
-								isScratched: tag.isScratched ?? false,
-								isSingleUse: false,
-								isHidden: game.user.isGM,
-							},
+				system: systemData,
 			},
 		]);
 		if (created) this._editOnRender = created.id;

@@ -388,8 +388,9 @@ export class HeroSheet extends LitmActorSheet {
 				themeId: backpackItem.id,
 				themeName: backpackItem.name,
 				type: "backpack",
+				isSingleUse: item.isSingleUse ?? false,
 				state: "",
-				states: ",positive,scratched",
+				states: item.isSingleUse ? ",positive" : ",positive,scratched",
 			}));
 	}
 
