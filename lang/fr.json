@@ -559,10 +559,10 @@
 	},
 	"TYPES": {
 		"Actor": {
-			"challenge": "Challenge",
-			"fellowship": "Fellowship",
-			"hero": "Hero",
-			"journey": "Journey"
+			"challenge": "Épreuve",
+			"fellowship": "Compagnie",
+			"hero": "Héros",
+			"journey": "Parcours"
 		},
 		"Item": {
 			"addon": "Add-On",
