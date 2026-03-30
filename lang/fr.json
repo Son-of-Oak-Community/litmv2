@@ -13,100 +13,100 @@
 		},
 		"Effects": {
 			"advance": {
-				"action": "Increase a progress status 1 Power per tier.",
-				"cost": "1 Power per tier.",
-				"description": "Make progress, get closer, push forward.",
-				"key": "Advance"
+				"action": "Augmenter un Statut de progrès de 1 Puissance par niveau.",
+				"cost": "1 Puissance par niveau.",
+				"description": "Progresser, se rapprocher, aller de l'avant.",
+				"key": "Avancer"
 			},
 			"attack": {
-				"action": "Give your target a harmful status.",
-				"cost": "1 Power per tier.",
-				"description": "Slash, punch, lay a curse, shoot.",
-				"key": "Attack"
+				"action": "Donner un Statut nuisible à votre cible.",
+				"cost": "1 Puissance par niveau.",
+				"description": "Fendre, frapper, jeter une malédiction, tirer.",
+				"key": "Attaquer"
 			},
 			"bestow": {
-				"action": "Give yourself or an ally new abilities using tags.",
-				"cost": "2 Power per tag.",
-				"description": "Teach, empower, enchant, equip.",
-				"key": "Bestow"
+				"action": "Donner à vous-même ou à un allié de nouvelles capacités via des tags.",
+				"cost": "2 Puissances par Tag.",
+				"description": "Enseigner, habiliter, envoûter, équiper.",
+				"key": "Donner"
 			},
-			"category_ally": "For Yourself or for an Ally",
-			"category_consequence": "Against a Consequence",
-			"category_other": "Other Effect",
-			"category_process": "On a Process",
-			"category_target": "Against an Opponent or a Target",
+			"category_ally": "Pour vous ou un allié",
+			"category_consequence": "Contre une conséquence",
+			"category_other": "Autre effet",
+			"category_process": "Sur un processus",
+			"category_target": "Contre un adversaire ou une cible",
 			"create": {
-				"action": "Create a new object or being using tags.",
-				"cost": "2 Power per tag.",
-				"description": "Craft, find, purchase, summon, rally.",
-				"key": "Create"
+				"action": "Créer un nouvel objet ou être en utilisant des tags.",
+				"cost": "2 Puissances par Tag.",
+				"description": "Fabriquer, trouver, acheter, invoquer, rassembler.",
+				"key": "Créer"
 			},
 			"discover": {
-				"action": "Discover a valuable detail.",
-				"cost": "1 Power per detail.",
-				"description": "Sense, recall, research, converse.",
-				"key": "Discover"
+				"action": "Découvrir un détail précieux.",
+				"cost": "1 Puissance par détail.",
+				"description": "Sentir, rappeler, rechercher, converser.",
+				"key": "Découvrir"
 			},
 			"disrupt": {
-				"action": "Give your target a hindering tag or status.",
-				"cost": "1 Power per tier, 2 Power per tag.",
-				"description": "Blind, confuse, shock, trip, interrupt.",
-				"key": "Disrupt"
+				"action": "Donner à votre cible un Tag ou un Statut gênant.",
+				"cost": "1 Puissance par niveau, 2 Puissances par Tag.",
+				"description": "Aveugler, déconcerter, choquer, faire trébucher, interrompre.",
+				"key": "Perturber"
 			},
-			"effect": "Effect",
+			"effect": "Effet",
 			"enhance": {
-				"action": "Give yourself or an ally a helpful status.",
-				"cost": "1 Power per tier.",
-				"description": "Assist, aim, boost, take cover.",
-				"key": "Enhance"
+				"action": "Donner à vous-même ou à un allié un Statut utile.",
+				"cost": "1 Puissance par niveau.",
+				"description": "Aider, viser, booster, dissimuler.",
+				"key": "Renforcer"
 			},
 			"extra_feat": {
-				"action": "Extra Feat",
-				"cost": "1 Power per additional feature or minor achievement included in the action.",
-				"description": "Add a feature or minor achievement to an action.",
-				"key": "Extra Feat"
+				"action": "Effet Supplémentaire",
+				"cost": "1 Puissance par caractéristique supplémentaire ou petit exploit inclus dans l'action.",
+				"description": "Ajouter une caractéristique ou un petit exploit à une action.",
+				"key": "Effort supplémentaire"
 			},
 			"inflict": {
-				"action": "Inflict Status",
-				"description": "Inflict a status on a target."
+				"action": "Infliger un Statut",
+				"description": "Infliger un Statut à une cible."
 			},
 			"reduce": {
-				"action": "Reduce Status",
-				"description": "Reduce a status on yourself or an ally."
+				"action": "Réduire un Statut",
+				"description": "Réduire un Statut sur vous-même ou un allié."
 			},
 			"influence": {
-				"action": "Give your target a compelling status.",
-				"cost": "1 Power per tier.",
-				"description": "Convince, threaten, provoke, mind control.",
-				"key": "Influence"
+				"action": "Donner à votre cible un Statut convaincant.",
+				"cost": "1 Puissance par niveau.",
+				"description": "Convaincre, menacer, provoquer, manipuler l'esprit.",
+				"key": "Influencer"
 			},
 			"mitigate": {
-				"action": "Reduce or cancel incoming Effects.",
-				"cost": "1 Power per tier; 2 Power per tag.",
-				"description": "Block, dodge, shield, absorb.",
-				"key": "Reaction"
+				"action": "Réduire ou annuler les effets entrants.",
+				"cost": "1 Puissance par niveau ; 2 Puissances par Tag.",
+				"description": "Bloquer, esquiver, protéger, absorber.",
+				"key": "Réaction"
 			},
 			"restore": {
-				"action": "Reduce a harmful status or recover a scratched power tag.",
-				"cost": "1 Power per tier 2 Power per tag.",
-				"description": "Heal, repair, rejuvenate, undo.",
-				"key": "Restore"
+				"action": "Réduire un Statut nuisible ou récupérer un Tag de Puissance rayé.",
+				"cost": "1 Puissance par niveau, 2 Puissances par Tag.",
+				"description": "Soigner, réparer, régénérer, annuler.",
+				"key": "Restaurer"
 			},
 			"scratch": {
-				"action": "Recover a scratched tag",
-				"description": "Recover a scratched tag."
+				"action": "Récupérer un Tag rayé",
+				"description": "Récupérer un Tag rayé."
 			},
 			"set_back": {
-				"action": "Decrease a progress status.",
-				"cost": "1 Power per tier.",
-				"description": "Delay, ruin, sabotage, reverse.",
-				"key": "Set Back"
+				"action": "Diminuer un Statut de progrès.",
+				"cost": "1 Puissance par niveau.",
+				"description": "Retarder, ruiner, saboter, inverser.",
+				"key": "Retarder"
 			},
 			"weaken": {
-				"action": "Remove a target’s useful tag or status.",
-				"cost": "1 Power per tier 2 Power per tag.",
-				"description": "Break, sunder, neutralize, silence.",
-				"key": "Weaken"
+				"action": "Retirer un Tag ou un Statut utile à la cible.",
+				"cost": "1 Puissance par niveau, 2 Puissances par Tag.",
+				"description": "Briser, désagréger, neutraliser, faire taire.",
+				"key": "Affaiblir"
 			}
 		},
 		"Hero": {
