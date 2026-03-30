@@ -128,8 +128,8 @@
 		"Settings": {
 			"custom_dice": "Dés Thématiques",
 			"custom_dice_hint": "Utilisez les dés personnalisés de Legend in the Mist à la place des dés à six faces standard. Nécessite le module Dice So Nice.",
-			"popout_tags_sidebar": "Ouverture Auto de l'onglet Tags",
-			"popout_tags_sidebar_hint": "Ouvrir automatiquement l'onglet Tags dans une fenêtre contextuelle au chargement de la page.",
+			"popout_tags_sidebar": "Ouverture Auto de la barre latérale des Tags",
+			"popout_tags_sidebar_hint": "Ouvrir automatiquement la barre latérale des Tags dans une fenêtre contextuelle au chargement de la page.",
 			"story_tags": "Tags d'Histoire",
 			"welcome_screen": "Écran d'Accueil"
 		},
