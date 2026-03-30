@@ -115,15 +115,15 @@
 		},
 		"Name": "Legend in the Mist",
 		"Sheets": {
-			"hero": "Hero Sheet",
-			"challenge": "Challenge Sheet",
-			"journey": "Journey Sheet",
-			"fellowship": "Fellowship Sheet",
-			"hero_landscape": "Hero Sheet (Landscape)",
-			"challenge_landscape": "Challenge Sheet (Landscape)",
-			"journey_landscape": "Journey Sheet (Landscape)",
-			"fellowship_landscape": "Fellowship Sheet (Landscape)",
-			"addon": "Add-On Sheet"
+			"hero": "Fiche de Héros",
+			"challenge": "Fiche d'Épreuve",
+			"journey": "Fiche de Parcours",
+			"fellowship": "Fiche de Compagnie",
+			"hero_landscape": "Fiche de Héros (Paysage)",
+			"challenge_landscape": "Fiche d'Épreuve (Paysage)",
+			"journey_landscape": "Fiche de Parcours (Paysage)",
+			"fellowship_landscape": "Fiche de Compagnie (Paysage)",
+			"addon": "Fiche d'Extension"
 		},
 		"Settings": {
 			"custom_dice": "Themed Dice",
