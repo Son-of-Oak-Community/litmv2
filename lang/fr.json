@@ -134,15 +134,15 @@
 			"welcome_screen": "Écran d'Accueil"
 		},
 		"Tags": {
-			"burn": "Scratch",
-			"burnt": "Scratched",
-			"contents": "Contents",
-			"is_burnt": "Scratched",
-			"power": "Power",
-			"power_tags": "Power Tags",
-			"story": "Story",
-			"weakness": "Weakness",
-			"weakness_tags": "Weakness Tags"
+			"burn": "Rayer",
+			"burnt": "Rayé",
+			"contents": "Contenus",
+			"is_burnt": "Rayé",
+			"power": "Pouvoir",
+			"power_tags": "Tags de Pouvoir",
+			"story": "Histoire",
+			"weakness": "Faiblesse",
+			"weakness_tags": "Tags de Faiblesse"
 		},
 		"Terms": {
 			"action": "Action",
