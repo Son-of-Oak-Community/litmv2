@@ -565,12 +565,12 @@
 			"journey": "Parcours"
 		},
 		"Item": {
-			"addon": "Add-On",
-			"backpack": "Backpack",
-			"story_theme": "Story Theme",
-			"theme": "Theme",
-			"themebook": "Themebook",
-			"trope": "Trope",
+			"addon": "Extension",
+			"backpack": "Sac à Dos",
+			"story_theme": "Thème d'Histoire",
+			"theme": "Thème",
+			"themebook": "Livret de Thème",
+			"trope": "Motif",
 			"vignette": "Vignette"
 		}
 	},
