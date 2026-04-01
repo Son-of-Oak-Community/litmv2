@@ -4,6 +4,7 @@ export function registerItemHooks() {
 	_prepareThemeOnCreate();
 	_syncThemeImageOnLevelChange();
 	_safeUpdateItemSheet();
+	_syncBackpackOnUpdate();
 }
 
 function _prepareThemeOnCreate() {
@@ -57,6 +58,22 @@ function _syncThemeImageOnLevelChange() {
 				data.img = `systems/litmv2/assets/media/icons/${newLevel}.svg`;
 			}
 		}
+	});
+}
+
+/**
+ * When a backpack item is updated, re-sync its contents → effects
+ * and notify the story tag sidebar.
+ */
+function _syncBackpackOnUpdate() {
+	Hooks.on("updateItem", (item, changes) => {
+		if (item.type !== "backpack") return;
+		if (!changes.system?.contents) return;
+		const actor = item.parent;
+		if (actor?.type !== "hero") return;
+		const sheet = actor.sheet;
+		if (!sheet || sheet._syncing) return;
+		sheet._syncContentsToEffects();
 	});
 }
 

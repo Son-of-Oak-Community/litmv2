@@ -163,6 +163,7 @@
 			"roll": "Wurf",
 			"special_features": "Sondermerkmale",
 			"status": "Zustand",
+			"statuses": "Zustände",
 			"tag": "Merkmal",
 			"tags": "Merkmale",
 			"select": "Select",

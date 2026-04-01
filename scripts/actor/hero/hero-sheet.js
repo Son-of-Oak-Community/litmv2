@@ -1,4 +1,5 @@
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
+import { BackpackSyncMixin } from "../../sheets/backpack-sync-mixin.js";
 import { buildTrackCompleteContent } from "../../system/chat.js";
 import { Sockets } from "../../system/sockets.js";
 import { enrichHTML, toPlainObject } from "../../utils.js";
@@ -7,7 +8,7 @@ import { enrichHTML, toPlainObject } from "../../utils.js";
  * Hero sheet for Legend in the Mist
  * Represents player characters with themes, tags, and progression
  */
-export class HeroSheet extends LitmActorSheet {
+export class HeroSheet extends BackpackSyncMixin(LitmActorSheet) {
 	/** @override */
 	static DEFAULT_OPTIONS = {
 		classes: ["litm", "litm-hero-sheet"],
@@ -227,7 +228,9 @@ export class HeroSheet extends LitmActorSheet {
 			: null;
 
 		// Get story tags and statuses
-		const storyTags = this._prepareStoryTags();
+		const allStoryEffects = this._prepareStoryTags();
+		const statuses = allStoryEffects.filter((t) => t.type === "status");
+		const tagEffects = allStoryEffects.filter((t) => t.type === "tag");
 
 		const relationshipEntries = this._prepareRelationshipEntries();
 		const relationshipVisible = relationshipEntries.filter((entry) =>
@@ -258,7 +261,8 @@ export class HeroSheet extends LitmActorSheet {
 			fellowshipActorId: fellowshipActor?.id ?? null,
 			storyThemes,
 			backpack,
-			storyTags,
+			storyTags: tagEffects,
+			statuses,
 			scratchedTags,
 			relationshipEntries,
 			relationshipVisible,
@@ -377,20 +381,22 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	_buildBackpackRollTags() {
-		const backpackItem = this.document.items.find((i) => i.type === "backpack");
-		if (!backpackItem) return [];
-		return (backpackItem.system.contents ?? [])
-			.filter((item) => item.isActive && !item.isScratched)
-			.map((item) => ({
-				id: item.id,
-				name: item.name,
-				displayName: item.name,
-				themeId: backpackItem.id,
-				themeName: backpackItem.name,
+		const backpack = this.document.items.find((i) => i.type === "backpack");
+		if (!backpack) return [];
+
+		return backpack.effects
+			.filter((e) => e.type === "story_tag" && e.transfer)
+			.filter((e) => !e.disabled && !e.system.isScratched)
+			.map((e) => ({
+				id: e.getFlag("litmv2", "contentsId") ?? e.id,
+				name: e.name,
+				displayName: e.name,
+				themeId: backpack.id,
+				themeName: backpack.name,
 				type: "backpack",
-				isSingleUse: item.isSingleUse ?? false,
+				isSingleUse: e.system.isSingleUse ?? false,
 				state: "",
-				states: item.isSingleUse ? ",positive" : ",positive,scratched",
+				states: e.system.isSingleUse ? ",positive" : ",positive,scratched",
 			}));
 	}
 
@@ -685,24 +691,28 @@ export class HeroSheet extends LitmActorSheet {
 				break;
 			}
 			case "backpack": {
-				const backpack = this.document.items.find((i) => i.type === "backpack");
-				if (!backpack) return;
-
-				const { contents } = backpack.system.toObject();
-				const tagToUpdate = contents.find((i) => i.id === tag.id);
-				if (tagToUpdate) {
-					tagToUpdate.isScratched = !tagToUpdate.isScratched;
-					await this.document.updateEmbeddedDocuments("Item", [
-						{ _id: backpack.id, "system.contents": contents },
-					]);
-				}
+				await this.toggleTagScratched(tag.id);
 				break;
 			}
 			case "tag": {
-				const effect = this.document.effects.get(tag.id);
-				if (!effect || effect.type !== "story_tag") return;
-				const isScratched = effect.system.isScratched ?? false;
-				await effect.update({ "system.isScratched": !isScratched });
+				// Check if this is a transferred backpack effect
+				const allEffects = [...this.document.allApplicableEffects()];
+				const effect = allEffects.find(
+					(e) => e.id === tag.id && e.type === "story_tag",
+				);
+				if (!effect) return;
+
+				// If it has a contentsId, it's a backpack-synced effect — use the helper
+				if (effect.getFlag("litmv2", "contentsId")) {
+					const contentsId = effect.getFlag("litmv2", "contentsId");
+					await this.toggleTagScratched(contentsId);
+				} else {
+					// Direct actor effect (legacy or non-backpack)
+					const isScratched = effect.system?.isScratched ?? false;
+					await effect.update({
+						"system.isScratched": !isScratched,
+					});
+				}
 				break;
 			}
 			case "relationshipTag": {

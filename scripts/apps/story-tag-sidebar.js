@@ -141,6 +141,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 					hidden: (this.config.hiddenActors ?? []).includes(actor._id),
 					tags: [...actor.effects]
 						.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+						.filter((e) => !e.disabled)
 						.filter((e) => e.type === "story_tag" || e.type === "status_card")
 						.filter((e) => game.user.isGM || !(e.system?.isHidden ?? false))
 						.map((e) => {
@@ -847,32 +848,52 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			return tiers;
 		};
 
-		await Promise.all(
-			Object.entries(actors).map(([id, tags]) => {
-				return this.#updateTagsOnActor({
-					id,
-					tags: Object.entries(tags).map(([tagId, data]) => {
-						const isStatus = data.tagType === "status";
-						const rawValues = Array.isArray(data.values)
-							? data.values
-							: data.values != null
-								? [data.values]
-								: [];
-						return {
-							_id: tagId,
-							name: data.name,
-							system: isStatus
-								? { tiers: toTiers(rawValues), limitId: data.limitId || null }
-								: {
-										isScratched: data.isScratched ?? false,
-										isSingleUse: data.isSingleUse ?? false,
-										limitId: data.limitId || null,
-									},
-						};
-					}),
-				});
-			}),
-		);
+		for (const [actorId, tags] of Object.entries(actors)) {
+			const actor = game.actors.get(actorId);
+			if (!actor?.isOwner) continue;
+
+			const updates = Object.entries(tags).map(([effectId, data]) => {
+				const isStatus = data.tagType === "status";
+				return {
+					_id: effectId,
+					name: data.name,
+					system: isStatus
+						? {
+								tiers: toTiers(data.values),
+								isScratched: data.isScratched === "true",
+							}
+						: {
+								isScratched: data.isScratched === "true",
+								isSingleUse: data.isSingleUse === "true",
+								limitId: data.limitId || null,
+							},
+				};
+			});
+
+			if (actor.type === "hero") {
+				const backpack = actor.items.find((i) => i.type === "backpack");
+				const backpackEffectIds = new Set(
+					backpack?.effects.map((e) => e.id) ?? [],
+				);
+				const backpackUpdates = updates.filter((u) =>
+					backpackEffectIds.has(u._id),
+				);
+				const directUpdates = updates.filter(
+					(u) => !backpackEffectIds.has(u._id),
+				);
+				if (backpackUpdates.length) {
+					await backpack.updateEmbeddedDocuments(
+						"ActiveEffect",
+						backpackUpdates,
+					);
+				}
+				if (directUpdates.length) {
+					await this.#updateTagsOnActor({ id: actorId, tags: directUpdates });
+				}
+			} else {
+				await this.#updateTagsOnActor({ id: actorId, tags: updates });
+			}
+		}
 
 		// Recalculate actor limits after tag updates
 		for (const id of Object.keys(actors)) {
@@ -1437,6 +1458,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		const actor = game.actors.get(data.sourceContainer);
 		if (!actor?.isOwner) return;
+
+		// Check backpack item for hero actors
+		if (actor.type === "hero") {
+			const backpack = actor.items.find((i) => i.type === "backpack");
+			if (backpack?.effects.has(data.sourceId)) {
+				await backpack.deleteEmbeddedDocuments("ActiveEffect", [data.sourceId]);
+				return this.#broadcastRender();
+			}
+		}
+
 		if (!actor.effects.has(data.sourceId)) return;
 		await actor.deleteEmbeddedDocuments("ActiveEffect", [data.sourceId]);
 		return this.#broadcastRender();
@@ -1451,15 +1482,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			const actor = game.actors.get(container);
 			if (!actor?.isOwner) return;
 
-			const source = actor.effects.get(sourceId);
+			const allEffects = [...actor.effects];
+			const source = allEffects.find((e) => e.id === sourceId);
 			if (!source) return;
 
 			// Determine the target sibling from the drop position
 			const target = dropTarget
-				? actor.effects.get(dropTarget.dataset.id)
+				? allEffects.find((e) => e.id === dropTarget.dataset.id)
 				: null;
 
-			const siblings = actor.effects
+			const siblings = allEffects
 				.filter(
 					(e) =>
 						e.id !== sourceId &&
@@ -1475,7 +1507,28 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				_id: target.id,
 				sort: update.sort,
 			}));
-			await actor.updateEmbeddedDocuments("ActiveEffect", updates);
+
+			// Route sort updates through the correct parent document
+			if (actor.type === "hero") {
+				const backpack = actor.items.find((i) => i.type === "backpack");
+				const backpackEffectIds = new Set(
+					backpack?.effects.map((e) => e.id) ?? [],
+				);
+				const backpackUpdates = updates.filter((u) =>
+					backpackEffectIds.has(u._id),
+				);
+				const directUpdates = updates.filter(
+					(u) => !backpackEffectIds.has(u._id),
+				);
+				if (backpackUpdates.length) {
+					await backpack.updateEmbeddedDocuments("ActiveEffect", backpackUpdates);
+				}
+				if (directUpdates.length) {
+					await actor.updateEmbeddedDocuments("ActiveEffect", directUpdates);
+				}
+			} else {
+				await actor.updateEmbeddedDocuments("ActiveEffect", updates);
+			}
 			return this.#broadcastRender();
 		}
 
@@ -1530,10 +1583,25 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			});
 		}
 
+		// For heroes, route tags (not statuses) through the backpack helper
 		const hasValues = Array.isArray(tag.values)
 			? tag.values.some((v) => v !== null && v !== false && v !== "")
 			: false;
-		const type = tag.type === "status" || hasValues ? "status" : "tag";
+		const isStatus = tag.type === "status" || hasValues;
+
+		if (actor.type === "hero" && !isStatus && actor.sheet?.addTag) {
+			await actor.sheet.addTag({
+				name: tag.name,
+				isActive: true,
+				isScratched: tag.isScratched ?? false,
+				isSingleUse: tag.isSingleUse ?? false,
+			});
+			await this.#recalculateChallengeLimits(id);
+			return this.#broadcastRender();
+		}
+
+		// Non-hero path: create effect directly on the actor (unchanged)
+		const type = isStatus ? "status" : "tag";
 		const tiers = Array.isArray(tag.values)
 			? tag.values.map(
 					(value) => value !== null && value !== false && value !== "",
@@ -1578,6 +1646,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			});
 		}
 		if (!actor.isOwner) return;
+
+		// For heroes, check if the effect is on the backpack item
+		if (actor.type === "hero") {
+			const backpack = actor.items.find((i) => i.type === "backpack");
+			if (backpack?.effects.has(id)) {
+				await backpack.deleteEmbeddedDocuments("ActiveEffect", [id]);
+				await this.#recalculateChallengeLimits(actorId);
+				return this.#broadcastRender();
+			}
+		}
 
 		await actor.deleteEmbeddedDocuments("ActiveEffect", [id]);
 		await this.#recalculateActorLimits(actorId);
