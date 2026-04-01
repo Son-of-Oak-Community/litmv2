@@ -28,6 +28,10 @@ export class StoryTagData extends foundry.abstract.TypeDataModel {
 			changes: changesSchema(),
 		};
 	}
+
+	get isSuppressed() {
+		return this.isScratched;
+	}
 }
 
 export class StatusCardData extends foundry.abstract.TypeDataModel {

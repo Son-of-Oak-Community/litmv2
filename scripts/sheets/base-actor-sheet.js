@@ -231,7 +231,11 @@ export class LitmActorSheet extends LitmSheetMixin(
 					.map((_, index) => index < value);
 				delete system.tierValue;
 			}
-			const existingEffect = this.document.effects.get(effect._id);
+			let existingEffect = this.document.effects.get(effect._id);
+			if (!existingEffect && this.document.type === "hero") {
+				const backpack = this.document.items.find((i) => i.type === "backpack");
+				existingEffect = backpack?.effects.get(effect._id);
+			}
 			const effectType = existingEffect?.type;
 			if (effectType === "story_tag") {
 				effect.system ??= {};
@@ -245,10 +249,32 @@ export class LitmActorSheet extends LitmSheetMixin(
 			}
 		}
 		if (effectsToUpdate.length) {
-			await this.document.updateEmbeddedDocuments(
-				"ActiveEffect",
-				effectsToUpdate,
-			);
+			if (this.document.type === "hero") {
+				const backpack = this.document.items.find((i) => i.type === "backpack");
+				const backpackEffectIds = new Set(
+					backpack?.effects.map((e) => e.id) ?? [],
+				);
+				const backpackUpdates = effectsToUpdate.filter((u) =>
+					backpackEffectIds.has(u._id),
+				);
+				const directUpdates = effectsToUpdate.filter(
+					(u) => !backpackEffectIds.has(u._id),
+				);
+				if (backpackUpdates.length) {
+					await backpack.updateEmbeddedDocuments("ActiveEffect", backpackUpdates);
+				}
+				if (directUpdates.length) {
+					await this.document.updateEmbeddedDocuments(
+						"ActiveEffect",
+						directUpdates,
+					);
+				}
+			} else {
+				await this.document.updateEmbeddedDocuments(
+					"ActiveEffect",
+					effectsToUpdate,
+				);
+			}
 		}
 	}
 
@@ -386,9 +412,11 @@ export class LitmActorSheet extends LitmSheetMixin(
 	 * @protected
 	 */
 	_prepareStoryTags() {
-		const effects = this.document.effects ?? [];
+		const effects = [];
+		for (const e of this.document.allApplicableEffects()) {
+			if (e.type === "story_tag" || e.type === "status_card") effects.push(e);
+		}
 		return effects
-			.filter((e) => e.type === "story_tag" || e.type === "status_card")
 			.filter((e) => game.user.isGM || !(e.system?.isHidden ?? false))
 			.map((e) => {
 				const isStatus = e.type === "status_card";
@@ -434,6 +462,19 @@ export class LitmActorSheet extends LitmSheetMixin(
 		if (data.sourceActorId && data.sourceActorId === this.document.id) return;
 
 		const isStatus = data.type === "status";
+
+		// For heroes, route tags (not statuses) to the backpack
+		if (this.document.type === "hero" && !isStatus && this.addTag) {
+			await this.addTag({
+				name: data.name ?? game.i18n.localize("LITM.Terms.tag"),
+				isActive: true,
+				isScratched: data.isScratched ?? false,
+				isSingleUse: data.isSingleUse ?? false,
+			});
+			this._notifyStoryTags();
+			return;
+		}
+
 		const droppedName = data.name;
 
 		// For statuses, check if one with the same name already exists and stack
@@ -498,6 +539,16 @@ export class LitmActorSheet extends LitmSheetMixin(
 	static async _onAddStoryTag(_event, target) {
 		const tagType = target.dataset.tagType || "tag";
 		const isStatus = tagType === "status";
+
+		// For heroes, route tags (not statuses) to the backpack
+		if (this.document.type === "hero" && !isStatus && this.addTag) {
+			return this.addTag({
+				name: game.i18n.localize("LITM.Terms.tag"),
+				isActive: true,
+				isScratched: false,
+				isSingleUse: false,
+			});
+		}
 
 		const localizedName = isStatus
 			? game.i18n.localize("LITM.Terms.status")

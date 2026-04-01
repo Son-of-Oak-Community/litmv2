@@ -164,10 +164,12 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 	}
 
 	get storyTags() {
-		return (this.parent.effects ?? [])
-			.filter(
-				(effect) => effect.system instanceof game.litmv2.data.StoryTagData,
-			)
+		const effects = [];
+		for (const effect of this.parent.allApplicableEffects()) {
+			if (!(effect.system instanceof game.litmv2.data.StoryTagData)) continue;
+			effects.push(effect);
+		}
+		return effects
 			.filter((effect) => game.user.isGM || !effect.system?.isHidden)
 			.map((effect) => {
 				return {
@@ -175,7 +177,7 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 					name: effect.name,
 					type: "tag",
 					isSingleUse: effect.system?.isSingleUse ?? false,
-					value: 1, // Story tags are just 1
+					value: 1,
 				};
 			});
 	}

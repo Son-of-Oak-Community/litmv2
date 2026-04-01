@@ -216,94 +216,76 @@
 	</div>
 	{{/if}}
 
-	<div class="grid-2col">
-		<!-- Backpack -->
-		{{#if backpack}}
-		<fieldset>
-			<legend class="control flexrow gap-sm">
-				<span class="litm-banner theme-card__book">{{backpack.name}}</span>
-				<button type="button" class="noflex" data-action="editItem" data-item-id="{{backpack.id}}"
-					data-tooltip="{{localize 'LITM.Ui.edit_backpack'}}" aria-label="{{localize 'LITM.Ui.edit_backpack'}}">
-					<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-				</button>
-			</legend>
+	<!-- Backpack & Story Tags -->
+	{{#if backpack}}
+	<fieldset>
+		<legend class="control flexrow gap-sm">
+			<span class="litm-banner theme-card__book">{{backpack.name}}</span>
+			<button type="button" class="noflex" data-action="editItem" data-item-id="{{backpack.id}}"
+				data-tooltip="{{localize 'LITM.Ui.edit_backpack'}}" aria-label="{{localize 'LITM.Ui.edit_backpack'}}">
+				<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+			</button>
+			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="tag"
+				data-tooltip="{{localize 'LITM.Ui.add_tag'}}" aria-label="{{localize 'LITM.Ui.add_tag'}}">
+				<i class="fa-solid fa-scroll" aria-hidden="true"></i>
+			</button>
+		</legend>
 
-			{{#if backpack.contents.length}}
-			<div class="theme-card-tags" data-item-id="{{backpack.id}}">
-				{{#each backpack.contents as |tag|}}
-				{{> systems/litmv2/templates/partials/play-tag.html tag
-				action="toggleTagActive"
-				tooltip=(localize "LITM.Ui.click_to_toggle_tag")
-				extraClass=(ifThen tag.isActive "" "is-inactive")
-				}}
-				{{/each}}
-			</div>
-			{{else}}
-			<p class="hint">{{localize "LITM.Ui.backpack_empty"}}</p>
-			{{/if}}
-		</fieldset>
-		{{else}}
-		<div class="empty-state">
-			<img height="64" width="64" src="systems/litmv2/assets/media/icons/backpack.svg" alt="" aria-hidden="true" />
-			<p class="hint">{{localize "LITM.Ui.no_backpack"}}</p>
+		{{#if backpack.contents.length}}
+		<div class="theme-card-tags" data-item-id="{{backpack.id}}">
+			{{#each backpack.contents as |tag|}}
+			{{> systems/litmv2/templates/partials/play-tag.html tag
+			action="toggleTagActive"
+			tooltip=(localize "LITM.Ui.click_to_toggle_tag")
+			extraClass=(ifThen tag.isActive "" "is-inactive")
+			}}
+			{{/each}}
 		</div>
+		{{else}}
+		<p class="hint">{{localize "LITM.Ui.backpack_empty"}}</p>
 		{{/if}}
-
-		<!-- Story Tags & Statuses -->
-		<fieldset>
-			<legend class="control flexrow gap-sm">
-				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.story_tags_statuses"}}</span>
-				<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="tag"
-					data-tooltip="{{localize 'LITM.Ui.add_tag'}}" aria-label="{{localize 'LITM.Ui.add_tag'}}">
-					<i class="fa-solid fa-scroll" aria-hidden="true"></i>
-				</button>
-				<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="status"
-					data-tooltip="{{localize 'LITM.Ui.add_status'}}" aria-label="{{localize 'LITM.Ui.add_status'}}">
-					<i class="fa-solid fa-droplet" aria-hidden="true"></i>
-				</button>
-			</legend>
-
-			{{#if storyTags.length}}
-			<ul class="plain">
-				{{#each storyTags as |tag|}}
-				<li class="form-group {{tag.type}}" style="gap: 8px; align-items: center;justify-content: space-between;">
-					<!-- Name input -->
-					<span class="litm--tag-name-wrapper litm-{{tag.type}}">
-						<input class="litm--tag-item-name" type="text" name="effects.{{tag.id}}.name" value="{{tag.name}}"
-							placeholder="{{localize 'LITM.Ui.tag_name'}}" />
-					</span>
-
-					<!-- Tier buttons for status cards -->
-					{{#if (eq tag.type "status")}}
-					<div class="progress-display" style="flex: 0 0 auto;" data-id="system.tiers">
-						{{#each tag.system.tiers as |checked|}}
-						<button type="button" class="progress-box {{#if checked}}checked{{/if}}"
-							data-action="adjustProgress" data-index="{{@index}}" data-effect-id="{{tag.id}}"
-							aria-pressed="{{#if checked}}true{{else}}false{{/if}}">
-							<img src="systems/litmv2/assets/media/checkbox{{ifThen checked '-c' ''}}.svg" alt="" aria-hidden="true" />
-						</button>
-						{{/each}}
-					</div>
-					{{else}}
-					<label class="litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
-						<input class="litm--single-use" type="checkbox" name="effects.{{tag.id}}.system.isSingleUse" {{#if
-							tag.system.isSingleUse}}checked{{/if}} />
-						<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
-					</label>
-					{{/if}}
-
-					<!-- Delete button -->
-					<button type="button" style="flex:none;" data-action="removeEffect" data-id="{{tag.id}}"
-						data-tooltip="{{localize 'LITM.Ui.remove'}} {{tag.type}}"
-						aria-label="{{localize 'LITM.Ui.remove'}} {{tag.type}}">
-						<i class="fa-solid fa-trash" aria-hidden="true"></i>
-					</button>
-				</li>
-				{{/each}}
-			</ul>
-			{{else}}
-			<p class="hint">{{localize "LITM.Ui.no_story_tags"}}</p>
-			{{/if}}
-		</fieldset>
+	</fieldset>
+	{{else}}
+	<div class="empty-state">
+		<img height="64" width="64" src="systems/litmv2/assets/media/icons/backpack.svg" alt="" aria-hidden="true" />
+		<p class="hint">{{localize "LITM.Ui.no_backpack"}}</p>
 	</div>
+	{{/if}}
+
+	<!-- Statuses -->
+	{{#if statuses.length}}
+	<fieldset>
+		<legend class="control flexrow gap-sm">
+			<span class="litm-banner theme-card__book">{{localize "LITM.Terms.statuses"}}</span>
+			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="status"
+				data-tooltip="{{localize 'LITM.Ui.add_status'}}" aria-label="{{localize 'LITM.Ui.add_status'}}">
+				<i class="fa-solid fa-droplet" aria-hidden="true"></i>
+			</button>
+		</legend>
+		<ul class="plain">
+			{{#each statuses as |tag|}}
+			<li class="form-group status" style="gap: 8px; align-items: center;justify-content: space-between;">
+				<span class="litm--tag-name-wrapper litm-status">
+					<input class="litm--tag-item-name" type="text" name="effects.{{tag.id}}.name" value="{{tag.name}}"
+						placeholder="{{localize 'LITM.Ui.tag_name'}}" />
+				</span>
+				<div class="progress-display" style="flex: 0 0 auto;" data-id="system.tiers">
+					{{#each tag.system.tiers as |checked|}}
+					<button type="button" class="progress-box {{#if checked}}checked{{/if}}"
+						data-action="adjustProgress" data-index="{{@index}}" data-effect-id="{{tag.id}}"
+						aria-pressed="{{#if checked}}true{{else}}false{{/if}}">
+						<img src="systems/litmv2/assets/media/checkbox{{ifThen checked '-c' ''}}.svg" alt="" aria-hidden="true" />
+					</button>
+					{{/each}}
+				</div>
+				<button type="button" style="flex:none;" data-action="removeEffect" data-id="{{tag.id}}"
+					data-tooltip="{{localize 'LITM.Ui.remove'}} status"
+					aria-label="{{localize 'LITM.Ui.remove'}} status">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
+				</button>
+			</li>
+			{{/each}}
+		</ul>
+	</fieldset>
+	{{/if}}
 </section>
