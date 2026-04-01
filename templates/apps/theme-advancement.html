@@ -17,6 +17,19 @@
 	<fieldset>
 		<legend>{{localize "LITM.Ui.special_improvements"}}</legend>
 		{{#if canSelect}}
+		{{#if inactiveSpecialImprovements.length}}
+		<div class="form-group">
+			<select data-role="inactive-special-improvement-select"
+				aria-label="{{localize 'LITM.Ui.special_improvements'}}" style="flex: 1;">
+				{{selectOptions inactiveSpecialImprovements blank="—"}}
+			</select>
+			<button type="button" data-action="activateSpecialImprovement"
+				data-tooltip="{{localize 'LITM.Ui.activate_improvement'}}"
+				aria-label="{{localize 'LITM.Ui.activate_improvement'}}">
+				<i class="fa-solid fa-check" aria-hidden="true"></i>
+			</button>
+		</div>
+		{{/if}}
 		{{#if specialImprovementOptions.length}}
 		<div class="form-group">
 			<select data-role="special-improvement-select" data-descriptions="{{toJSON specialImprovementDescriptions}}"

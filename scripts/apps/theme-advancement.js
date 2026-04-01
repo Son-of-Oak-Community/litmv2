@@ -21,6 +21,7 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			addWeaknessTag: ThemeAdvancementApp.#onAddWeaknessTag,
 			activatePowerTag: ThemeAdvancementApp.#onActivatePowerTag,
 			activateWeaknessTag: ThemeAdvancementApp.#onActivateWeaknessTag,
+			activateSpecialImprovement: ThemeAdvancementApp.#onActivateSpecialImprovement,
 		},
 	};
 
@@ -99,6 +100,13 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			}))
 			.filter((_, index) => !theme.system.weaknessTags[index].isActive);
 
+		const inactiveSpecialImprovements = (theme.system?.specialImprovements || [])
+			.map((improvement, index) => ({
+				value: String(index),
+				label: improvement.name || game.i18n.localize("LITM.Ui.improvement_name"),
+			}))
+			.filter((_, index) => !theme.system.specialImprovements[index]?.isActive);
+
 		const allPowerQuestions =
 			selectedThemebook?.system?.powerTagQuestions || [];
 		const allWeaknessQuestions =
@@ -128,7 +136,9 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			specialImprovementOptions,
 			specialImprovementDescriptions,
 			inactivePowerTags,
+			inactivePowerTags,
 			inactiveWeaknessTags,
+			inactiveSpecialImprovements,
 			powerQuestionOptions,
 			weaknessQuestionOptions,
 			powerQuestionTexts,
@@ -319,6 +329,29 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 
 		await ThemeAdvancementApp.#spendImprove(theme, {
 			"system.weaknessTags": weaknessTags,
+		});
+		this.close();
+	}
+
+	static async #onActivateSpecialImprovement(_event, target) {
+		const theme = ThemeAdvancementApp.#getTheme.call(this);
+		if (!theme || !ThemeAdvancementApp.#canSelect(theme)) return;
+		const container = target.closest("fieldset");
+		const select = container?.querySelector(
+			"[data-role='inactive-special-improvement-select']",
+		);
+		const index = Number(select?.value ?? "");
+		if (Number.isNaN(index)) return;
+
+		const specialImprovements = [...(theme.system?.specialImprovements || [])];
+		if (!specialImprovements[index]) return;
+		specialImprovements[index] = {
+			...specialImprovements[index],
+			isActive: true,
+		};
+
+		await ThemeAdvancementApp.#spendImprove(theme, {
+			"system.specialImprovements": specialImprovements,
 		});
 		this.close();
 	}
