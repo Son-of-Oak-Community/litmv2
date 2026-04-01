@@ -27,7 +27,7 @@ jobs:
             "manifest": "https://raw.githubusercontent.com/Son-of-Oak-Community/litmv2/${{ github.event.release.tag_name }}/system.json",
             "notes": "https://github.com/Son-of-Oak-Community/litmv2/releases/tag/${{ github.event.release.tag_name }}",
             "compatibility": {
-            "minimum": "13",
+            "minimum": "14",
             "verified": "14",
             "maximum": "14"
             }

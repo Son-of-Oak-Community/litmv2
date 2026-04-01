@@ -2444,22 +2444,16 @@ export class WelcomeOverlay {
 			},
 		};
 
-		// V14+ uses levels for backgrounds and fog modes; V13 uses flat scene fields
 		const levelId = foundry.documents.BaseScene.metadata.defaultLevelId;
-		if (levelId) {
-			sceneData.fog = { mode: foundry.CONST.FOG_EXPLORATION_MODES.DISABLED };
-			sceneData.levels = [
-				{
-					_id: levelId,
-					name: sceneName,
-					background: sceneData.background,
-				},
-			];
-			sceneData.initialLevel = levelId;
-		} else {
-			sceneData.backgroundColor = "#000000";
-			sceneData.fogExploration = false;
-		}
+		sceneData.fog = { mode: foundry.CONST.FOG_EXPLORATION_MODES.DISABLED };
+		sceneData.levels = [
+			{
+				_id: levelId,
+				name: sceneName,
+				background: sceneData.background,
+			},
+		];
+		sceneData.initialLevel = levelId;
 
 		const scene = await foundry.documents.Scene.create(sceneData);
 

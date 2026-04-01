@@ -233,29 +233,14 @@ function _registerChatCommands() {
 	Hooks.once("ready", () => {
 		const ChatLogClass = ui.chat.constructor;
 
-		// V14+: Register via CHAT_COMMANDS API
-		if ("CHAT_COMMANDS" in ChatLogClass) {
-			for (const [name, { handler }] of Object.entries(commands)) {
-				ChatLogClass.CHAT_COMMANDS[name] = {
-					rgx: new RegExp(`^(/${name})\\s*$`, "i"),
-					fn: () => {
-						handler();
-						return false;
-					},
-				};
-			}
-		}
-		// V13: Intercept via chatMessage hook before the parser rejects them
-		else {
-			Hooks.on("chatMessage", (_chatLog, message) => {
-				const trimmed = message.trim();
-				for (const { rgx, handler } of Object.values(commands)) {
-					if (rgx.test(trimmed)) {
-						handler();
-						return false;
-					}
-				}
-			});
+		for (const [name, { handler }] of Object.entries(commands)) {
+			ChatLogClass.CHAT_COMMANDS[name] = {
+				rgx: new RegExp(`^(/${name})\\s*$`, "i"),
+				fn: () => {
+					handler();
+					return false;
+				},
+			};
 		}
 	});
 }
@@ -278,13 +263,10 @@ function _attachContextMenuToRollMessage() {
 				message.update({ rolls: [roll] });
 			};
 			return {
-				label, // v14
-				name: label, // v13
+				label,
 				icon: '<i class="fas fa-dice"></i>',
-				visible: isVisible, // v14
-				condition: isVisible, // v13
-				onClick: handler, // v14
-				callback: (li, event) => handler(event, li), // v13 (reversed args)
+				visible: isVisible,
+				onClick: handler,
 			};
 		};
 
