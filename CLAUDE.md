@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## About
 
-Legend in the Mist is a Foundry Virtual Tabletop (v13 minimum, v14 verified) system for a rustic fantasy RPG based on the Mist Engine. The system id is `litmv2`.
+Legend in the Mist is a Foundry Virtual Tabletop (v14 minimum) system for a rustic fantasy RPG based on the Mist Engine. The system id is `litmv2`.
 
 ## Commands
 
