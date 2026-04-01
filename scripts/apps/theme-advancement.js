@@ -182,6 +182,7 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			{
 				name: entry.name || "",
 				description: entry.description || "",
+				isActive: true,
 			},
 		];
 
