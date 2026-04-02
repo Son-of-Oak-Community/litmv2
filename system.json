@@ -76,6 +76,11 @@
 			"path": "lang/es.json"
 		},
 		{
+			"lang": "fr",
+			"name": "Français",
+			"path": "lang/fr.json"
+		},
+		{
 			"lang": "no",
 			"name": "Norsk",
 			"path": "lang/no.json"
