@@ -4,6 +4,7 @@ import {
 	enrichHTML,
 	findThemebookByName,
 	queryItemsFromPacks,
+	themeTagEffect,
 	toQuestionOptions,
 } from "../../utils.js";
 
@@ -30,7 +31,7 @@ export class ThemeSheet extends LitmItemSheet {
 		form: {
 			submitOnChange: true,
 			closeOnSubmit: false,
-			handler: ThemeSheet._onSubmitForm,
+			handler: ThemeSheet._onSubmitFormWithEffects,
 		},
 		window: {
 			icon: "fa-solid fa-book",
@@ -106,7 +107,6 @@ export class ThemeSheet extends LitmItemSheet {
 			system: this.system,
 
 			// Computed properties
-			weakness: this.system.weakness,
 			powerTags: this.system.powerTags,
 			weaknessTags: this.system.weaknessTags,
 			levels,
@@ -186,6 +186,7 @@ export class ThemeSheet extends LitmItemSheet {
 	 * @private
 	 */
 	static async #onAddTag(_event, target) {
+		if (!this.document.isOwner) return;
 		const tagType = target.dataset.type;
 		const themebook = await findThemebookByName(this.system.themebook);
 		const isActive = this.document.isEmbedded;
@@ -201,17 +202,9 @@ export class ThemeSheet extends LitmItemSheet {
 			.filter(({ q, i }) => i >= startIndex && `${q ?? ""}`.trim() && !usedQuestions.has(String(i)))
 			.map(({ i }) => String(i))[0] ?? null;
 
-		await this.document.createEmbeddedDocuments("ActiveEffect", [{
-			name: "",
-			type: "theme_tag",
-			disabled: !isActive,
-			system: {
-				tagType,
-				question: nextQuestion,
-				isScratched: false,
-				isSingleUse: false,
-			},
-		}]);
+		await this.document.createEmbeddedDocuments("ActiveEffect", [
+			themeTagEffect({ tagType, question: nextQuestion, isActive }),
+		]);
 	}
 
 	/**
@@ -221,9 +214,11 @@ export class ThemeSheet extends LitmItemSheet {
 	 * @private
 	 */
 	static async #onRemoveTag(_event, target) {
+		if (!this.document.isOwner) return;
 		const effectId = target.dataset.effectId;
 		if (!effectId) return;
 		await this.document.deleteEmbeddedDocuments("ActiveEffect", [effectId]);
+		this.document.parent?.sheet?._notifyStoryTags?.();
 	}
 
 	/**
@@ -258,41 +253,6 @@ export class ThemeSheet extends LitmItemSheet {
 		await this.document.update({
 			"system.specialImprovements": specialImprovements,
 		});
-	}
-
-	/**
-	 * Handle form submission, routing effect fields to embedded document updates
-	 * @param {Event} _event
-	 * @param {HTMLFormElement} _form
-	 * @param {FormDataExtended} formData
-	 */
-	static async _onSubmitForm(_event, _form, formData) {
-		const submitData = formData.object;
-		const effectMap = {};
-
-		for (const [key, value] of Object.entries(submitData)) {
-			if (!key.startsWith("effects.")) continue;
-			delete submitData[key];
-			const parts = key.split(".");
-			const effectId = parts[1];
-			const field = parts.slice(2).join(".");
-			effectMap[effectId] ??= {};
-			foundry.utils.setProperty(effectMap[effectId], field, value);
-		}
-
-		const effectUpdates = [];
-		for (const [id, data] of Object.entries(effectMap)) {
-			const update = { _id: id };
-			if ("name" in data) update.name = data.name;
-			if ("isActive" in data) update.disabled = !data.isActive;
-			if (data.system) update.system = data.system;
-			effectUpdates.push(update);
-		}
-
-		if (effectUpdates.length) {
-			await this.document.updateEmbeddedDocuments("ActiveEffect", effectUpdates);
-		}
-		await this.document.update(submitData);
 	}
 
 	/**

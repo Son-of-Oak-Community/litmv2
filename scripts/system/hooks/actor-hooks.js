@@ -6,6 +6,7 @@ export function registerActorHooks() {
 	_validateFellowshipThemes();
 	_enforceHeroItemLimits();
 	_setStatusCardIcon();
+	_validateEffectType();
 }
 
 function _prepareCharacterOnCreate() {
@@ -41,6 +42,7 @@ function _prepareCharacterOnCreate() {
 
 	Hooks.on("createActor", (actor, options) => {
 		(async () => {
+			if (!game.user.isGM) return;
 			if (actor.type === "hero") {
 				if (options?.litm?.skipAutoSetup) return;
 				const missingThemes = Math.max(
@@ -132,9 +134,6 @@ function _validateFellowshipThemes() {
 }
 
 /**
- * Prevent excess themes and backpacks on hero actors
- */
-/**
  * Set icon and showIcon on status_card effects so they appear on tokens.
  */
 function _setStatusCardIcon() {
@@ -148,6 +147,20 @@ function _setStatusCardIcon() {
 			img: icon,
 			showIcon: foundry.CONST.ACTIVE_EFFECT_SHOW_ICON.ALWAYS,
 		});
+	});
+}
+
+/**
+ * Prevent incompatible effect types from being created on wrong parent documents.
+ * theme_tag effects belong on theme/story_theme items only.
+ */
+function _validateEffectType() {
+	Hooks.on("preCreateActiveEffect", (effect) => {
+		if (effect.type !== "theme_tag") return;
+		const parent = effect.parent;
+		if (parent?.documentName === "Item" && ["theme", "story_theme"].includes(parent.type)) return;
+		ui.notifications.warn("LITM.Ui.warn_invalid_effect_target", { localize: true });
+		return false;
 	});
 }
 

@@ -231,9 +231,9 @@
 			</button>
 		</legend>
 
-		{{#if backpack.contents.length}}
+		{{#if backpack.tags.length}}
 		<div class="theme-card-tags" data-item-id="{{backpack.id}}">
-			{{#each backpack.contents as |tag|}}
+			{{#each backpack.tags as |tag|}}
 			{{> systems/litmv2/templates/partials/play-tag.html tag
 			action="toggleTagActive"
 			tooltip=(localize "LITM.Ui.click_to_toggle_tag")

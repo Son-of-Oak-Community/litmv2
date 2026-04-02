@@ -1,5 +1,6 @@
+import { buildTrackCompleteContent, detectTrackCompletion } from "../system/chat.js";
 import { Sockets } from "../system/sockets.js";
-import { confirmDelete, enrichHTML, toPlainObject } from "../utils.js";
+import { confirmDelete, enrichHTML, levelIcon, parseEmbeddedFormKeys, statusCardEffect, storyTagEffect, updateEffectsByParent } from "../utils.js";
 import { LitmSheetMixin } from "./litm-sheet-mixin.js";
 
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -175,28 +176,8 @@ export class LitmActorSheet extends LitmSheetMixin(
 	 * @protected
 	 */
 	async _updateEmbeddedFromForm(submitData) {
-		const itemMap = {};
-		const effectMap = {};
-
-		for (const [key, value] of Object.entries(submitData)) {
-			if (key.startsWith("items.")) {
-				delete submitData[key];
-				const [_, _id, subkey, ...rest] = key.split(".");
-				itemMap[_id] ??= {};
-				itemMap[_id][subkey] ??= {};
-				if (rest.length === 0) itemMap[_id][subkey] = value;
-				else itemMap[_id][subkey][rest.join(".")] = value;
-			}
-
-			if (key.startsWith("effects.")) {
-				delete submitData[key];
-				const [_, _id, subkey, ...rest] = key.split(".");
-				effectMap[_id] ??= {};
-				effectMap[_id][subkey] ??= {};
-				if (rest.length === 0) effectMap[_id][subkey] = value;
-				else effectMap[_id][subkey][rest.join(".")] = value;
-			}
-		}
+		const itemMap = parseEmbeddedFormKeys(submitData, "items.");
+		const effectMap = parseEmbeddedFormKeys(submitData, "effects.");
 
 		const ownItems = [];
 		const foreignItems = [];
@@ -233,6 +214,10 @@ export class LitmActorSheet extends LitmSheetMixin(
 			if (!existingEffect && this.document.type === "hero") {
 				const backpack = this.document.items.find((i) => i.type === "backpack");
 				existingEffect = backpack?.effects.get(effect._id);
+				if (!existingEffect) {
+					const fellowship = this.document.system.fellowshipActor;
+					existingEffect = [...(fellowship?.allApplicableEffects() ?? [])].find((e) => e.id === effect._id);
+				}
 			}
 			const effectType = existingEffect?.type;
 			if (effectType === "story_tag") {
@@ -246,34 +231,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 				effect.system ??= {};
 			}
 		}
-		if (effectsToUpdate.length) {
-			if (this.document.type === "hero") {
-				const backpack = this.document.items.find((i) => i.type === "backpack");
-				const backpackEffectIds = new Set(
-					backpack?.effects.map((e) => e.id) ?? [],
-				);
-				const backpackUpdates = effectsToUpdate.filter((u) =>
-					backpackEffectIds.has(u._id),
-				);
-				const directUpdates = effectsToUpdate.filter(
-					(u) => !backpackEffectIds.has(u._id),
-				);
-				if (backpackUpdates.length) {
-					await backpack.updateEmbeddedDocuments("ActiveEffect", backpackUpdates);
-				}
-				if (directUpdates.length) {
-					await this.document.updateEmbeddedDocuments(
-						"ActiveEffect",
-						directUpdates,
-					);
-				}
-			} else {
-				await this.document.updateEmbeddedDocuments(
-					"ActiveEffect",
-					effectsToUpdate,
-				);
-			}
-		}
+		await updateEffectsByParent(this.document, effectsToUpdate);
 	}
 
 	/**
@@ -381,16 +339,8 @@ export class LitmActorSheet extends LitmSheetMixin(
 	 */
 	_prepareThemeData(item) {
 		const data = item.toObject();
-		for (const key of ["powerTags", "weaknessTags"]) {
-			if (Array.isArray(item.system[key])) {
-				data.system[key] = item.system[key].map((tag) => {
-					const obj = toPlainObject(tag);
-					// Use derived value for isScratched (e.g. weakness tags can't be scratched)
-					if (tag.isScratched !== undefined) obj.isScratched = tag.isScratched;
-					return obj;
-				});
-			}
-		}
+		data.system.powerTags = item.system.powerTags;
+		data.system.weaknessTags = item.system.weaknessTags;
 		data.themeTag = {
 			id: data._id,
 			name: data.name,
@@ -398,7 +348,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 			isScratched: data.system.isScratched,
 		};
 		data.levelLabel = game.i18n.localize(`LITM.Terms.${data.system.level}`);
-		data.levelIcon = `systems/litmv2/assets/media/icons/${data.system.level}.svg`;
+		data.levelIcon = levelIcon(data.system.level);
 		data.hasCustomImage = data.img !== CONFIG.litmv2.assets.icons.default;
 		return data;
 	}
@@ -410,11 +360,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 	 * @protected
 	 */
 	_prepareStoryTags() {
-		const effects = [];
-		for (const e of this.document.allApplicableEffects()) {
-			if (e.type === "story_tag" || e.type === "status_card") effects.push(e);
-		}
-		return effects
+		return this.document.system.effectTags
 			.filter((e) => game.user.isGM || !(e.system?.isHidden ?? false))
 			.map((e) => {
 				const isStatus = e.type === "status_card";
@@ -461,14 +407,21 @@ export class LitmActorSheet extends LitmSheetMixin(
 
 		const isStatus = data.type === "status";
 
-		// For heroes, route tags (not statuses) to the backpack
-		if (this.document.type === "hero" && !isStatus && this.addTag) {
-			await this.addTag({
-				name: data.name ?? game.i18n.localize("LITM.Terms.tag"),
-				isActive: true,
-				isScratched: data.isScratched ?? false,
-				isSingleUse: data.isSingleUse ?? false,
-			});
+		// For heroes, route tags (not statuses) to the backpack item
+		if (this.document.type === "hero" && !isStatus) {
+			const backpack = this.document.items.find((i) => i.type === "backpack");
+			if (!backpack) {
+				ui.notifications.warn(game.i18n.localize("LITM.Ui.warn_no_backpack"));
+				return;
+			}
+			await backpack.createEmbeddedDocuments("ActiveEffect", [
+				{ ...storyTagEffect({
+					name: data.name ?? game.i18n.localize("LITM.Terms.tag"),
+					isScratched: data.isScratched ?? false,
+					isSingleUse: data.isSingleUse ?? false,
+					isHidden: game.user.isGM,
+				}), transfer: true },
+			]);
 			this._notifyStoryTags();
 			return;
 		}
@@ -496,15 +449,13 @@ export class LitmActorSheet extends LitmSheetMixin(
 					(value) => value !== null && value !== false && value !== "",
 				)
 			: new Array(6).fill(false);
-		const isScratched = data.isScratched ?? false;
 		const localizedName = isStatus
 			? game.i18n.localize("LITM.Terms.status")
 			: game.i18n.localize("LITM.Terms.tag");
-		const effectData = {
-			name: data.name ?? localizedName,
-			type: isStatus ? "status_card" : "story_tag",
-			system: isStatus ? { tiers } : { isScratched },
-		};
+		const name = data.name ?? localizedName;
+		const effectData = isStatus
+			? statusCardEffect({ name, tiers, isHidden: game.user.isGM, limitId: data.limitId })
+			: storyTagEffect({ name, isScratched: data.isScratched ?? false, isSingleUse: data.isSingleUse, isHidden: game.user.isGM });
 
 		await this.document.createEmbeddedDocuments("ActiveEffect", [effectData]);
 		this._notifyStoryTags();
@@ -538,27 +489,25 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const tagType = target.dataset.tagType || "tag";
 		const isStatus = tagType === "status";
 
-		// For heroes, route tags (not statuses) to the backpack
-		if (this.document.type === "hero" && !isStatus && this.addTag) {
-			return this.addTag({
-				name: game.i18n.localize("LITM.Terms.tag"),
-				isActive: true,
-				isScratched: false,
-				isSingleUse: false,
-			});
+		// For heroes, route tags (not statuses) to the backpack item
+		if (this.document.type === "hero" && !isStatus) {
+			const backpack = this.document.items.find((i) => i.type === "backpack");
+			if (backpack) {
+				await backpack.createEmbeddedDocuments("ActiveEffect", [
+					{ ...storyTagEffect({ name: game.i18n.localize("LITM.Terms.tag") }), transfer: true },
+				]);
+				this._notifyStoryTags();
+				return;
+			}
 		}
 
 		const localizedName = isStatus
 			? game.i18n.localize("LITM.Terms.status")
 			: game.i18n.localize("LITM.Terms.tag");
 		await this.document.createEmbeddedDocuments("ActiveEffect", [
-			{
-				name: localizedName,
-				type: isStatus ? "status_card" : "story_tag",
-				system: isStatus
-					? { tiers: [false, false, false, false, false, false] }
-					: { isSingleUse: false, isScratched: false },
-			},
+			isStatus
+				? statusCardEffect({ name: localizedName })
+				: storyTagEffect({ name: localizedName }),
 		]);
 
 		this._notifyStoryTags();
@@ -586,23 +535,13 @@ export class LitmActorSheet extends LitmSheetMixin(
 	 */
 	static async _onRemoveEffect(_event, target) {
 		const effectId = target.dataset.id;
-		const effect = this.document.effects.get(effectId);
+		let effect = this.document.effects.get(effectId);
+		if (!effect && this.document.type === "hero") {
+			const backpack = this.document.items.find((i) => i.type === "backpack");
+			effect = backpack?.effects.get(effectId);
+		}
 		await effect?.delete();
 
-		this._notifyStoryTags();
-	}
-
-	/**
-	 * Toggle the hidden state of a story tag / status card effect.
-	 * @param {Event} _event
-	 * @param {HTMLElement} target
-	 * @protected
-	 */
-	static async _onToggleEffectVisibility(_event, target) {
-		const effectId = target.dataset.id;
-		const effect = this.document.effects.get(effectId);
-		if (!effect) return;
-		await effect.update({ "system.isHidden": !effect.system.isHidden });
 		this._notifyStoryTags();
 	}
 
@@ -690,5 +629,79 @@ export class LitmActorSheet extends LitmSheetMixin(
 			? LitmActorSheet.MODES.PLAY
 			: LitmActorSheet.MODES.EDIT;
 		return this.render(true);
+	}
+
+	/**
+	 * Resolve an item from a DOM element. Subclasses may override to handle
+	 * cross-actor lookups (e.g. fellowship items displayed on a hero sheet).
+	 * @param {HTMLElement} element
+	 * @returns {Item|null}
+	 */
+	resolveItem(element) {
+		const itemEl =
+			element.closest("[data-item-id]") ?? element.closest(".item");
+		const itemId = itemEl?.dataset?.itemId ?? itemEl?.dataset?.id;
+		if (!itemId) return null;
+		return this.document.items.get(itemId) ?? null;
+	}
+
+	/**
+	 * Adjust a progress track (theme track, promise, status tier).
+	 * Shared by hero and fellowship sheets.
+	 * @param {Event} _event
+	 * @param {HTMLElement} target
+	 * @protected
+	 */
+	static async _onAdjustProgress(_event, target) {
+		const button = target.closest("button") ?? target;
+		const boxIndex = parseInt(button.dataset.index, 10);
+		if (Number.isNaN(boxIndex)) return;
+
+		const container = button.closest(
+			".progress-display, .promise-display, .progress-buttons, .progress-boxes",
+		);
+		if (!container) return;
+		const attrib = container.dataset.id;
+		if (!attrib) return;
+
+		// Handle effect tiers (story tags / status cards)
+		const effectId = button.dataset.effectId;
+		if (effectId) {
+			const effect = this.document.effects.get(effectId);
+			if (!effect) return;
+			const currentTiers = foundry.utils.getProperty(effect, "system.tiers");
+			if (!Array.isArray(currentTiers)) return;
+			const isStatus = effect.type === "status_card";
+			const newTiers = isStatus
+				? currentTiers.map((v, idx) => (idx === boxIndex ? !v : v))
+				: currentTiers.map((_, idx) => idx <= boxIndex);
+			await effect.update({ "system.tiers": newTiers });
+			return;
+		}
+
+		const item = this.resolveItem(button);
+		const doc = item || this.document;
+		const currentValue = foundry.utils.getProperty(doc, attrib);
+		const newValue = boxIndex < currentValue ? boxIndex : boxIndex + 1;
+
+		const updateData = {};
+		foundry.utils.setProperty(updateData, attrib, newValue);
+		await doc.update(updateData);
+
+		// Celebrate when a track reaches its maximum
+		const trackInfo = detectTrackCompletion(
+			attrib,
+			newValue,
+			doc,
+			this.document,
+		);
+		if (trackInfo) {
+			await foundry.documents.ChatMessage.create({
+				content: buildTrackCompleteContent(trackInfo),
+				speaker: foundry.documents.ChatMessage.getSpeaker({
+					actor: this.document,
+				}),
+			});
+		}
 	}
 }

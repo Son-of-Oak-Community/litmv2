@@ -1,4 +1,6 @@
-export class ChallengeData extends foundry.abstract.TypeDataModel {
+import { EffectTagsMixin } from "../effect-tags-mixin.js";
+
+export class ChallengeData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	static defineSchema() {
 		const fields = foundry.data.fields;
 		return {
@@ -49,6 +51,9 @@ export class ChallengeData extends foundry.abstract.TypeDataModel {
 						: 0;
 					if (limit.max === 0) limit.value = 0;
 				}
+				if (!limit.id) {
+					limit.id = foundry.utils.randomID();
+				}
 			}
 		}
 		return super.migrateData(source);
@@ -56,6 +61,7 @@ export class ChallengeData extends foundry.abstract.TypeDataModel {
 
 	/** @override */
 	prepareDerivedData() {
+		super.prepareDerivedData();
 		const addons = this.parent.items.filter((i) => i.type === "addon");
 
 		// Derived rating: base + sum of bonuses, clamped to 5

@@ -1,5 +1,6 @@
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { TagStringSyncMixin } from "../../sheets/tag-string-sync-mixin.js";
+import { syncAddonEffects } from "../../system/hooks/item-hooks.js";
 import { confirmDelete, enrichHTML } from "../../utils.js";
 
 /**
@@ -189,31 +190,6 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 	}
 
 	/* -------------------------------------------- */
-	/*  First Render (Challenge-specific)           */
-	/* -------------------------------------------- */
-
-	/** @override */
-	async _onFirstRender(context, options) {
-		await super._onFirstRender(context, options);
-
-		// Backfill stable IDs on legacy limits that don't have them
-		const limitsNeedingIds = this.system.limits.filter((l) => !l.id);
-		if (limitsNeedingIds.length && this.document.isOwner) {
-			const limits = this.system.limits.map((l) =>
-				l.id ? l : { ...l, id: foundry.utils.randomID() }
-			);
-			this.document.update({ "system.limits": limits });
-		}
-
-		// Watch for addon item updates to re-sync their effects
-		this._addonUpdateHookId = Hooks.on("updateItem", (item) => {
-			if (item.parent !== this.document) return;
-			if (item.type !== "addon") return;
-			this._resyncAddonEffects(item);
-		});
-	}
-
-	/* -------------------------------------------- */
 	/*  Event Handlers & Actions                    */
 	/* -------------------------------------------- */
 
@@ -224,18 +200,6 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 
 		// Notify story tags of effect changes
 		this._notifyStoryTags();
-
-		const limits = foundry.utils.getProperty(submitData, "system.limits");
-		if (Array.isArray(limits)) {
-			limits.forEach((limit) => {
-				limit.max = Math.max(0, Math.trunc(Number(limit.max) || 0));
-				if (limit.max > 0) {
-					limit.value = Math.min(Math.max(0, limit.value), limit.max);
-				} else {
-					limit.value = 0;
-				}
-			});
-		}
 
 		// Normalize might entries if they exist
 		const might = foundry.utils.getProperty(submitData, "system.might");
@@ -383,64 +347,9 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 			addonData,
 		]);
 
-		// Sync addon tags to ActiveEffects on the parent actor
 		if (created?.system.tags) {
-			await this._syncAddonEffects(created);
+			await syncAddonEffects(this.document, created);
+			this._notifyStoryTags();
 		}
-	}
-
-	/**
-	 * Re-sync ActiveEffects from an addon's tag string after the addon is updated.
-	 * Deletes old effects for this addon, then creates new ones from the current tags.
-	 * @param {Item} addonItem  The updated addon item
-	 * @returns {Promise<void>}
-	 * @protected
-	 */
-	async _resyncAddonEffects(addonItem) {
-		// Delete existing effects from this addon
-		const toDelete = this.document.effects
-			.filter((e) => e.getFlag("litmv2", "addonId") === addonItem.id)
-			.map((e) => e.id);
-		if (toDelete.length) {
-			await this.document.deleteEmbeddedDocuments("ActiveEffect", toDelete);
-		}
-
-		// Create new effects from current tags
-		await this._syncAddonEffects(addonItem);
-	}
-
-	/** @override */
-	_onClose(options) {
-		if (this._addonUpdateHookId !== undefined) {
-			Hooks.off("updateItem", this._addonUpdateHookId);
-		}
-		return super._onClose(options);
-	}
-
-	async _syncAddonEffects(addonItem) {
-		const tags = addonItem.system.tags;
-		if (!tags) return;
-
-		const matches = Array.from(tags.matchAll(CONFIG.litmv2.tagStringRe));
-		if (!matches.length) return;
-
-		const effects = matches.map(([_, name, separator, value]) => {
-			const isStatus = separator === "-";
-			return {
-				name,
-				type: isStatus ? "status_card" : "story_tag",
-				system: isStatus
-					? {
-						tiers: Array(6)
-							.fill(false)
-							.map((_, i) => i + 1 === Number(value)),
-					}
-					: { isScratched: false, isSingleUse: false },
-				flags: { litmv2: { addonId: addonItem.id } },
-			};
-		});
-
-		await this.document.createEmbeddedDocuments("ActiveEffect", effects);
-		this._notifyStoryTags();
 	}
 }

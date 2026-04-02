@@ -191,7 +191,7 @@ export class SuperCheckbox extends AdoptedStyleSheetMixin(HTMLElement) {
 		if (this.disabled) return;
 		this.#state = (this.#state + 1) % this.#states.length;
 		this.#updateState();
-		this.dispatchEvent(new Event("change"));
+		this.dispatchEvent(new Event("change", { bubbles: true }));
 	}
 
 	#syncDisabledState() {

@@ -1,4 +1,4 @@
-import { info } from "../logger.js";
+import { error, info } from "../logger.js";
 import { localize as t } from "../utils.js";
 import { LitmSettings } from "./settings.js";
 
@@ -15,60 +15,83 @@ import { LitmSettings } from "./settings.js";
  * Example:
  * { version: 1, migrate: async () => { ... } }
  */
+/**
+ * Migrate a single item's legacy tag arrays to ActiveEffects.
+ * @param {Item} item
+ */
+async function _migrateItemTags(item) {
+	if (item.type === "theme" || item.type === "story_theme") {
+		if (item.effects.some((e) => e.type === "theme_tag")) return;
+		const sys = item._source?.system ?? {};
+		const isStory = item.type === "story_theme";
+		const power = isStory
+			? (sys.theme?.powerTags ?? sys.powerTags ?? [])
+			: (sys.powerTags ?? []);
+		const weakness = isStory
+			? (sys.theme?.weaknessTags ?? sys.weaknessTags ?? [])
+			: (sys.weaknessTags ?? []);
+		const effects = [
+			...power.map((t) => ({
+				name: t.name || "", type: "theme_tag",
+				disabled: !(t.isActive ?? false),
+				system: { tagType: "powerTag", question: t.question ?? null,
+					isScratched: t.isScratched ?? false, isSingleUse: t.isSingleUse ?? false },
+			})),
+			...weakness.map((t) => ({
+				name: t.name || "", type: "theme_tag",
+				disabled: !(t.isActive ?? false),
+				system: { tagType: "weaknessTag", question: t.question ?? null,
+					isScratched: t.isScratched ?? false, isSingleUse: t.isSingleUse ?? false },
+			})),
+		];
+		if (effects.length) {
+			await item.createEmbeddedDocuments("ActiveEffect", effects);
+		}
+	}
+
+	if (item.type === "backpack") {
+		if (item.effects.some((e) => e.type === "story_tag")) return;
+		const contents = item._source?.system?.contents ?? [];
+		if (!contents.length) return;
+		await item.createEmbeddedDocuments("ActiveEffect", contents.map((t) => ({
+			name: t.name || "", type: "story_tag", transfer: true,
+			disabled: !(t.isActive ?? true),
+			system: { isScratched: t.isScratched ?? false,
+				isSingleUse: t.isSingleUse ?? false, isHidden: false },
+		})));
+		await item.update({ "system.-=contents": null });
+	}
+}
+
 const MIGRATIONS = [
 	{
 		version: 1,
 		migrate: async () => {
-			// Convert theme/story_theme powerTags & weaknessTags arrays to ActiveEffects
+			// World actors and their embedded items
 			for (const actor of game.actors) {
-				const themeItems = actor.items.filter(
-					(i) => i.type === "theme" || i.type === "story_theme",
-				);
-				for (const item of themeItems) {
-					// Skip if already migrated
-					if (item.effects.some((e) => e.type === "theme_tag")) continue;
+				for (const item of actor.items) {
+					try { await _migrateItemTags(item); }
+					catch (err) { error(`Migration: ${item.uuid}`, err); }
+				}
+			}
 
-					const raw = item.toObject();
-					const isStoryTheme = item.type === "story_theme";
-					const powerTags = isStoryTheme
-						? (raw.system?.theme?.powerTags ?? [])
-						: (raw.system?.powerTags ?? []);
-					const weaknessTags = isStoryTheme
-						? (raw.system?.theme?.weaknessTags ?? [])
-						: (raw.system?.weaknessTags ?? []);
+			// Standalone world items
+			for (const item of game.items) {
+				try { await _migrateItemTags(item); }
+				catch (err) { error(`Migration: ${item.uuid}`, err); }
+			}
 
-					const effectData = [];
-					for (const tag of powerTags) {
-						effectData.push({
-							name: tag.name || "",
-							type: "theme_tag",
-							disabled: !(tag.isActive ?? false),
-							system: {
-								tagType: "powerTag",
-								question: tag.question ?? null,
-								isScratched: tag.isScratched ?? false,
-								isSingleUse: tag.isSingleUse ?? false,
-							},
-							flags: { litmv2: { tagId: tag.id } },
-						});
-					}
-					for (const tag of weaknessTags) {
-						effectData.push({
-							name: tag.name || "",
-							type: "theme_tag",
-							disabled: !(tag.isActive ?? false),
-							system: {
-								tagType: "weaknessTag",
-								question: tag.question ?? null,
-								isScratched: tag.isScratched ?? false,
-								isSingleUse: tag.isSingleUse ?? false,
-							},
-							flags: { litmv2: { tagId: tag.id } },
-						});
-					}
-
-					if (effectData.length) {
-						await item.createEmbeddedDocuments("ActiveEffect", effectData);
+			// Compendium packs that use this system (system's own + content modules)
+			for (const pack of game.packs.filter((p) =>
+				p.metadata.system === "litmv2" &&
+				(p.documentName === "Actor" || p.documentName === "Item")
+			)) {
+				const docs = await pack.getDocuments();
+				for (const doc of docs) {
+					const items = doc.documentName === "Actor" ? doc.items : [doc];
+					for (const item of items) {
+						try { await _migrateItemTags(item); }
+						catch (err) { error(`Migration: ${item.uuid}`, err); }
 					}
 				}
 			}

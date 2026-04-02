@@ -222,6 +222,7 @@
 			"open_fellowship_sheet": "Abrir hoja de Hermandad",
 			"open_fellowship_sheet_hint": "Abre la hoja del actor de Hermandad.",
 			"warn_no_fellowship": "No se encontró ningún actor de Hermandad en este mundo.",
+			"warn_no_backpack": "Este héroe no tiene mochila para recibir etiquetas.",
 			"drag_apply": "Arrastra a Actores o a la ventana de Historia para aplicar",
 			"drop_actors": "Arrastra actores aquí",
 			"edit": "Editar",

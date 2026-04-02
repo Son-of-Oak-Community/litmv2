@@ -1,4 +1,6 @@
-export class JourneyData extends foundry.abstract.TypeDataModel {
+import { EffectTagsMixin } from "../effect-tags-mixin.js";
+
+export class JourneyData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	static defineSchema() {
 		const fields = foundry.data.fields;
 		return {

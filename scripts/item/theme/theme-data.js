@@ -1,21 +1,4 @@
-import { localize as t, titleCase } from "../../utils.js";
-
-/**
- * Map a theme_tag ActiveEffect to a TagData-compatible plain object.
- * @param {ActiveEffect} effect
- * @returns {object}
- */
-function effectToTag(effect) {
-	return {
-		id: effect.id,
-		name: effect.name,
-		question: effect.system.question ?? null,
-		isActive: !effect.disabled,
-		isScratched: effect.system.isScratched,
-		isSingleUse: effect.system.isSingleUse,
-		type: effect.system.tagType,
-	};
-}
+import { effectToTag, levelIcon, localize as t, titleCase } from "../../utils.js";
 
 export class ThemeData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
@@ -34,7 +17,7 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 				validate: (level) =>
 					Object.keys(CONFIG.litmv2.theme_levels).includes(level),
 			}),
-			isScratched: new fields.BooleanField(),
+			isScratched: new fields.BooleanField({ initial: false }),
 			isFellowship: new fields.BooleanField({
 				initial: false,
 			}),
@@ -145,20 +128,12 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 		return this.activatedPowerTags.filter((tag) => !tag.isScratched);
 	}
 
-	get powerTagRatio() {
-		return this.availablePowerTags.length / this.activatedPowerTags.length;
-	}
-
-	get weakness() {
-		return this.weaknessTags;
-	}
-
 	get allTags() {
 		return [...this.weaknessTags, ...this.powerTags, this.themeTag];
 	}
 
 	get levelIcon() {
-		return `systems/litmv2/assets/media/icons/${this.level}.svg`;
+		return levelIcon(this.level);
 	}
 
 	get levels() {

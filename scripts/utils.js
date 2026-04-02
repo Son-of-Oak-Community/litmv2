@@ -1,3 +1,29 @@
+/**
+ * Extract and remove keys matching a prefix from form data, returning a
+ * nested map keyed by document ID. Uses `foundry.utils.setProperty` for
+ * clean nested path handling.
+ * @param {object} submitData  The form data object (mutated: matching keys are deleted)
+ * @param {string} prefix      Key prefix to match, e.g. "effects." or "items."
+ * @returns {Record<string, object>}  Map of `{ [id]: nestedData }`
+ */
+export function parseEmbeddedFormKeys(submitData, prefix) {
+	const map = {};
+	for (const [key, value] of Object.entries(submitData)) {
+		if (!key.startsWith(prefix)) continue;
+		delete submitData[key];
+		const parts = key.split(".");
+		const id = parts[1];
+		const field = parts.slice(2).join(".");
+		map[id] ??= {};
+		foundry.utils.setProperty(map[id], field, value);
+	}
+	return map;
+}
+
+export function levelIcon(level) {
+	return `systems/litmv2/assets/media/icons/${level}.svg`;
+}
+
 export function sleep(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -72,8 +98,120 @@ export function toQuestionOptions(questions = [], skipFirst = 0) {
 	return options;
 }
 
-export function toPlainObject(obj) {
-	return obj?.toObject ? obj.toObject() : { ...obj };
+/**
+ * Map an ActiveEffect (theme_tag or story_tag) to a TagData-compatible plain object.
+ * For theme_tag effects, uses the effect's tagType (powerTag/weaknessTag).
+ * For story_tag effects on items (backpack), returns type "backpack".
+ * @param {ActiveEffect} effect
+ * @param {string} [typeOverride] Explicit tag type; when omitted, inferred from the effect.
+ * @returns {{ id: string, name: string, question: string|null, isActive: boolean, isScratched: boolean, isSingleUse: boolean, type: string }}
+ */
+export function effectToTag(effect) {
+	return {
+		id: effect.id,
+		name: effect.name,
+		question: effect.system?.question ?? null,
+		isActive: !effect.disabled,
+		isScratched: effect.system?.isScratched ?? false,
+		isSingleUse: effect.system?.isSingleUse ?? false,
+		type: effect.type === "story_tag" ? "backpack" : (effect.system?.tagType ?? "powerTag"),
+	};
+}
+
+/**
+ * Build ActiveEffect creation data for a theme_tag effect.
+ * @param {object} options
+ * @param {string} options.name - Tag name
+ * @param {"powerTag"|"weaknessTag"} options.tagType - Power or weakness
+ * @param {boolean} [options.isActive=false] - Whether the tag starts active
+ * @param {string|null} [options.question=null] - Themebook question index
+ * @param {boolean} [options.isScratched=false]
+ * @param {boolean} [options.isSingleUse=false]
+ * @returns {object} Effect creation data
+ */
+export function themeTagEffect({
+	name = "",
+	tagType = "powerTag",
+	isActive = false,
+	question = null,
+	isScratched = false,
+	isSingleUse = false,
+} = {}) {
+	return {
+		name,
+		type: "theme_tag",
+		disabled: !isActive,
+		system: { tagType, question, isScratched, isSingleUse },
+	};
+}
+
+/**
+ * Build ActiveEffect creation data for a story_tag effect.
+ * @param {object} options
+ * @param {string} options.name - Tag name
+ * @param {boolean} [options.isScratched=false]
+ * @param {boolean} [options.isSingleUse=false]
+ * @param {boolean} [options.isHidden=false]
+ * @param {string|null} [options.limitId=null]
+ * @returns {object} Effect creation data
+ */
+export function storyTagEffect({
+	name = "",
+	isScratched = false,
+	isSingleUse = false,
+	isHidden = false,
+	limitId = null,
+} = {}) {
+	return {
+		name,
+		type: "story_tag",
+		system: { isScratched, isSingleUse, isHidden, limitId },
+	};
+}
+
+/**
+ * Build ActiveEffect creation data for a status_card effect.
+ * @param {object} options
+ * @param {string} options.name - Status name
+ * @param {boolean[]} [options.tiers] - 6-element tier array
+ * @param {boolean} [options.isHidden=false]
+ * @param {string|null} [options.limitId=null]
+ * @returns {object} Effect creation data
+ */
+export function statusCardEffect({
+	name = "",
+	tiers = [false, false, false, false, false, false],
+	isHidden = false,
+	limitId = null,
+} = {}) {
+	return {
+		name,
+		type: "status_card",
+		system: { tiers, isHidden, limitId },
+	};
+}
+
+/**
+ * Route effect updates to the correct parent document and batch-apply them.
+ * Effects may live on the actor directly or on embedded items (e.g. backpack).
+ * Builds an id→effect lookup once, then groups updates by parent.
+ * @param {Actor} actor    The actor whose applicable effects to search
+ * @param {object[]} updates  Array of update objects with `_id` keys
+ */
+export async function updateEffectsByParent(actor, updates) {
+	if (!updates.length) return;
+	const effectMap = new Map(
+		[...actor.allApplicableEffects()].map((e) => [e.id, e]),
+	);
+	const byParent = new Map();
+	for (const u of updates) {
+		const parent = effectMap.get(u._id)?.parent ?? actor;
+		if (!byParent.has(parent)) byParent.set(parent, []);
+		byParent.get(parent).push(u);
+	}
+	for (const [parent, parentUpdates] of byParent) {
+		await parent.updateEmbeddedDocuments("ActiveEffect", parentUpdates);
+	}
 }
 
 /**
@@ -88,6 +226,7 @@ export function toPlainObject(obj) {
  *                                             the value to include. If omitted, entries are returned as-is.
  * @returns {Promise<any[]>}
  */
+
 export async function queryItemsFromPacks({
 	type,
 	filter,

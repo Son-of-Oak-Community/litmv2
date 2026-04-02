@@ -1,27 +1,10 @@
-import { localize as t, titleCase } from "../../utils.js";
-
-/**
- * Map a theme_tag ActiveEffect to a TagData-compatible plain object.
- * @param {ActiveEffect} effect
- * @returns {object}
- */
-function effectToTag(effect) {
-	return {
-		id: effect.id,
-		name: effect.name,
-		question: effect.system.question ?? null,
-		isActive: !effect.disabled,
-		isScratched: effect.system.isScratched,
-		isSingleUse: effect.system.isSingleUse,
-		type: effect.system.tagType,
-	};
-}
+import { effectToTag, levelIcon, localize as t, titleCase } from "../../utils.js";
 
 export class StoryThemeData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
 		return {
-			isScratched: new fields.BooleanField(),
+			isScratched: new fields.BooleanField({ initial: false }),
 			description: new fields.HTMLField({
 				initial: "",
 			}),
@@ -82,7 +65,7 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 	}
 
 	get levelIcon() {
-		return `systems/litmv2/assets/media/icons/${this.level}.svg`;
+		return levelIcon(this.level);
 	}
 
 	get levels() {
@@ -91,10 +74,6 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 			acc[level] = t(`LITM.Terms.${level}`);
 			return acc;
 		}, {});
-	}
-
-	get weakness() {
-		return this.weaknessTags;
 	}
 
 	get allTags() {

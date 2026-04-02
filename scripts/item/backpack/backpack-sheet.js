@@ -1,5 +1,5 @@
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
-import { confirmDelete, localize as t } from "../../utils.js";
+import { confirmDelete, localize as t, storyTagEffect } from "../../utils.js";
 
 /**
  * Backpack sheet for Legend in the Mist
@@ -17,11 +17,11 @@ export class BackpackSheet extends LitmItemSheet {
 		actions: {
 			addTag: BackpackSheet.#onAddTag,
 			removeTag: BackpackSheet.#onRemoveTag,
-			toggleActive: BackpackSheet.#onToggleActive,
 		},
 		form: {
 			submitOnChange: true,
 			closeOnSubmit: false,
+			handler: BackpackSheet._onSubmitFormWithEffects,
 		},
 		window: {
 			icon: "fa-solid fa-bag-shopping",
@@ -46,7 +46,7 @@ export class BackpackSheet extends LitmItemSheet {
 		const context = await super._prepareContext(options);
 
 		return foundry.utils.mergeObject(context, {
-			backpack: this.system.contents,
+			tags: this.system.tags,
 			name: this.document.name,
 		});
 	}
@@ -62,17 +62,9 @@ export class BackpackSheet extends LitmItemSheet {
 	 * @private
 	 */
 	static async #onAddTag(_event, _target) {
-		const item = {
-			name: t("LITM.Ui.name_tag"),
-			isActive: true,
-			isScratched: false,
-			isSingleUse: false,
-			type: "backpack",
-			id: foundry.utils.randomID(),
-		};
-
-		const contents = [...this.system.contents, item];
-		await this.document.update({ "system.contents": contents });
+		await this.document.createEmbeddedDocuments("ActiveEffect", [
+			{ ...storyTagEffect({ name: t("LITM.Ui.name_tag") }), transfer: true },
+		]);
 	}
 
 	/**
@@ -83,22 +75,8 @@ export class BackpackSheet extends LitmItemSheet {
 	 */
 	static async #onRemoveTag(_event, target) {
 		if (!(await confirmDelete("LITM.Terms.tag"))) return;
-
-		const index = Number(target.dataset.index);
-		const contents = this.system.contents.filter((_, i) => i !== index);
-		await this.document.update({ "system.contents": contents });
-	}
-
-	/**
-	 * Toggle a tag's active state
-	 * @param {Event} event        The triggering event
-	 * @param {HTMLElement} target The target element
-	 * @private
-	 */
-	static async #onToggleActive(_event, target) {
-		const index = Number(target.dataset.index);
-		const contents = [...this.system.contents];
-		contents[index].isActive = !contents[index].isActive;
-		await this.document.update({ "system.contents": contents });
+		const effectId = target.dataset.effectId;
+		if (!effectId) return;
+		await this.document.deleteEmbeddedDocuments("ActiveEffect", [effectId]);
 	}
 }

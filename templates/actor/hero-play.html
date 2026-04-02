@@ -177,9 +177,9 @@
 			</button>
 		</legend>
 
-		{{#if backpack.contents.length}}
+		{{#if backpack.tags.length}}
 		<div class="flexrow gap-sm" style="flex-wrap: wrap;">
-			{{#each backpack.contents as |tag|}} {{#if tag.isActive}}
+			{{#each backpack.tags as |tag|}} {{#if tag.isActive}}
 			<span class="noflex litm-tag {{ifThen tag.isScratched 'scratched' ''}}"
 				{{#if @root.isOwner}}data-action="selectTag" {{/if}} data-tag-type="backpack" data-tag-id="{{tag.id}}" {{#if
 				@root.isOwner}}data-tooltip="{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}" {{/if}} data-text="{{tag.name}}"

@@ -104,43 +104,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	}
 
 	#getScratchedTags(actor) {
-		const tags = [];
-
-		for (const item of actor.items) {
-			if (item.type === "theme" || item.type === "story_theme") {
-				for (const effect of item.effects) {
-					if (effect.type === "theme_tag" && effect.system?.isScratched) {
-						tags.push({
-							id: effect.id,
-							name: effect.name,
-							source: "effect",
-							itemId: item.id,
-						});
-					}
-				}
-			}
-			if (item.type === "backpack") {
-				for (const tag of item.system.contents ?? []) {
-					if (tag.isScratched) {
-						tags.push({
-							id: tag.id,
-							name: tag.name,
-							source: "item",
-							itemId: item.id,
-							field: "contents",
-						});
-					}
-				}
-			}
-		}
-
-		for (const effect of actor.effects) {
-			if (effect.type === "story_tag" && effect.system?.isScratched) {
-				tags.push({ id: effect.id, name: effect.name, source: "effect" });
-			}
-		}
-
-		return tags;
+		return actor.system.scratchedTags ?? [];
 	}
 
 	#getStatusCards(actor) {
@@ -209,41 +173,40 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				this.#updatePower(form);
 			}
 		});
-	}
 
-	_onRender(context, options) {
-		super._onRender(context, options);
-
-		const form = this.element;
-
-		// Checkbox toggles — reveal/hide entry section
-		// Also make the whole card clickable (excluding entries section)
-		form.querySelectorAll(".litm-spend-power__option").forEach((li) => {
-			const checkbox = li.querySelector("[data-option-check]");
-			checkbox.addEventListener("change", () => {
-				this.#toggleEntries(li);
-				this.#updatePower(form);
-			});
-
-			li.addEventListener("click", (event) => {
-				// Ignore clicks inside the entries section (inputs/buttons/chips there)
-				if (event.target.closest(".litm-spend-power__entries")) return;
-				// Ignore clicks on the label — it already toggles the checkbox natively
-				if (event.target.closest("label")) return;
-
-				checkbox.checked = !checkbox.checked;
-				this.#toggleEntries(li);
-				this.#updatePower(form);
-			});
+		// Delegated: checkbox toggles — reveal/hide entry section
+		form.addEventListener("change", (event) => {
+			const checkbox = event.target.closest("[data-option-check]");
+			if (!checkbox) return;
+			const li = checkbox.closest(".litm-spend-power__option");
+			this.#toggleEntries(li);
+			this.#updatePower(form);
 		});
 
-		// Add-entry buttons
-		form.querySelectorAll("[data-action='add-entry']").forEach((btn) => {
-			btn.addEventListener("click", () => {
-				const li = btn.closest(".litm-spend-power__option");
-				this.#addEntry(li);
-				this.#updatePower(form);
-			});
+		// Delegated: make the whole option card clickable (excluding entries section and labels)
+		form.addEventListener("click", (event) => {
+			const li = event.target.closest(".litm-spend-power__option");
+			if (!li) return;
+			// Ignore clicks inside the entries section (inputs/buttons/chips there)
+			if (event.target.closest(".litm-spend-power__entries")) return;
+			// Ignore clicks on the label — it already toggles the checkbox natively
+			if (event.target.closest("label")) return;
+			// Ignore clicks on the checkbox itself — handled by the change listener
+			if (event.target.closest("[data-option-check]")) return;
+
+			const checkbox = li.querySelector("[data-option-check]");
+			checkbox.checked = !checkbox.checked;
+			this.#toggleEntries(li);
+			this.#updatePower(form);
+		});
+
+		// Delegated: add-entry buttons
+		form.addEventListener("click", (event) => {
+			const btn = event.target.closest("[data-action='add-entry']");
+			if (!btn) return;
+			const li = btn.closest(".litm-spend-power__option");
+			this.#addEntry(li);
+			this.#updatePower(form);
 		});
 	}
 
@@ -342,54 +305,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			if (!checkbox.checked) return;
 
 			const cost = Number(li.dataset.cost);
-			const hasTier = li.dataset.hasTier === "true";
-			const entriesSection = li.querySelector(".litm-spend-power__entries");
-			const isPicker = entriesSection && "picker" in entriesSection.dataset;
-			const isCounter = entriesSection && "counter" in entriesSection.dataset;
-			const isStatusPicker =
-				entriesSection && "statusPicker" in entriesSection.dataset;
-
-			if (isStatusPicker) {
-				entriesSection
-					.querySelectorAll(".litm-spend-power__status-item")
-					.forEach((item) => {
-						const count = Number(
-							item.querySelector(".litm-spend-power__counter-value")
-								?.textContent ?? 0,
-						);
-						spent += cost * count;
-					});
-			} else if (isCounter) {
-				const count = Number(
-					entriesSection.querySelector(".litm-spend-power__counter-value")
-						?.textContent ?? 1,
-				);
-				spent += cost * count;
-			} else if (isPicker) {
-				const selected = entriesSection.querySelectorAll(
-					".litm-spend-power__tag-chip.is-selected",
-				);
-				spent += cost * selected.length;
-			} else if (hasTier) {
-				const entries = li.querySelectorAll(".litm-spend-power__entry");
-				if (entries.length === 0) {
-					spent += cost;
-				} else {
-					entries.forEach((entry) => {
-						const tier = Math.max(
-							Number(
-								entry.querySelector(".litm-spend-power__entry-tier")?.value ??
-									1,
-							),
-							1,
-						);
-						spent += cost * tier;
-					});
-				}
-			} else {
-				const entries = li.querySelectorAll(".litm-spend-power__entry");
-				spent += cost * Math.max(entries.length, 1);
-			}
+			spent += this.#calculateOptionCost(li, cost);
 		});
 
 		const remainingEl = form.querySelector(
@@ -403,6 +319,77 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		remainingEl?.classList.toggle("is-over-budget", overBudget);
 		const submitBtn = form.querySelector("[type='submit']");
 		if (submitBtn) submitBtn.disabled = overBudget || spent === 0;
+	}
+
+	/**
+	 * Determine the option type from its DOM structure.
+	 * @param {HTMLElement} li  The option list item
+	 * @returns {{ type: string, entriesSection: HTMLElement|null, hasTier: boolean }}
+	 */
+	static #getOptionType(li) {
+		const entriesSection = li.querySelector(".litm-spend-power__entries");
+		const hasTier = li.dataset.hasTier === "true";
+		if (entriesSection && "statusPicker" in entriesSection.dataset)
+			return { type: "statusPicker", entriesSection, hasTier };
+		if (entriesSection && "counter" in entriesSection.dataset)
+			return { type: "counter", entriesSection, hasTier };
+		if (entriesSection && "picker" in entriesSection.dataset)
+			return { type: "picker", entriesSection, hasTier };
+		return { type: "default", entriesSection, hasTier };
+	}
+
+	/**
+	 * Calculate the power cost for a single checked option.
+	 * @param {HTMLElement} li   The option list item
+	 * @param {number} cost      Base cost per unit
+	 * @returns {number}
+	 */
+	#calculateOptionCost(li, cost) {
+		const { type, entriesSection, hasTier } = SpendPowerApp.#getOptionType(li);
+		switch (type) {
+			case "statusPicker": {
+				let total = 0;
+				entriesSection
+					.querySelectorAll(".litm-spend-power__status-item")
+					.forEach((item) => {
+						const count = Number(
+							item.querySelector(".litm-spend-power__counter-value")
+								?.textContent ?? 0,
+						);
+						total += cost * count;
+					});
+				return total;
+			}
+			case "counter": {
+				const count = Number(
+					entriesSection.querySelector(".litm-spend-power__counter-value")
+						?.textContent ?? 1,
+				);
+				return cost * count;
+			}
+			case "picker": {
+				const selected = entriesSection.querySelectorAll(
+					".litm-spend-power__tag-chip.is-selected",
+				);
+				return cost * selected.length;
+			}
+			default: {
+				const entries = li.querySelectorAll(".litm-spend-power__entry");
+				if (entries.length === 0) return cost;
+				if (!hasTier) return cost * entries.length;
+				let total = 0;
+				entries.forEach((entry) => {
+					const tier = Math.max(
+						Number(
+							entry.querySelector(".litm-spend-power__entry-tier")?.value ?? 1,
+						),
+						1,
+					);
+					total += cost * tier;
+				});
+				return total;
+			}
+		}
 	}
 
 	static #chatCard({ actor, action, body, power }) {
@@ -436,15 +423,10 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			const option = this.spendingOptions.find((o) => o.id === optionId);
 			if (!option) continue;
 
-			const hasTier = li.dataset.hasTier === "true";
-			const entriesSection = li.querySelector(".litm-spend-power__entries");
-			const isPicker = entriesSection && "picker" in entriesSection.dataset;
-			const isCounter = entriesSection && "counter" in entriesSection.dataset;
-			const isStatusPicker =
-				entriesSection && "statusPicker" in entriesSection.dataset;
+			const { type, entriesSection, hasTier } = SpendPowerApp.#getOptionType(li);
 
 			// Status picker (reduce status) — each status has its own tier counter
-			if (isStatusPicker) {
+			if (type === "statusPicker") {
 				const reductions = [
 					...entriesSection.querySelectorAll(".litm-spend-power__status-item"),
 				]
@@ -498,7 +480,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			}
 
 			// Counter options (e.g. discover detail) — just a count, no named entries
-			if (isCounter) {
+			if (type === "counter") {
 				const count = Number(
 					entriesSection.querySelector(".litm-spend-power__counter-value")
 						?.textContent ?? 1,
@@ -522,7 +504,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			}
 
 			// Scratched tag picker — unscratch the selected tags
-			if (isPicker) {
+			if (type === "picker") {
 				const selectedChips = [
 					...entriesSection.querySelectorAll(
 						".litm-spend-power__tag-chip.is-selected",
@@ -535,27 +517,14 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 
 				const names = [];
 				for (const chip of selectedChips) {
-					const { tagId, tagName, source, itemId, field } = chip.dataset;
+					const { tagId, tagName, itemId } = chip.dataset;
 					names.push(tagName);
-					if (source === "effect") {
-						// Try actor-level effects first, then item-level
-						let effect = actor.effects.get(tagId);
-						if (!effect && itemId) {
-							const item = actor.items.get(itemId);
-							effect = item?.effects.get(tagId);
-						}
-						if (effect) await effect.update({ "system.isScratched": false });
-					} else if (source === "item" && itemId && field) {
+					let effect = actor.effects.get(tagId);
+					if (!effect && itemId) {
 						const item = actor.items.get(itemId);
-						if (item) {
-							const tags = [...(item.system[field] ?? [])];
-							const idx = tags.findIndex((tag) => tag.id === tagId);
-							if (idx !== -1) {
-								tags[idx] = { ...tags[idx], isScratched: false };
-								await item.update({ [`system.${field}`]: tags });
-							}
-						}
+						effect = item?.effects.get(tagId);
 					}
+					if (effect) await effect.update({ "system.isScratched": false });
 				}
 
 				await foundry.documents.ChatMessage.create({

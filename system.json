@@ -32,7 +32,8 @@
 		},
 		"ActiveEffect": {
 			"story_tag": {},
-			"status_card": {}
+			"status_card": {},
+			"theme_tag": {}
 		},
 		"Item": {
 			"backpack": {},

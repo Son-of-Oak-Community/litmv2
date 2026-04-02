@@ -13,7 +13,7 @@ export function registerUiHooks() {
 function _iconOnlyHeaderButtons() {
 	// Abstracted function to replace header buttons
 	const replaceHeaderButton = (html, action, icon, label) => {
-		const element = html[0] ?? html;
+		const element = html;
 		const button = element.querySelector(`.${action}`);
 		if (!button) return;
 
@@ -58,7 +58,7 @@ function _iconOnlyHeaderButtons() {
 
 			// Add the document ID link to the header if it's not already there
 			if (hook === "renderActorSheetV2" || hook === "renderItemSheetV2") {
-				const element = html[0] ?? html;
+				const element = html;
 				const link = element.querySelector(".window-title>.document-id-link");
 				const header = element.querySelector(".window-header");
 				if (link && header) header.prepend(link);
@@ -68,12 +68,6 @@ function _iconOnlyHeaderButtons() {
 }
 
 function _replaceLoadSpinner() {
-	Hooks.on("renderPause", (_, html) => {
-		const img = html[0].querySelector("img");
-		if (!img) return;
-		img.src = CONFIG.litmv2.assets.marshal_crest;
-		img.removeAttribute("class");
-	});
 	Hooks.on("renderGamePause", (_, html) => {
 		const img = html.querySelector("img");
 		if (!img) return;
@@ -98,7 +92,7 @@ function _addSceneTagsTool() {
 
 function _listenToContentLinks() {
 	Hooks.on("renderJournalSheet", (_app, html) => {
-		const element = html[0] ?? html;
+		const element = html;
 		element.addEventListener("click", (event) => {
 			const target = event.target.closest(".content-link");
 			if (!target) return;
