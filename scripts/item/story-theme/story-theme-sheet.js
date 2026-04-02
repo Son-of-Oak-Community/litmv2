@@ -1,5 +1,5 @@
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
-import { enrichHTML } from "../../utils.js";
+import { enrichHTML, themeTagEffect } from "../../utils.js";
 
 export class StoryThemeSheet extends LitmItemSheet {
 	static DEFAULT_OPTIONS = {
@@ -16,7 +16,7 @@ export class StoryThemeSheet extends LitmItemSheet {
 		form: {
 			submitOnChange: true,
 			closeOnSubmit: false,
-			handler: StoryThemeSheet._onSubmitForm,
+			handler: StoryThemeSheet._onSubmitFormWithEffects,
 		},
 		window: {
 			icon: "fa-solid fa-book-open",
@@ -59,18 +59,11 @@ export class StoryThemeSheet extends LitmItemSheet {
 	 * @private
 	 */
 	static async #onAddTag(_event, target) {
+		if (!this.document.isOwner) return;
 		const tagType = target.dataset.type; // "powerTag" or "weaknessTag"
-		await this.document.createEmbeddedDocuments("ActiveEffect", [{
-			name: "",
-			type: "theme_tag",
-			disabled: false, // Story theme tags start active
-			system: {
-				tagType,
-				question: null,
-				isScratched: false,
-				isSingleUse: false,
-			},
-		}]);
+		await this.document.createEmbeddedDocuments("ActiveEffect", [
+			themeTagEffect({ tagType, isActive: true }),
+		]);
 	}
 
 	/**
@@ -80,37 +73,11 @@ export class StoryThemeSheet extends LitmItemSheet {
 	 * @private
 	 */
 	static async #onRemoveTag(_event, target) {
+		if (!this.document.isOwner) return;
 		const effectId = target.dataset.effectId;
 		if (!effectId) return;
 		await this.document.deleteEmbeddedDocuments("ActiveEffect", [effectId]);
+		this.document.parent?.sheet?._notifyStoryTags?.();
 	}
 
-	static async _onSubmitForm(_event, _form, formData) {
-		const submitData = formData.object;
-		const effectMap = {};
-
-		for (const [key, value] of Object.entries(submitData)) {
-			if (!key.startsWith("effects.")) continue;
-			delete submitData[key];
-			const parts = key.split(".");
-			const effectId = parts[1];
-			const field = parts.slice(2).join(".");
-			effectMap[effectId] ??= {};
-			foundry.utils.setProperty(effectMap[effectId], field, value);
-		}
-
-		const effectUpdates = [];
-		for (const [id, data] of Object.entries(effectMap)) {
-			const update = { _id: id };
-			if ("name" in data) update.name = data.name;
-			if ("isActive" in data) update.disabled = !data.isActive;
-			if (data.system) update.system = data.system;
-			effectUpdates.push(update);
-		}
-
-		if (effectUpdates.length) {
-			await this.document.updateEmbeddedDocuments("ActiveEffect", effectUpdates);
-		}
-		await this.document.update(submitData);
-	}
 }

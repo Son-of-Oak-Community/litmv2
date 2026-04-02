@@ -21,15 +21,17 @@ function _setupRollDialogHud() {
 		// Clean up stale roll dialog flags before rendering HUD.
 		// No dialog is open on a fresh page load, so clear own flags.
 		// GMs also clean up flags from disconnected users.
+		const unsetPromises = [];
 		for (const actor of game.actors) {
 			const flag = actor.getFlag("litmv2", "rollDialogOwner");
 			if (!flag) continue;
 			const isOwnFlag = flag.ownerId === game.user.id;
 			const isDisconnectedUser = !game.users.get(flag.ownerId)?.active;
 			if (isOwnFlag || (game.user.isGM && isDisconnectedUser)) {
-				await actor.unsetFlag("litmv2", "rollDialogOwner");
+				unsetPromises.push(actor.unsetFlag("litmv2", "rollDialogOwner"));
 			}
 		}
+		await Promise.all(unsetPromises);
 
 		game.litmv2.rollDialogHud.update();
 	});

@@ -1745,18 +1745,20 @@ export class WelcomeOverlay {
 		items.push({
 			name: t("TYPES.Item.backpack"),
 			type: "backpack",
-			system: {
-				contents: backpackTags.map((tag, index) => ({
-					id: foundry.utils.randomID(),
-					name: tag,
-					type: "backpack",
-					isActive:
-						this._appState.mode === "trope"
-							? tag === selectedBackpackTag
-							: index === this._appState.custom.activeBackpackIndex,
+			effects: backpackTags.map((tag, index) => ({
+				name: tag,
+				type: "story_tag",
+				transfer: true,
+				disabled:
+					this._appState.mode === "trope"
+						? tag !== selectedBackpackTag
+						: index !== this._appState.custom.activeBackpackIndex,
+				system: {
 					isScratched: false,
-				})),
-			},
+					isSingleUse: false,
+					isHidden: false,
+				},
+			})),
 		});
 
 		const actorData = {

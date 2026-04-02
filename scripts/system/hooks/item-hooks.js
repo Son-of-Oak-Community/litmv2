@@ -1,10 +1,9 @@
-import { error } from "../../logger.js";
+import { levelIcon } from "../../utils.js";
 
 export function registerItemHooks() {
 	_prepareThemeOnCreate();
 	_syncThemeImageOnLevelChange();
-	_safeUpdateItemSheet();
-	_syncBackpackOnUpdate();
+	_syncAddonEffectsOnUpdate();
 }
 
 function _prepareThemeOnCreate() {
@@ -18,12 +17,12 @@ function _prepareThemeOnCreate() {
 			case "theme": {
 				const level =
 					data.system?.level ?? Object.keys(CONFIG.litmv2.theme_levels)[0];
-				img = `systems/litmv2/assets/media/icons/${level}.svg`;
+				img = levelIcon(level);
 				break;
 			}
 			case "themebook": {
 				const tbLevel = data.system?.theme_level ?? "origin";
-				img = `systems/litmv2/assets/media/icons/${tbLevel}.svg`;
+				img = levelIcon(tbLevel);
 				break;
 			}
 			case "addon":
@@ -50,60 +49,69 @@ function _syncThemeImageOnLevelChange() {
 		if (item.type === "theme") {
 			const newLevel = data.system?.level ?? data["system.level"];
 			if (newLevel) {
-				data.img = `systems/litmv2/assets/media/icons/${newLevel}.svg`;
+				data.img = levelIcon(newLevel);
 			}
 		} else if (item.type === "themebook") {
 			const newLevel = data.system?.theme_level ?? data["system.theme_level"];
 			if (newLevel) {
-				data.img = `systems/litmv2/assets/media/icons/${newLevel}.svg`;
+				data.img = levelIcon(newLevel);
 			}
 		}
 	});
 }
 
-/**
- * When a backpack item is updated, re-sync its contents → effects
- * and notify the story tag sidebar.
- */
-function _syncBackpackOnUpdate() {
-	Hooks.on("updateItem", (item, changes) => {
-		if (item.type !== "backpack") return;
-		if (!changes.system?.contents) return;
+function _syncAddonEffectsOnUpdate() {
+	Hooks.on("updateItem", (item) => {
+		if (item.type !== "addon") return;
 		const actor = item.parent;
-		if (actor?.type !== "hero") return;
-		const sheet = actor.sheet;
-		if (!sheet || sheet._syncing) return;
-		sheet._syncContentsToEffects();
+		if (!actor || actor.documentName !== "Actor") return;
+		resyncAddonEffects(actor, item);
 	});
 }
 
-function _safeUpdateItemSheet() {
-	Hooks.on("preUpdateItem", (_, data) => {
-		function getArray(data) {
-			return Array.isArray(data) ? data : Object.values(data);
-		}
+/**
+ * Parse an addon item's tag string and create matching ActiveEffects on the parent actor.
+ * Each effect is flagged with the addon's ID for later cleanup.
+ * @param {Actor} actor       The parent actor
+ * @param {Item} addonItem    The addon item whose tags to sync
+ */
+export async function syncAddonEffects(actor, addonItem) {
+	const tags = addonItem.system.tags;
+	if (!tags) return;
 
-		const { schema: tagSchema } = game.litmv2.data.TagData;
-		const { system = {} } = data;
+	const matches = Array.from(tags.matchAll(CONFIG.litmv2.tagStringRe));
+	if (!matches.length) return;
 
-		const { powerTags = [], weaknessTags = [], contents = [] } = system;
-		const toValidate = [
-			...getArray(powerTags),
-			...getArray(weaknessTags),
-			...getArray(contents),
-		];
-		if (!toValidate.length) return;
-
-		const validationErrors = toValidate
-			.map((item) => tagSchema.validate(item, { strict: true, partial: false }))
-			.filter(Boolean);
-
-		if (validationErrors.length) {
-			error("Validation errors", validationErrors);
-			ui.notifications.error("LITM.Ui.error_validating_item", {
-				localize: true,
-			});
-			return false;
-		}
+	const effects = matches.map(([_, name, separator, value]) => {
+		const isStatus = separator === "-";
+		return {
+			name,
+			type: isStatus ? "status_card" : "story_tag",
+			system: isStatus
+				? {
+					tiers: Array(6)
+						.fill(false)
+						.map((_, i) => i + 1 === Number(value)),
+				}
+				: { isScratched: false, isSingleUse: false },
+			flags: { litmv2: { addonId: addonItem.id } },
+		};
 	});
+
+	await actor.createEmbeddedDocuments("ActiveEffect", effects);
+}
+
+/**
+ * Delete existing ActiveEffects from an addon, then recreate from its current tags.
+ * @param {Actor} actor       The parent actor
+ * @param {Item} addonItem    The updated addon item
+ */
+export async function resyncAddonEffects(actor, addonItem) {
+	const toDelete = actor.effects
+		.filter((e) => e.getFlag("litmv2", "addonId") === addonItem.id)
+		.map((e) => e.id);
+	if (toDelete.length) {
+		await actor.deleteEmbeddedDocuments("ActiveEffect", toDelete);
+	}
+	await syncAddonEffects(actor, addonItem);
 }

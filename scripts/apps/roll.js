@@ -154,7 +154,7 @@ export class LitmRoll extends foundry.dice.Roll {
 
 		const chatData = {
 			actor: this.actor,
-			formula: isPrivate ? "???" : this._formula.replace(/\s\+0/, ""),
+			formula: isPrivate ? "???" : this.formula.replace(/\s\+0/, ""),
 			flavor: isPrivate ? null : this.flavor,
 			outcome: isPrivate ? "???" : this.outcome,
 			power: isPrivate ? "???" : this.power,
@@ -173,8 +173,7 @@ export class LitmRoll extends foundry.dice.Roll {
 			canSpendPower:
 				this.litm.type === "tracked" &&
 				(this.outcome.label === "success" ||
-					this.outcome.label === "snc" ||
-					this.outcome.label === "consequences") &&
+					this.outcome.label === "snc") &&
 				this.power > 0,
 			canCompleteSacrifice:
 				this.litm.type === "sacrifice" &&
@@ -196,11 +195,88 @@ export class LitmRoll extends foundry.dice.Roll {
 		);
 	}
 
+	static calculatePower(tags) {
+		const scratchedTags = tags.scratchedTags ?? [];
+		const scratchedValue = scratchedTags.length * 3;
+
+		const powerValue = tags.powerTags.length;
+
+		const weaknessValue = tags.weaknessTags.length;
+
+		const positiveStatusValue = tags.positiveStatuses.reduce(
+			(max, t) => Math.max(max, Number.parseInt(t.value, 10) || 0),
+			0,
+		);
+
+		const negativeStatusValue = tags.negativeStatuses.reduce(
+			(max, t) => Math.max(max, Number.parseInt(t.value, 10) || 0),
+			0,
+		);
+
+		const modifier = Number(tags.modifier) || 0;
+
+		const mightOffsets = {
+			equal: 0,
+			favored: 3,
+			extremely_favored: 6,
+			imperiled: -3,
+			extremely_imperiled: -6,
+		};
+		const mightOffset = mightOffsets[tags.might] || 0;
+
+		const totalPower =
+			scratchedValue +
+			powerValue +
+			positiveStatusValue -
+			weaknessValue -
+			negativeStatusValue +
+			modifier +
+			mightOffset;
+
+		return {
+			scratchedValue,
+			scratchedTags,
+			powerValue,
+			weaknessValue,
+			positiveStatusValue,
+			negativeStatusValue,
+			totalPower,
+			modifier,
+			mightOffset,
+		};
+	}
+
+	static filterTags(tags) {
+		const scratchedTags = tags.filter(
+			(t) => t.state === "scratched" || t.state === "burned",
+		);
+		const powerTags = tags.filter(
+			(t) => t.type !== "status" && t.state === "positive",
+		);
+		const weaknessTags = tags.filter(
+			(t) => t.type !== "status" && t.state === "negative",
+		);
+		const positiveStatuses = tags.filter(
+			(t) => t.type === "status" && t.state === "positive",
+		);
+		const negativeStatuses = tags.filter(
+			(t) => t.type === "status" && t.state === "negative",
+		);
+
+		return {
+			scratchedTags,
+			powerTags,
+			weaknessTags,
+			positiveStatuses,
+			negativeStatuses,
+		};
+	}
+
 	getTooltipData() {
 		const { label: outcome } = this.outcome;
 		return {
 			mitigate: this.litm.type === "mitigate" && outcome === "success",
-			scratchedTags: this.litm.scratchedTags ?? this.litm.burnedTags ?? [],
+			scratchedTags: this.litm.scratchedTags ?? [],
 			powerTags: this.litm.powerTags,
 			weaknessTags: this.litm.weaknessTags,
 			positiveStatuses: this.litm.positiveStatuses,

@@ -1,4 +1,4 @@
-import { findThemebookByName, toQuestionOptions } from "../utils.js";
+import { findThemebookByName, themeTagEffect, toQuestionOptions } from "../utils.js";
 
 export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
@@ -248,17 +248,9 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		const name = input?.value?.trim() || "";
 		if (!name) return;
 
-		await theme.createEmbeddedDocuments("ActiveEffect", [{
-			name,
-			type: "theme_tag",
-			disabled: false,
-			system: {
-				tagType: "powerTag",
-				question,
-				isScratched: false,
-				isSingleUse: false,
-			},
-		}]);
+		await theme.createEmbeddedDocuments("ActiveEffect", [
+			themeTagEffect({ name, tagType: "powerTag", isActive: true, question }),
+		]);
 		await ThemeAdvancementApp.#spendImprove(theme, {});
 		this.close();
 	}
@@ -275,17 +267,9 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		const name = input?.value?.trim() || "";
 		if (!name) return;
 
-		await theme.createEmbeddedDocuments("ActiveEffect", [{
-			name,
-			type: "theme_tag",
-			disabled: false,
-			system: {
-				tagType: "weaknessTag",
-				question,
-				isScratched: false,
-				isSingleUse: false,
-			},
-		}]);
+		await theme.createEmbeddedDocuments("ActiveEffect", [
+			themeTagEffect({ name, tagType: "weaknessTag", isActive: true, question }),
+		]);
 		await ThemeAdvancementApp.#spendImprove(theme, {});
 		this.close();
 	}

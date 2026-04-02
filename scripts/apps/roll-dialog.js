@@ -1,3 +1,4 @@
+import { LitmRoll } from "./roll.js";
 import { Sockets } from "../system/sockets.js";
 import { localize as t } from "../utils.js";
 
@@ -25,7 +26,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			height: 550,
 		},
 		form: {
-			handler: LitmRollDialog.#onSubmit,
+			handler: LitmRollDialog._onSubmit,
 			closeOnSubmit: true,
 		},
 		actions: {
@@ -59,17 +60,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// Separate tags
 		const {
 			scratchedTags,
-			burnedTags,
 			powerTags,
 			weaknessTags,
 			positiveStatuses,
 			negativeStatuses,
-		} = LitmRollDialog.#filterTags(tags);
+		} = LitmRoll.filterTags(tags);
 
 		// Values
 		const {
 			scratchedValue,
-			burnedValue,
 			powerValue,
 			weaknessValue,
 			positiveStatusValue,
@@ -78,7 +77,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			mightOffset,
 		} = game.litmv2.methods.calculatePower({
 			scratchedTags,
-			burnedTags,
 			powerTags,
 			weaknessTags,
 			positiveStatuses,
@@ -97,13 +95,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			typeof CONFIG.litmv2.roll.formula === "function"
 				? CONFIG.litmv2.roll.formula({
 						scratchedTags,
-						burnedTags,
 						powerTags,
 						weaknessTags,
 						positiveStatuses,
 						negativeStatuses,
 						scratchedValue,
-						burnedValue,
 						powerValue,
 						weaknessValue,
 						positiveStatusValue,
@@ -137,7 +133,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			formula,
 			{
 				scratchedValue,
-				burnedValue,
 				powerValue,
 				positiveStatusValue,
 				weaknessValue,
@@ -151,7 +146,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				title,
 				type,
 				scratchedTags,
-				burnedTags,
 				powerTags,
 				weaknessTags,
 				positiveStatuses,
@@ -177,14 +171,14 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 				// Auto-scratch tags used in "scratched" state + single-use tags
 				const actor = game.actors.get(actorId);
-				if (actor?.sheet) {
+				if (actor?.system) {
 					for (const tag of scratchedTags) {
-						await actor.sheet.toggleScratchTag(tag);
+						await actor.system.toggleScratchTag(tag);
 					}
 					const allUsedTags = [...powerTags, ...weaknessTags];
 					for (const tag of allUsedTags) {
 						if (tag.isSingleUse) {
-							await actor.sheet.toggleScratchTag(tag);
+							await actor.system.toggleScratchTag(tag);
 						}
 					}
 					roll.options.isScratched = true;
@@ -194,12 +188,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 						(t) => t.type === "weaknessTag",
 					);
 					for (const tag of realWeaknessTags) {
-						await actor.sheet.gainImprovement(tag);
+						await actor.system.gainImprovement(tag);
 					}
 					roll.options.gainedExp = true;
 
 					if (scratchedTags.length > 0 || realWeaknessTags.length > 0) {
-						await res.update({ rolls: [roll] });
+						await res.update({ rolls: [roll.toJSON()] });
 					}
 				}
 
@@ -210,91 +204,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			});
 	}
 
-	static calculatePower(tags) {
-		const scratchedTags = tags.scratchedTags ?? tags.burnedTags ?? [];
-		const scratchedValue = scratchedTags.length * 3;
 
-		const powerValue = tags.powerTags.length;
 
-		const weaknessValue = tags.weaknessTags.length;
-
-		const positiveStatusValue = tags.positiveStatuses.reduce(
-			(max, t) => Math.max(max, Number.parseInt(t.value, 10) || 0),
-			0,
-		);
-
-		const negativeStatusValue = tags.negativeStatuses.reduce(
-			(max, t) => Math.max(max, Number.parseInt(t.value, 10) || 0),
-			0,
-		);
-
-		const modifier = Number(tags.modifier) || 0;
-
-		const mightOffsets = {
-			equal: 0,
-			favored: 3,
-			extremely_favored: 6,
-			imperiled: -3,
-			extremely_imperiled: -6,
-		};
-		const mightOffset = mightOffsets[tags.might] || 0;
-
-		const totalPower =
-			scratchedValue +
-			powerValue +
-			positiveStatusValue -
-			weaknessValue -
-			negativeStatusValue +
-			modifier +
-			mightOffset;
-
-		return {
-			scratchedValue,
-			burnedValue: scratchedValue,
-			scratchedTags,
-			burnedTags: scratchedTags,
-			powerValue,
-			weaknessValue,
-			positiveStatusValue,
-			negativeStatusValue,
-			totalPower,
-			modifier,
-			mightOffset,
-		};
-	}
-
-	static #filterTags(tags) {
-		const scratchedTags = tags.filter(
-			(t) => t.state === "scratched" || t.state === "burned",
-		);
-		const powerTags = tags.filter(
-			(t) => t.type !== "status" && t.state === "positive",
-		);
-		const weaknessTags = tags.filter(
-			(t) => t.type !== "status" && t.state === "negative",
-		);
-		const positiveStatuses = tags.filter(
-			(t) => t.type === "status" && t.state === "positive",
-		);
-		const negativeStatuses = tags.filter(
-			(t) => t.type === "status" && t.state === "negative",
-		);
-
-		return {
-			scratchedTags,
-			burnedTags: scratchedTags,
-			powerTags,
-			weaknessTags,
-			positiveStatuses,
-			negativeStatuses,
-		};
-	}
-
-	static async #onSubmit(_event, _form, formData) {
-		return await this._onSubmit(_event, _form, formData);
-	}
-
-	async _onSubmit(_event, _form, formData) {
+	static async _onSubmit(_event, _form, formData) {
 		if (!this.isOwner) return;
 		return LitmRollDialog.roll(this.extractRollData(formData));
 	}
@@ -474,8 +386,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	get totalPower() {
 		const state = [...this.tagState, ...this.characterTags];
-		const tags = LitmRollDialog.#filterTags(state);
-		const { totalPower } = LitmRollDialog.calculatePower({
+		const tags = LitmRoll.filterTags(state);
+		const { totalPower } = LitmRoll.calculatePower({
 			...tags,
 			modifier: this.#modifier,
 			might: this.#might,
@@ -823,6 +735,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	_onRender(context, options) {
 		super._onRender(context, options);
+		this.#totalPowerEl = null;
+		this.#hedgeRadioEl = null;
 		Hooks.callAll("litm.rollDialogRendered", this.actor, this);
 
 		// Setup modifier change listener
@@ -847,36 +761,33 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			.querySelector("[data-update='might']")
 			?.addEventListener("change", this.#handleMightChange.bind(this));
 
-		// Setup checkbox change listener
-		this.element.querySelectorAll("litm-super-checkbox").forEach((checkbox) => {
-			checkbox.addEventListener("change", this._onTagChange.bind(this));
+		// Delegated listener for checkbox changes and label clicks
+		this.element.addEventListener("change", (event) => {
+			if (event.target.tagName === "LITM-SUPER-CHECKBOX") {
+				this._onTagChange(event);
+			}
 		});
 
-		// Setup label click listener (for better UX)
-		this.element
-			.querySelectorAll("label.litm--roll-dialog-tag")
-			.forEach((label) => {
-				label.addEventListener("click", (event) => {
-					if (event.target.tagName !== "LITM-SUPER-CHECKBOX") {
-						event.preventDefault();
-						const checkbox = label.querySelector("litm-super-checkbox");
-						if (!checkbox) return;
+		this.element.addEventListener("click", (event) => {
+			const label = event.target.closest("label.litm--roll-dialog-tag");
+			if (!label || event.target.tagName === "LITM-SUPER-CHECKBOX") return;
+			event.preventDefault();
+			const checkbox = label.querySelector("litm-super-checkbox");
+			if (!checkbox) return;
 
-						if (event.shiftKey && !checkbox.disabled) {
-							const tagType = label.dataset.tagType;
-							const canScratch = !["weaknessTag", "status"].includes(tagType);
-							if (canScratch) {
-								const newValue =
-									checkbox.value === "scratched" ? "" : "scratched";
-								checkbox.value = newValue;
-								checkbox.dispatchEvent(new Event("change"));
-								return;
-							}
-						}
-						checkbox.click();
-					}
-				});
-			});
+			if (event.shiftKey && !checkbox.disabled) {
+				const tagType = label.dataset.tagType;
+				const canScratch = !["weaknessTag", "status"].includes(tagType);
+				if (canScratch) {
+					const newValue =
+						checkbox.value === "scratched" ? "" : "scratched";
+					checkbox.value = newValue;
+					checkbox.dispatchEvent(new Event("change"));
+					return;
+				}
+			}
+			checkbox.click();
+		});
 
 		// Setup trade power change listener
 		this.element
@@ -981,7 +892,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	_onTagChange(event) {
-		const target = event.currentTarget;
+		const target = event.target;
 		const { name: id, value } = target;
 		const { type } = target.dataset;
 		const isCharacterTag = [
@@ -1170,13 +1081,14 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	#handleTypeChange(event) {
 		this.type = event.currentTarget.value;
-		// Update active state on toggle bar
-		this.element
-			.querySelectorAll(".litm--roll-type-option")
-			.forEach((label) => {
+		// Update active state on toggle bar — use closest bar to scope the query
+		const bar = event.currentTarget.closest(".litm--roll-type-bar");
+		if (bar) {
+			for (const label of bar.children) {
 				const radio = label.querySelector("input[type='radio']");
-				label.classList.toggle("is-active", radio?.value === this.type);
-			});
+				if (radio) label.classList.toggle("is-active", radio.value === this.type);
+			}
+		}
 		this.#toggleSacrificeMode(this.type === "sacrifice");
 		this.#toggleTradePower(this.type === "tracked");
 		this.#dispatchUpdate();
@@ -1299,41 +1211,40 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#dispatchUpdate();
 	}
 
+	/** @type {HTMLElement|null} Cached by _onRender. */
+	#totalPowerEl = null;
+	/** @type {HTMLInputElement|null} Cached by _onRender. */
+	#hedgeRadioEl = null;
+
 	#updateTotalPower() {
 		if (!this.element) return;
 		const totalPower = this.totalPower;
-		const totalPowerElement = this.element.querySelector(
-			"[data-update='totalPower']",
-		);
-		if (totalPowerElement) {
+		this.#totalPowerEl ??= this.element.querySelector("[data-update='totalPower']");
+		this.#hedgeRadioEl ??= this.element.querySelector("input[name='tradePower'][value='1']");
+
+		if (this.#totalPowerEl) {
 			const trade = this.#tradePower;
 			if (trade) {
 				const rollPower = totalPower + trade;
 				const spendPower = Math.max(totalPower - trade, 1);
-				totalPowerElement.innerHTML = `${totalPower} <span class="litm--trade-annotation">(${t("LITM.Terms.roll")}: ${rollPower >= 0 ? "+" : ""}${rollPower}, ${t("LITM.Ui.spend_power")}: ${spendPower})</span>`;
+				this.#totalPowerEl.innerHTML = `${totalPower} <span class="litm--trade-annotation">(${t("LITM.Terms.roll")}: ${rollPower >= 0 ? "+" : ""}${rollPower}, ${t("LITM.Ui.spend_power")}: ${spendPower})</span>`;
 			} else {
-				totalPowerElement.textContent = totalPower;
+				this.#totalPowerEl.textContent = totalPower;
 			}
 		}
 
-		// Update hedge radio enabled state
-		const hedgeRadio = this.element.querySelector(
-			"input[name='tradePower'][value='1']",
-		);
-		if (hedgeRadio) {
+		if (this.#hedgeRadioEl) {
 			const canHedge = totalPower >= 2;
-			hedgeRadio.disabled = !canHedge;
-			hedgeRadio
+			this.#hedgeRadioEl.disabled = !canHedge;
+			this.#hedgeRadioEl
 				.closest(".litm--roll-type-option")
 				?.classList.toggle("is-disabled", !canHedge);
-			// If hedge is selected but no longer available, reset to none
 			if (!canHedge && this.#tradePower === 1) {
 				this.#tradePower = 0;
 				const noneRadio = this.element.querySelector(
 					"input[name='tradePower'][value='0']",
 				);
 				if (noneRadio) noneRadio.checked = true;
-				// Update active states
 				this.element
 					.querySelectorAll(".litm--trade-power-bar .litm--roll-type-option")
 					.forEach((label) => {
@@ -1347,7 +1258,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	async _createModerationRequest(data) {
 		const id = foundry.utils.randomID();
 		const userId = game.user.id;
-		const tags = LitmRollDialog.#filterTags(data.tags);
+		const tags = LitmRoll.filterTags(data.tags);
 		const { totalPower } = game.litmv2.methods.calculatePower({
 			...tags,
 			modifier: data.modifier,

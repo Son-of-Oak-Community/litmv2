@@ -1,6 +1,8 @@
+import { levelIcon } from "../../utils.js";
+
 export class ThemebookData extends foundry.abstract.TypeDataModel {
 	get levelIcon() {
-		return `systems/litmv2/assets/media/icons/${this.theme_level}.svg`;
+		return levelIcon(this.theme_level);
 	}
 
 	static defineSchema() {

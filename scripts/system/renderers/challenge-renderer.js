@@ -1,4 +1,4 @@
-import { enrichHTML, localize as t } from "../../utils.js";
+import { enrichHTML, levelIcon, localize as t } from "../../utils.js";
 import { renderVignette } from "./vignette-renderer.js";
 
 const RATING_STAR_PATH =
@@ -177,7 +177,7 @@ export async function renderChallenge(actor) {
 
 					const icon = document.createElement("img");
 					icon.classList.add("litm-render--challenge__might-icon");
-					icon.src = `systems/litmv2/assets/media/icons/${entry.level}.svg`;
+					icon.src = levelIcon(entry.level);
 					row.appendChild(icon);
 
 					const desc = document.createElement("span");

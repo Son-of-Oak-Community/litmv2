@@ -1,31 +1,12 @@
-/**
- * Schema for the `changes` array required by Foundry's ActiveEffect contract.
- * Shared by all typed ActiveEffect data models.
- */
-function changesSchema() {
-	const fields = foundry.data.fields;
-	return new fields.ArrayField(
-		new fields.SchemaField({
-			type: new fields.StringField({ required: true, blank: false }),
-			phase: new fields.StringField({ required: true, blank: false }),
-			key: new fields.StringField({ required: true, blank: false }),
-			value: new fields.StringField({ required: true, blank: false }),
-			mode: new fields.NumberField({ integer: true, initial: 2 }),
-			priority: new fields.NumberField(),
-		}),
-		{ initial: [] },
-	);
-}
-
-export class StoryTagData extends foundry.abstract.TypeDataModel {
+export class StoryTagData extends foundry.data.ActiveEffectTypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
 		return {
+			...super.defineSchema(),
 			isSingleUse: new fields.BooleanField({ initial: false }),
 			isScratched: new fields.BooleanField({ initial: false }),
 			isHidden: new fields.BooleanField({ initial: false }),
 			limitId: new fields.StringField({ initial: null, nullable: true }),
-			changes: changesSchema(),
 		};
 	}
 
@@ -34,10 +15,11 @@ export class StoryTagData extends foundry.abstract.TypeDataModel {
 	}
 }
 
-export class ThemeTagData extends foundry.abstract.TypeDataModel {
+export class ThemeTagData extends foundry.data.ActiveEffectTypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
 		return {
+			...super.defineSchema(),
 			tagType: new fields.StringField({
 				required: true,
 				choices: ["powerTag", "weaknessTag"],
@@ -50,7 +32,6 @@ export class ThemeTagData extends foundry.abstract.TypeDataModel {
 			}),
 			isScratched: new fields.BooleanField({ initial: false }),
 			isSingleUse: new fields.BooleanField({ initial: false }),
-			changes: changesSchema(),
 		};
 	}
 
@@ -59,10 +40,11 @@ export class ThemeTagData extends foundry.abstract.TypeDataModel {
 	}
 }
 
-export class StatusCardData extends foundry.abstract.TypeDataModel {
+export class StatusCardData extends foundry.data.ActiveEffectTypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
 		return {
+			...super.defineSchema(),
 			isHidden: new fields.BooleanField({ initial: false }),
 			tiers: new fields.ArrayField(new fields.BooleanField(), {
 				initial: [false, false, false, false, false, false],
@@ -74,7 +56,6 @@ export class StatusCardData extends foundry.abstract.TypeDataModel {
 				},
 			}),
 			limitId: new fields.StringField({ initial: null, nullable: true }),
-			changes: changesSchema(),
 		};
 	}
 

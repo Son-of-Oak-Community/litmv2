@@ -10,6 +10,7 @@ Legend in the Mist is a Foundry Virtual Tabletop (v14 minimum) system for a rust
 
 - `node check-keys.js` — find missing localization keys across language files
 - `node diff.js` — diff localization keys between language files
+- `node scripts/system/build-packs.js` — generate status card source files in `packs/status-effects/_source/`, then compile with `fvtt package pack status-effects`
 - E2E tests: `cd tests/e2e && npx playwright test`
 
 ## Architecture
@@ -18,13 +19,13 @@ Legend in the Mist is a Foundry Virtual Tabletop (v14 minimum) system for a rust
 
 `SuperCheckbox` registers before any hooks fire. The `init` hook then runs in this order:
 
-1. Exposes `game.litmv2` with references to apps (`LitmRollDialog`, `LitmRoll`, `WelcomeOverlay`, `StoryTagApp`, `SpendPowerApp`, `ThemeAdvancementApp`), data constructors (`TagData`, `StatusCardData`, `StoryTagData`), a `fellowship` getter, and `methods.calculatePower`
+1. Exposes `game.litmv2` with references to apps (`LitmRollDialog`, `LitmRoll`, `WelcomeOverlay`, `StoryTagApp`, `SpendPowerApp`, `ThemeAdvancementApp`), data constructors (`TagData`, `StatusCardData`, `StoryTagData`, `ThemeTagData`), a `fellowship` getter, and `methods.calculatePower`
 2. Sets `CONFIG.Actor.dataModels`, `CONFIG.Actor.trackableAttributes.hero`, `CONFIG.Item.documentClass` (`LitmItem`), `CONFIG.Item.dataModels`, `CONFIG.ActiveEffect.dataModels`
 3. Calls `LitmSettings.register()` (must happen before dice — custom dice are gated on a setting)
 4. Conditionally registers `CONFIG.Dice.terms["6"] = DoubleSix` when `LitmSettings.customDice` is enabled; always pushes `LitmRoll` to `CONFIG.Dice.rolls`
 5. Sets `CONFIG.litmv2 = new LitmConfig()`
 6. Replaces the combat tracker sidebar with `StoryTagSidebar` (`CONFIG.ui.combat`)
-7. Unregisters core Foundry sheets and registers all system sheets (4 actor + 4 landscape + 6 item)
+7. Unregisters core Foundry sheets and registers all system sheets (4 actor + 4 landscape + 7 item)
 8. Calls `HandlebarsHelpers.register()`, `HandlebarsPartials.register()`, `Fonts.register()`, `KeyBindings.register()`, `LitmHooks.register()`
 
 Separate hooks handle deferred registration:
@@ -53,8 +54,8 @@ Action handlers are **private static methods** on sheet classes (e.g., `HeroShee
 All data models extend `foundry.abstract.TypeDataModel` and define schemas using `foundry.data.fields`. The shared `TagData` embedded model (used in themes) is accessed via `game.litmv2.data.TagData` after init.
 
 Actor types: `hero`, `journey`, `challenge`, `fellowship`
-Item types: `theme`, `themebook`, `trope`, `backpack`, `story_theme`, `vignette`
-ActiveEffect types: `story_tag`, `status_card`
+Item types: `theme`, `themebook`, `trope`, `backpack`, `story_theme`, `vignette`, `addon`
+ActiveEffect types: `story_tag`, `status_card`, `theme_tag`
 
 ### Template Paths
 
@@ -156,6 +157,31 @@ Foundry's `changeTab()` handles all switching, active-class toggling, and state 
 
 **Gotcha:** `<button>` inside a `<form>` defaults to `type="submit"`. Always use `type="button"` for non-submit buttons in ApplicationV2 apps with `tag: "form"`.
 
+### HeroData Getters (`scripts/actor/hero/hero-data.js`)
+
+`HeroData` provides computed getters for accessing tags and effects. **Always use these instead of manually traversing items/effects** — they handle fellowship inclusion, effect caching, hidden-tag filtering, and consistent data shapes.
+
+- `fellowshipActor` — linked fellowship actor (falls back to singleton)
+- `allTags` — all tags from backpack + all active themes (including fellowship themes)
+- `powerTags` / `weaknessTags` — theme tags split by type
+- `backpack` — story tags on the hero's backpack item
+- `effectTags` — all applicable `story_tag` and `status_card` effects (includes transferred effects from items)
+- `statuses` — status cards formatted for UI (filters hidden for non-GMs)
+- `storyTags` — story tags formatted for UI (filters hidden for non-GMs)
+- `relationshipTags` — relationship tags formatted for the roll dialog
+
+### Custom System Hooks
+
+The system emits hooks that modules and macros can listen to:
+
+- `litm.preRoll` — before a roll is submitted. Return `false` to cancel. Receives `{ actorId, tags, title, type, ... }`.
+- `litm.roll` — after a roll completes. Receives `(roll, chatMessage)`.
+- `litm.rollDialogRendered` — when roll dialog opens. Receives `(actor, dialog)`.
+- `litm.rollDialogClosed` — when roll dialog closes. Receives `(actor)`.
+- `litm.preTagScratched` — before a tag is scratched. Return `false` to cancel. Receives `(actor, tag)`.
+- `litm.tagScratched` — after a tag is scratched. Receives `(actor, tag)`.
+- `litm.themeAdvanced` — after a theme is advanced. Receives `(actor, theme, updateData)`.
+
 ### Hooks Organization
 
 Hooks are registered via `LitmHooks.register()` in `scripts/system/hooks/index.js`, which delegates to domain-specific modules: `actor-hooks.js`, `chat-hooks.js`, `compat-hooks.js`, `fellowship-hooks.js`, `item-hooks.js`, `preloads.js`, `ready-hooks.js`, `ui-hooks.js`. Add new hooks to the appropriate domain file.
@@ -180,6 +206,20 @@ Hooks are registered via `LitmHooks.register()` in `scripts/system/hooks/index.j
 
 New `.webp` assets must be added to the `preloads` array in `LitmConfig` (`scripts/system/config.js`). Preload logic lives in `scripts/system/hooks/preloads.js`. All images use `.webp` format. Icons use `.svg`.
 
+### Logging (`scripts/logger.js`)
+
+**Always use the system logger instead of bare `console.log/warn/error`.** The logger prefixes messages with a styled "Legend in the Mist |" label for easy filtering.
+
+```javascript
+import { error, warn, info, success } from "../logger.js";
+error("Something failed");    // console.error with styled prefix
+warn("Heads up");             // console.warn with styled prefix
+info("FYI");                  // console.log with styled prefix (blue)
+success("Done");              // console.log with styled prefix (green)
+```
+
+**Exception:** `.catch(console.error)` callbacks are acceptable since the logger's `args.join("\n")` loses Error stack traces. For catch blocks with context strings, use the logger: `catch (err) { error("Migration failed", err); }`.
+
 ### Utility Functions (`scripts/utils.js`)
 
 - `localize(...key)` — wrapper around `game.i18n.localize()`. Import as `t`: `import { localize as t } from "../utils.js"`
@@ -187,10 +227,14 @@ New `.webp` assets must be added to the `preloads` array in `LitmConfig` (`scrip
 - `findThemebookByName(name)` — searches world items then compendium packs for a themebook by name.
 - `enrichHTML(text, document)` — wraps `TextEditor.enrichHTML()` with owner-aware secrets and `relativeTo` context.
 - `confirmDelete(string)` — shows a `DialogV2.confirm()` prompt; returns `false` on cancel or X-button close.
-- `toPlainObject(obj)` — safely converts Foundry documents to plain objects via `.toObject()`.
 - `toQuestionOptions(questions, skipFirst)` — maps question arrays to letter-indexed option objects (A, B, C…).
 - `titleCase(str)` — converts to title case, skipping articles (and, the, of, etc.).
 - `sleep(ms)` — Promise-based delay.
+- `effectToTag(effect, typeOverride)` — maps an ActiveEffect to a TagData-compatible plain object (synthesizes `isActive` from `!effect.disabled`).
+- `themeTagEffect({name, tagType, question, isScratched, isSingleUse})` — builds `theme_tag` ActiveEffect creation data.
+- `storyTagEffect({name, isScratched, isSingleUse, isHidden, limitId})` — builds `story_tag` ActiveEffect creation data. Add `transfer: true` at the call site for item-level tags.
+- `statusCardEffect({name, tier, isHidden, limitId})` — builds `status_card` ActiveEffect creation data.
+- `updateEffectsByParent(actor, updates)` — routes batched effect updates to the correct parent document (actor or embedded item).
 
 ### Testing
 

@@ -220,6 +220,7 @@
 			"open_fellowship_sheet": "Gemeinschaftsbogen öffnen",
 			"open_fellowship_sheet_hint": "Öffnet den Akteursbogen für die Gemeinschaft.",
 			"warn_no_fellowship": "Kein Gemeinschafts-Akteur in dieser Welt gefunden.",
+			"warn_no_backpack": "Dieser Held hat keinen Rucksack, um Merkmale zu erhalten.",
 			"drag_apply": "Auf Akteure oder Geschichten-Fenster ziehen, um anzuwenden",
 			"drop_actors": "Akteure hier hinziehen",
 			"edit": "Bearbeiten",

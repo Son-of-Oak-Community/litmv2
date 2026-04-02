@@ -69,7 +69,7 @@ Hooks.once("init", () => {
 			ThemeTagData,
 		},
 		methods: {
-			calculatePower: LitmRollDialog.calculatePower,
+			calculatePower: LitmRoll.calculatePower,
 		},
 		get fellowship() {
 			const id = game.settings?.get("litmv2", "fellowshipId");

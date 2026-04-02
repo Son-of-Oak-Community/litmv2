@@ -2,7 +2,7 @@ import { StatusCardData } from "../data/active-effect-data.js";
 import { buildTrackCompleteContent } from "../system/chat.js";
 import { LitmSettings } from "../system/settings.js";
 import { Sockets } from "../system/sockets.js";
-import { confirmDelete, enrichHTML, localize as t } from "../utils.js";
+import { confirmDelete, enrichHTML, localize as t, statusCardEffect, storyTagEffect, updateEffectsByParent } from "../utils.js";
 
 const AbstractSidebarTab = foundry.applications.sidebar.AbstractSidebarTab;
 
@@ -132,7 +132,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 					isUserCharacter:
 						userCharacterIds.has(actor._id) || actor._id === fellowshipId,
 					hidden: (this.config.hiddenActors ?? []).includes(actor._id),
-					tags: [...actor.effects]
+					tags: [...actor.allApplicableEffects()]
 						.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
 						.filter((e) => !e.disabled)
 						.filter((e) => e.type === "story_tag" || e.type === "status_card")
@@ -842,30 +842,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				};
 			});
 
-			if (actor.type === "hero") {
-				const backpack = actor.items.find((i) => i.type === "backpack");
-				const backpackEffectIds = new Set(
-					backpack?.effects.map((e) => e.id) ?? [],
-				);
-				const backpackUpdates = updates.filter((u) =>
-					backpackEffectIds.has(u._id),
-				);
-				const directUpdates = updates.filter(
-					(u) => !backpackEffectIds.has(u._id),
-				);
-				if (backpackUpdates.length) {
-					await backpack.updateEmbeddedDocuments(
-						"ActiveEffect",
-						backpackUpdates,
-					);
-				}
-				if (directUpdates.length) {
-					await this.#updateTagsOnActor({ id: actorId, tags: directUpdates });
-				}
-			} else {
-				await this.#updateTagsOnActor({ id: actorId, tags: updates });
+			await updateEffectsByParent(actor, updates);
 			}
-		}
 
 		// Recalculate challenge limits after actor tag updates
 		for (const id of Object.keys(actors)) {
@@ -1148,7 +1126,14 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	async _toggleEffectVisibility(effectId, actorId) {
 		const actor = game.actors.get(actorId);
-		const effect = actor?.effects.get(effectId);
+		if (!actor) return;
+		let effect = actor.effects.get(effectId);
+		if (!effect) {
+			for (const item of actor.items) {
+				effect = item.effects.get(effectId);
+				if (effect) break;
+			}
+		}
 		if (!effect) return;
 		await effect.update({ "system.isHidden": !effect.system.isHidden });
 		return this.#broadcastRender();
@@ -1368,27 +1353,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				sort: update.sort,
 			}));
 
-			// Route sort updates through the correct parent document
-			if (actor.type === "hero") {
-				const backpack = actor.items.find((i) => i.type === "backpack");
-				const backpackEffectIds = new Set(
-					backpack?.effects.map((e) => e.id) ?? [],
-				);
-				const backpackUpdates = updates.filter((u) =>
-					backpackEffectIds.has(u._id),
-				);
-				const directUpdates = updates.filter(
-					(u) => !backpackEffectIds.has(u._id),
-				);
-				if (backpackUpdates.length) {
-					await backpack.updateEmbeddedDocuments("ActiveEffect", backpackUpdates);
-				}
-				if (directUpdates.length) {
-					await actor.updateEmbeddedDocuments("ActiveEffect", directUpdates);
-				}
-			} else {
-				await actor.updateEmbeddedDocuments("ActiveEffect", updates);
-			}
+			await updateEffectsByParent(actor, updates);
 			return this.#broadcastRender();
 		}
 
@@ -1449,15 +1414,23 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			: false;
 		const isStatus = tag.type === "status" || hasValues;
 
-		if (actor.type === "hero" && !isStatus && actor.sheet?.addTag) {
-			await actor.sheet.addTag({
-				name: tag.name,
-				isActive: true,
-				isScratched: tag.isScratched ?? false,
-				isSingleUse: tag.isSingleUse ?? false,
-			});
-			await this.#recalculateChallengeLimits(id);
-			return this.#broadcastRender();
+		if (actor.type === "hero" && !isStatus) {
+			const backpack = actor.items.find((i) => i.type === "backpack");
+			if (backpack) {
+				const maxSort = Math.max(0, ...backpack.effects.map((e) => e.sort ?? 0));
+				const [created] = await backpack.createEmbeddedDocuments("ActiveEffect", [
+					{ ...storyTagEffect({
+						name: tag.name,
+						isScratched: tag.isScratched ?? false,
+						isSingleUse: tag.isSingleUse ?? false,
+						isHidden: game.user.isGM,
+						limitId: tag.limitId,
+					}), transfer: true, sort: maxSort + 1000 },
+				]);
+				if (created) this._editOnRender = created.id;
+				await this.#recalculateChallengeLimits(id);
+				return this.#broadcastRender();
+			}
 		}
 
 		// Non-hero path: create effect directly on the actor (unchanged)
@@ -1469,33 +1442,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			: new Array(6).fill(false);
 
 		const maxSort = Math.max(0, ...actor.effects.map((e) => e.sort ?? 0));
-		const systemData =
-			type === "status"
-				? { tiers, isHidden: game.user.isGM }
-				: {
-						isScratched: tag.isScratched ?? false,
-						isSingleUse: tag.isSingleUse ?? false,
-						isHidden: game.user.isGM,
-					};
-		if (tag.limitId) systemData.limitId = tag.limitId;
-		const [created] = await actor.createEmbeddedDocuments("ActiveEffect", [
-			{
-				name: tag.name,
-				type: type === "status" ? "status_card" : "story_tag",
-				sort: maxSort + 1000,
-				system: systemData,
-			},
-		]);
+		const effectData = type === "status"
+			? { ...statusCardEffect({ name: tag.name, tiers, isHidden: game.user.isGM, limitId: tag.limitId }), sort: maxSort + 1000 }
+			: { ...storyTagEffect({ name: tag.name, isScratched: tag.isScratched ?? false, isSingleUse: tag.isSingleUse ?? false, isHidden: game.user.isGM, limitId: tag.limitId }), sort: maxSort + 1000 };
+		const [created] = await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
 		if (created) this._editOnRender = created.id;
 		await this.#recalculateChallengeLimits(id);
 		return this.#broadcastRender();
 	}
 
-	async #updateTagsOnActor({ id, tags }) {
-		const actor = game.actors.get(id);
-		if (!actor?.isOwner) return;
-		return actor.updateEmbeddedDocuments("ActiveEffect", tags);
-	}
+
 
 	async #removeTagFromActor({ actorId, id }) {
 		const actor = game.actors.get(actorId);

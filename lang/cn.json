@@ -220,6 +220,7 @@
 			"open_fellowship_sheet": "打开团契表",
 			"open_fellowship_sheet_hint": "打开团契角色表。",
 			"warn_no_fellowship": "在此世界中未找到团契角色。",
+			"warn_no_backpack": "该英雄没有背包来接收标签。",
 			"drag_apply": "拖拽至实体或故事标签栏以应用",
 			"drop_actors": "把实体放到此处",
 			"edit": "编辑",
