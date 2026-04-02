@@ -5,6 +5,7 @@ export function registerActorHooks() {
 	_prepareCharacterOnCreate();
 	_validateFellowshipThemes();
 	_enforceHeroItemLimits();
+	_setStatusCardIcon();
 }
 
 function _prepareCharacterOnCreate() {
@@ -133,6 +134,23 @@ function _validateFellowshipThemes() {
 /**
  * Prevent excess themes and backpacks on hero actors
  */
+/**
+ * Set icon and showIcon on status_card effects so they appear on tokens.
+ */
+function _setStatusCardIcon() {
+	const icons = {
+		story_tag: "systems/litmv2/assets/media/icons/unfurled-scroll.svg",
+		status_tag: "systems/litmv2/assets/media/icons/consequences.svg",
+	};
+	Hooks.on("preCreateActiveEffect", (effect) => {
+		if (effect.type !== "status_card") return;
+		effect.updateSource({
+			img: icon,
+			showIcon: foundry.CONST.ACTIVE_EFFECT_SHOW_ICON.ALWAYS,
+		});
+	});
+}
+
 function _enforceHeroItemLimits() {
 	Hooks.on("preCreateItem", (item, _data, _options, _userId) => {
 		const actor = item.parent;

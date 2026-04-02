@@ -92,7 +92,15 @@
 		"verified": 14,
 		"maximum": 14
 	},
-	"packs": [],
+	"packs": [
+		{
+			"name": "status-effects",
+			"label": "Status Effects",
+			"path": "packs/status-effects",
+			"type": "ActiveEffect",
+			"system": "litmv2"
+		}
+	],
 	"flags": {
 		"hotReload": {
 			"extensions": ["css", "html", "js", "json"],
