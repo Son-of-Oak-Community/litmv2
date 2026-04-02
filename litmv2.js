@@ -17,6 +17,7 @@ import { SuperCheckbox } from "./scripts/components/super-checkbox.js";
 import {
 	StatusCardData,
 	StoryTagData,
+	ThemeTagData,
 } from "./scripts/data/active-effect-data.js";
 import { TagData } from "./scripts/data/tag-data.js";
 import { BackpackData } from "./scripts/item/backpack/backpack-data.js";
@@ -65,6 +66,7 @@ Hooks.once("init", () => {
 			TagData,
 			StatusCardData,
 			StoryTagData,
+			ThemeTagData,
 		},
 		methods: {
 			calculatePower: LitmRollDialog.calculatePower,
@@ -103,6 +105,7 @@ Hooks.once("init", () => {
 	CONFIG.Item.dataModels.trope = TropeData;
 	CONFIG.ActiveEffect.dataModels.story_tag = StoryTagData;
 	CONFIG.ActiveEffect.dataModels.status_card = StatusCardData;
+	CONFIG.ActiveEffect.dataModels.theme_tag = ThemeTagData;
 	CONFIG.litmv2 = new LitmConfig();
 
 	// Replace the combat tracker sidebar tab with Story Tags

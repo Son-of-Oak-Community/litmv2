@@ -107,15 +107,14 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		const tags = [];
 
 		for (const item of actor.items) {
-			if (item.type === "theme") {
-				for (const tag of item.system.powerTags ?? []) {
-					if (tag.isScratched) {
+			if (item.type === "theme" || item.type === "story_theme") {
+				for (const effect of item.effects) {
+					if (effect.type === "theme_tag" && effect.system?.isScratched) {
 						tags.push({
-							id: tag.id,
-							name: tag.name,
-							source: "item",
+							id: effect.id,
+							name: effect.name,
+							source: "effect",
 							itemId: item.id,
-							field: "powerTags",
 						});
 					}
 				}
@@ -539,7 +538,12 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 					const { tagId, tagName, source, itemId, field } = chip.dataset;
 					names.push(tagName);
 					if (source === "effect") {
-						const effect = actor.effects.get(tagId);
+						// Try actor-level effects first, then item-level
+						let effect = actor.effects.get(tagId);
+						if (!effect && itemId) {
+							const item = actor.items.get(itemId);
+							effect = item?.effects.get(tagId);
+						}
 						if (effect) await effect.update({ "system.isScratched": false });
 					} else if (source === "item" && itemId && field) {
 						const item = actor.items.get(itemId);

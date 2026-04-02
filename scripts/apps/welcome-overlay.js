@@ -6,6 +6,52 @@ import { sleep, localize as t, toQuestionOptions } from "../utils.js";
 const THEME_SLOTS = 4;
 const MODULE_ID = "legend-in-the-mist";
 
+/**
+ * Convert tag arrays into ActiveEffect data for theme items.
+ * Strips powerTags/weaknessTags from system data and adds effects array.
+ */
+function tagsToEffects(data) {
+	const sys = data.system || {};
+	const powerTags = sys.powerTags || [];
+	const weaknessTags = sys.weaknessTags || [];
+	delete sys.powerTags;
+	delete sys.weaknessTags;
+	// Also handle story_theme nested path
+	if (sys.theme) {
+		const themePower = sys.theme.powerTags || [];
+		const themeWeak = sys.theme.weaknessTags || [];
+		delete sys.theme.powerTags;
+		delete sys.theme.weaknessTags;
+		powerTags.push(...themePower);
+		weaknessTags.push(...themeWeak);
+	}
+	data.effects = (data.effects || []).concat(
+		powerTags.map((tag) => ({
+			name: tag.name || "",
+			type: "theme_tag",
+			disabled: !(tag.isActive ?? false),
+			system: {
+				tagType: "powerTag",
+				question: tag.question ?? null,
+				isScratched: tag.isScratched ?? false,
+				isSingleUse: tag.isSingleUse ?? false,
+			},
+		})),
+		weaknessTags.map((tag) => ({
+			name: tag.name || "",
+			type: "theme_tag",
+			disabled: !(tag.isActive ?? false),
+			system: {
+				tagType: "weaknessTag",
+				question: tag.question ?? null,
+				isScratched: tag.isScratched ?? false,
+				isSingleUse: tag.isSingleUse ?? false,
+			},
+		})),
+	);
+	return data;
+}
+
 const HERO_NAMES = [
 	"Willow",
 	"Bear",
@@ -1538,6 +1584,7 @@ export class WelcomeOverlay {
 						);
 					}
 				}
+				tagsToEffects(data);
 				items.push(data);
 			}
 		} else {
@@ -1579,12 +1626,13 @@ export class WelcomeOverlay {
 							);
 						}
 					}
+					tagsToEffects(data);
 					items.push(data);
 					continue;
 				}
 
 				if (themeState.method === "manual") {
-					items.push({
+					items.push(tagsToEffects({
 						name: themeState.name || t("LITM.Ui.theme_title"),
 						type: "theme",
 						system: {
@@ -1629,7 +1677,7 @@ export class WelcomeOverlay {
 							specialImprovements: [],
 							improve: { value: 0 },
 						},
-					});
+					}));
 					continue;
 				}
 
@@ -1663,7 +1711,7 @@ export class WelcomeOverlay {
 					},
 				];
 
-				items.push({
+				items.push(tagsToEffects({
 					name: nameValue,
 					type: "theme",
 					system: {
@@ -1682,7 +1730,7 @@ export class WelcomeOverlay {
 						specialImprovements: [],
 						improve: { value: 0 },
 					},
-				});
+				}));
 			}
 		}
 
@@ -1767,8 +1815,6 @@ export class WelcomeOverlay {
 			"img",
 			"type",
 			"system.level",
-			"system.powerTags",
-			"system.weaknessTags",
 		]);
 		this._cache.themebooks = await this.loadPackIndex("Themebooks", [
 			"name",

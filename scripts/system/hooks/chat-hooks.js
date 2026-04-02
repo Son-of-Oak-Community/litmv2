@@ -186,21 +186,17 @@ async function _applySacrificeConsequence(actor, level, themeId) {
 
 	if (level === "painful") {
 		// Scratch all power tags and the theme tag
-		const raw = theme.system.toObject();
-		const isStoryTheme = theme.type === "story_theme";
-		const powerTags = isStoryTheme ? raw.theme.powerTags : raw.powerTags;
-		const systemPath = isStoryTheme
-			? "system.theme.powerTags"
-			: "system.powerTags";
-		for (const tag of powerTags) {
-			tag.isScratched = true;
+		const powerEffects = theme.effects.filter(
+			(e) => e.type === "theme_tag" && e.system.tagType === "powerTag",
+		);
+		if (powerEffects.length) {
+			await theme.updateEmbeddedDocuments(
+				"ActiveEffect",
+				powerEffects.map((e) => ({ _id: e.id, "system.isScratched": true })),
+			);
 		}
 		await actor.updateEmbeddedDocuments("Item", [
-			{
-				_id: theme.id,
-				[systemPath]: powerTags,
-				"system.isScratched": true,
-			},
+			{ _id: theme.id, "system.isScratched": true },
 		]);
 		ui.notifications.info(
 			game.i18n.format("LITM.Ui.sacrifice_theme_scratched", {

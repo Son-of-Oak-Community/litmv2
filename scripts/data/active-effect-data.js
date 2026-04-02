@@ -34,6 +34,31 @@ export class StoryTagData extends foundry.abstract.TypeDataModel {
 	}
 }
 
+export class ThemeTagData extends foundry.abstract.TypeDataModel {
+	static defineSchema() {
+		const fields = foundry.data.fields;
+		return {
+			tagType: new fields.StringField({
+				required: true,
+				choices: ["powerTag", "weaknessTag"],
+				initial: "powerTag",
+			}),
+			question: new fields.StringField({
+				initial: null,
+				nullable: true,
+				blank: true,
+			}),
+			isScratched: new fields.BooleanField({ initial: false }),
+			isSingleUse: new fields.BooleanField({ initial: false }),
+			changes: changesSchema(),
+		};
+	}
+
+	get isSuppressed() {
+		return this.isScratched;
+	}
+}
+
 export class StatusCardData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;

@@ -1,9 +1,25 @@
 import { localize as t, titleCase } from "../../utils.js";
 
+/**
+ * Map a theme_tag ActiveEffect to a TagData-compatible plain object.
+ * @param {ActiveEffect} effect
+ * @returns {object}
+ */
+function effectToTag(effect) {
+	return {
+		id: effect.id,
+		name: effect.name,
+		question: effect.system.question ?? null,
+		isActive: !effect.disabled,
+		isScratched: effect.system.isScratched,
+		isSingleUse: effect.system.isSingleUse,
+		type: effect.system.tagType,
+	};
+}
+
 export class ThemeData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
-		const abstract = game.litmv2.data;
 		return {
 			description: new fields.HTMLField({
 				initial: "",
@@ -22,18 +38,6 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 			isFellowship: new fields.BooleanField({
 				initial: false,
 			}),
-			powerTags: new fields.ArrayField(
-				new fields.EmbeddedDataField(abstract.TagData),
-				{
-					initial: () => [],
-				},
-			),
-			weaknessTags: new fields.ArrayField(
-				new fields.EmbeddedDataField(abstract.TagData),
-				{
-					initial: () => [],
-				},
-			),
 			improve: new fields.SchemaField({
 				value: new fields.NumberField({
 					initial: 0,
@@ -93,19 +97,30 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 		) {
 			source.level = Object.keys(CONFIG.litmv2.theme_levels)[0];
 		}
-		for (const tag of source.powerTags ?? []) {
-			if (!tag.id) tag.id = foundry.utils.randomID();
-		}
-		for (const tag of source.weaknessTags ?? []) {
-			if (!tag.id) tag.id = foundry.utils.randomID();
-		}
+		// Strip legacy array fields — tags are now ActiveEffects
+		delete source.powerTags;
+		delete source.weaknessTags;
 		return super.migrateData(source);
 	}
 
-	prepareDerivedData() {
-		for (const tag of this.weaknessTags) {
-			tag.isScratched = false;
-		}
+	/* -------------------------------------------- */
+	/*  Tag Getters (read from effects)             */
+	/* -------------------------------------------- */
+
+	get powerTags() {
+		return this.parent.effects
+			.filter(
+				(e) => e.type === "theme_tag" && e.system.tagType === "powerTag",
+			)
+			.map(effectToTag);
+	}
+
+	get weaknessTags() {
+		return this.parent.effects
+			.filter(
+				(e) => e.type === "theme_tag" && e.system.tagType === "weaknessTag",
+			)
+			.map(effectToTag);
 	}
 
 	get themeTag() {

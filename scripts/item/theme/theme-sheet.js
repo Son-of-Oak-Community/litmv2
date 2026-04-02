@@ -30,6 +30,7 @@ export class ThemeSheet extends LitmItemSheet {
 		form: {
 			submitOnChange: true,
 			closeOnSubmit: false,
+			handler: ThemeSheet._onSubmitForm,
 		},
 		window: {
 			icon: "fa-solid fa-book",
@@ -106,6 +107,8 @@ export class ThemeSheet extends LitmItemSheet {
 
 			// Computed properties
 			weakness: this.system.weakness,
+			powerTags: this.system.powerTags,
+			weaknessTags: this.system.weaknessTags,
 			levels,
 			themebooks,
 			powerQuestionOptions,
@@ -183,55 +186,31 @@ export class ThemeSheet extends LitmItemSheet {
 	 * @private
 	 */
 	static async #onAddTag(_event, target) {
-		const type = target.dataset.type;
+		const tagType = target.dataset.type;
 		const themebook = await findThemebookByName(this.system.themebook);
 
-		if (type === "weaknessTag") {
-			const weaknessTags = [...this.system.weaknessTags];
-			const usedQuestions = new Set(
-				weaknessTags.map((t) => t.question).filter(Boolean),
-			);
-			const allWeaknessQs = themebook?.system?.weaknessTagQuestions || [];
-			const nextQuestion =
-				allWeaknessQs
-					.map((q, i) => ({ q, i }))
-					.filter(
-						({ q, i }) => `${q ?? ""}`.trim() && !usedQuestions.has(String(i)),
-					)
-					.map(({ i }) => String(i))[0] ?? "";
-			weaknessTags.push({
-				id: foundry.utils.randomID(),
-				name: "",
+		const existingTags = tagType === "powerTag" ? this.system.powerTags : this.system.weaknessTags;
+		const usedQuestions = new Set(existingTags.map((t) => t.question).filter(Boolean));
+		const allQuestions = tagType === "powerTag"
+			? (themebook?.system?.powerTagQuestions || [])
+			: (themebook?.system?.weaknessTagQuestions || []);
+		const startIndex = tagType === "powerTag" ? 1 : 0;
+		const nextQuestion = allQuestions
+			.map((q, i) => ({ q, i }))
+			.filter(({ q, i }) => i >= startIndex && `${q ?? ""}`.trim() && !usedQuestions.has(String(i)))
+			.map(({ i }) => String(i))[0] ?? null;
+
+		await this.document.createEmbeddedDocuments("ActiveEffect", [{
+			name: "",
+			type: "theme_tag",
+			disabled: true,
+			system: {
+				tagType,
 				question: nextQuestion,
-				isActive: false,
 				isScratched: false,
-				type: "weaknessTag",
-			});
-			await this.document.update({ "system.weaknessTags": weaknessTags });
-		} else if (type === "powerTag") {
-			const powerTags = [...this.system.powerTags];
-			const usedQuestions = new Set(
-				powerTags.map((t) => t.question).filter(Boolean),
-			);
-			const allPowerQs = themebook?.system?.powerTagQuestions || [];
-			const nextQuestion =
-				allPowerQs
-					.map((q, i) => ({ q, i }))
-					.filter(
-						({ q, i }) =>
-							i > 0 && `${q ?? ""}`.trim() && !usedQuestions.has(String(i)),
-					)
-					.map(({ i }) => String(i))[0] ?? "";
-			powerTags.push({
-				id: foundry.utils.randomID(),
-				name: "",
-				question: nextQuestion,
-				isActive: false,
-				isScratched: false,
-				type: "powerTag",
-			});
-			await this.document.update({ "system.powerTags": powerTags });
-		}
+				isSingleUse: false,
+			},
+		}]);
 	}
 
 	/**
@@ -241,18 +220,9 @@ export class ThemeSheet extends LitmItemSheet {
 	 * @private
 	 */
 	static async #onRemoveTag(_event, target) {
-		const index = parseInt(target.dataset.index, 10);
-		const type = target.dataset.type;
-
-		if (type === "weaknessTag") {
-			const weaknessTags = [...this.system.weaknessTags];
-			weaknessTags.splice(index, 1);
-			await this.document.update({ "system.weaknessTags": weaknessTags });
-		} else if (type === "powerTag") {
-			const powerTags = [...this.system.powerTags];
-			powerTags.splice(index, 1);
-			await this.document.update({ "system.powerTags": powerTags });
-		}
+		const effectId = target.dataset.effectId;
+		if (!effectId) return;
+		await this.document.deleteEmbeddedDocuments("ActiveEffect", [effectId]);
 	}
 
 	/**
@@ -287,6 +257,41 @@ export class ThemeSheet extends LitmItemSheet {
 		await this.document.update({
 			"system.specialImprovements": specialImprovements,
 		});
+	}
+
+	/**
+	 * Handle form submission, routing effect fields to embedded document updates
+	 * @param {Event} _event
+	 * @param {HTMLFormElement} _form
+	 * @param {FormDataExtended} formData
+	 */
+	static async _onSubmitForm(_event, _form, formData) {
+		const submitData = formData.object;
+		const effectMap = {};
+
+		for (const [key, value] of Object.entries(submitData)) {
+			if (!key.startsWith("effects.")) continue;
+			delete submitData[key];
+			const parts = key.split(".");
+			const effectId = parts[1];
+			const field = parts.slice(2).join(".");
+			effectMap[effectId] ??= {};
+			foundry.utils.setProperty(effectMap[effectId], field, value);
+		}
+
+		const effectUpdates = [];
+		for (const [id, data] of Object.entries(effectMap)) {
+			const update = { _id: id };
+			if ("name" in data) update.name = data.name;
+			if ("isActive" in data) update.disabled = !data.isActive;
+			if (data.system) update.system = data.system;
+			effectUpdates.push(update);
+		}
+
+		if (effectUpdates.length) {
+			await this.document.updateEmbeddedDocuments("ActiveEffect", effectUpdates);
+		}
+		await this.document.update(submitData);
 	}
 
 	/**

@@ -22,6 +22,38 @@ export async function createSampleHero() {
 	response.ownership = {
 		default: foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE,
 	};
+
+	// Convert legacy tag arrays in theme items to ActiveEffect data
+	for (const itemData of response.items ?? []) {
+		if (itemData.type !== "theme" && itemData.type !== "story_theme") continue;
+		const sys = itemData.system || {};
+		const tags = [
+			...(sys.powerTags ?? []).map((t) => ({ ...t, tagType: "powerTag" })),
+			...(sys.weaknessTags ?? []).map((t) => ({ ...t, tagType: "weaknessTag" })),
+			...(sys.theme?.powerTags ?? []).map((t) => ({ ...t, tagType: "powerTag" })),
+			...(sys.theme?.weaknessTags ?? []).map((t) => ({ ...t, tagType: "weaknessTag" })),
+		];
+		delete sys.powerTags;
+		delete sys.weaknessTags;
+		if (sys.theme) {
+			delete sys.theme.powerTags;
+			delete sys.theme.weaknessTags;
+		}
+		itemData.effects = (itemData.effects ?? []).concat(
+			tags.map((tag) => ({
+				name: tag.name || "",
+				type: "theme_tag",
+				disabled: !(tag.isActive ?? false),
+				system: {
+					tagType: tag.tagType,
+					question: tag.question ?? null,
+					isScratched: tag.isScratched ?? false,
+					isSingleUse: tag.isSingleUse ?? false,
+				},
+			})),
+		);
+	}
+
 	const actor = await foundry.documents.Actor.create(response, {
 		litm: { skipHeroWizard: true, skipAutoSetup: true },
 	});

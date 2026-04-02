@@ -1,9 +1,25 @@
 import { localize as t, titleCase } from "../../utils.js";
 
+/**
+ * Map a theme_tag ActiveEffect to a TagData-compatible plain object.
+ * @param {ActiveEffect} effect
+ * @returns {object}
+ */
+function effectToTag(effect) {
+	return {
+		id: effect.id,
+		name: effect.name,
+		question: effect.system.question ?? null,
+		isActive: !effect.disabled,
+		isScratched: effect.system.isScratched,
+		isSingleUse: effect.system.isSingleUse,
+		type: effect.system.tagType,
+	};
+}
+
 export class StoryThemeData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
-		const abstract = game.litmv2.data;
 		return {
 			isScratched: new fields.BooleanField(),
 			description: new fields.HTMLField({
@@ -14,43 +30,6 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 				initial: () => Object.keys(CONFIG.litmv2.theme_levels)[0],
 				validate: (level) =>
 					Object.keys(CONFIG.litmv2.theme_levels).includes(level),
-			}),
-			theme: new fields.SchemaField({
-				powerTags: new fields.ArrayField(
-					new fields.EmbeddedDataField(abstract.TagData),
-					{
-						initial: () => [
-							{
-								id: foundry.utils.randomID(),
-								name: "",
-								type: "powerTag",
-								isActive: true,
-								isScratched: false,
-							},
-							{
-								id: foundry.utils.randomID(),
-								name: "",
-								type: "powerTag",
-								isActive: true,
-								isScratched: false,
-							},
-						],
-					},
-				),
-				weaknessTags: new fields.ArrayField(
-					new fields.EmbeddedDataField(abstract.TagData),
-					{
-						initial: () => [
-							{
-								id: foundry.utils.randomID(),
-								name: "",
-								type: "weaknessTag",
-								isActive: true,
-								isScratched: false,
-							},
-						],
-					},
-				),
 			}),
 		};
 	}
@@ -66,19 +45,29 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 		if (validLevels.length && !validLevels.includes(source.level)) {
 			source.level = validLevels[0];
 		}
-		for (const tag of source.theme?.powerTags ?? []) {
-			if (!tag.id) tag.id = foundry.utils.randomID();
-		}
-		for (const tag of source.theme?.weaknessTags ?? []) {
-			if (!tag.id) tag.id = foundry.utils.randomID();
-		}
+		// Strip legacy tag arrays — tags are now ActiveEffects
+		delete source.theme;
 		return super.migrateData(source);
 	}
 
-	prepareDerivedData() {
-		for (const tag of this.theme.weaknessTags) {
-			tag.isScratched = false;
-		}
+	/* -------------------------------------------- */
+	/*  Tag Getters (read from effects)             */
+	/* -------------------------------------------- */
+
+	get powerTags() {
+		return this.parent.effects
+			.filter(
+				(e) => e.type === "theme_tag" && e.system.tagType === "powerTag",
+			)
+			.map(effectToTag);
+	}
+
+	get weaknessTags() {
+		return this.parent.effects
+			.filter(
+				(e) => e.type === "theme_tag" && e.system.tagType === "weaknessTag",
+			)
+			.map(effectToTag);
 	}
 
 	get themeTag() {
@@ -102,14 +91,6 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 			acc[level] = t(`LITM.Terms.${level}`);
 			return acc;
 		}, {});
-	}
-
-	get powerTags() {
-		return this.theme.powerTags;
-	}
-
-	get weaknessTags() {
-		return this.theme.weaknessTags;
 	}
 
 	get weakness() {

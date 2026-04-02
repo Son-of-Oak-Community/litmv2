@@ -45,21 +45,18 @@
 	<fieldset>
 		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Tags.power_tags" action="addTag" type="powerTag" tooltip="LITM.Ui.add_tag"}}
 		<ul class="plain">
-			{{#each system.powerTags as |tag|}}
+			{{#each powerTags as |tag|}}
 			<li class="form-group {{#unless tag.isActive}}inactive{{/unless}}">
-				<input type="checkbox" name="system.powerTags.{{@index}}.isActive" {{checked tag.isActive}}
+				<input type="checkbox" name="effects.{{tag.id}}.isActive" {{checked tag.isActive}}
 					data-dtype="Boolean" />
 				<div class="gap-sm" style="display: flex; flex: 1;">
-					<select name="system.powerTags.{{@index}}.question" aria-label="{{localize 'LITM.Tags.power_tags'}}" style="flex: 0 0 auto; width: fit-content;">
+					<select name="effects.{{tag.id}}.system.question" aria-label="{{localize 'LITM.Tags.power_tags'}}" style="flex: 0 0 auto; width: fit-content;">
 						{{selectOptions ../powerQuestionOptions selected=tag.question blank="—"}}
 					</select>
-					<input type="text" name="system.powerTags.{{@index}}.name" value="{{tag.name}}"
+					<input type="text" name="effects.{{tag.id}}.name" value="{{tag.name}}"
 						placeholder="{{lookup ../powerQuestionTexts tag.question}}" />
 				</div>
-				<!-- Hidden fields for validation -->
-				<input type="hidden" name="system.powerTags.{{@index}}.type" value="{{tag.type}}" />
-				<input type="hidden" name="system.powerTags.{{@index}}.id" value="{{tag.id}}" />
-				<button style="flex:none;" type="button" data-action="removeTag" data-type="powerTag" data-index="{{@index}}"
+				<button style="flex:none;" type="button" data-action="removeTag" data-type="powerTag" data-effect-id="{{tag.id}}"
 					data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
 					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
@@ -72,24 +69,19 @@
 	<fieldset>
 		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Tags.weakness_tags" action="addTag" type="weaknessTag" tooltip="LITM.Ui.add_tag"}}
 		<ul class="plain">
-			{{#each weakness as |tag|}}
+			{{#each weaknessTags as |tag|}}
 			<li class="form-group">
-				<input type="checkbox" name="system.weaknessTags.{{@index}}.isActive" {{checked tag.isActive}}
+				<input type="checkbox" name="effects.{{tag.id}}.isActive" {{checked tag.isActive}}
 					data-dtype="Boolean" />
 				<div class="gap-sm" style="display: flex; flex: 1;">
-					<select name="system.weaknessTags.{{@index}}.question" aria-label="{{localize 'LITM.Tags.weakness_tags'}}" style="flex: 0 0 auto; width: fit-content;">
+					<select name="effects.{{tag.id}}.system.question" aria-label="{{localize 'LITM.Tags.weakness_tags'}}" style="flex: 0 0 auto; width: fit-content;">
 						{{selectOptions ../weaknessQuestionOptions selected=tag.question blank="—"}}
 					</select>
-					<input type="text" name="system.weaknessTags.{{@index}}.name" value="{{tag.name}}"
+					<input type="text" name="effects.{{tag.id}}.name" value="{{tag.name}}"
 						placeholder="{{lookup ../weaknessQuestionTexts tag.question}}" />
 				</div>
-				<!-- Hidden fields for validation -->
-				<input type="hidden" name="system.weaknessTags.{{@index}}.type" value="{{tag.type}}" />
-				<input type="hidden" name="system.weaknessTags.{{@index}}.id" value="{{tag.id}}" />
-				<input type="hidden" name="system.weaknessTags.{{@index}}.isScratched" data-dtype="Boolean"
-					value="{{tag.isScratched}}" />
-				<button style="flex:none;" type="button" data-action="removeTag" data-type="weaknessTag"
-					data-index="{{@index}}" data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+				<button style="flex:none;" type="button" data-action="removeTag" data-type="weaknessTag" data-effect-id="{{tag.id}}"
+					data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
 					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>

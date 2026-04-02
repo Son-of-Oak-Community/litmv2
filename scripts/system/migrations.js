@@ -16,7 +16,64 @@ import { LitmSettings } from "./settings.js";
  * { version: 1, migrate: async () => { ... } }
  */
 const MIGRATIONS = [
-	// { version: 1, migrate: async () => { ... } },
+	{
+		version: 1,
+		migrate: async () => {
+			// Convert theme/story_theme powerTags & weaknessTags arrays to ActiveEffects
+			for (const actor of game.actors) {
+				const themeItems = actor.items.filter(
+					(i) => i.type === "theme" || i.type === "story_theme",
+				);
+				for (const item of themeItems) {
+					// Skip if already migrated
+					if (item.effects.some((e) => e.type === "theme_tag")) continue;
+
+					const raw = item.toObject();
+					const isStoryTheme = item.type === "story_theme";
+					const powerTags = isStoryTheme
+						? (raw.system?.theme?.powerTags ?? [])
+						: (raw.system?.powerTags ?? []);
+					const weaknessTags = isStoryTheme
+						? (raw.system?.theme?.weaknessTags ?? [])
+						: (raw.system?.weaknessTags ?? []);
+
+					const effectData = [];
+					for (const tag of powerTags) {
+						effectData.push({
+							name: tag.name || "",
+							type: "theme_tag",
+							disabled: !(tag.isActive ?? false),
+							system: {
+								tagType: "powerTag",
+								question: tag.question ?? null,
+								isScratched: tag.isScratched ?? false,
+								isSingleUse: tag.isSingleUse ?? false,
+							},
+							flags: { litmv2: { tagId: tag.id } },
+						});
+					}
+					for (const tag of weaknessTags) {
+						effectData.push({
+							name: tag.name || "",
+							type: "theme_tag",
+							disabled: !(tag.isActive ?? false),
+							system: {
+								tagType: "weaknessTag",
+								question: tag.question ?? null,
+								isScratched: tag.isScratched ?? false,
+								isSingleUse: tag.isSingleUse ?? false,
+							},
+							flags: { litmv2: { tagId: tag.id } },
+						});
+					}
+
+					if (effectData.length) {
+						await item.createEmbeddedDocuments("ActiveEffect", effectData);
+					}
+				}
+			}
+		},
+	},
 ];
 
 /**

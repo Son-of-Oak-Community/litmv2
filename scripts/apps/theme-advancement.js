@@ -87,18 +87,18 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		);
 
 		const inactivePowerTags = (theme.system?.powerTags || [])
-			.map((tag, index) => ({
-				value: String(index),
+			.filter((tag) => !tag.isActive)
+			.map((tag) => ({
+				value: tag.id,
 				label: tag.name || game.i18n.localize("LITM.Ui.name_power"),
-			}))
-			.filter((_, index) => !theme.system.powerTags[index].isActive);
+			}));
 
 		const inactiveWeaknessTags = (theme.system?.weaknessTags || [])
-			.map((tag, index) => ({
-				value: String(index),
+			.filter((tag) => !tag.isActive)
+			.map((tag) => ({
+				value: tag.id,
 				label: tag.name || game.i18n.localize("LITM.Ui.name_weakness"),
-			}))
-			.filter((_, index) => !theme.system.weaknessTags[index].isActive);
+			}));
 
 		const inactiveSpecialImprovements = (theme.system?.specialImprovements || [])
 			.map((improvement, index) => ({
@@ -248,19 +248,18 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		const name = input?.value?.trim() || "";
 		if (!name) return;
 
-		const powerTags = [...(theme.system?.powerTags || [])];
-		powerTags.push({
-			id: foundry.utils.randomID(),
+		await theme.createEmbeddedDocuments("ActiveEffect", [{
 			name,
-			question,
-			isActive: true,
-			isScratched: false,
-			type: "powerTag",
-		});
-
-		await ThemeAdvancementApp.#spendImprove(theme, {
-			"system.powerTags": powerTags,
-		});
+			type: "theme_tag",
+			disabled: false,
+			system: {
+				tagType: "powerTag",
+				question,
+				isScratched: false,
+				isSingleUse: false,
+			},
+		}]);
+		await ThemeAdvancementApp.#spendImprove(theme, {});
 		this.close();
 	}
 
@@ -276,19 +275,18 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		const name = input?.value?.trim() || "";
 		if (!name) return;
 
-		const weaknessTags = [...(theme.system?.weaknessTags || [])];
-		weaknessTags.push({
-			id: foundry.utils.randomID(),
+		await theme.createEmbeddedDocuments("ActiveEffect", [{
 			name,
-			question,
-			isActive: true,
-			isScratched: false,
-			type: "weaknessTag",
-		});
-
-		await ThemeAdvancementApp.#spendImprove(theme, {
-			"system.weaknessTags": weaknessTags,
-		});
+			type: "theme_tag",
+			disabled: false,
+			system: {
+				tagType: "weaknessTag",
+				question,
+				isScratched: false,
+				isSingleUse: false,
+			},
+		}]);
+		await ThemeAdvancementApp.#spendImprove(theme, {});
 		this.close();
 	}
 
@@ -299,16 +297,13 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		const select = container?.querySelector(
 			"[data-role='inactive-power-tag-select']",
 		);
-		const index = Number(select?.value ?? "");
-		if (Number.isNaN(index)) return;
+		const effectId = select?.value;
+		if (!effectId || !theme.effects.has(effectId)) return;
 
-		const powerTags = [...(theme.system?.powerTags || [])];
-		if (!powerTags[index]) return;
-		powerTags[index] = { ...powerTags[index], isActive: true };
-
-		await ThemeAdvancementApp.#spendImprove(theme, {
-			"system.powerTags": powerTags,
-		});
+		await theme.updateEmbeddedDocuments("ActiveEffect", [
+			{ _id: effectId, disabled: false },
+		]);
+		await ThemeAdvancementApp.#spendImprove(theme, {});
 		this.close();
 	}
 
@@ -319,16 +314,13 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		const select = container?.querySelector(
 			"[data-role='inactive-weakness-tag-select']",
 		);
-		const index = Number(select?.value ?? "");
-		if (Number.isNaN(index)) return;
+		const effectId = select?.value;
+		if (!effectId || !theme.effects.has(effectId)) return;
 
-		const weaknessTags = [...(theme.system?.weaknessTags || [])];
-		if (!weaknessTags[index]) return;
-		weaknessTags[index] = { ...weaknessTags[index], isActive: true };
-
-		await ThemeAdvancementApp.#spendImprove(theme, {
-			"system.weaknessTags": weaknessTags,
-		});
+		await theme.updateEmbeddedDocuments("ActiveEffect", [
+			{ _id: effectId, disabled: false },
+		]);
+		await ThemeAdvancementApp.#spendImprove(theme, {});
 		this.close();
 	}
 

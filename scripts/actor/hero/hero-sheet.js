@@ -545,20 +545,17 @@ export class HeroSheet extends BackpackSyncMixin(LitmActorSheet) {
 				const parentTheme = this.document.items.find(
 					(i) =>
 						["theme", "story_theme"].includes(i.type) &&
-						i.system.powerTags?.some((t) => t.id === tagId),
+						i.effects.has(tagId),
 				);
 				if (!parentTheme) return;
 
-				const tagToUpdate = parentTheme.system.powerTags.find(
-					(t) => t.id === tagId,
-				);
-				if (!tagToUpdate) return;
-				if (!tagToUpdate.isActive) return;
+				const effect = parentTheme.effects.get(tagId);
+				if (!effect || effect.disabled) return;
 
 				return this.toggleScratchTag({
-					id: tagToUpdate.id,
+					id: effect.id,
 					type: "powerTag",
-					isScratched: tagToUpdate.isScratched ?? false,
+					isScratched: effect.system.isScratched ?? false,
 				});
 			}
 			case "themeTag": {
@@ -627,20 +624,20 @@ export class HeroSheet extends BackpackSyncMixin(LitmActorSheet) {
 			return;
 		}
 
-		const tagArrayKey =
-			tagType === "weaknessTag" ? "weaknessTags" : "powerTags";
-		const systemPath =
-			item.type === "story_theme"
-				? `system.theme.${tagArrayKey}`
-				: `system.${tagArrayKey}`;
+		// Theme tag effects — find and update the effect directly
+		const effect = item.effects.get(tagId)
+			?? [...item.effects].find((e) => e.name === tagName && e.type === "theme_tag");
+		if (!effect) return;
 
-		const tags = (item.system[tagArrayKey] ?? []).map((t) => toPlainObject(t));
-		const tag = tags.find(findTag);
-		if (!tag) return;
-
-		if (scratch) tag.isScratched = !tag.isScratched;
-		else tag.isActive = !tag.isActive;
-		await item.update({ [systemPath]: tags });
+		if (scratch) {
+			await item.updateEmbeddedDocuments("ActiveEffect", [
+				{ _id: effect.id, "system.isScratched": !effect.system.isScratched },
+			]);
+		} else {
+			await item.updateEmbeddedDocuments("ActiveEffect", [
+				{ _id: effect.id, disabled: !effect.disabled },
+			]);
+		}
 	}
 
 	/**
@@ -659,23 +656,19 @@ export class HeroSheet extends BackpackSyncMixin(LitmActorSheet) {
 					actor?.items.find(
 						(i) =>
 							["theme", "story_theme"].includes(i.type) &&
-							i.system.powerTags?.some((t) => t.id === tag.id),
+							i.effects.has(tag.id),
 					);
 				const parentTheme =
 					findTheme(this.document) ?? findTheme(fellowshipActor);
 				if (!parentTheme) return;
 
-				const isStoryTheme = parentTheme.type === "story_theme";
-				const raw = parentTheme.system.toObject();
-				const powerTags = isStoryTheme ? raw.theme.powerTags : raw.powerTags;
-				const systemPath = isStoryTheme
-					? "system.theme.powerTags"
-					: "system.powerTags";
-				const tagToUpdate = powerTags.find((t) => t.id === tag.id);
-				if (tagToUpdate) {
-					tagToUpdate.isScratched = !tagToUpdate.isScratched;
-					await parentTheme.parent.updateEmbeddedDocuments("Item", [
-						{ _id: parentTheme.id, [systemPath]: powerTags },
+				const effect = parentTheme.effects.get(tag.id);
+				if (effect) {
+					await parentTheme.updateEmbeddedDocuments("ActiveEffect", [
+						{
+							_id: effect.id,
+							"system.isScratched": !effect.system.isScratched,
+						},
 					]);
 				}
 				break;
@@ -744,7 +737,7 @@ export class HeroSheet extends BackpackSyncMixin(LitmActorSheet) {
 		const parentTheme = owner.items.find(
 			(i) =>
 				["theme", "story_theme"].includes(i.type) &&
-				i.system.weaknessTags?.some((t) => t.id === tag.id),
+				i.effects.has(tag.id),
 		);
 		if (parentTheme) {
 			await owner.updateEmbeddedDocuments("Item", [
