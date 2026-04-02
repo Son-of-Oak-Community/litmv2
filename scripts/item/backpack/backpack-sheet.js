@@ -66,6 +66,7 @@ export class BackpackSheet extends LitmItemSheet {
 			name: t("LITM.Ui.name_tag"),
 			isActive: true,
 			isScratched: false,
+			isSingleUse: false,
 			type: "backpack",
 			id: foundry.utils.randomID(),
 		};
