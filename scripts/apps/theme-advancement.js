@@ -136,7 +136,6 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			specialImprovementOptions,
 			specialImprovementDescriptions,
 			inactivePowerTags,
-			inactivePowerTags,
 			inactiveWeaknessTags,
 			inactiveSpecialImprovements,
 			powerQuestionOptions,
