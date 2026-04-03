@@ -132,11 +132,13 @@ export class FellowshipSheet extends LitmActorSheet {
 
 			const weaknesses = themes
 				.flatMap((theme) => theme.system.weaknessTags)
-				.filter((tag) => tag.isActive && !tag.isScratched)
+				.filter((tag) => tag.active && !tag.system.isScratched)
 				.map((tag) => tag.name);
 
-			const storyTags = hero.system.storyTags;
-			const statuses = hero.system.statuses.filter((s) => s.value > 0);
+			const storyTags = hero.system.backpack
+				.filter((e) => e.active && (game.user.isGM || !e.system?.isHidden));
+			const statuses = hero.system.statuses
+				.filter((e) => e.active && (e.system?.currentTier ?? 0) > 0);
 
 			// Strip HTML from description
 			const desc = hero.system.description ?? "";
@@ -218,13 +220,13 @@ export class FellowshipSheet extends LitmActorSheet {
 		const item = this.document.items.get(itemId);
 		if (!item) return;
 
-		if (tagType === "themeTag") {
+		if (tagType === "fellowship_tag") {
 			await item.update({ "system.isScratched": !item.system.isScratched });
 			return;
 		}
 
 		const effect = item.effects.get(tagId)
-			?? [...item.effects].find((e) => e.name === tagName && e.type === "theme_tag");
+			?? [...item.effects].find((e) => e.name === tagName && (e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag"));
 		if (!effect) return;
 
 		if (scratch) {
@@ -254,7 +256,7 @@ export class FellowshipSheet extends LitmActorSheet {
 
 		// Alt+Click: scratch (except weakness tags)
 		if (event.altKey) {
-			if (tagType === "weaknessTag") return;
+			if (tagType === "weakness_tag") return;
 			return this.system.scratchTag(tagType, tagId, tagName);
 		}
 
@@ -293,7 +295,7 @@ export class FellowshipSheet extends LitmActorSheet {
 		if (!tagRef) return;
 
 		const resolvedId = tagRef.id;
-		const isWeaknessTag = tagRef.type === "weaknessTag";
+		const isWeaknessTag = tagRef.type === "weakness_tag";
 		const isScratched = tagRef.isScratched ?? false;
 		const selected = !!tagRef.state;
 
@@ -325,7 +327,7 @@ export class FellowshipSheet extends LitmActorSheet {
 	 * @private
 	 */
 	static #buildTagData(tagType, tagId, tagName) {
-		if (tagType === "themeTag") {
+		if (tagType === "fellowship_tag") {
 			const theme = this.document.items.get(tagId);
 			if (!theme) return null;
 			return {
@@ -334,7 +336,7 @@ export class FellowshipSheet extends LitmActorSheet {
 				displayName: theme.name,
 				themeId: theme.id,
 				themeName: theme.name,
-				type: "themeTag",
+				type: "fellowship_tag",
 				isSingleUse: true,
 				fromFellowship: true,
 				state: "",
@@ -343,7 +345,7 @@ export class FellowshipSheet extends LitmActorSheet {
 		}
 
 		const tagArrayKey =
-			tagType === "weaknessTag" ? "weaknessTags" : "powerTags";
+			tagType === "weakness_tag" ? "weaknessTags" : "powerTags";
 		const match = (t) =>
 			(tagId && t.id === tagId) || (tagName && t.name === tagName);
 		for (const item of this.document.items) {
@@ -363,7 +365,7 @@ export class FellowshipSheet extends LitmActorSheet {
 				fromFellowship: true,
 				state: "",
 				states:
-					tagType === "weaknessTag"
+					tagType === "weakness_tag"
 						? ",negative,positive"
 						: ",positive,negative",
 			};

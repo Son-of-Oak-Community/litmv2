@@ -98,50 +98,55 @@ export function toQuestionOptions(questions = [], skipFirst = 0) {
 	return options;
 }
 
-/**
- * Map an ActiveEffect (theme_tag or story_tag) to a TagData-compatible plain object.
- * For theme_tag effects, uses the effect's tagType (powerTag/weaknessTag).
- * For story_tag effects on items (backpack), returns type "backpack".
- * @param {ActiveEffect} effect
- * @param {string} [typeOverride] Explicit tag type; when omitted, inferred from the effect.
- * @returns {{ id: string, name: string, question: string|null, isActive: boolean, isScratched: boolean, isSingleUse: boolean, type: string }}
- */
-export function effectToTag(effect) {
-	return {
-		id: effect.id,
-		name: effect.name,
-		question: effect.system?.question ?? null,
-		isActive: !effect.disabled,
-		isScratched: effect.system?.isScratched ?? false,
-		isSingleUse: effect.system?.isSingleUse ?? false,
-		type: effect.type === "story_tag" ? "backpack" : (effect.system?.tagType ?? "powerTag"),
-	};
-}
-
-/**
- * Build ActiveEffect creation data for a theme_tag effect.
- * @param {object} options
- * @param {string} options.name - Tag name
- * @param {"powerTag"|"weaknessTag"} options.tagType - Power or weakness
- * @param {boolean} [options.isActive=false] - Whether the tag starts active
- * @param {string|null} [options.question=null] - Themebook question index
- * @param {boolean} [options.isScratched=false]
- * @param {boolean} [options.isSingleUse=false]
- * @returns {object} Effect creation data
- */
-export function themeTagEffect({
+export function powerTagEffect({
 	name = "",
-	tagType = "powerTag",
 	isActive = false,
 	question = null,
 	isScratched = false,
-	isSingleUse = false,
 } = {}) {
 	return {
 		name,
-		type: "theme_tag",
+		type: "power_tag",
 		disabled: !isActive,
-		system: { tagType, question, isScratched, isSingleUse },
+		system: { question, isScratched },
+	};
+}
+
+export function weaknessTagEffect({
+	name = "",
+	isActive = false,
+	question = null,
+} = {}) {
+	return {
+		name,
+		type: "weakness_tag",
+		disabled: !isActive,
+		system: { question },
+	};
+}
+
+export function fellowshipTagEffect({
+	name = "",
+	isActive = false,
+	question = null,
+	isScratched = false,
+} = {}) {
+	return {
+		name,
+		type: "fellowship_tag",
+		disabled: !isActive,
+		system: { question, isScratched },
+	};
+}
+
+export function relationshipTagEffect({
+	name = "",
+	targetId = "",
+} = {}) {
+	return {
+		name,
+		type: "relationship_tag",
+		system: { targetId },
 	};
 }
 
@@ -178,7 +183,7 @@ export function storyTagEffect({
  * @param {string|null} [options.limitId=null]
  * @returns {object} Effect creation data
  */
-export function statusCardEffect({
+export function statusTagEffect({
 	name = "",
 	tiers = [false, false, false, false, false, false],
 	isHidden = false,
@@ -186,7 +191,7 @@ export function statusCardEffect({
 } = {}) {
 	return {
 		name,
-		type: "status_card",
+		type: "status_tag",
 		system: { tiers, isHidden, limitId },
 	};
 }

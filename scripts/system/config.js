@@ -1,4 +1,6 @@
 export class LitmConfig {
+	static BURN_POWER = 3;
+
 	challenge_types = [
 		"attacker",
 		"barrier-hazard",

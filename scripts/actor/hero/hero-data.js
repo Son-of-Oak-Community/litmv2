@@ -3,17 +3,6 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 		const fields = foundry.data.fields;
 		return {
 			description: new fields.HTMLField({ initial: "" }),
-			relationships: new fields.ArrayField(
-				new fields.SchemaField({
-					actorId: new fields.StringField({ initial: "" }),
-					name: new fields.StringField({ initial: "" }),
-					tag: new fields.StringField({ initial: "" }),
-					isScratched: new fields.BooleanField({ initial: false }),
-				}),
-				{
-					initial: [],
-				},
-			),
 			promise: new fields.NumberField({
 				initial: 0,
 				min: 0,
@@ -35,6 +24,11 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 		};
 	}
 
+	static migrateData(source) {
+		delete source.relationships;
+		return super.migrateData(source);
+	}
+
 	static getTrackableAttributes() {
 		return {
 			bar: ["limit"],
@@ -51,376 +45,149 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 		return game.litmv2?.fellowship ?? null;
 	}
 
+	/**
+	 * Own non-fellowship themes, each with their tag AEs.
+	 * @returns {{ theme: Item, tags: ActiveEffect[] }[]}
+	 */
+	get themes() {
+		return this.parent.items
+			.filter((i) => (i.type === "theme" && !i.system.isFellowship) || i.type === "story_theme")
+			.sort((a, b) => a.sort - b.sort)
+			.map((theme) => ({
+				theme,
+				tags: [...theme.effects].filter((e) =>
+					e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag"
+				),
+			}));
+	}
+
+	/**
+	 * All story_tag effects applicable to this hero (from backpack transfer).
+	 * Compatible with the EffectTagsMixin interface.
+	 * @returns {ActiveEffect[]}
+	 */
+	get storyTags() {
+		return [...this.parent.allApplicableEffects()]
+			.filter((e) => e.type === "story_tag");
+	}
+
 	get backpack() {
-		const backpack = this.parent.items.find((item) => item.type === "backpack");
+		const backpack = this.parent.items.find((i) => i.type === "backpack");
 		if (!backpack) return [];
 		return backpack.system.tags;
 	}
 
-	/** @type {Item[]|null} Cached by prepareDerivedData, cleared each cycle. */
-	#cachedThemeItems = null;
-	/** @type {ActiveEffect[]|null} Cached by prepareDerivedData, cleared each cycle. */
-	#cachedEffectTags = null;
-
-	get #themeItems() {
-		if (this.#cachedThemeItems) return this.#cachedThemeItems;
-		const ownThemes = this.parent.items.filter(
-			(item) => item.type === "theme" || item.type === "story_theme",
-		);
-		const fellowship = this.fellowshipActor;
-		if (!fellowship) {
-			this.#cachedThemeItems = ownThemes;
-			return ownThemes;
-		}
-		const fellowshipThemes = fellowship.items.filter(
-			(item) => item.type === "theme" || item.type === "story_theme",
-		);
-		this.#cachedThemeItems = [...ownThemes, ...fellowshipThemes];
-		return this.#cachedThemeItems;
+	/**
+	 * Everything from the fellowship actor: theme groups + story tags/statuses.
+	 * @returns {{ themes: { theme: Item, tags: ActiveEffect[] }[], tags: ActiveEffect[] }}
+	 */
+	get fellowship() {
+		const actor = this.fellowshipActor;
+		if (!actor) return { themes: [], tags: [] };
+		const themes = actor.items
+			.filter((i) => i.type === "theme" || i.type === "story_theme")
+			.map((theme) => ({
+				theme,
+				tags: [...theme.effects].filter((e) =>
+					e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag"
+				),
+			}));
+		const tags = [...actor.allApplicableEffects()]
+			.filter((e) => e.type === "story_tag" || e.type === "status_tag");
+		return { themes, tags };
 	}
 
-	get allTags() {
-		const backpack = this.backpack;
-		const themeTags = this.#themeItems.flatMap((item) => item.system.allTags);
-		return [...backpack, ...themeTags];
+	/**
+	 * Relationship tag AEs on the hero.
+	 * @returns {ActiveEffect[]}
+	 */
+	get relationships() {
+		return [...this.parent.effects]
+			.filter((e) => e.type === "relationship_tag");
 	}
 
-	get powerTags() {
-		return this.allTags.filter(
-			(tag) =>
-				tag.type === "powerTag" ||
-				tag.type === "themeTag" ||
-				tag.type === "backpack",
-		);
+	/**
+	 * Status tag AEs on the hero actor only (not fellowship).
+	 * Overrides the mixin — hero statuses are actor-direct only.
+	 * @returns {ActiveEffect[]}
+	 */
+	get statuses() {
+		return [...this.parent.effects]
+			.filter((e) => e.type === "status_tag");
 	}
 
-	get weaknessTags() {
-		return this.#themeItems.flatMap((item) => item.system.weaknessTags);
-	}
-
-	get availablePowerTags() {
-		const backpack = this.backpack.filter(
-			(tag) => tag.isActive && !tag.isScratched,
-		);
-		const themeTags = this.#themeItems.flatMap(
-			(item) => item.system.availablePowerTags,
-		);
-		return [...backpack, ...themeTags];
+	get statusEffects() {
+		return this.statuses;
 	}
 
 	get relationshipEntries() {
 		const heroActors = (game.actors ?? []).filter(
 			(actor) => actor.type === "hero" && actor.id !== this.parent.id,
 		);
-		const existing = Array.isArray(this.relationships)
-			? this.relationships
-			: [];
+		const existing = this.relationships;
 		return heroActors
 			.map((actor) => {
-				const existingEntry =
-					existing.find((entry) => entry.actorId === actor.id) ||
-					existing.find(
-						(entry) =>
-							!entry.actorId &&
-							(entry.name ?? "").toLowerCase() === actor.name.toLowerCase(),
-					);
+				const effect = existing.find((e) => e.system.targetId === actor.id);
 				return {
 					actorId: actor.id,
 					name: actor.name,
 					img: actor.img,
-					tag: existingEntry?.tag ?? "",
-					isScratched: existingEntry?.isScratched ?? false,
+					tag: effect?.name ?? "",
+					isScratched: effect?.system?.isScratched ?? false,
+					effectId: effect?.id ?? null,
 				};
 			})
 			.sort((a, b) => a.name.localeCompare(b.name));
 	}
 
-	get relationshipTags() {
-		return this.relationshipEntries
-			.map((entry) => {
-				const tag = (entry?.tag ?? "").trim();
-				if (!tag) return null;
-				return {
-					id: `relationship-${entry.actorId}`,
-					name: `${entry.name} - ${tag}`,
-					displayName: tag,
-					themeId: `__relationship_${entry.actorId}`,
-					themeName: entry.name,
-					actorImg: entry.img,
-					type: "relationshipTag",
-					isSingleUse: true,
-					isScratched: entry.isScratched,
-					state: "",
-					states: ",positive",
-				};
-			})
-			.filter(Boolean);
-	}
-
 	/**
-	 * All story_tag and status_card effects applicable to this hero,
-	 * including transferred effects from embedded items (e.g. backpack).
+	 * All scratched AEs across hero + fellowship items.
 	 * @returns {ActiveEffect[]}
 	 */
-	get effectTags() {
-		if (this.#cachedEffectTags) return this.#cachedEffectTags;
-		const effects = [];
-		for (const effect of this.parent.allApplicableEffects()) {
-			if (effect.type === "story_tag" || effect.type === "status_card") {
-				effects.push(effect);
-			}
-		}
-		this.#cachedEffectTags = effects;
-		return effects;
-	}
-
-	get statuses() {
-		return this.effectTags
-			.filter((effect) => effect.type === "status_card")
-			.filter((effect) => game.user.isGM || !effect.system?.isHidden)
-			.map((effect) => {
-				return {
-					id: effect._id,
-					name: effect.name,
-					type: "status",
-					value: effect.system.currentTier,
-				};
-			});
-	}
-
-	get storyTags() {
-		return this.effectTags
-			.filter((effect) => effect.type === "story_tag")
-			.filter((effect) => game.user.isGM || !effect.system?.isHidden)
-			.map((effect) => {
-				return {
-					id: effect._id,
-					name: effect.name,
-					type: "tag",
-					isSingleUse: effect.system?.isSingleUse ?? false,
-					value: 1,
-				};
-			});
-	}
-
-	/**
-	 * All tags available for the roll dialog, in a consistent shape grouped by source.
-	 * Includes theme tags, backpack tags, and relationship tags — only active, non-scratched.
-	 * @returns {object[]}
-	 */
-	get rollableTags() {
-		const tags = [];
-		const fellowshipActor = this.fellowshipActor;
-		const fellowshipItemIds = new Set(
-			fellowshipActor?.items.map((i) => i.id) ?? [],
-		);
-
-		const ownThemes = this.parent.items
-			.filter(
-				(i) =>
-					(i.type === "theme" && !i.system.isFellowship) ||
-					i.type === "story_theme",
-			)
-			.sort((a, b) => a.sort - b.sort);
-
-		const fellowshipThemes = fellowshipActor
-			? fellowshipActor.items.filter(
-					(i) => i.type === "theme" || i.type === "story_theme",
-				)
-			: [];
-
-		for (const theme of [...ownThemes, ...fellowshipThemes]) {
-			const isFellowship = !!theme.system?.isFellowship;
-			const fromFellowship = fellowshipItemIds.has(theme.id);
-			const themeImg = theme.img;
-			const themeTag = theme.system?.themeTag;
-
-			if (themeTag?.name && themeTag?.isActive && !themeTag?.isScratched) {
-				tags.push({
-					id: theme.id,
-					name: theme.name,
-					displayName: theme.name,
-					themeId: theme.id,
-					themeName: theme.name,
-					themeImg,
-					type: "themeTag",
-					isSingleUse: isFellowship,
-					fromFellowship,
-					state: "",
-					states: ",positive",
-				});
-			}
-
-			for (const tag of theme.system?.powerTags ?? []) {
-				if (tag?.name && tag?.isActive && !tag?.isScratched) {
-					tags.push({
-						id: tag.id,
-						name: `${theme.name} - ${tag.name}`,
-						displayName: tag.name,
-						themeId: theme.id,
-						themeName: theme.name,
-						themeImg,
-						type: tag.type ?? "powerTag",
-						isSingleUse: isFellowship,
-						fromFellowship,
-						state: "",
-						states: isFellowship
-							? ",positive,negative"
-							: ",positive,scratched",
-					});
-				}
-			}
-
-			for (const tag of theme.system?.weaknessTags ?? []) {
-				if (tag?.name && tag?.isActive && !tag?.isScratched) {
-					tags.push({
-						id: tag.id,
-						name: `${theme.name} - ${tag.name}`,
-						displayName: tag.name,
-						themeId: theme.id,
-						themeName: theme.name,
-						themeImg,
-						type: tag.type ?? "weaknessTag",
-						fromFellowship,
-						state: "",
-						states: ",negative,positive",
-					});
-				}
-			}
-		}
-
-		// Backpack tags
-		const backpack = this.parent.items.find((i) => i.type === "backpack");
-		if (backpack) {
-			for (const e of backpack.effects) {
-				if (e.type !== "story_tag" || e.disabled || e.system.isScratched) continue;
-				tags.push({
-					id: e.id,
-					name: e.name,
-					displayName: e.name,
-					themeId: backpack.id,
-					themeName: backpack.name,
-					type: "backpack",
-					isSingleUse: e.system.isSingleUse ?? false,
-					state: "",
-					states: e.system.isSingleUse ? ",positive" : ",positive,scratched",
-				});
-			}
-		}
-
-		// Relationship tags
-		tags.push(...this.relationshipTags);
-
-		return tags;
-	}
-
-	/**
-	 * All scratched tags across themes, backpack, and story effects.
-	 * Used by SpendPowerApp for unscratch options.
-	 * @returns {object[]}
-	 */
 	get scratchedTags() {
-		const tags = [];
-		const scratchableTypes = new Set(["theme", "story_theme", "backpack"]);
-
-		for (const item of this.parent.items) {
-			if (!scratchableTypes.has(item.type)) continue;
+		const scratched = [];
+		const itemSources = [...this.parent.items];
+		const fellowship = this.fellowshipActor;
+		if (fellowship) itemSources.push(...fellowship.items);
+		for (const item of itemSources) {
 			for (const effect of item.effects) {
-				if (!effect.system?.isScratched) continue;
-				if (effect.type === "theme_tag" || effect.type === "story_tag") {
-					tags.push({ id: effect.id, name: effect.name, source: "effect", itemId: item.id });
+				if (effect.system?.isScratched && effect.type !== "weakness_tag") {
+					scratched.push(effect);
 				}
 			}
 		}
-
 		for (const effect of this.parent.effects) {
-			if (effect.type === "story_tag" && effect.system?.isScratched) {
-				tags.push({ id: effect.id, name: effect.name, source: "effect" });
+			if (effect.system?.isScratched && effect.type !== "status_tag") {
+				scratched.push(effect);
 			}
 		}
-
-		return tags;
+		return scratched;
 	}
 
 	/**
 	 * Toggle scratch state of a tag.
-	 * @param {object} tag  Tag object with at least `id` and `type`
+	 * @param {object} tag  Tag object with at least `id`
 	 */
 	async toggleScratchTag(tag) {
-		if (Hooks.call("litm.preTagScratched", this.parent, tag) === false) {
-			return;
-		}
-		const fellowshipActor = this.fellowshipActor;
-		switch (tag.type) {
-			case "powerTag": {
-				const findTheme = (actor) =>
-					actor?.items.find(
-						(i) =>
-							["theme", "story_theme"].includes(i.type) &&
-							i.effects.has(tag.id),
-					);
-				const parentTheme =
-					findTheme(this.parent) ?? findTheme(fellowshipActor);
-				if (!parentTheme) return;
-
-				const effect = parentTheme.effects.get(tag.id);
-				if (effect) {
-					await parentTheme.updateEmbeddedDocuments("ActiveEffect", [
-						{
-							_id: effect.id,
-							"system.isScratched": !effect.system.isScratched,
-						},
-					]);
-				}
-				break;
-			}
-			case "themeTag": {
-				const theme =
-					this.parent.items.get(tag.id) ?? fellowshipActor?.items.get(tag.id);
-				if (!theme) return;
-				const isScratched = theme.system.isScratched ?? false;
-				await theme.parent.updateEmbeddedDocuments("Item", [
-					{ _id: theme.id, "system.isScratched": !isScratched },
-				]);
-				break;
-			}
-			case "backpack": {
-				const backpack = this.parent.items.find((i) => i.type === "backpack");
-				if (!backpack) break;
-				const effect = backpack.effects.get(tag.id);
-				if (!effect) break;
-				await backpack.updateEmbeddedDocuments("ActiveEffect", [
-					{ _id: effect.id, "system.isScratched": !effect.system.isScratched },
-				]);
-				break;
-			}
-			case "tag": {
-				const allEffects = [...this.parent.allApplicableEffects()];
-				const effect = allEffects.find(
-					(e) => e.id === tag.id && e.type === "story_tag",
-				);
-				if (!effect) return;
-				const isScratched = effect.system?.isScratched ?? false;
-				await effect.parent.updateEmbeddedDocuments("ActiveEffect", [
-					{ _id: effect.id, "system.isScratched": !isScratched },
-				]);
-				break;
-			}
-			case "relationshipTag": {
-				const actorId = tag.id.replace("relationship-", "");
-				const relationships = foundry.utils.deepClone(
-					this.relationships ?? [],
-				);
-				const entry = relationships.find((r) => r.actorId === actorId);
-				if (!entry) return;
-				entry.isScratched = !entry.isScratched;
-				await this.parent.update({ "system.relationships": relationships });
-				break;
-			}
-			default:
-				return;
-		}
+		if (Hooks.call("litm.preTagScratched", this.parent, tag) === false) return;
+		const effect = this.#findEffect(tag.id);
+		if (!effect) return;
+		await effect.system.toggleScratch();
 		Hooks.callAll("litm.tagScratched", this.parent, tag);
+	}
+
+	#findEffect(effectId) {
+		for (const effect of this.parent.allApplicableEffects()) {
+			if (effect.id === effectId) return effect;
+		}
+		const fellowship = this.fellowshipActor;
+		if (fellowship) {
+			for (const item of fellowship.items) {
+				const effect = item.effects.get(effectId);
+				if (effect) return effect;
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -457,23 +224,21 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 	}
 
 	getRollData() {
+		const allThemeTags = this.themes.flatMap((g) => g.tags);
 		return {
 			promise: this.promise,
 			limit: this.limit.value,
 			limitMax: this.limit.max,
-			power: this.availablePowerTags.length,
-			weakness: this.weaknessTags.filter((t) => t.isActive && !t.isScratched)
-				.length,
+			power: allThemeTags.filter((e) => e.type !== "weakness_tag" && e.active).length,
+			weakness: allThemeTags.filter((e) => e.type === "weakness_tag" && e.active).length,
 		};
 	}
 
 	prepareDerivedData() {
 		super.prepareDerivedData();
-		this.#cachedThemeItems = null;
-		this.#cachedEffectTags = null;
-		const highestStatus =
-			this.statuses.sort((a, b) => b.value - a.value)[0]?.value || 0;
-		this.limit.value = 6 - highestStatus;
-		this.limit.max = 6;
+		const highestStatus = this.statuses
+			.filter((e) => e.active)
+			.reduce((max, e) => Math.max(max, e.system.currentTier), 0);
+		this.limit.value = this.limit.max - highestStatus;
 	}
 }

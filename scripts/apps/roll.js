@@ -1,3 +1,4 @@
+import { LitmConfig } from "../system/config.js";
 import { localize as t } from "../utils.js";
 
 export class LitmRoll extends foundry.dice.Roll {
@@ -197,19 +198,20 @@ export class LitmRoll extends foundry.dice.Roll {
 
 	static calculatePower(tags) {
 		const scratchedTags = tags.scratchedTags ?? [];
-		const scratchedValue = scratchedTags.length * 3;
+		const scratchedValue = scratchedTags.length * LitmConfig.BURN_POWER;
 
 		const powerValue = tags.powerTags.length;
 
 		const weaknessValue = tags.weaknessTags.length;
 
+		const statusValue = (t) => t.system?.currentTier ?? Number.parseInt(t.value, 10) ?? 0;
 		const positiveStatusValue = tags.positiveStatuses.reduce(
-			(max, t) => Math.max(max, Number.parseInt(t.value, 10) || 0),
+			(max, t) => Math.max(max, statusValue(t)),
 			0,
 		);
 
 		const negativeStatusValue = tags.negativeStatuses.reduce(
-			(max, t) => Math.max(max, Number.parseInt(t.value, 10) || 0),
+			(max, t) => Math.max(max, statusValue(t)),
 			0,
 		);
 
@@ -248,19 +250,20 @@ export class LitmRoll extends foundry.dice.Roll {
 
 	static filterTags(tags) {
 		const scratchedTags = tags.filter(
-			(t) => t.state === "scratched" || t.state === "burned",
+			(t) => t.state === "scratched",
 		);
+		const isStatus = (t) => t.type === "status_tag";
 		const powerTags = tags.filter(
-			(t) => t.type !== "status" && t.state === "positive",
+			(t) => !isStatus(t) && t.state === "positive",
 		);
 		const weaknessTags = tags.filter(
-			(t) => t.type !== "status" && t.state === "negative",
+			(t) => !isStatus(t) && t.state === "negative",
 		);
 		const positiveStatuses = tags.filter(
-			(t) => t.type === "status" && t.state === "positive",
+			(t) => isStatus(t) && t.state === "positive",
 		);
 		const negativeStatuses = tags.filter(
-			(t) => t.type === "status" && t.state === "negative",
+			(t) => isStatus(t) && t.state === "negative",
 		);
 
 		return {

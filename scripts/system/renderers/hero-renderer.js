@@ -3,7 +3,7 @@ import { enrichHTML, localize as t } from "../../utils.js";
 /**
  * Creates a tag span matching the hero play sheet pattern.
  * @param {string} name - Tag name
- * @param {string} type - Tag CSS class (litm-powerTag, litm-weaknessTag, etc.)
+ * @param {string} type - Tag CSS class (litm-power_tag, litm-weakness_tag, etc.)
  * @returns {HTMLElement}
  */
 function tagSpan(name, type) {
@@ -98,7 +98,7 @@ export async function renderHero(actor) {
 			themeEl.classList.add("litm-render--hero__theme");
 
 			// Theme tag (name)
-			themeEl.appendChild(tagSpan(theme.name, "litm-themeTag"));
+			themeEl.appendChild(tagSpan(theme.name, "litm-theme_tag"));
 
 			// Power tags
 			const powerTags = theme.system.powerTags?.filter((tag) => tag.name) ?? [];
@@ -106,7 +106,7 @@ export async function renderHero(actor) {
 				const tagsRow = document.createElement("div");
 				tagsRow.classList.add("litm-render--hero__theme-tags");
 				for (const tag of powerTags) {
-					tagsRow.appendChild(tagSpan(tag.name, "litm-powerTag"));
+					tagsRow.appendChild(tagSpan(tag.name, "litm-power_tag"));
 				}
 				themeEl.appendChild(tagsRow);
 			}
@@ -118,7 +118,7 @@ export async function renderHero(actor) {
 				const tagsRow = document.createElement("div");
 				tagsRow.classList.add("litm-render--hero__theme-tags");
 				for (const tag of weakTags) {
-					tagsRow.appendChild(tagSpan(tag.name, "litm-weaknessTag"));
+					tagsRow.appendChild(tagSpan(tag.name, "litm-weakness_tag"));
 				}
 				themeEl.appendChild(tagsRow);
 			}

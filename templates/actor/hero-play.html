@@ -94,7 +94,7 @@
 					{{> systems/litmv2/templates/partials/play-tag.html
 					id=(concat "relationship-" relationship.actorId)
 					name=relationship.tag
-					type="relationshipTag"
+					type="relationship_tag"
 					isScratched=relationship.isScratched
 					}}
 				</li>
@@ -179,12 +179,12 @@
 
 		{{#if backpack.tags.length}}
 		<div class="flexrow gap-sm" style="flex-wrap: wrap;">
-			{{#each backpack.tags as |tag|}} {{#if tag.isActive}}
-			<span class="noflex litm-tag {{ifThen tag.isScratched 'scratched' ''}}"
-				{{#if @root.isOwner}}data-action="selectTag" {{/if}} data-tag-type="backpack" data-tag-id="{{tag.id}}" {{#if
+			{{#each backpack.tags as |tag|}} {{#unless tag.disabled}}
+			<span class="noflex litm-tag {{ifThen tag.system.isScratched 'scratched' ''}}"
+				{{#if @root.isOwner}}data-action="selectTag" {{/if}} data-tag-type="backpack" data-tag-id="{{tag._id}}" {{#if
 				@root.isOwner}}data-tooltip="{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}" {{/if}} data-text="{{tag.name}}"
 				{{#if @root.isOwner}}style="cursor: pointer" {{/if}}>
-				{{tag.name}} {{#if tag.isScratched}}
+				{{tag.name}} {{#if tag.system.isScratched}}
 				<svg width="18" height="18" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<g fill="var(--color-text-primary)" stroke="var(--tag-color)" stroke-width="4">
 						<path
@@ -196,7 +196,7 @@
 				</svg>
 				{{/if}}
 			</span>
-			{{/if}} {{/each}}
+			{{/unless}} {{/each}}
 		</div>
 		{{else}}
 		<p class="hint">{{localize "LITM.Ui.backpack_empty"}}</p>
@@ -217,11 +217,11 @@
 		</legend>
 		<div class="litm--play-tags">
 			{{#each statuses as |tag|}}
-			<span class="litm-status{{#if tag.hidden}} litm--tag-hidden{{/if}}" {{#if @root.isOwner}}data-action="selectTag"
+			<span class="litm-status{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}" {{#if @root.isOwner}}data-action="selectTag"
 				{{/if}} data-tag-type="{{tag.type}}" data-tag-id="{{tag.id}}" {{#if
 				@root.isOwner}}data-tooltip="{{localize 'LITM.Ui.click_to_add_tag_only'}}" {{/if}}
-				data-text="{{tag.name}}-{{tag.value}}" {{#if @root.isOwner}}style="cursor: pointer"
-				{{/if}}>{{tag.name}}-{{tag.value}}</span>
+				data-text="{{tag.name}}-{{tag.system.currentTier}}" {{#if @root.isOwner}}style="cursor: pointer"
+				{{/if}}>{{tag.name}}-{{tag.system.currentTier}}</span>
 			{{/each}}
 		</div>
 	</fieldset>

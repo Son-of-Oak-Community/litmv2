@@ -104,13 +104,17 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	}
 
 	#getScratchedTags(actor) {
-		return actor.system.scratchedTags ?? [];
+		return (actor.system.scratchedTags ?? []).map((effect) => ({
+			id: effect.id,
+			name: effect.name,
+			itemId: effect.parent !== actor ? effect.parent?.id : "",
+		}));
 	}
 
 	#getStatusCards(actor) {
 		const statuses = [];
 		for (const effect of actor.effects) {
-			if (effect.type === "status_card") {
+			if (effect.type === "status_tag") {
 				const tier = effect.system?.currentTier ?? 0;
 				if (tier > 0) {
 					statuses.push({ id: effect.id, name: effect.name, tier });

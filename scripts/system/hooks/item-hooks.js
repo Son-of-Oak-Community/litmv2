@@ -1,9 +1,29 @@
+import { LitmItem } from "../../item/litm-item.js";
 import { levelIcon } from "../../utils.js";
 
 export function registerItemHooks() {
 	_prepareThemeOnCreate();
+	_migrateLegacyItemOnCreate();
 	_syncThemeImageOnLevelChange();
 	_syncAddonEffectsOnUpdate();
+}
+
+/**
+ * When an item with stashed legacy data is created (e.g. compendium import),
+ * create proper AEs from the stashed flag data.
+ */
+function _migrateLegacyItemOnCreate() {
+	Hooks.on("createItem", (item) => {
+		LitmItem.createLegacyEffects(item);
+	});
+	// Actor import — embedded items don't fire createItem
+	Hooks.on("createActor", (actor) => {
+		for (const item of actor.items) {
+			if (item.flags?.litmv2?.legacyTags || item.flags?.litmv2?.legacyContents) {
+				LitmItem.createLegacyEffects(item);
+			}
+		}
+	});
 }
 
 function _prepareThemeOnCreate() {
@@ -86,7 +106,7 @@ export async function syncAddonEffects(actor, addonItem) {
 		const isStatus = separator === "-";
 		return {
 			name,
-			type: isStatus ? "status_card" : "story_tag",
+			type: isStatus ? "status_tag" : "story_tag",
 			system: isStatus
 				? {
 					tiers: Array(6)

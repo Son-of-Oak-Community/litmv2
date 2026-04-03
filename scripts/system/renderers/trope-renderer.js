@@ -22,7 +22,7 @@ function buildTagTooltip(system) {
 			`<div class="tag-tooltip-group"><label>${t("LITM.Tags.power_tags")}</label>${power
 				.map(
 					(n) =>
-						`<span class="litm-powerTag" data-text="${esc(n)}">${esc(n)}</span>`,
+						`<span class="litm-power_tag" data-text="${esc(n)}">${esc(n)}</span>`,
 				)
 				.join(" ")}</div>`,
 		);
@@ -32,7 +32,7 @@ function buildTagTooltip(system) {
 			`<div class="tag-tooltip-group"><label>${t("LITM.Tags.weakness_tags")}</label>${weakness
 				.map(
 					(n) =>
-						`<span class="litm-weaknessTag" data-text="${esc(n)}">${esc(n)}</span>`,
+						`<span class="litm-weakness_tag" data-text="${esc(n)}">${esc(n)}</span>`,
 				)
 				.join(" ")}</div>`,
 		);

@@ -1,5 +1,5 @@
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
-import { enrichHTML, themeTagEffect } from "../../utils.js";
+import { enrichHTML, powerTagEffect, weaknessTagEffect } from "../../utils.js";
 
 export class StoryThemeSheet extends LitmItemSheet {
 	static DEFAULT_OPTIONS = {
@@ -60,9 +60,10 @@ export class StoryThemeSheet extends LitmItemSheet {
 	 */
 	static async #onAddTag(_event, target) {
 		if (!this.document.isOwner) return;
-		const tagType = target.dataset.type; // "powerTag" or "weaknessTag"
+		const tagType = target.dataset.type; // "power_tag" or "weakness_tag"
+		const factory = tagType === "weakness_tag" ? weaknessTagEffect : powerTagEffect;
 		await this.document.createEmbeddedDocuments("ActiveEffect", [
-			themeTagEffect({ tagType, isActive: true }),
+			factory({ isActive: true }),
 		]);
 	}
 

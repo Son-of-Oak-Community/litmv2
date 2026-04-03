@@ -26,24 +26,24 @@
 		{{#if tags.length}}
 		<ul class="plain">
 			{{#each tags as |tag|}}
-			<li class="form-group {{#unless tag.isActive}}inactive{{/unless}}">
+			<li class="form-group {{#if tag.disabled}}inactive{{/if}}">
 				<input
 					type="checkbox"
-					name="effects.{{tag.id}}.isActive"
-					{{checked tag.isActive}}
+					name="effects.{{tag._id}}.isActive"
+					{{checked (not tag.disabled)}}
 					data-dtype="Boolean"
 				/>
 
 				<input
 					class="flex1"
 					type="text"
-					name="effects.{{tag.id}}.name"
+					name="effects.{{tag._id}}.name"
 					value="{{tag.name}}"
 					placeholder="{{localize 'LITM.Ui.tag_name'}}"
 				/>
 
 				<label class="litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
-					<input class="litm--single-use" type="checkbox" name="effects.{{tag.id}}.system.isSingleUse"
+					<input class="litm--single-use" type="checkbox" name="effects.{{tag._id}}.system.isSingleUse"
 						{{checked tag.isSingleUse}} data-dtype="Boolean" />
 					<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
 				</label>
@@ -52,7 +52,7 @@
 					style="flex: none"
 					type="button"
 					data-action="removeTag"
-					data-effect-id="{{tag.id}}"
+					data-effect-id="{{tag._id}}"
 					data-tooltip="{{localize 'LITM.Ui.remove_tag'}}"
 					aria-label="{{localize 'LITM.Ui.remove_tag'}}"
 				>

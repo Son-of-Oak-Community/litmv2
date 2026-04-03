@@ -171,21 +171,37 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 				// Auto-scratch tags used in "scratched" state + single-use tags
 				const actor = game.actors.get(actorId);
+				const scratchTag = async (tag) => {
+					// Actor-backed tags
+					if (actor?.system?.toggleScratchTag) {
+						await actor.system.toggleScratchTag(tag);
+						return;
+					}
+					// Scene/sidebar tags — update settings storage
+					const sidebar = game.litmv2.storyTags ?? ui.combat;
+					if (sidebar?.tags && sidebar?.setTags) {
+						const updated = sidebar.tags.map((t) =>
+							t.id === tag.id ? { ...t, isScratched: true } : t,
+						);
+						await sidebar.setTags(updated);
+					}
+				};
+
 				if (actor?.system) {
 					for (const tag of scratchedTags) {
-						await actor.system.toggleScratchTag(tag);
+						await scratchTag(tag);
 					}
 					const allUsedTags = [...powerTags, ...weaknessTags];
 					for (const tag of allUsedTags) {
-						if (tag.isSingleUse) {
-							await actor.system.toggleScratchTag(tag);
+						if (tag.system?.isSingleUse ?? tag.isSingleUse) {
+							await scratchTag(tag);
 						}
 					}
 					roll.options.isScratched = true;
 
 					// Auto-gain improvement for weakness tags
 					const realWeaknessTags = weaknessTags.filter(
-						(t) => t.type === "weaknessTag",
+						(t) => t.type === "weakness_tag" || t.type === "relationship_tag",
 					);
 					for (const tag of realWeaknessTags) {
 						await actor.system.gainImprovement(tag);
@@ -302,19 +318,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	get statuses() {
-		if (!this.actor) return [];
 		const { tags } = game.litmv2.storyTags ?? ui.combat ?? { tags: [] };
-		const actorImg = this.actor.prototypeToken?.texture?.src || this.actor.img;
 		const sceneStatuses = tags
-			.filter((tag) => tag.values.some((v) => !!v))
+			.filter((tag) => tag.values?.some((v) => !!v))
 			.map((tag) => ({ ...tag, actorName: null, actorImg: null }));
-		const actorStatuses = this.actor.system.statuses.map((tag) => ({
-			...tag,
-			actorName: this.actor.name,
-			actorImg,
-		}));
 		const stateMap = this.#tagStateMap();
-		return [...sceneStatuses, ...actorStatuses].map((tag) => {
+		return sceneStatuses.map((tag) => {
 			const ts = stateMap.get(tag.id);
 			return {
 				...tag,
@@ -328,22 +337,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	get tags() {
 		if (!this.actor) return [];
 		const { tags } = game.litmv2.storyTags ?? ui.combat ?? { tags: [] };
-		const actorImg = this.actor.prototypeToken?.texture?.src || this.actor.img;
 		const sceneTags = tags
 			.filter((tag) => tag.values.every((v) => !v))
 			.map((tag) => ({ ...tag, actorName: null, actorImg: null }));
-		const actorTags = this.actor.system.storyTags.map((tag) => ({
-			...tag,
-			actorName: this.actor.name,
-			actorImg,
-		}));
 		const stateMap = this.#tagStateMap();
-		return [...sceneTags, ...actorTags].map((tag) => {
+		return sceneTags.map((tag) => {
 			const ts = stateMap.get(tag.id);
-			const state = ts?.state || "";
 			return {
 				...tag,
-				state: state === "burned" ? "scratched" : state,
+				state: ts?.state || "",
 				contributorId: ts?.contributorId || null,
 				states: tag.isSingleUse
 					? ",positive,negative"
@@ -358,8 +360,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const storyTags = game.litmv2.storyTags ?? ui.combat;
 		if (!storyTags) return [];
 		const { actors } = storyTags;
+		const fellowshipId = game.litmv2?.fellowship?.id;
 		const tags = actors
-			.filter((actor) => actor.id !== this.actorId)
+			.filter((actor) => actor.id !== this.actorId && actor.id !== fellowshipId)
 			.flatMap((actor) =>
 				actor.tags.map((tag) => ({
 					...tag,
@@ -371,10 +374,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const stateMap = this.#tagStateMap();
 		return tags.map((tag) => {
 			const ts = stateMap.get(tag.id);
-			const state = ts?.state || "";
 			return {
 				...tag,
-				state: state === "burned" ? "scratched" : state,
+				state: ts?.state || "",
 				contributorId: ts?.contributorId || null,
 				states:
 					tag.type === "tag" && !tag.isSingleUse
@@ -400,34 +402,29 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const isGMViewer = game.user.isGM && !isOwner;
 		const currentUserId = game.user.id;
 		const tagTypeOrder = {
-			themeTag: 1,
-			powerTag: 2,
-			weaknessTag: 3,
-			relationshipTag: 4,
-			backpack: 5,
-			tag: 6,
-			status: 7,
+			power_tag: 1,
+			fellowship_tag: 2,
+			weakness_tag: 3,
+			relationship_tag: 4,
+			story_tag: 5,
+			status_tag: 6,
 		};
 		const decorateTag = (tag) => {
 			const contributorId = tag.contributorId || null;
-			const noBurn = tag.isSingleUse;
 			const isOpposition =
 				tag.actorType === "challenge" || tag.actorType === "journey";
+			const states = isOpposition
+				? ",negative,positive"
+				: (tag.system?.allowedStates ?? tag.states ?? ",positive,negative");
 			return {
 				...tag,
+				_id: tag._id ?? tag.id,
+				id: tag.id ?? tag._id,
 				contributorId,
 				displayName: tag.displayName || tag.name,
 				locked: !isOwner && contributorId && contributorId !== currentUserId,
-				states:
-					tag.type === "weaknessTag"
-						? ",negative,positive"
-						: isOpposition
-							? ",negative,positive"
-							: tag.type === "status"
-								? ",positive,negative"
-								: noBurn
-									? ",positive,negative"
-									: ",positive,negative,scratched",
+				states,
+				value: tag.type === "status_tag" ? (tag.system?.currentTier ?? 0) : undefined,
 			};
 		};
 		const gmTagsFlat = sortByTypeThenName(
@@ -456,17 +453,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const sceneStoryItems = allStoryItems.filter(
 			(tag) => tag.actorName === null,
 		);
-		const actorStoryItems = allStoryItems
-			.filter((tag) => tag.actorName !== null)
-			.filter((tag) => isOwner || game.user.isGM || !!tag.state);
-
 		const storyTagGroups = sceneStoryItems.length
 			? [{ actorName: null, actorImg: null, tags: sceneStoryItems }]
 			: [];
 
-		// Group character tags by theme, preserving insertion order
-		const characterTagGroupMap = new Map();
-		const fellowshipTagGroupMap = new Map();
+		let characterTagGroups = [];
+		let fellowshipTagGroups = [];
 		// GM viewer builds per-actor tabs from the story tag app
 		const gmViewerTabs = [];
 		if (isGMViewer) {
@@ -512,7 +504,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 							actorName: actor.name,
 							actorImg,
 							actorType: actor.type,
-							state: state === "burned" ? "scratched" : state,
+							state,
 							contributorId: ts?.contributorId || null,
 						});
 						const groupKey = `__${sTag.type}`;
@@ -578,26 +570,98 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				tab.cssClass = this.tabGroups["gm-viewer"] === tab.id ? "active" : "";
 			}
 		} else {
-			// Owner sees all own tags; non-owners only see checked tags
-			const visibleCharacterTags = isOwner
-				? this.characterTags.filter((t) => !t.contributorActorId)
-				: this.characterTags.filter((t) => !!t.state && !t.contributorActorId);
-			for (const rawTag of visibleCharacterTags) {
-				const tag = decorateTag(rawTag);
-				const groupKey = rawTag.themeId ?? `__${rawTag.type}`;
-				const groupLabel = rawTag.themeName ?? rawTag.type;
-				const targetMap = rawTag.fromFellowship
-					? fellowshipTagGroupMap
-					: characterTagGroupMap;
-				if (!targetMap.has(groupKey)) {
-					targetMap.set(groupKey, {
-						themeName: groupLabel,
-						themeImg: rawTag.themeImg ?? null,
-						actorImg: rawTag.actorImg ?? null,
-						tags: [],
+			// Owner path: build groups from the actor's structured getters
+			const sys = this.actor?.system;
+			if (sys) {
+				const stateMap = new Map(this.characterTags.map((t) => [t.id ?? t._id, t]));
+				const withState = (effect) => {
+					const ct = stateMap.get(effect.id ?? effect._id);
+					return decorateTag({
+						...effect,
+						_id: effect._id,
+						id: effect.id,
+						name: effect.name,
+						type: effect.type,
+						system: effect.system,
+						parent: effect.parent,
+						state: ct?.state ?? "",
+						contributorId: ct?.contributorId ?? null,
+					});
+				};
+
+				// Hero themes
+				for (const { theme, tags } of sys.themes) {
+					const activeTags = tags.filter((e) => e.active).map(withState);
+					if (activeTags.length) {
+						characterTagGroups.push({
+							themeName: theme.name,
+							themeImg: theme.img,
+							tags: activeTags,
+						});
+					}
+				}
+
+				// Backpack
+				const backpackTags = sys.backpack.filter((e) => e.active).map(withState);
+				if (backpackTags.length) {
+					const backpackItem = this.actor.items.find((i) => i.type === "backpack");
+					characterTagGroups.push({
+						themeName: backpackItem?.name ?? t("LITM.Terms.backpack"),
+						themeImg: backpackItem?.img ?? null,
+						tags: backpackTags,
 					});
 				}
-				targetMap.get(groupKey).tags.push(tag);
+
+				// Relationship tags
+				const relTags = sys.relationships.filter((e) => e.active).map(withState);
+				if (relTags.length) {
+					characterTagGroups.push({
+						themeName: t("LITM.Terms.relationships"),
+						themeImg: null,
+						tags: relTags,
+					});
+				}
+
+				// Hero statuses
+				const heroStatuses = sys.statuses.filter((e) => e.active).map(withState);
+				if (heroStatuses.length) {
+					characterTagGroups.push({
+						themeName: t("LITM.Terms.statuses"),
+						icon: "fa-solid fa-droplet",
+						tags: heroStatuses,
+					});
+				}
+
+				// Fellowship
+				const fellowship = sys.fellowship;
+				for (const { theme, tags } of fellowship.themes) {
+					const activeTags = tags.filter((e) => e.active).map(withState);
+					if (activeTags.length) {
+						fellowshipTagGroups.push({
+							themeName: theme.name,
+							themeImg: theme.img,
+							tags: activeTags,
+						});
+					}
+				}
+				const fellowshipTags = fellowship.tags.filter((e) => e.active).map(withState);
+				if (fellowshipTags.length) {
+					fellowshipTagGroups.push({
+						themeName: t("LITM.Tags.tags_and_statuses"),
+						icon: "fa-solid fa-tags",
+						tags: fellowshipTags,
+					});
+				}
+
+				// Relationship tags
+				const relTags = sys.relationships.filter((e) => e.name).map(withSelection);
+				if (relTags.length) {
+					fellowshipTagGroups.push({
+						themeName: t("LITM.Terms.relationship"),
+						icon: "fa-solid fa-handshake",
+						tags: relTags,
+					});
+				}
 			}
 		}
 		// Contributed tags from other characters, grouped by contributor
@@ -671,29 +735,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				})),
 			}),
 		);
-		// Actor story tags/statuses (non-GM only)
-		if (!isGMViewer && actorStoryItems.length > 0) {
-			characterTagGroupMap.set("__actor_story", {
-				themeName: t("LITM.Tags.story"),
-				tags: actorStoryItems,
-			});
-		}
-		const characterTagGroups = [...characterTagGroupMap.values()].map(
-			(group) => ({
-				...group,
-				tags: sortByTypeThenName(group.tags, tagTypeOrder),
-			}),
-		);
-		const fellowshipTagGroups = [...fellowshipTagGroupMap.values()].map(
-			(group) => ({
-				...group,
-				tags: sortByTypeThenName(group.tags, tagTypeOrder),
-			}),
-		);
-
 		return {
 			actorId: this.actorId,
 			characterTagGroups,
+			fellowshipName: game.litmv2?.fellowship?.name ?? t("LITM.Terms.fellowship"),
 			fellowshipTagGroups,
 			contributedTagGroups,
 			rollTypes: {
@@ -777,7 +822,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 			if (event.shiftKey && !checkbox.disabled) {
 				const tagType = label.dataset.tagType;
-				const canScratch = !["weaknessTag", "status"].includes(tagType);
+				const canScratch = !["weakness_tag", "status_tag"].includes(tagType);
 				if (canScratch) {
 					const newValue =
 						checkbox.value === "scratched" ? "" : "scratched";
@@ -896,11 +941,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const { name: id, value } = target;
 		const { type } = target.dataset;
 		const isCharacterTag = [
-			"powerTag",
-			"themeTag",
-			"backpack",
-			"weaknessTag",
-			"relationshipTag",
+			"power_tag",
+			"weakness_tag",
+			"fellowship_tag",
+			"relationship_tag",
+			"story_tag",
+			"status_tag",
 		].includes(type);
 		// Ensure non-owner's character tags are tracked in characterTags
 		let existingCharacterTag = isCharacterTag
@@ -963,11 +1009,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		}
 
 		switch (type) {
-			case "powerTag":
-			case "themeTag":
-			case "backpack":
-			case "weaknessTag":
-			case "relationshipTag": {
+			case "power_tag":
+			case "weakness_tag":
+			case "fellowship_tag":
+			case "relationship_tag":
+			case "story_tag":
+			case "status_tag": {
 				const tag = this.characterTags.find((t) => t.id === id);
 				if (tag) {
 					tag.state = value;
@@ -1000,15 +1047,24 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	addTag(tag, toScratch) {
-		tag.state =
-			tag.type === "weaknessTag"
+		const state =
+			tag.type === "weakness_tag"
 				? "negative"
 				: toScratch
 					? "scratched"
 					: "positive";
-		tag.states =
-			tag.type === "weaknessTag" ? ",negative,positive" : ",positive,scratched";
-		this.characterTags.push(tag);
+		const states = tag.system?.allowedStates ?? ",positive,negative";
+		this.characterTags.push({
+			...tag,
+			_id: tag._id,
+			id: tag.id,
+			name: tag.name,
+			type: tag.type,
+			system: tag.system,
+			parent: tag.parent,
+			state,
+			states,
+		});
 	}
 
 	removeTag(tag) {
@@ -1031,9 +1087,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const formKeys = new Set();
 		const fromForm = Object.entries(formData)
 			.filter(([_, v]) => !!v)
-			.map(([key]) => {
+			.map(([key, formValue]) => {
 				formKeys.add(key);
-				return allTags.find((t) => t.id === key);
+				const tag = allTags.find((t) => t.id === key);
+				if (!tag) return null;
+				// Use the form value as the state, falling back to the tag's tracked state
+				const state = (typeof formValue === "string" && formValue) ? formValue : tag.state;
+				return { ...tag, _id: tag._id ?? tag.id, id: tag.id ?? tag._id, name: tag.name, type: tag.type, system: tag.system, state };
 			})
 			.filter(Boolean);
 		// Include tagState entries contributed by other users that have no form field

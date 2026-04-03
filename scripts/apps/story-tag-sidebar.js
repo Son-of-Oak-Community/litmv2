@@ -1,8 +1,8 @@
-import { StatusCardData } from "../data/active-effect-data.js";
+import { StatusTagData } from "../data/active-effects/index.js";
 import { buildTrackCompleteContent } from "../system/chat.js";
 import { LitmSettings } from "../system/settings.js";
 import { Sockets } from "../system/sockets.js";
-import { confirmDelete, enrichHTML, localize as t, statusCardEffect, storyTagEffect, updateEffectsByParent } from "../utils.js";
+import { confirmDelete, enrichHTML, localize as t, statusTagEffect, storyTagEffect, updateEffectsByParent } from "../utils.js";
 
 const AbstractSidebarTab = foundry.applications.sidebar.AbstractSidebarTab;
 
@@ -132,13 +132,12 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 					isUserCharacter:
 						userCharacterIds.has(actor._id) || actor._id === fellowshipId,
 					hidden: (this.config.hiddenActors ?? []).includes(actor._id),
-					tags: [...actor.allApplicableEffects()]
-						.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+					tags: [...(actor.system.storyTags ?? []), ...(actor.system.statusEffects ?? [])]
 						.filter((e) => !e.disabled)
-						.filter((e) => e.type === "story_tag" || e.type === "status_card")
 						.filter((e) => game.user.isGM || !(e.system?.isHidden ?? false))
+						.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
 						.map((e) => {
-							const isStatus = e.type === "status_card";
+							const isStatus = e.type === "status_tag";
 							return {
 								id: e._id,
 								name: e.name,
@@ -284,7 +283,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						const statusTierArrays = groupedTags
 							.filter((t) => t.type === "status")
 							.map((t) => t.values);
-						const computedValue = StatusCardData.stackTiers(statusTierArrays);
+						const computedValue = StatusTagData.stackTiers(statusTierArrays);
 						return {
 							...limit,
 							tags: groupedTags,
@@ -314,7 +313,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				const statusTierArrays = groupedTags
 					.filter((t) => t.type === "status")
 					.map((t) => t.values);
-				const computedValue = StatusCardData.stackTiers(statusTierArrays);
+				const computedValue = StatusTagData.stackTiers(statusTierArrays);
 				return {
 					...limit,
 					tags: groupedTags,
@@ -769,7 +768,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 					const tier = Number.parseInt(value, 10);
 					return {
 						name,
-						type: isStatus ? "status_card" : "story_tag",
+						type: isStatus ? "status_tag" : "story_tag",
 						system: isStatus
 							? {
 									tiers: Array(6)
@@ -1210,7 +1209,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			const tiers = tag.values ?? new Array(6).fill(false);
 			if (!tiers.some(Boolean)) return;
 
-			// Shift all marks left by 1 (same logic as StatusCardData#calculateReduction)
+			// Shift all marks left by 1 (same logic as StatusTagData#calculateReduction)
 			const newTiers = Array(6).fill(false);
 			for (let i = 0; i < 6; i++) {
 				if (tiers[i]) {
@@ -1233,7 +1232,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			if (!actor?.isOwner) return;
 
 			const effect = actor.effects.get(tagId);
-			if (!effect || effect.type !== "status_card") return;
+			if (!effect || effect.type !== "status_tag") return;
 			if (!effect.system.tiers.some(Boolean)) return;
 
 			const newTiers = effect.system.calculateReduction(1);
@@ -1251,13 +1250,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (actor.type !== "challenge" && actor.type !== "journey") return;
 
 		const effects = [...actor.effects]
-			.filter((e) => e.type === "status_card" && e.system?.limitId)
+			.filter((e) => e.type === "status_tag" && e.system?.limitId)
 			.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 
 		const limits = (actor.system.limits ?? []).map((limit) => {
 			const grouped = effects.filter((e) => e.system.limitId === limit.id);
 			const tierArrays = grouped.map((e) => e.system.tiers);
-			const computedValue = StatusCardData.stackTiers(tierArrays);
+			const computedValue = StatusTagData.stackTiers(tierArrays);
 			return { ...limit, value: computedValue };
 		});
 
@@ -1340,7 +1339,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				.filter(
 					(e) =>
 						e.id !== sourceId &&
-						(e.type === "story_tag" || e.type === "status_card"),
+						(e.type === "story_tag" || e.type === "status_tag"),
 				)
 				.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 
@@ -1443,7 +1442,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		const maxSort = Math.max(0, ...actor.effects.map((e) => e.sort ?? 0));
 		const effectData = type === "status"
-			? { ...statusCardEffect({ name: tag.name, tiers, isHidden: game.user.isGM, limitId: tag.limitId }), sort: maxSort + 1000 }
+			? { ...statusTagEffect({ name: tag.name, tiers, isHidden: game.user.isGM, limitId: tag.limitId }), sort: maxSort + 1000 }
 			: { ...storyTagEffect({ name: tag.name, isScratched: tag.isScratched ?? false, isSingleUse: tag.isSingleUse ?? false, isHidden: game.user.isGM, limitId: tag.limitId }), sort: maxSort + 1000 };
 		const [created] = await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
 		if (created) this._editOnRender = created.id;

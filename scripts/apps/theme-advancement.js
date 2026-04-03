@@ -1,4 +1,4 @@
-import { findThemebookByName, themeTagEffect, toQuestionOptions } from "../utils.js";
+import { fellowshipTagEffect, findThemebookByName, powerTagEffect, toQuestionOptions, weaknessTagEffect } from "../utils.js";
 
 export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
@@ -87,14 +87,14 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		);
 
 		const inactivePowerTags = (theme.system?.powerTags || [])
-			.filter((tag) => !tag.isActive)
+			.filter((tag) => !tag.active)
 			.map((tag) => ({
 				value: tag.id,
 				label: tag.name || game.i18n.localize("LITM.Ui.name_power"),
 			}));
 
 		const inactiveWeaknessTags = (theme.system?.weaknessTags || [])
-			.filter((tag) => !tag.isActive)
+			.filter((tag) => !tag.active)
 			.map((tag) => ({
 				value: tag.id,
 				label: tag.name || game.i18n.localize("LITM.Ui.name_weakness"),
@@ -248,8 +248,10 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		const name = input?.value?.trim() || "";
 		if (!name) return;
 
+		const isFellowship = theme.system.isFellowship;
+		const factory = isFellowship ? fellowshipTagEffect : powerTagEffect;
 		await theme.createEmbeddedDocuments("ActiveEffect", [
-			themeTagEffect({ name, tagType: "powerTag", isActive: true, question }),
+			factory({ name, isActive: true, question }),
 		]);
 		await ThemeAdvancementApp.#spendImprove(theme, {});
 		this.close();
@@ -268,7 +270,7 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		if (!name) return;
 
 		await theme.createEmbeddedDocuments("ActiveEffect", [
-			themeTagEffect({ name, tagType: "weaknessTag", isActive: true, question }),
+			weaknessTagEffect({ name, isActive: true, question }),
 		]);
 		await ThemeAdvancementApp.#spendImprove(theme, {});
 		this.close();

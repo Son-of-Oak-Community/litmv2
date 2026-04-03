@@ -25,7 +25,7 @@ function statusCard(name, tier = 1) {
 		_id,
 		_key: `!effects!${_id}`,
 		name,
-		type: "status_card",
+		type: "status_tag",
 		img: "systems/litmv2/assets/media/icons/consequences.svg",
 		disabled: false,
 		showIcon: 2, // ALWAYS

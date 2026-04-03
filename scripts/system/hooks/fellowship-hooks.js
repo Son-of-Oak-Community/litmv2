@@ -140,7 +140,9 @@ function _rerenderHeroSheetsOnFellowshipChange() {
 		const fellowshipId = LitmSettings.fellowshipId;
 		if (!fellowshipId) return;
 
-		const actorId = actorOrItem.parent?.id ?? actorOrItem.id;
+		let doc = actorOrItem;
+		while (doc?.parent && doc.parent.documentName !== "Actor") doc = doc.parent;
+		const actorId = doc?.parent?.id ?? doc?.id;
 
 		// Fellowship changed → re-render linked hero sheets
 		if (actorId === fellowshipId) {

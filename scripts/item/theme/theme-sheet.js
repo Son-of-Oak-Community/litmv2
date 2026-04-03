@@ -2,10 +2,12 @@ import { error } from "../../logger.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
 import {
 	enrichHTML,
+	fellowshipTagEffect,
 	findThemebookByName,
+	powerTagEffect,
 	queryItemsFromPacks,
-	themeTagEffect,
 	toQuestionOptions,
+	weaknessTagEffect,
 } from "../../utils.js";
 
 /**
@@ -190,19 +192,23 @@ export class ThemeSheet extends LitmItemSheet {
 		const tagType = target.dataset.type;
 		const themebook = await findThemebookByName(this.system.themebook);
 
-		const existingTags = tagType === "powerTag" ? this.system.powerTags : this.system.weaknessTags;
-		const usedQuestions = new Set(existingTags.map((t) => t.question).filter(Boolean));
-		const allQuestions = tagType === "powerTag"
+		const existingTags = tagType === "power_tag" ? this.system.powerTags : this.system.weaknessTags;
+		const usedQuestions = new Set(existingTags.map((t) => t.system?.question).filter(Boolean));
+		const allQuestions = tagType === "power_tag"
 			? (themebook?.system?.powerTagQuestions || [])
 			: (themebook?.system?.weaknessTagQuestions || []);
-		const startIndex = tagType === "powerTag" ? 1 : 0;
+		const startIndex = tagType === "power_tag" ? 1 : 0;
 		const nextQuestion = allQuestions
 			.map((q, i) => ({ q, i }))
 			.filter(({ q, i }) => i >= startIndex && `${q ?? ""}`.trim() && !usedQuestions.has(String(i)))
 			.map(({ i }) => String(i))[0] ?? null;
 
+		const isFellowship = this.document.system.isFellowship;
+		const factory = tagType === "weakness_tag" ? weaknessTagEffect
+			: isFellowship ? fellowshipTagEffect
+			: powerTagEffect;
 		await this.document.createEmbeddedDocuments("ActiveEffect", [
-			themeTagEffect({ tagType, question: nextQuestion }),
+			factory({ question: nextQuestion }),
 		]);
 	}
 

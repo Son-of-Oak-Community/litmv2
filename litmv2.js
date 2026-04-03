@@ -15,11 +15,14 @@ import { ThemeAdvancementApp } from "./scripts/apps/theme-advancement.js";
 import { WelcomeOverlay } from "./scripts/apps/welcome-overlay.js";
 import { SuperCheckbox } from "./scripts/components/super-checkbox.js";
 import {
-	StatusCardData,
+	PowerTagData,
+	WeaknessTagData,
+	FellowshipTagData,
+	RelationshipTagData,
 	StoryTagData,
-	ThemeTagData,
-} from "./scripts/data/active-effect-data.js";
-import { TagData } from "./scripts/data/tag-data.js";
+	StatusTagData,
+} from "./scripts/data/active-effects/index.js";
+import { LitmActiveEffect } from "./scripts/data/active-effects/litm-active-effect.js";
 import { BackpackData } from "./scripts/item/backpack/backpack-data.js";
 import { BackpackSheet } from "./scripts/item/backpack/backpack-sheet.js";
 import { LitmItem } from "./scripts/item/litm-item.js";
@@ -63,10 +66,12 @@ Hooks.once("init", () => {
 	info("Initializing Legend in the Mist...");
 	game.litmv2 = {
 		data: {
-			TagData,
-			StatusCardData,
+			PowerTagData,
+			WeaknessTagData,
+			FellowshipTagData,
+			RelationshipTagData,
 			StoryTagData,
-			ThemeTagData,
+			StatusTagData,
 		},
 		methods: {
 			calculatePower: LitmRoll.calculatePower,
@@ -96,6 +101,7 @@ Hooks.once("init", () => {
 	}
 	CONFIG.Dice.rolls.push(LitmRoll);
 	CONFIG.Item.documentClass = LitmItem;
+	CONFIG.ActiveEffect.documentClass = LitmActiveEffect;
 	CONFIG.Item.dataModels.backpack = BackpackData;
 	CONFIG.Item.dataModels.theme = ThemeData;
 	CONFIG.Item.dataModels.themebook = ThemebookData;
@@ -103,9 +109,12 @@ Hooks.once("init", () => {
 	CONFIG.Item.dataModels.addon = AddonData;
 	CONFIG.Item.dataModels.story_theme = StoryThemeData;
 	CONFIG.Item.dataModels.trope = TropeData;
+	CONFIG.ActiveEffect.dataModels.power_tag = PowerTagData;
+	CONFIG.ActiveEffect.dataModels.weakness_tag = WeaknessTagData;
+	CONFIG.ActiveEffect.dataModels.fellowship_tag = FellowshipTagData;
+	CONFIG.ActiveEffect.dataModels.relationship_tag = RelationshipTagData;
 	CONFIG.ActiveEffect.dataModels.story_tag = StoryTagData;
-	CONFIG.ActiveEffect.dataModels.status_card = StatusCardData;
-	CONFIG.ActiveEffect.dataModels.theme_tag = ThemeTagData;
+	CONFIG.ActiveEffect.dataModels.status_tag = StatusTagData;
 	CONFIG.litmv2 = new LitmConfig();
 
 	// Replace the combat tracker sidebar tab with Story Tags

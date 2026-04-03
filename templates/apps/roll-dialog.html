@@ -8,8 +8,8 @@
 			states="{{tag.states}}" {{#if tag.locked}}disabled aria-disabled="true" data-locked="true"
 			{{/if}}></litm-super-checkbox>
 		<span class="litm--roll-dialog-badge litm-{{tag.type}}"
-			data-text="{{tag.displayName}}{{ifThen (eq tag.type 'status') (ifThen tag.value (concat '-' tag.value) '') ''}}">{{tag.displayName}}{{ifThen
-			(eq tag.type "status") (ifThen tag.value (concat "-" tag.value) "") ""}}</span>
+			data-text="{{tag.displayName}}{{ifThen (eq tag.type 'status_tag') (ifThen tag.value (concat '-' tag.value) '') ''}}">{{tag.displayName}}{{ifThen
+			(eq tag.type "status_tag") (ifThen tag.value (concat "-" tag.value) "") ""}}</span>
 	</label>
 </li>
 {{/inline}}
@@ -133,8 +133,8 @@
 				<p class="litm--roll-dialog-actor-label">
 					{{#if group.themeImg}}
 					<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
-					{{else if group.actorImg}}
-					<img src="{{group.actorImg}}" alt="{{group.themeName}}" />
+					{{else if group.icon}}
+					<i class="{{group.icon}}" aria-hidden="true"></i>
 					{{/if}}
 					<span>{{group.themeName}}</span>
 				</p>
@@ -145,26 +145,7 @@
 				</ul>
 			</div>
 			{{/each}}
-
-			<!-- Fellowship Tags (grouped by theme) -->
-			{{#if fellowshipTagGroups.length}}
-			{{#each fellowshipTagGroups as |group|}}
-			<div class="litm--roll-dialog-theme-group {{#if @first}}litm--roll-dialog-section-break{{/if}}">
-				<p class="litm--roll-dialog-actor-label">
-					{{#if group.themeImg}}
-					<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
-					{{else}}
-					<img src="systems/litmv2/assets/media/icons/fellowship.svg" alt="{{group.themeName}}" />
-					{{/if}}
-					<span>{{group.themeName}}</span>
-				</p>
-				<ul class="plain litm--roll-dialog-tags-summary">
-					{{#each group.tags as |tag|}}
-					{{> tag tag=tag}}
-					{{/each}}
-				</ul>
 			</div>
-			{{/each}}
 			{{/if}}
 
 			<!-- Contributed Tags (from other characters) -->

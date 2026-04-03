@@ -1,5 +1,3 @@
-import { effectToTag } from "../../utils.js";
-
 export class BackpackData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
 		return {};
@@ -14,12 +12,11 @@ export class BackpackData extends foundry.abstract.TypeDataModel {
 	/** All story_tag effects on this backpack item. */
 	get tags() {
 		return this.parent.effects
-			.filter((e) => e.type === "story_tag")
-			.map(effectToTag);
+			.filter((e) => e.type === "story_tag");
 	}
 
 	/** Active, non-scratched tags. */
 	get activeTags() {
-		return this.tags.filter((t) => t.isActive && !t.isScratched);
+		return this.tags.filter((e) => e.active);
 	}
 }

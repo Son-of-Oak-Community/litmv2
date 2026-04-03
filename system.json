@@ -31,9 +31,14 @@
 			}
 		},
 		"ActiveEffect": {
+			"power_tag": {},
+			"weakness_tag": {},
+			"fellowship_tag": {},
+			"relationship_tag": {},
 			"story_tag": {},
-			"status_card": {},
-			"theme_tag": {}
+			"status_tag": {},
+			"theme_tag": {},
+			"status_card": {}
 		},
 		"Item": {
 			"backpack": {},

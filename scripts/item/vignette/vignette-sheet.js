@@ -93,7 +93,7 @@ export class VignetteSheet extends LitmItemSheet {
 		// Build desired effects list from consequence text
 		const desired = matches.map(([_, name, separator, value]) => {
 			if (separator === "-") {
-				return { name, type: "status_card", tierIndex: Number(value) };
+				return { name, type: "status_tag", tierIndex: Number(value) };
 			}
 			return { name, type: "story_tag", tierIndex: null };
 		});
@@ -113,15 +113,15 @@ export class VignetteSheet extends LitmItemSheet {
 			const found = existing.get(key);
 			if (found) {
 				matched.add(found.id);
-				if (d.type === "status_card" && d.tierIndex != null) {
+				if (d.type === "status_tag" && d.tierIndex != null) {
 					const newTiers = Array.from({ length: 6 }, (_, i) => i + 1 === d.tierIndex);
 					if (newTiers.some((v, i) => v !== found.system.tiers[i])) {
 						toUpdate.push({ _id: found.id, "system.tiers": newTiers });
 					}
 				}
 			} else {
-				const effectData = d.type === "status_card"
-					? { name: d.name, type: "status_card", system: { tiers: Array.from({ length: 6 }, (_, i) => i + 1 === d.tierIndex) } }
+				const effectData = d.type === "status_tag"
+					? { name: d.name, type: "status_tag", system: { tiers: Array.from({ length: 6 }, (_, i) => i + 1 === d.tierIndex) } }
 					: { name: d.name, type: "story_tag", system: { isScratched: false, isSingleUse: false } };
 				toCreate.push(effectData);
 			}

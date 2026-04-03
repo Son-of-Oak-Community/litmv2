@@ -1,7 +1,7 @@
 /**
  * Creates a tag span matching the hero play sheet pattern.
  * @param {string} name - Tag name
- * @param {string} type - Tag CSS class (litm-powerTag, litm-weaknessTag, etc.)
+ * @param {string} type - Tag CSS class (litm-power_tag, litm-weakness_tag, etc.)
  * @returns {HTMLElement}
  */
 function tagSpan(name, type) {
@@ -41,7 +41,7 @@ export function renderTheme(item) {
 	// Title as a themeTag
 	const header = document.createElement("div");
 	header.classList.add("theme-card-header");
-	header.appendChild(tagSpan(item.name, "litm-themeTag"));
+	header.appendChild(tagSpan(item.name, "litm-theme_tag"));
 	container.appendChild(header);
 
 	// Power tags
@@ -50,7 +50,7 @@ export function renderTheme(item) {
 		const tags = document.createElement("div");
 		tags.classList.add("theme-card-tags");
 		for (const pt of powerTags) {
-			tags.appendChild(tagSpan(pt.name, "litm-powerTag"));
+			tags.appendChild(tagSpan(pt.name, "litm-power_tag"));
 		}
 		container.appendChild(tags);
 	}
@@ -61,7 +61,7 @@ export function renderTheme(item) {
 		const tags = document.createElement("div");
 		tags.classList.add("theme-card-tags");
 		for (const wt of weakTags) {
-			tags.appendChild(tagSpan(wt.name, "litm-weaknessTag"));
+			tags.appendChild(tagSpan(wt.name, "litm-weakness_tag"));
 		}
 		container.appendChild(tags);
 	}

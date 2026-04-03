@@ -197,7 +197,7 @@ async function _applySacrificeConsequence(actor, level, themeId) {
 	if (level === "painful") {
 		// Scratch all power tags and the theme tag
 		const powerEffects = theme.effects.filter(
-			(e) => e.type === "theme_tag" && e.system.tagType === "powerTag",
+			(e) => e.type === "power_tag" || e.type === "fellowship_tag",
 		);
 		if (powerEffects.length) {
 			await theme.updateEmbeddedDocuments(

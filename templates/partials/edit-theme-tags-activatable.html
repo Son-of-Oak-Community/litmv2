@@ -4,7 +4,7 @@
 	{{> systems/litmv2/templates/partials/play-tag.html tag
 		action="toggleTagActive"
 		tooltip=(localize "LITM.Ui.click_to_toggle_tag")
-		extraClass=(ifThen tag.isActive "" "is-inactive")
+		extraClass=(ifThen tag.disabled "is-inactive" "")
 	}}
 	{{/if}}
 	{{/each}}
@@ -13,7 +13,7 @@
 	{{> systems/litmv2/templates/partials/play-tag.html tag
 		action="toggleTagActive"
 		tooltip=(localize "LITM.Ui.click_to_activate_tag")
-		extraClass=(ifThen tag.isActive "" "is-inactive")
+		extraClass=(ifThen tag.disabled "is-inactive" "")
 	}}
 	{{/if}}
 	{{/each}}

@@ -5,25 +5,32 @@ export function registerActorHooks() {
 	_prepareCharacterOnCreate();
 	_validateFellowshipThemes();
 	_enforceHeroItemLimits();
-	_setStatusCardIcon();
+	_setStatusTagIcon();
 	_validateEffectType();
 }
 
 function _prepareCharacterOnCreate() {
 	Hooks.on("preCreateActor", (actor, data, _options, _userId) => {
-		const isHero = data.type === "hero";
-
-		const prototypeToken = isHero
-			? {
-					sight: { enabled: true },
-					actorLink: true,
-					disposition: foundry.CONST.TOKEN_DISPOSITIONS.FRIENDLY,
-					texture: {
-						src: actor.prototypeToken?.texture?.src || actor.img,
-					},
-				}
-			: null;
-		actor.updateSource({ prototypeToken });
+		const tokenDefaults = {
+			hero: {
+				sight: { enabled: true },
+				actorLink: true,
+				disposition: foundry.CONST.TOKEN_DISPOSITIONS.FRIENDLY,
+				texture: { src: actor.prototypeToken?.texture?.src || actor.img },
+			},
+			fellowship: {
+				actorLink: true,
+				disposition: foundry.CONST.TOKEN_DISPOSITIONS.FRIENDLY,
+			},
+			challenge: {
+				disposition: foundry.CONST.TOKEN_DISPOSITIONS.NEUTRAL,
+			},
+			journey: {
+				disposition: foundry.CONST.TOKEN_DISPOSITIONS.NEUTRAL,
+			},
+		};
+		const prototypeToken = tokenDefaults[data.type] ?? null;
+		if (prototypeToken) actor.updateSource({ prototypeToken });
 
 		// Fellowship actors default to OWNER permission for all players
 		if (data.type === "fellowship") {
@@ -132,15 +139,16 @@ function _validateFellowshipThemes() {
 }
 
 /**
- * Set icon and showIcon on status_card effects so they appear on tokens.
+ * Set icon and showIcon on story_tag and status_tag effects so they appear on tokens.
  */
-function _setStatusCardIcon() {
+function _setStatusTagIcon() {
 	const icons = {
 		story_tag: "systems/litmv2/assets/media/icons/unfurled-scroll.svg",
 		status_tag: "systems/litmv2/assets/media/icons/consequences.svg",
 	};
 	Hooks.on("preCreateActiveEffect", (effect) => {
-		if (effect.type !== "status_card") return;
+		const icon = icons[effect.type];
+		if (!icon) return;
 		effect.updateSource({
 			img: icon,
 			showIcon: foundry.CONST.ACTIVE_EFFECT_SHOW_ICON.ALWAYS,
@@ -150,11 +158,12 @@ function _setStatusCardIcon() {
 
 /**
  * Prevent incompatible effect types from being created on wrong parent documents.
- * theme_tag effects belong on theme/story_theme items only.
+ * Theme-bound tag effects belong on theme/story_theme items only.
  */
 function _validateEffectType() {
 	Hooks.on("preCreateActiveEffect", (effect) => {
-		if (effect.type !== "theme_tag") return;
+		const themeTagTypes = new Set(["power_tag", "weakness_tag", "fellowship_tag"]);
+		if (!themeTagTypes.has(effect.type)) return;
 		const parent = effect.parent;
 		if (parent?.documentName === "Item" && ["theme", "story_theme"].includes(parent.type)) return;
 		ui.notifications.warn("LITM.Ui.warn_invalid_effect_target", { localize: true });

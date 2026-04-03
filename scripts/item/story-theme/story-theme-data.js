@@ -1,4 +1,4 @@
-import { effectToTag, levelIcon, localize as t, titleCase } from "../../utils.js";
+import { levelIcon, localize as t } from "../../utils.js";
 
 export class StoryThemeData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
@@ -28,7 +28,7 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 		if (validLevels.length && !validLevels.includes(source.level)) {
 			source.level = validLevels[0];
 		}
-		// Strip legacy tag arrays — tags are now ActiveEffects
+		// Strip legacy tag arrays — tags are now ActiveEffects.
 		delete source.theme;
 		return super.migrateData(source);
 	}
@@ -39,29 +39,12 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 
 	get powerTags() {
 		return this.parent.effects
-			.filter(
-				(e) => e.type === "theme_tag" && e.system.tagType === "powerTag",
-			)
-			.map(effectToTag);
+			.filter((e) => (e.type === "power_tag" || e.type === "fellowship_tag") && !e.system.isTitleTag);
 	}
 
 	get weaknessTags() {
 		return this.parent.effects
-			.filter(
-				(e) => e.type === "theme_tag" && e.system.tagType === "weaknessTag",
-			)
-			.map(effectToTag);
-	}
-
-	get themeTag() {
-		const item = {
-			id: this.parent._id,
-			name: titleCase(this.parent.name),
-			isActive: true,
-			isScratched: this.isScratched ?? false,
-			type: "themeTag",
-		};
-		return game.litmv2.data.TagData.fromSource(item);
+			.filter((e) => e.type === "weakness_tag");
 	}
 
 	get levelIcon() {
@@ -76,13 +59,16 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 		}, {});
 	}
 
+	get themeTag() {
+		return [...this.parent.effects].find((e) => e.system.isTitleTag) ?? null;
+	}
+
 	get allTags() {
-		return [...this.weaknessTags, ...this.powerTags, this.themeTag];
+		return [...this.parent.effects]
+			.filter((e) => e.type === "power_tag" || e.type === "fellowship_tag" || e.type === "weakness_tag");
 	}
 
 	get availablePowerTags() {
-		return [...this.powerTags, this.themeTag].filter(
-			(tag) => tag.isActive && !tag.isScratched,
-		);
+		return this.powerTags.filter((e) => e.active);
 	}
 }

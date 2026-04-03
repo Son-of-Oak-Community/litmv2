@@ -448,11 +448,14 @@ body,
 :where(.litm-tag),
 :where(.litm-status),
 :where(.litm-limit),
-:where(.litm-powerTag),
-:where(.litm-weaknessTag),
-:where(.litm-themeTag),
+:where(.litm-power_tag),
+:where(.litm-fellowship_tag),
+:where(.litm-weakness_tag),
+:where(.litm-story_tag),
+:where(.litm-status_tag),
+:where(.litm-theme_tag),
 :where(.litm-backpack),
-:where(.litm-relationshipTag) {
+:where(.litm-relationship_tag) {
 	white-space: nowrap;
 	position: relative;
 	display: inline-flex;
@@ -489,20 +492,22 @@ body,
 
 /* Story/power/theme tag badges */
 :is(.litm-tag,
-	.litm-powerTag,
-	.litm-themeTag,
-	.litm-relationshipTag,
+	.litm-power_tag,
+	.litm-fellowship_tag,
+	.litm-story_tag,
+	.litm-theme_tag,
+	.litm-relationship_tag,
 	.litm-backpack) {
 	--tag-color: var(--color-litm-tag);
 }
 
 /* Weakness tag */
-.litm-weaknessTag {
+.litm-weakness_tag {
 	--tag-color: var(--color-litm-weakness);
 }
 
-/* Status card badge */
-.litm-status {
+/* Status tag badge */
+:is(.litm-status, .litm-status_tag) {
 	--tag-color: var(--color-litm-status);
 }
 
@@ -1041,8 +1046,8 @@ body,
 	justify-content: center;
 }
 
-/* Theme name tags: larger, bold, uppercase */
-.litm-themeTag {
+/* Title tags (theme name as a tag): larger, bold, uppercase */
+.litm-title_tag {
 	font-size: var(--font-size-20);
 	font-weight: 600;
 	text-transform: uppercase;
@@ -1110,9 +1115,11 @@ body,
 }
 
 :is(.litm-tag,
-	.litm-powerTag,
-	.litm-themeTag,
-	.litm-relationshipTag,
+	.litm-power_tag,
+	.litm-fellowship_tag,
+	.litm-story_tag,
+	.litm-theme_tag,
+	.litm-relationship_tag,
 	.litm-backpack).scratched {
 	text-decoration: line-through;
 }
@@ -2003,14 +2010,16 @@ body,
 	color: var(--color-text-secondary);
 }
 
-.litm--roll-dialog-actor-label img {
+.litm--roll-dialog-actor-label img,
+.litm--roll-dialog-theme-label img {
 	width: 14px;
 	height: 14px;
 	border-radius: 2px;
 	object-fit: cover;
 }
 
-.litm--roll-dialog-actor-label i {
+.litm--roll-dialog-actor-label i,
+.litm--roll-dialog-theme-label i {
 	font-size: var(--font-size-11);
 	width: 14px;
 	text-align: center;
@@ -2027,8 +2036,8 @@ body,
 	font-size: 1.05em;
 }
 
-/* Normalize themeTag inside roll dialog (it's large/bold on the sheet, not here) */
-.litm--roll-dialog-tag .litm-themeTag {
+/* Normalize title_tag inside roll dialog (it's large/bold on the sheet, not here) */
+.litm--roll-dialog-tag .litm-title_tag {
 	font-size: inherit;
 	font-weight: normal;
 	text-transform: none;

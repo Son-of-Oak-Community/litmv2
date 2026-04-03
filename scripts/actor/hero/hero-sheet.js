@@ -234,18 +234,19 @@ export class HeroSheet extends LitmActorSheet {
 			? {
 					name: backpackItem.name,
 					id: backpackItem.id,
-					tags: backpackItem.system.tags
+					tags: [...backpackItem.system.tags]
 						.sort((a, b) => a.name.localeCompare(b.name))
 						.sort((a, b) =>
-							a.isActive && b.isActive ? 0 : a.isActive ? -1 : 1,
+							a.active && b.active ? 0 : a.active ? -1 : 1,
 						),
 				}
 			: null;
 
 		// Get story tags and statuses
-		const allStoryEffects = this._prepareStoryTags();
-		const statuses = allStoryEffects.filter((t) => t.type === "status");
-		const tagEffects = allStoryEffects.filter((t) => t.type === "tag");
+		const tagEffects = this.system.backpack
+			.filter((e) => game.user.isGM || !e.system?.isHidden);
+		const statuses = this.system.statuses
+			.filter((e) => game.user.isGM || !e.system?.isHidden);
 
 		const relationshipEntries = this._prepareRelationshipEntries();
 		const relationshipVisible = relationshipEntries.filter((entry) =>
@@ -310,7 +311,26 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	_buildAllRollTags() {
-		return this.system.rollableTags;
+		const sys = this.system;
+		const toPlain = (e) => ({
+			_id: e._id,
+			id: e.id ?? e._id,
+			uuid: e.uuid,
+			name: e.name,
+			type: e.type,
+			system: e.system,
+			active: e.active,
+			themeId: e.parent?.id,
+			themeName: e.parent?.name,
+		});
+		return [
+			...sys.themes.flatMap((g) => g.tags),
+			...sys.backpack,
+			...sys.fellowship.themes.flatMap((g) => g.tags),
+			...sys.fellowship.tags,
+			...sys.relationships.filter((e) => e.name),
+			...sys.statuses,
+		].map(toPlain);
 	}
 
 	/**
@@ -356,7 +376,7 @@ export class HeroSheet extends LitmActorSheet {
 		const toScratchNoRoll = event.altKey;
 
 		if (
-			["powerTag", "weaknessTag", "themeTag", "relationshipTag"].includes(
+			["power_tag", "weakness_tag", "fellowship_tag", "relationship_tag", "status_tag", "story_tag"].includes(
 				tagType,
 			)
 		) {
@@ -370,30 +390,29 @@ export class HeroSheet extends LitmActorSheet {
 			}
 		}
 
-		const tagFromSystem = this.system.allTags.find((t) => t.id === tagId);
+		const allEffects = this._buildAllRollTags();
+		const tagFromSystem = allEffects.find((e) => e.id === tagId);
 		let existingTag = this.rollDialogInstance.characterTags.find(
 			(t) => t.id === tagId,
 		);
 		if (!existingTag && tagFromSystem) {
-			const tag = tagFromSystem.toObject();
-			this.rollDialogInstance.characterTags.push(tag);
-			existingTag = tag;
+			this.rollDialogInstance.characterTags.push(tagFromSystem);
+			existingTag = tagFromSystem;
 		}
 		const tagRef = existingTag;
-		const fallbackType = tagType || tagRef?.type || "powerTag";
-		const isWeaknessTag = (tagRef?.type || fallbackType) === "weaknessTag";
-		const isScratched = tagRef?.isScratched ?? false;
+		const fallbackType = tagType || tagRef?.type || "power_tag";
+		const isWeaknessTag = (tagRef?.type || fallbackType) === "weakness_tag";
+		const isScratched = tagRef?.system?.isScratched ?? false;
 		const selected = !!existingTag?.state;
 
 		// Scratch tag without rolling
 		if (toScratchNoRoll) {
 			if (isWeaknessTag) return;
 			// Story tags are ActiveEffects, look them up directly
-			if (tagType === "tag") {
+			if (tagType === "story_tag") {
 				return this.toggleScratchTag({ id: tagId, type: tagType });
 			}
-			// Relationship tags are stored on the actor
-			if (tagType === "relationshipTag") {
+			if (tagType === "relationship_tag") {
 				return this.toggleScratchTag({ id: tagId, type: tagType });
 			}
 			if (!tagRef) return;
@@ -408,7 +427,7 @@ export class HeroSheet extends LitmActorSheet {
 			this.rollDialogInstance.setCharacterTagState(tagId, "");
 		} else if (existingTag) {
 			const nextState =
-				existingTag.type === "weaknessTag"
+				existingTag.type === "weakness_tag"
 					? toScratch
 						? "positive"
 						: "negative"
@@ -447,8 +466,13 @@ export class HeroSheet extends LitmActorSheet {
 		if (!tagType || !tagId) return;
 
 		switch (tagType) {
-			case "powerTag": {
+			case "power_tag":
+			case "fellowship_tag": {
 				const parentTheme = this.document.items.find(
+					(i) =>
+						["theme", "story_theme"].includes(i.type) &&
+						i.effects.has(tagId),
+				) ?? game.litmv2?.fellowship?.items.find(
 					(i) =>
 						["theme", "story_theme"].includes(i.type) &&
 						i.effects.has(tagId),
@@ -460,18 +484,7 @@ export class HeroSheet extends LitmActorSheet {
 
 				return this.toggleScratchTag({
 					id: effect.id,
-					type: "powerTag",
-					isScratched: effect.system.isScratched ?? false,
-				});
-			}
-			case "themeTag": {
-				const theme = this.document.items.get(tagId);
-				if (!theme) return;
-
-				return this.toggleScratchTag({
-					id: theme.id,
-					type: "themeTag",
-					isScratched: theme.system.isScratched ?? false,
+					type: tagType,
 				});
 			}
 			case "backpack": {
@@ -508,11 +521,6 @@ export class HeroSheet extends LitmActorSheet {
 		const item = this.resolveItem(target);
 		if (!item) return;
 
-		if (tagType === "themeTag") {
-			await item.update({ "system.isScratched": !item.system.isScratched });
-			return;
-		}
-
 		if (tagType === "backpack") {
 			const effect = item.effects.get(tagId)
 				?? [...item.effects].find((e) => e.name === tagName && e.type === "story_tag");
@@ -531,7 +539,7 @@ export class HeroSheet extends LitmActorSheet {
 
 		// Theme tag effects — find and update the effect directly
 		const effect = item.effects.get(tagId)
-			?? [...item.effects].find((e) => e.name === tagName && e.type === "theme_tag");
+			?? [...item.effects].find((e) => e.name === tagName && (e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag"));
 		if (!effect) return;
 
 		if (scratch) {

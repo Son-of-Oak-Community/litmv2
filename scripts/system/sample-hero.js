@@ -42,13 +42,11 @@ export async function createSampleHero() {
 		itemData.effects = (itemData.effects ?? []).concat(
 			tags.map((tag) => ({
 				name: tag.name || "",
-				type: "theme_tag",
+				type: tag.tagType === "weaknessTag" ? "weakness_tag" : "power_tag",
 				disabled: !(tag.isActive ?? false),
 				system: {
-					tagType: tag.tagType,
 					question: tag.question ?? null,
-					isScratched: tag.isScratched ?? false,
-					isSingleUse: tag.isSingleUse ?? false,
+					...(tag.tagType !== "weaknessTag" ? { isScratched: tag.isScratched ?? false } : {}),
 				},
 			})),
 		);

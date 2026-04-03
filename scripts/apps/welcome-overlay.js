@@ -1,10 +1,56 @@
 import { error, warn } from "../logger.js";
 import { createSampleHero } from "../system/sample-hero.js";
 import { LitmSettings } from "../system/settings.js";
-import { sleep, localize as t, toQuestionOptions } from "../utils.js";
+import { sleep, localize as t, toQuestionOptions, powerTagEffect, weaknessTagEffect } from "../utils.js";
 
 const THEME_SLOTS = 4;
 const MODULE_ID = "legend-in-the-mist";
+
+/**
+ * Convert legacy stashed tag flags into ActiveEffect entries on item data.
+ * Old-format compendium items have tags stashed in flags.litmv2.legacyTags
+ * by LitmItem.migrateData but no actual effects array. This injects the
+ * effects so downstream code can work with a uniform shape.
+ */
+function ensureLegacyEffects(data) {
+	const effects = data.effects ?? [];
+	if (effects.some((e) => e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag")) {
+		return data;
+	}
+	const legacy = data.flags?.litmv2?.legacyTags;
+	if (!legacy) return data;
+
+	const { powerTags = [], weaknessTags = [], isFellowship = false } = legacy;
+	const powerType = isFellowship ? "fellowship_tag" : "power_tag";
+
+	data.effects = [
+		...effects,
+		...powerTags.map((t) => powerTagEffect({
+			name: t.name || "",
+			isActive: t.isActive ?? false,
+			question: t.question ?? null,
+			isScratched: t.isScratched ?? false,
+		})),
+		...weaknessTags.map((t) => weaknessTagEffect({
+			name: t.name || "",
+			isActive: t.isActive ?? false,
+			question: t.question ?? null,
+		})),
+	];
+
+	// Add title tag effect
+	if (data.name) {
+		data.effects.push({
+			name: data.name,
+			type: powerType,
+			disabled: false,
+			system: { question: "0", isScratched: data.system?.isScratched ?? false, isTitleTag: true },
+		});
+	}
+
+	delete data.flags.litmv2.legacyTags;
+	return data;
+}
 
 /**
  * Convert tag arrays into ActiveEffect data for theme items.
@@ -26,27 +72,16 @@ function tagsToEffects(data) {
 		weaknessTags.push(...themeWeak);
 	}
 	data.effects = (data.effects || []).concat(
-		powerTags.map((tag) => ({
+		powerTags.map((tag) => powerTagEffect({
 			name: tag.name || "",
-			type: "theme_tag",
-			disabled: !(tag.isActive ?? false),
-			system: {
-				tagType: "powerTag",
-				question: tag.question ?? null,
-				isScratched: tag.isScratched ?? false,
-				isSingleUse: tag.isSingleUse ?? false,
-			},
+			isActive: tag.isActive ?? false,
+			question: tag.question ?? null,
+			isScratched: tag.isScratched ?? false,
 		})),
-		weaknessTags.map((tag) => ({
+		weaknessTags.map((tag) => weaknessTagEffect({
 			name: tag.name || "",
-			type: "theme_tag",
-			disabled: !(tag.isActive ?? false),
-			system: {
-				tagType: "weaknessTag",
-				question: tag.question ?? null,
-				isScratched: tag.isScratched ?? false,
-				isSingleUse: tag.isSingleUse ?? false,
-			},
+			isActive: tag.isActive ?? false,
+			question: tag.question ?? null,
 		})),
 	);
 	return data;
@@ -1557,34 +1592,24 @@ export class WelcomeOverlay {
 				const data = themeDoc.toObject();
 				delete data._id;
 				delete data._stats;
+				ensureLegacyEffects(data);
 				const choice = selections[index];
 				const hasPowerSelection = choice?.powerTags?.some(Boolean);
 				const hasWeaknessSelection = Boolean(choice?.weaknessTag);
 				if (choice && (hasPowerSelection || hasWeaknessSelection)) {
-					data.system = data.system || {};
-					if (hasPowerSelection) {
-						const selectedPowerTags = new Set(choice.powerTags.filter(Boolean));
-						data.system.powerTags = (data.system.powerTags || []).map(
-							(tag) => ({
-								...tag,
-								id: tag.id || foundry.utils.randomID(),
-								isActive: selectedPowerTags.has(tag.name),
-								isScratched: false,
-							}),
-						);
-					}
-					if (hasWeaknessSelection) {
-						data.system.weaknessTags = (data.system.weaknessTags || []).map(
-							(tag) => ({
-								...tag,
-								id: tag.id || foundry.utils.randomID(),
-								isActive: tag.name === choice.weaknessTag,
-								isScratched: false,
-							}),
-						);
-					}
+					const selectedPowerTags = hasPowerSelection
+						? new Set(choice.powerTags.filter(Boolean))
+						: null;
+					data.effects = (data.effects || []).map((e) => {
+						if (selectedPowerTags && e.type === "power_tag" && !e.system?.isTitleTag) {
+							return { ...e, disabled: !selectedPowerTags.has(e.name) };
+						}
+						if (hasWeaknessSelection && e.type === "weakness_tag") {
+							return { ...e, disabled: e.name !== choice.weaknessTag };
+						}
+						return e;
+					});
 				}
-				tagsToEffects(data);
 				items.push(data);
 			}
 		} else {
@@ -1597,36 +1622,24 @@ export class WelcomeOverlay {
 					const data = themeDoc.toObject();
 					delete data._id;
 					delete data._stats;
+					ensureLegacyEffects(data);
 					// Apply tag selections if the user made any
 					const hasPowerSelection = themeState.selectedPowerTags?.some(Boolean);
 					const hasWeaknessSelection = Boolean(themeState.selectedWeaknessTag);
 					if (hasPowerSelection || hasWeaknessSelection) {
-						data.system = data.system || {};
-						if (hasPowerSelection) {
-							const selectedPower = new Set(
-								themeState.selectedPowerTags.filter(Boolean),
-							);
-							data.system.powerTags = (data.system.powerTags || []).map(
-								(tag) => ({
-									...tag,
-									id: tag.id || foundry.utils.randomID(),
-									isActive: selectedPower.has(tag.name),
-									isScratched: false,
-								}),
-							);
-						}
-						if (hasWeaknessSelection) {
-							data.system.weaknessTags = (data.system.weaknessTags || []).map(
-								(tag) => ({
-									...tag,
-									id: tag.id || foundry.utils.randomID(),
-									isActive: tag.name === themeState.selectedWeaknessTag,
-									isScratched: false,
-								}),
-							);
-						}
+						const selectedPower = hasPowerSelection
+							? new Set(themeState.selectedPowerTags.filter(Boolean))
+							: null;
+						data.effects = (data.effects || []).map((e) => {
+							if (selectedPower && e.type === "power_tag" && !e.system?.isTitleTag) {
+								return { ...e, disabled: !selectedPower.has(e.name) };
+							}
+							if (hasWeaknessSelection && e.type === "weakness_tag") {
+								return { ...e, disabled: e.name !== themeState.selectedWeaknessTag };
+							}
+							return e;
+						});
 					}
-					tagsToEffects(data);
 					items.push(data);
 					continue;
 				}
@@ -1850,7 +1863,7 @@ export class WelcomeOverlay {
 					themeLevel: level,
 					themeLevelIcon: this.#levelIcon(level),
 					sourceLabel: pack.metadata?.label || pack.collection,
-					tagTooltip: this.#buildTagTooltip(entry.system),
+					tagTooltip: "",
 				});
 			}
 		}
@@ -1866,7 +1879,7 @@ export class WelcomeOverlay {
 				themeLevel: lvl,
 				themeLevelIcon: this.#levelIcon(lvl),
 				sourceLabel: "World",
-				tagTooltip: this.#buildTagTooltip(item.system),
+				tagTooltip: this.#buildTagTooltip([...item.effects]),
 			});
 		}
 
@@ -2073,16 +2086,34 @@ export class WelcomeOverlay {
 	}
 
 	getThemeTagOptions(themeDoc) {
-		const powerTags = (themeDoc?.system?.powerTags || [])
-			.map((tag) => tag?.name || "")
-			.filter((name) => name.length > 0);
-		const weaknessTags = (themeDoc?.system?.weaknessTags || [])
-			.map((tag) => tag?.name || "")
-			.filter((name) => name.length > 0);
-		return {
-			powerTags,
-			weaknessTags,
-		};
+		const effects = [...(themeDoc?.effects ?? [])];
+		const hasTagEffects = effects.some((e) =>
+			e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag",
+		);
+
+		if (hasTagEffects) {
+			return {
+				powerTags: effects
+					.filter((e) => (e.type === "power_tag" || e.type === "fellowship_tag") && !e.system?.isTitleTag)
+					.map((e) => e.name)
+					.filter(Boolean),
+				weaknessTags: effects
+					.filter((e) => e.type === "weakness_tag")
+					.map((e) => e.name)
+					.filter(Boolean),
+			};
+		}
+
+		// Fall back to legacy stashed tags from old-format compendium items
+		const legacy = themeDoc?.flags?.litmv2?.legacyTags;
+		if (legacy) {
+			return {
+				powerTags: (legacy.powerTags ?? []).map((t) => t.name).filter(Boolean),
+				weaknessTags: (legacy.weaknessTags ?? []).map((t) => t.name).filter(Boolean),
+			};
+		}
+
+		return { powerTags: [], weaknessTags: [] };
 	}
 
 	static #LEVEL_ICONS = new Set([
@@ -2096,12 +2127,14 @@ export class WelcomeOverlay {
 		return WelcomeOverlay.#LEVEL_ICONS.has(level) ? level : "";
 	}
 
-	#buildTagTooltip(system) {
-		const power = (system?.powerTags || [])
-			.map((t) => t?.name || "")
+	#buildTagTooltip(effects) {
+		const power = (effects ?? [])
+			.filter((e) => e.type === "power_tag" && !e.system?.isTitleTag)
+			.map((e) => e.name)
 			.filter(Boolean);
-		const weakness = (system?.weaknessTags || [])
-			.map((t) => t?.name || "")
+		const weakness = (effects ?? [])
+			.filter((e) => e.type === "weakness_tag")
+			.map((e) => e.name)
 			.filter(Boolean);
 		if (!power.length && !weakness.length) return "";
 		const sections = [];
@@ -2111,7 +2144,7 @@ export class WelcomeOverlay {
 					"LITM.Tags.power_tags",
 				)}</label>${power
 					.map(
-						(n) => `<span class="litm-powerTag" data-text="${n}">${n}</span>`,
+						(n) => `<span class="litm-power_tag" data-text="${n}">${n}</span>`,
 					)
 					.join(" ")}</div>`,
 			);
@@ -2123,7 +2156,7 @@ export class WelcomeOverlay {
 				)}</label>${weakness
 					.map(
 						(n) =>
-							`<span class="litm-weaknessTag" data-text="${n}">${n}</span>`,
+							`<span class="litm-weakness_tag" data-text="${n}">${n}</span>`,
 					)
 					.join(" ")}</div>`,
 			);

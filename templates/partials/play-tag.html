@@ -1,16 +1,16 @@
-{{!-- Renders a single clickable tag span. Context must have: id, name, type, isScratched.
+{{!-- Renders a single clickable tag span. Context must have: id, name, type, and system.isScratched (AE) or isScratched (plain obj).
 Optional hash args: action (default "selectTag"), tooltip (override auto tooltip), noBurn (suppress burn text), extraClass.
-Tooltip auto-selects based on type: powerTag/themeTag = full (or no-burn if noBurn set), weaknessTag/status = click only, others = no burn.
+Tooltip auto-selects based on type: power_tag = full (or no-burn if noBurn set), weakness_tag/status_tag = click only, others = no burn.
 Tooltips and pointer cursor are suppressed for non-owners (uses @root.isOwner). --}}
 <span
-	class="noflex litm-{{type}} {{ifThen isScratched 'scratched' ''}}{{#if extraClass}} {{extraClass}}{{/if}}"
+	class="noflex litm-{{type}} {{ifThen (or system.isScratched isScratched) 'scratched' ''}}{{#if extraClass}} {{extraClass}}{{/if}}"
 	{{#if @root.isOwner}}data-action="{{#if action}}{{action}}{{else}}selectTag{{/if}}"{{/if}}
 	data-tag-type="{{type}}"
-	data-tag-id="{{id}}"
-	{{#if @root.isOwner}}data-tooltip="{{#if tooltip}}{{tooltip}}{{else}}{{#if (or (eq type 'weaknessTag') (eq type 'status'))}}{{localize 'LITM.Ui.click_to_add_tag_only'}}{{else if (or (eq type 'powerTag') (eq type 'themeTag'))}}{{#if noBurn}}{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}{{else}}{{localize 'LITM.Ui.click_to_add_tag'}}{{/if}}{{else}}{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}{{/if}}{{/if}}"{{/if}}
+	data-tag-id="{{_id}}"
+	{{#if @root.isOwner}}data-tooltip="{{#if tooltip}}{{tooltip}}{{else}}{{#if (or (eq type 'weakness_tag') (eq type 'status_tag'))}}{{localize 'LITM.Ui.click_to_add_tag_only'}}{{else if (or (eq type 'power_tag') (eq type 'fellowship_tag'))}}{{#if noBurn}}{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}{{else}}{{localize 'LITM.Ui.click_to_add_tag'}}{{/if}}{{else}}{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}{{/if}}{{/if}}"{{/if}}
 	data-text="{{name}}"
 	{{#if @root.isOwner}}style="cursor: pointer"{{/if}}
-	>{{name}} {{#if (eq type "weaknessTag")}}
+	>{{name}} {{#if (eq type "weakness_tag")}}
 	<svg width="14" height="14" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
 		<g fill="var(--color-text-primary)" stroke="var(--tag-color)" stroke-width="10">
 			<path
@@ -21,7 +21,7 @@ Tooltips and pointer cursor are suppressed for non-owners (uses @root.isOwner). 
 			/>
 		</g>
 	</svg>
-	{{/if}} {{#if isScratched}}
+	{{/if}} {{#if (or system.isScratched isScratched)}}
 	<svg width="18" height="18" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
 		<g fill="var(--color-text-primary)" stroke="var(--tag-color)" stroke-width="4">
 			<path

@@ -135,7 +135,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 				(isPlay ? (sys.derivedLimits || sys.limits) : sys.limits || []).map(
 					async (limit) => {
 						const hasGroupedStatuses = this.document.effects.some(
-							(e) => e.type === "status_card" && e.system?.limitId === limit.id,
+							(e) => e.type === "status_tag" && e.system?.limitId === limit.id,
 						);
 						const isFromAddon = isPlay &&
 							!sys.limits.some((l) => l.id === limit.id);
