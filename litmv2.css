@@ -137,12 +137,6 @@ body,
 			var(--color-text-primary) 70%,
 			transparent);
 
-	/* Alpha-variant colors: --color-border */
-	--color-border-15: color-mix(in srgb, var(--color-border) 15%, transparent);
-	--color-border-30: color-mix(in srgb, var(--color-border) 30%, transparent);
-	--color-border-40: color-mix(in srgb, var(--color-border) 40%, transparent);
-	--color-border-50: color-mix(in srgb, var(--color-border) 50%, transparent);
-
 	/* Alpha-variant colors: --color-text-subtle */
 	--color-text-subtle-8: color-mix(in srgb,
 			var(--color-text-subtle) 8%,
@@ -159,24 +153,7 @@ body,
 			var(--color-litm-limit-accent) 20%,
 			transparent);
 
-	/* Alpha-variant colors: --color-data-background */
-	--color-data-background-40: color-mix(in srgb,
-			var(--color-data-background) 40%,
-			transparent);
-
-	/* Blended colors: two-color mixes centralized here */
-	--color-litm-limit-border-hover: color-mix(in srgb,
-			var(--color-litm-limit) 60%,
-			var(--color-border));
-	--color-fieldset-border-30: color-mix(in srgb,
-			var(--color-fieldset-border) 30%,
-			transparent);
-	--color-overlay-hover: color-mix(in srgb,
-			var(--color-data-background) 80%,
-			var(--color-text-primary));
-	--color-overlay-hover-strong: color-mix(in srgb,
-			var(--color-data-background) 70%,
-			var(--color-text-primary));
+	/* Blended colors: body-safe mixes (inputs defined on body) */
 	--color-warm-1-light: color-mix(in srgb, var(--color-warm-1) 70%, white);
 
 	/* Overlay colors */
@@ -234,6 +211,30 @@ body,
 	--font-h4: var(--font-powell);
 	--font-blockquote: var(--font-serif);
 	--hr-border: 2px groove var(--color-light-2);
+}
+
+/* Variables that depend on Foundry's .application-scoped vars
+   (--color-border, --color-data-background, --color-fieldset-border) */
+.application {
+	--color-border-15: color-mix(in srgb, var(--color-border) 15%, transparent);
+	--color-border-30: color-mix(in srgb, var(--color-border) 30%, transparent);
+	--color-border-40: color-mix(in srgb, var(--color-border) 40%, transparent);
+	--color-border-50: color-mix(in srgb, var(--color-border) 50%, transparent);
+	--color-data-background-40: color-mix(in srgb,
+			var(--color-data-background) 40%,
+			transparent);
+	--color-litm-limit-border-hover: color-mix(in srgb,
+			var(--color-litm-limit) 60%,
+			var(--color-border));
+	--color-fieldset-border-30: color-mix(in srgb,
+			var(--color-fieldset-border) 30%,
+			transparent);
+	--color-overlay-hover: color-mix(in srgb,
+			var(--color-data-background) 80%,
+			var(--color-text-primary));
+	--color-overlay-hover-strong: color-mix(in srgb,
+			var(--color-data-background) 70%,
+			var(--color-text-primary));
 }
 
 .litm .window-content {
@@ -3570,10 +3571,11 @@ input[type="text"].litm--quick-add-input,
 	--hover-bg: var(--color-overlay-hover);
 	position: fixed;
 	inset: 0;
-	z-index: calc(var(--z-index-overlay) + 1);
+	z-index: calc(var(--z-index-window) + 1000);
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	max-height: 100vh;
 }
 
 .litm--welcome-overlay h4 {
