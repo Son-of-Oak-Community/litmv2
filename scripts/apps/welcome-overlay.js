@@ -291,7 +291,7 @@ export class WelcomeOverlay {
 
 		this.#el = document.createElement("div");
 		this.#el.id = "litm-welcome-overlay";
-		this.#el.classList.add("litm", "litm--welcome-overlay");
+		this.#el.classList.add("litm", "litm--welcome-overlay", "application");
 		this.#el.style.opacity = "0";
 
 		// Background scrim
