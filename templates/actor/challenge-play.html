@@ -60,7 +60,7 @@
 			{{#each limits as |limit|}}
 			<div class="limit-item">
 				<div class="limit-header">
-					<span class="litm-limit" data-text="{{limit.label}}">{{limit.label}}<img
+					<span class="litm-limit" draggable="true" data-text="{{limit.label}}">{{limit.label}}<img
 							src="systems/litmv2/assets/media/icons/limit.svg" height="25" width="25" class="limit-icon" alt="" aria-hidden="true" />
 						<span class="limit-max">{{#if limit.isImpossible}}~{{else}}{{limit.max}}{{/if}}</span>
 					</span>
