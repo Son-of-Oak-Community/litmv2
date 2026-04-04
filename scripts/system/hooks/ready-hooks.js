@@ -120,7 +120,7 @@ function _listenToTagDragTransfer() {
 	Hooks.on("ready", () => {
 		document.addEventListener("dragstart", (event) => {
 			const target = event.target.closest(
-				".litm--tag, .litm--status, .litm-tag, .litm-status",
+				".litm--tag, .litm--status, .litm-tag, .litm-status, .litm-limit",
 			);
 			if (!target) return;
 
@@ -130,8 +130,8 @@ function _listenToTagDragTransfer() {
 			if (!match) return;
 
 			const [, name, separator, value] = match;
-			const isStatus = separator === "-";
-			const isLimit = separator === ":" || name.startsWith("-");
+			const isStatus = separator === "-" && !target.classList.contains("litm-limit");
+			const isLimit = separator === ":" || name.startsWith("-") || target.classList.contains("litm-limit");
 			const cleanName = name.replace(/^-/, "");
 			const appEl = target.closest(".sheet");
 			const app = appEl ? foundry.applications.instances.get(appEl.id) : null;

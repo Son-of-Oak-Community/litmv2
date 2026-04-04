@@ -6,6 +6,7 @@ export function registerUiHooks() {
 	_replaceLoadSpinner();
 	_listenToContentLinks();
 	_addSceneTagsTool();
+	_handleTagDropInEditor();
 }
 
 function _iconOnlyHeaderButtons() {
@@ -111,5 +112,51 @@ function _listenToContentLinks() {
 			if (!scene) return;
 			scene.view();
 		});
+	});
+}
+
+function _handleTagDropInEditor() {
+	const TAG_TYPES = new Set(["tag", "status", "limit"]);
+
+	Hooks.on("createProseMirrorEditor", (_uuid, plugins) => {
+		const { Plugin, TextSelection, keymap } = foundry.prosemirror;
+		const contentLinks = plugins.contentLinks;
+		delete plugins.contentLinks;
+
+		plugins.litmTagDrop = new Plugin({
+			props: {
+				handleDrop(view, event) {
+					const data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
+					if (!TAG_TYPES.has(data.type)) return;
+
+					const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
+					if (!pos) return;
+
+					let markup;
+					if (data.type === "status") markup = `[${data.name}-${data.value ?? ""}]`;
+					else if (data.type === "limit") markup = data.value ? `[${data.name}:${data.value}]` : `[${data.name}:]`;
+					else markup = `[${data.name}]`;
+
+					const tr = view.state.tr.insertText(markup, pos.pos);
+					view.dispatch(tr);
+					setTimeout(view.focus.bind(view), 0);
+					return true;
+				},
+			},
+		});
+
+		plugins.litmTagWrap = keymap({
+			"Alt-t": (state, dispatch) => {
+				const { from, to } = state.selection;
+				const selected = state.doc.textBetween(from, to);
+				const replacement = selected ? `[${selected}]` : "[]";
+				const tr = state.tr.replaceWith(from, to, state.schema.text(replacement));
+				if (!selected) tr.setSelection(TextSelection.create(tr.doc, from + 1));
+				dispatch(tr);
+				return true;
+			},
+		});
+
+		plugins.contentLinks = contentLinks;
 	});
 }
