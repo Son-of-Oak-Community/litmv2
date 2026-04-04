@@ -12,6 +12,16 @@ export class Fonts {
 				},
 			],
 		});
+		FontConfig.loadFont("Norse Bold", {
+			editor: true,
+			fonts: [
+				{
+					name: "Norse Bold",
+					urls: ["systems/litmv2/assets/fonts/norse-b.otf"],
+				},
+			],
+			weight: "bold",
+		});
 		FontConfig.loadFont("Ysgarth", {
 			editor: true,
 			fonts: [

@@ -36,18 +36,21 @@ function _customizeDiceSoNice() {
 	if (!LitmSettings.customDice) return;
 	Hooks.on("diceSoNiceReady", (dice3d) => {
 		dice3d.addSystem(
-			{ id: "litmv2", name: game.i18n.localize("LITM.Name") },
+			{
+				id: "litmv2",
+				name: game.i18n.localize("LITM.Name"),
+				group: game.i18n.localize("LITM.Name"),
+			},
 			"preferred",
 		);
-		dice3d.addDicePreset(
-			{
-				type: "d6",
-				labels: ["1", "2", "3", "4", "5", "F", "1", "2", "3", "4", "5", "F"],
-				font: "LitM Dice",
-				system: "litmv2",
-			},
-			"d12",
-		);
+
+		dice3d.addDicePreset({
+			type: "d6",
+			labels: ["1", "2", "3", "4", "5", "F", "1", "2", "3", "4", "5", "F"],
+			font: "LitM Dice",
+			system: "litmv2",
+			colorset: "litmv2",
+		}, "d12");
 
 		dice3d.addColorset(
 			{
@@ -59,7 +62,7 @@ function _customizeDiceSoNice() {
 				outline: ["#433a28", "#433a28", undefined, undefined, undefined],
 				texture: "stone",
 				material: "stone",
-				font: "Georgia",
+				font: "Norse Bold",
 				visibility: "visible",
 			},
 			"preferred",
