@@ -92,7 +92,7 @@
 						<span style="white-space: nowrap">{{relationship.name}}</span>
 					</div>
 					{{> systems/litmv2/templates/partials/play-tag.html
-					id=(concat "relationship-" relationship.actorId)
+					_id=relationship.effectId
 					name=relationship.tag
 					type="relationship_tag"
 					isScratched=relationship.isScratched
@@ -154,7 +154,7 @@
 					<div class="flexrow noflex gap-sm">
 						<img class="noflex icon-md" src="{{theme.levelIcon}}"
 							alt="{{theme.levelLabel}}" data-tooltip="{{theme.levelLabel}}" />
-						{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag}}
+						{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag extraClass="litm-title_tag"}}
 					</div>
 					{{> systems/litmv2/templates/partials/play-theme-tags.html theme}}
 				</div>
@@ -180,22 +180,13 @@
 		{{#if backpack.tags.length}}
 		<div class="flexrow gap-sm" style="flex-wrap: wrap;">
 			{{#each backpack.tags as |tag|}} {{#unless tag.disabled}}
-			<span class="noflex litm-tag {{ifThen tag.system.isScratched 'scratched' ''}}"
-				{{#if @root.isOwner}}data-action="selectTag" {{/if}} data-tag-type="backpack" data-tag-id="{{tag._id}}" {{#if
-				@root.isOwner}}data-tooltip="{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}" {{/if}} data-text="{{tag.name}}"
-				{{#if @root.isOwner}}style="cursor: pointer" {{/if}}>
-				{{tag.name}} {{#if tag.system.isScratched}}
-				<svg width="18" height="18" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<g fill="var(--color-text-primary)" stroke="var(--tag-color)" stroke-width="4">
-						<path
-							d="M20 20L108 108M20 108L108 20"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="22" />
-					</g>
-				</svg>
-				{{/if}}
-			</span>
+			{{> systems/litmv2/templates/partials/play-tag.html
+				_id=tag._id
+				name=tag.name
+				type="backpack"
+				system=tag.system
+				noBurn=true
+			}}
 			{{/unless}} {{/each}}
 		</div>
 		{{else}}
@@ -215,13 +206,21 @@
 		<legend class="litm-banner theme-card__book">
 			{{localize "LITM.Terms.statuses"}}
 		</legend>
-		<div class="litm--play-tags">
+		<div class="litm--play-statuses">
 			{{#each statuses as |tag|}}
-			<span class="litm-status{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}" {{#if @root.isOwner}}data-action="selectTag"
-				{{/if}} data-tag-type="{{tag.type}}" data-tag-id="{{tag.id}}" {{#if
-				@root.isOwner}}data-tooltip="{{localize 'LITM.Ui.click_to_add_tag_only'}}" {{/if}}
-				data-text="{{tag.name}}-{{tag.system.currentTier}}" {{#if @root.isOwner}}style="cursor: pointer"
-				{{/if}}>{{tag.name}}-{{tag.system.currentTier}}</span>
+			<span class="litm-status{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}" data-tag-id="{{tag.id}}"
+				data-text="{{tag.name}}" data-effect-id="{{tag.id}}">
+				<span {{#if @root.isOwner}}data-action="selectTag" style="cursor: pointer"
+					data-tooltip="{{localize 'LITM.Ui.click_to_add_tag_only'}}"
+					{{/if}}>{{tag.name}}</span>
+				<span class="litm--tag-item-status" data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}">
+					{{#each tag.system.tiers as |filled|}}
+					<img class="litm--tier-box" data-action="toggleTier" data-tier="{{add @index 1}}"
+						alt="" aria-hidden="true"
+						src="systems/litmv2/assets/media/checkbox{{ifThen filled '-c' ''}}.svg" />
+					{{/each}}
+				</span>
+			</span>
 			{{/each}}
 		</div>
 	</fieldset>

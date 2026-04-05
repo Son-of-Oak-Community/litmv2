@@ -2,9 +2,9 @@
 <li>
 	<label
 		class="litm--roll-dialog-tag litm--{{tag.type}} {{#if tag.locked}}is-locked{{/if}} {{#if tag.state}}is-selected{{/if}}"
-		for="input-{{tag.id}}" data-tag-type="{{tag.type}}">
+		for="rd-{{tag.id}}" data-tag-type="{{tag.type}}">
 		<span class="litm--sro">{{localize "LITM.Ui.select"}}</span>
-		<litm-super-checkbox name="{{tag.id}}" id="input-{{tag.id}}" value="{{tag.state}}" data-type="{{tag.type}}"
+		<litm-super-checkbox name="{{tag.id}}" id="rd-{{tag.id}}" value="{{tag.state}}" data-type="{{tag.type}}"
 			states="{{tag.states}}" {{#if tag.locked}}disabled aria-disabled="true" data-locked="true"
 			{{/if}}></litm-super-checkbox>
 		<span class="litm--roll-dialog-badge litm-{{tag.type}}"
@@ -92,7 +92,8 @@
 		{{/if}}
 
 		<!-- Tags Summary -->
-		<div class="litm--roll-dialog-tags-fieldset">
+		<fieldset class="litm--roll-dialog-tags-fieldset">
+			<legend>{{localize "LITM.Terms.tags"}}</legend>
 		{{#if isGMViewer}}
 		<!-- GM Viewer: tabbed view per actor -->
 		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">
@@ -105,8 +106,6 @@
 			{{/each}}
 		</nav>
 		{{/if}}
-		<fieldset>
-			<legend>{{localize "LITM.Terms.tags"}}</legend>
 
 			{{#if isGMViewer}}
 			{{#each gmViewerTabs as |tab|}}
@@ -127,7 +126,28 @@
 			{{/each}}
 
 			{{else}}
+			<!-- Fellowship (all themes + tags under one header) -->
+			{{#if fellowshipTagGroups.length}}
+			<div>
+				<p class="litm--roll-dialog-actor-label">
+					<img src="systems/litmv2/assets/media/icons/fellowship.svg" alt="{{fellowshipName}}" />
+					<span>{{fellowshipName}}</span>
+				</p>
+				{{#each fellowshipTagGroups as |group|}}
+				<div class="litm--roll-dialog-theme-group">
+					<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{else if group.icon}}<i class="{{group.icon}}" aria-hidden="true"></i>{{/if}}{{group.themeName}}</p>
+					<ul class="plain litm--roll-dialog-tags-summary">
+						{{#each group.tags as |tag|}}
+						{{> tag tag=tag}}
+						{{/each}}
+					</ul>
+				</div>
+				{{/each}}
+			</div>
+			{{/if}}
+
 			<!-- Character Tags (grouped by theme) -->
+			<div class="litm--roll-dialog-section-break">
 			{{#each characterTagGroups as |group|}}
 			<div class="litm--roll-dialog-theme-group">
 				<p class="litm--roll-dialog-actor-label">
@@ -146,7 +166,6 @@
 			</div>
 			{{/each}}
 			</div>
-			{{/if}}
 
 			<!-- Contributed Tags (from other characters) -->
 			{{#each contributedTagGroups as |contributor|}}
@@ -209,7 +228,6 @@
 			{{/if}}
 			{{/if}}
 		</fieldset>
-		</div>
 
 		</div><!-- /litm--roll-dialog-grid -->
 

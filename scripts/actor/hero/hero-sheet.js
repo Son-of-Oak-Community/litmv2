@@ -42,9 +42,10 @@ export class HeroSheet extends LitmActorSheet {
 			viewActor: HeroSheet.#onViewActor,
 			adjustProgress: LitmActorSheet._onAdjustProgress,
 			openThemeAdvancement: HeroSheet.#onOpenThemeAdvancement,
+			toggleTier: HeroSheet.#onToggleTier,
 		},
 		form: {
-			handler: LitmActorSheet._onSubmitActorForm,
+			handler: HeroSheet.#onSubmitForm,
 			submitOnChange: true,
 			closeOnSubmit: false,
 		},
@@ -71,6 +72,14 @@ export class HeroSheet extends LitmActorSheet {
 	/** @override */
 	static _getPlayModeTemplate() {
 		return "systems/litmv2/templates/actor/hero-play.html";
+	}
+
+	/** @override */
+	async _onRender(context, options) {
+		await super._onRender(context, options);
+		for (const el of this.element.querySelectorAll(".litm--tag-item-status")) {
+			el.addEventListener("contextmenu", HeroSheet.#onReduceStatus.bind(this));
+		}
 	}
 
 	/**
@@ -302,6 +311,35 @@ export class HeroSheet extends LitmActorSheet {
 	 * @static
 	 * @protected
 	 */
+	static async #onSubmitForm(event, form, formData) {
+		const submitData = formData.object;
+		const newEffects = extractNewRelationships(submitData);
+
+		// Relationship effects cleared to empty → delete instead of update
+		const toDelete = [];
+		const relationshipIds = new Set(
+			this.system.relationships.map((e) => e.id),
+		);
+		for (const key of Object.keys(submitData)) {
+			const match = key.match(/^effects\.(.+)\.name$/);
+			if (!match) continue;
+			const id = match[1];
+			if (!relationshipIds.has(id)) continue;
+			if (!submitData[key]?.trim()) {
+				toDelete.push(id);
+				delete submitData[key];
+			}
+		}
+
+		await LitmActorSheet._onSubmitActorForm.call(this, event, form, formData);
+		if (newEffects.length) {
+			await this.document.createEmbeddedDocuments("ActiveEffect", newEffects);
+		}
+		if (toDelete.length) {
+			await this.document.deleteEmbeddedDocuments("ActiveEffect", toDelete);
+		}
+	}
+
 	static #onOpenRollDialog(_event, _target) {
 		this.renderRollDialog();
 	}
@@ -402,9 +440,13 @@ export class HeroSheet extends LitmActorSheet {
 					? toScratch
 						? "positive"
 						: "negative"
-					: toScratch
-						? "scratched"
-						: "positive";
+					: isRelationshipTag
+						? toScratch
+							? "negative"
+							: "positive"
+						: toScratch
+							? "scratched"
+							: "positive";
 			this.rollDialogInstance.setCharacterTagState(tagId, nextState);
 		}
 
@@ -553,6 +595,32 @@ export class HeroSheet extends LitmActorSheet {
 	 * @param {HTMLElement} target The target element
 	 * @private
 	 */
+	static async #onToggleTier(_event, target) {
+		const effectId = target.closest("[data-effect-id]")?.dataset.effectId;
+		const tier = Number.parseInt(target.dataset.tier, 10);
+		if (!effectId || !Number.isFinite(tier)) return;
+
+		const effect = this.document.effects.get(effectId);
+		if (!effect || effect.type !== "status_tag") return;
+
+		const newTiers = [...effect.system.tiers];
+		newTiers[tier - 1] = !newTiers[tier - 1];
+		await effect.update({ "system.tiers": newTiers });
+	}
+
+	static async #onReduceStatus(event) {
+		const statusRow = event.target.closest("[data-effect-id]");
+		if (!statusRow) return;
+		event.preventDefault();
+
+		const effect = this.document.effects.get(statusRow.dataset.effectId);
+		if (!effect || effect.type !== "status_tag") return;
+		if (!effect.system.tiers.some(Boolean)) return;
+
+		const newTiers = effect.system.calculateReduction(1);
+		await effect.update({ "system.tiers": newTiers });
+	}
+
 	static #onOpenThemeAdvancement(_event, target) {
 		const item = this.resolveItem(target);
 		if (!item) return;

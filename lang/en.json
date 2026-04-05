@@ -239,6 +239,7 @@
 			"scene_tag_dialog_hint": "Define tags, statuses, and limits for this scene.",
 			"activate_improvement": "Activate Improvement",
 			"activate_tag": "Activate Tag",
+			"deactivate_tag": "Deactivate Tag",
 			"hide": "Hide",
 			"show": "Show",
 			"increase": "Increase",

@@ -199,7 +199,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					}
 					roll.options.isScratched = true;
 
-					// Auto-gain improvement for weakness tags
+					// Auto-gain improvement for weakness tags and relationship tags used as negatives
 					const realWeaknessTags = weaknessTags.filter(
 						(t) => t.type === "weakness_tag" || t.type === "relationship_tag",
 					);
@@ -237,18 +237,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	extractRollData(formData) {
 		const data = foundry.utils.expandObject(formData.object);
-		const {
-			actorId,
-			title,
-			type,
-			modifier,
-			might,
-			tradePower,
-			sacrificeLevel,
-			sacrificeThemeId,
-			...rest
-		} = data;
-		const tags = this.getFilteredArrayFromFormData(rest);
+		const { actorId, title, type, modifier, might, tradePower, sacrificeLevel, sacrificeThemeId } = data;
+		const tags = this.#buildTagsFromMap();
 		return {
 			actorId,
 			type,
@@ -1416,6 +1406,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	#dispatchUpdate() {
+		// Strip non-serializable AE references from selection entries
+		const selections = [...this.#selectionMap].map(([id, entry]) => {
+			const { effect, ...serializable } = entry;
+			return [id, serializable];
+		});
 		Sockets.dispatch("updateRollDialog", {
 			actorId: this.actorId,
 			selections,

@@ -456,15 +456,16 @@ body,
 :where(.litm-theme_tag),
 :where(.litm-backpack),
 :where(.litm-relationship_tag) {
+	align-items: center;
 	white-space: nowrap;
 	position: relative;
 	display: inline-flex;
 	isolation: isolate;
 	font-style: italic;
-	align-items: center;
+	font-weight: 500;
 	font-family: var(--font-serif);
 	color: var(--color-text-primary);
-	gap: 0.25em;
+	gap: 0.3em;
 
 	&::before {
 		content: attr(data-text);
@@ -1124,6 +1125,7 @@ body,
 	text-decoration: line-through;
 }
 
+
 /* Story theme cards — portrait + tag header layout */
 .litm .story-theme-card {
 	background: var(--color-warm-1-10);
@@ -1374,6 +1376,16 @@ body,
 
 .hero-play-mode fieldset.litm--receded .hint {
 	font-size: var(--font-size-12);
+}
+
+.litm--play-statuses {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.litm--play-statuses .litm--tier-box {
+	cursor: pointer;
 }
 
 /* ========================================
@@ -1727,7 +1739,7 @@ body,
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
-	padding: 0.5rem;
+	padding: 0.5rem 0.5rem 0;
 	container-type: inline-size;
 	contain: style;
 }
@@ -2774,38 +2786,6 @@ body,
 	}
 }
 
-/* burn-spacer removed — layout is name-first; no longer needed */
-
-/* Burn/scratch toggle — hidden checkbox drives a styled indicator span */
-.litm--burn-label {
-	flex-shrink: 0;
-	line-height: 0;
-	cursor: pointer;
-	padding: 5px;
-	margin: -5px;
-}
-
-.litm--burn {
-	position: absolute;
-	opacity: 0;
-	width: 1px;
-	height: 1px;
-	pointer-events: none;
-}
-
-.litm--burn-indicator {
-	display: block;
-	width: 14px;
-	height: 14px;
-	flex-shrink: 0;
-	opacity: 0.25;
-	transition: opacity var(--transition-fast);
-}
-
-.litm--burn:checked~.litm--burn-indicator {
-	opacity: 1;
-}
-
 /* Tag name wrapper — used in hero/fellowship edit sheets */
 .litm--tag-name-wrapper {
 	flex: 1;
@@ -2823,20 +2803,6 @@ body,
 		bottom: 0;
 		right: 0;
 	}
-}
-
-.litm--burn-label:has(.litm--burn:disabled) {
-	cursor: default;
-}
-
-.litm--burn-label:has(.litm--burn:disabled) .litm--burn-indicator {
-	opacity: 0.15;
-}
-
-/* Dim + strikethrough name when tag is scratched */
-.litm--tag-item:has(.litm--burn:checked) .litm--tag-item-name {
-	text-decoration: line-through;
-	opacity: 0.5;
 }
 
 /* Name input — transparent inside the tag badge */
@@ -2952,6 +2918,7 @@ body,
 .litm--story-tags .litm--tag-row .litm--visibility-toggle,
 .litm--story-tags .litm--tag-row .litm--tag-action-btn,
 .litm--story-tags .litm--tag-row .litm--single-use-label,
+.litm--story-tags .litm--tag-row .litm--scratch-label,
 .litm--story-tags .litm--limit-header .litm--tag-action-btn,
 .litm--story-tags .litm--header-visibility {
 	opacity: 0;
@@ -2962,6 +2929,7 @@ body,
 .litm--story-tags .litm--tag-row:hover .litm--visibility-toggle,
 .litm--story-tags .litm--tag-row:hover .litm--tag-action-btn,
 .litm--story-tags .litm--tag-row:hover .litm--single-use-label,
+.litm--story-tags .litm--tag-row:hover .litm--scratch-label,
 .litm--story-tags .litm--tag-row.litm--tag-hidden .litm--visibility-toggle,
 .litm--story-tags .litm--limit-header:hover .litm--tag-action-btn,
 .litm--story-tags .litm--section-header:hover .litm--header-visibility,
@@ -2971,12 +2939,20 @@ body,
 	cursor: pointer;
 }
 
-/* Always show single-use indicator when checked */
-.litm--story-tags .litm--tag-row:has(.litm--single-use:checked) .litm--single-use-label {
+/* Always show toggle indicators when checked */
+.litm--story-tags .litm--tag-row:has(.litm--single-use:checked) .litm--single-use-label,
+.litm--story-tags .litm--tag-row:has(.litm--scratch:checked) .litm--scratch-label {
 	opacity: 1;
 	pointer-events: auto;
 	cursor: pointer;
 }
+
+/* Scratched tag — strikethrough and dimmed */
+.litm--story-tags .litm--tag-row.litm--tag-scratched .litm--tag-item-name {
+	text-decoration: line-through;
+	opacity: 0.5;
+}
+
 
 /* Section header — name only, divider lines handle decoration */
 .litm--story-tags .litm--section-header {
@@ -3237,7 +3213,7 @@ input[type="text"].litm--quick-add-input,
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 0 0.35em;
+	padding: 0 0.15em;
 	min-height: unset;
 	height: 1.6em;
 	font-size: var(--font-size-11);
@@ -3280,6 +3256,68 @@ input[type="text"].litm--quick-add-input,
 }
 
 .litm--single-use:checked~.litm--single-use-indicator {
+	opacity: 1;
+	color: var(--color-text-primary);
+}
+
+/* Scratch toggle — styled to match single-use */
+.litm--scratch-label {
+	line-height: 0;
+	cursor: pointer;
+	position: relative;
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 0.15em;
+	min-height: unset;
+	height: 1.6em;
+	font-size: var(--font-size-11);
+	border-radius: var(--border-radius);
+	background: none;
+	border: none;
+	color: var(--color-text-primary-55);
+	transition:
+		background var(--transition-normal),
+		color var(--transition-normal);
+}
+
+.litm--scratch-label:hover {
+	background: none;
+	color: var(--color-text-primary);
+}
+
+.litm--scratch {
+	position: absolute;
+	width: 0;
+	height: 0;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.litm--scratch::before,
+.litm--scratch::after {
+	display: none;
+}
+
+.litm--scratch-indicator {
+	display: block;
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	transition: opacity var(--transition-fast);
+	opacity: 0.25;
+}
+
+:is(.theme-light, .light-mode) .litm--scratch-indicator {
+	filter: invert(1);
+}
+
+.litm--scratch:checked~.litm--scratch-indicator {
 	opacity: 1;
 }
 

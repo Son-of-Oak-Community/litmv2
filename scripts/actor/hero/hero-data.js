@@ -1,3 +1,5 @@
+import { detectTrackCompletion, buildTrackCompleteContent } from "../../system/chat.js";
+
 export class HeroData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
@@ -55,9 +57,9 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 			.sort((a, b) => a.sort - b.sort)
 			.map((theme) => ({
 				theme,
-				tags: [...theme.effects].filter((e) =>
-					e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag"
-				),
+				tags: [...theme.effects]
+					.filter((e) => e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag")
+					.sort((a, b) => (b.system.isTitleTag ? 1 : 0) - (a.system.isTitleTag ? 1 : 0)),
 			}));
 	}
 
@@ -88,9 +90,9 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 			.filter((i) => i.type === "theme" || i.type === "story_theme")
 			.map((theme) => ({
 				theme,
-				tags: [...theme.effects].filter((e) =>
-					e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag"
-				),
+				tags: [...theme.effects]
+					.filter((e) => e.type === "power_tag" || e.type === "weakness_tag" || e.type === "fellowship_tag")
+					.sort((a, b) => (b.system.isTitleTag ? 1 : 0) - (a.system.isTitleTag ? 1 : 0)),
 			}));
 		const tags = [...actor.allApplicableEffects()]
 			.filter((e) => e.type === "story_tag" || e.type === "status_tag");
@@ -204,9 +206,11 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 				(i) => i.type === "theme" && i.system.isFellowship,
 			);
 			if (!theme) return;
+			const newValue = theme.system.improve.value + 1;
 			await fellowship.updateEmbeddedDocuments("Item", [
-				{ _id: theme.id, "system.improve.value": theme.system.improve.value + 1 },
+				{ _id: theme.id, "system.improve.value": newValue },
 			]);
+			await this.#notifyTrackCompletion(theme, fellowship, newValue);
 			return;
 		}
 
@@ -218,9 +222,20 @@ export class HeroData extends foundry.abstract.TypeDataModel {
 		if (!parentTheme || !["theme", "story_theme"].includes(parentTheme.type)) return;
 		const owner = parentTheme.parent;
 		if (!owner) return;
+		const newValue = parentTheme.system.improve.value + 1;
 		await owner.updateEmbeddedDocuments("Item", [
-			{ _id: parentTheme.id, "system.improve.value": parentTheme.system.improve.value + 1 },
+			{ _id: parentTheme.id, "system.improve.value": newValue },
 		]);
+		await this.#notifyTrackCompletion(parentTheme, owner, newValue);
+	}
+
+	async #notifyTrackCompletion(theme, actor, newValue) {
+		const trackInfo = detectTrackCompletion("system.improve.value", newValue, theme, actor);
+		if (!trackInfo) return;
+		await foundry.documents.ChatMessage.create({
+			content: buildTrackCompleteContent(trackInfo),
+			speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
+		});
 	}
 
 	getRollData() {

@@ -53,6 +53,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			"toggle-effect-visibility": StoryTagSidebar.#onToggleEffectVisibility,
 			"add-actor": StoryTagSidebar.#onAddActor,
 			"remove-tag": StoryTagSidebar.#onRemoveTag,
+			"deactivate-tag": StoryTagSidebar.#onDeactivateTag,
 			"add-limit": StoryTagSidebar.#onAddLimit,
 			"remove-limit": StoryTagSidebar.#onRemoveLimit,
 			"toggle-collapse": StoryTagSidebar.#onToggleCollapse,
@@ -831,11 +832,10 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 					system: isStatus
 						? {
 								tiers: toTiers(data.values),
-								isScratched: data.isScratched === "true",
 							}
 						: {
-								isScratched: data.isScratched === "true",
-								isSingleUse: data.isSingleUse === "true",
+								isScratched: !!data.isScratched,
+								isSingleUse: !!data.isSingleUse,
 								limitId: data.limitId || null,
 							},
 				};
@@ -1017,6 +1017,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	static #onRemoveTag(_event, target) {
 		this.removeTag(target);
+	}
+
+	static async #onDeactivateTag(_event, target) {
+		const id = target.dataset.id;
+		const actorId = target.dataset.actorId;
+		const actor = game.actors.get(actorId);
+		if (!actor?.isOwner) return;
+		await updateEffectsByParent(actor, [{ _id: id, disabled: true }]);
+		this.invalidateCache();
+		return this.#broadcastRender();
 	}
 
 	static #onAddLimit(_event, _target) {
