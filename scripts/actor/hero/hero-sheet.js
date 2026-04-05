@@ -97,7 +97,6 @@ export class HeroSheet extends LitmActorSheet {
 		if (!this.#rollDialog) {
 			this.#rollDialog = game.litmv2.LitmRollDialog.create({
 				actorId: this.document.id,
-				characterTags: this._buildAllRollTags(),
 			});
 		}
 		return this.#rollDialog;
@@ -255,9 +254,10 @@ export class HeroSheet extends LitmActorSheet {
 
 		// Get scratched tags for display (only if dialog already exists)
 		const scratchedTags = this.#rollDialog
-			? this.#rollDialog.characterTags.filter(
-					(t) => t.isScratched || t.state === "scratched",
-				)
+			? this._buildAllRollTags().filter((t) => {
+					const sel = this.#rollDialog.getSelection(t.id);
+					return t.system?.isScratched || sel.state === "scratched";
+				})
 			: [];
 
 		// Prepare enriched fields for the editor helper
@@ -286,7 +286,7 @@ export class HeroSheet extends LitmActorSheet {
 			momentOfFulfillmentEntries,
 			momentOfFulfillmentVisible,
 
-			rollTags: this.#rollDialog?.characterTags ?? this._buildAllRollTags(),
+			rollTags: this._buildAllRollTags(),
 			limit: this.system.limit,
 		};
 	}
@@ -375,48 +375,19 @@ export class HeroSheet extends LitmActorSheet {
 		const toScratch = event.shiftKey;
 		const toScratchNoRoll = event.altKey;
 
-		if (
-			["power_tag", "weakness_tag", "fellowship_tag", "relationship_tag", "status_tag", "story_tag"].includes(
-				tagType,
-			)
-		) {
-			const existingById = new Map(
-				this.rollDialogInstance.characterTags.map((tag) => [tag.id, tag]),
-			);
-			for (const tag of this._buildAllRollTags()) {
-				if (!existingById.has(tag.id)) {
-					this.rollDialogInstance.characterTags.push(tag);
-				}
-			}
-		}
-
-		const allEffects = this._buildAllRollTags();
-		const tagFromSystem = allEffects.find((e) => e.id === tagId);
-		let existingTag = this.rollDialogInstance.characterTags.find(
-			(t) => t.id === tagId,
-		);
-		if (!existingTag && tagFromSystem) {
-			this.rollDialogInstance.characterTags.push(tagFromSystem);
-			existingTag = tagFromSystem;
-		}
-		const tagRef = existingTag;
-		const fallbackType = tagType || tagRef?.type || "power_tag";
-		const isWeaknessTag = (tagRef?.type || fallbackType) === "weakness_tag";
-		const isScratched = tagRef?.system?.isScratched ?? false;
-		const selected = !!existingTag?.state;
+		const tagFromSystem = this._buildAllRollTags().find((e) => e.id === tagId);
+		const sel = this.rollDialogInstance.getSelection(tagId);
+		const effectType = tagFromSystem?.type ?? tagType ?? "power_tag";
+		const isWeaknessTag = effectType === "weakness_tag";
+		const isRelationshipTag = effectType === "relationship_tag";
+		const isScratched = tagFromSystem?.system?.isScratched ?? false;
+		const selected = !!sel.state;
 
 		// Scratch tag without rolling
 		if (toScratchNoRoll) {
 			if (isWeaknessTag) return;
-			// Story tags are ActiveEffects, look them up directly
-			if (tagType === "story_tag") {
-				return this.toggleScratchTag({ id: tagId, type: tagType });
-			}
-			if (tagType === "relationship_tag") {
-				return this.toggleScratchTag({ id: tagId, type: tagType });
-			}
-			if (!tagRef) return;
-			return this.toggleScratchTag(tagRef);
+			if (!tagFromSystem) return;
+			return this.toggleScratchTag(tagFromSystem);
 		}
 
 		// Can't select scratched tags, except weakness tags
@@ -425,9 +396,9 @@ export class HeroSheet extends LitmActorSheet {
 		// Add or remove the tag from the roll
 		if (selected) {
 			this.rollDialogInstance.setCharacterTagState(tagId, "");
-		} else if (existingTag) {
+		} else {
 			const nextState =
-				existingTag.type === "weakness_tag"
+				isWeaknessTag
 					? toScratch
 						? "positive"
 						: "negative"
@@ -435,9 +406,6 @@ export class HeroSheet extends LitmActorSheet {
 						? "scratched"
 						: "positive";
 			this.rollDialogInstance.setCharacterTagState(tagId, nextState);
-		} else if (tagRef) {
-			if (!isWeaknessTag && isScratched) return;
-			this.rollDialogInstance.addTag(tagRef, toScratch);
 		}
 
 		// Open the roll dialog if not already open, otherwise re-render it
@@ -760,20 +728,6 @@ export class HeroSheet extends LitmActorSheet {
 	 * @param {object} options Render options
 	 */
 	renderRollDialog(options = {}) {
-		const existingById = new Map(
-			this.rollDialogInstance.characterTags.map((tag) => [tag.id, tag]),
-		);
-		this.rollDialogInstance.characterTags = this._buildAllRollTags().map(
-			(tag) => {
-				const existing = existingById.get(tag.id);
-				return {
-					...tag,
-					state: existing?.state ?? tag.state,
-					contributorId: existing?.contributorId ?? null,
-				};
-			},
-		);
-
 		const activeOwnerId =
 			this.document.getFlag("litmv2", "rollDialogOwner")?.ownerId || null;
 		const activeOwner = activeOwnerId ? game.users.get(activeOwnerId) : null;
