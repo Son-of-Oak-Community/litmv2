@@ -268,36 +268,21 @@ export class FellowshipSheet extends LitmActorSheet {
 
 		const dialog = heroSheet.rollDialogInstance;
 
-		// Sync all known tags into the roll dialog
-		const existingById = new Map(dialog.characterTags.map((t) => [t.id, t]));
-		for (const tag of heroSheet._buildAllRollTags()) {
-			if (!existingById.has(tag.id)) {
-				dialog.characterTags.push(tag);
-			}
-		}
-
 		// Find the tag by id, then by name fallback
+		const allTags = heroSheet._buildAllRollTags();
 		let tagRef =
-			(tagId && dialog.characterTags.find((t) => t.id === tagId)) ||
-			(tagName &&
-				dialog.characterTags.find(
-					(t) => t.displayName === tagName || t.name === tagName,
-				));
+			(tagId && allTags.find((t) => t.id === tagId)) ||
+			(tagName && allTags.find((t) => t.name === tagName));
 		if (!tagRef) {
-			tagRef = FellowshipSheet.#buildTagData.call(
-				this,
-				tagType,
-				tagId,
-				tagName,
-			);
-			if (tagRef) dialog.characterTags.push(tagRef);
+			tagRef = FellowshipSheet.#buildTagData.call(this, tagType, tagId, tagName);
 		}
 		if (!tagRef) return;
 
 		const resolvedId = tagRef.id;
 		const isWeaknessTag = tagRef.type === "weakness_tag";
-		const isScratched = tagRef.isScratched ?? false;
-		const selected = !!tagRef.state;
+		const isScratched = tagRef.system?.isScratched ?? false;
+		const sel = dialog.getSelection(resolvedId);
+		const selected = !!sel.state;
 
 		if (!selected && isScratched && !isWeaknessTag) return;
 
