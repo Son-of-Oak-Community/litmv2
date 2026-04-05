@@ -386,7 +386,7 @@
 					{
 						"name": "Protective charm",
 						"type": "backpack",
-						"isActive": false,
+						"isActive": true,
 						"id": "",
 						"question": "",
 						"isScratched": false
@@ -394,7 +394,7 @@
 					{
 						"name": "Extra quiver of arrows",
 						"type": "backpack",
-						"isActive": true,
+						"isActive": false,
 						"id": "",
 						"question": "",
 						"isScratched": false

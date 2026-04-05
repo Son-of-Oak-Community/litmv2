@@ -126,7 +126,19 @@
 				<h3>{{localize "LITM.Ui.party_overview_quests"}}</h3>
 				<ul class="litm-party-overview__quests">
 					{{#each hero.quests as |quest|}}
-					<li>&middot; <em>{{quest.themeName}}:</em> {{quest.description}}</li>
+					<li>
+						<p>&middot; <em>{{quest.themeName}}:</em> {{quest.description}}</p>
+						<div class="litm-party-overview__quest-tracks">
+							<span class="litm-party-overview__quest-track">
+								<small>{{localize "LITM.Themes.milestone"}}</small>
+								{{quest.milestone}} / 3
+							</span>
+							<span class="litm-party-overview__quest-track">
+								<small>{{localize "LITM.Themes.abandon"}}</small>
+								{{quest.abandon}} / 3
+							</span>
+						</div>
+					</li>
 					{{/each}}
 				</ul>
 			</section>
@@ -138,6 +150,17 @@
 				<div class="litm-party-overview__tags">
 					{{#each hero.weaknesses as |name|}}
 					<span class="litm-weakness_tag" data-text="{{name}}">{{name}}</span>
+					{{/each}}
+				</div>
+			</section>
+			{{/if}}
+
+			{{#if hero.relationshipTags.length}}
+			<section class="litm-party-overview__section">
+				<h3>{{localize "LITM.Terms.relationship"}}</h3>
+				<div class="litm-party-overview__tags">
+					{{#each hero.relationshipTags as |tag|}}
+					<span class="litm-relationship_tag" data-text="{{tag.name}}">{{tag.name}}</span>
 					{{/each}}
 				</div>
 			</section>

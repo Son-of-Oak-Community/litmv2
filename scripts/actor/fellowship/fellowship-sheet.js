@@ -128,6 +128,8 @@ export class FellowshipSheet extends LitmActorSheet {
 				.map((theme) => ({
 					themeName: theme.name,
 					description: theme.system.quest.description,
+					milestone: theme.system.quest.tracks.milestone.value,
+					abandon: theme.system.quest.tracks.abandon.value,
 				}));
 
 			const weaknesses = themes
@@ -135,6 +137,8 @@ export class FellowshipSheet extends LitmActorSheet {
 				.filter((tag) => tag.active && !tag.system.isScratched)
 				.map((tag) => tag.name);
 
+			const relationshipTags = hero.system.relationships
+				.filter((e) => e.name && !e.system?.isScratched);
 			const storyTags = hero.system.backpack
 				.filter((e) => e.active && (game.user.isGM || !e.system?.isHidden));
 			const statuses = hero.system.statuses
@@ -153,6 +157,7 @@ export class FellowshipSheet extends LitmActorSheet {
 				description,
 				quests,
 				weaknesses,
+				relationshipTags,
 				storyTags,
 				statuses,
 				hasTagsOrStatuses: storyTags.length > 0 || statuses.length > 0,

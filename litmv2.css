@@ -1795,7 +1795,7 @@ body,
 }
 
 .litm--trade-power-bar .litm--roll-type-option {
-	font-size: var(--font-size-14);
+	font-size: var(--font-size-13);
 	font-weight: 500;
 	padding: 0.25rem 0.4rem;
 }
@@ -1862,16 +1862,148 @@ body,
 	white-space: nowrap;
 }
 
-/* Might & Modifier row */
-.litm--roll-dialog-might-row {
+/* Might & Modifier section */
+.litm--roll-dialog-might {
 	display: flex;
-	gap: 0.5rem;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
+.litm--might-label-row {
+	display: flex;
+	justify-content: space-between;
 	align-items: center;
 }
 
-.litm--roll-dialog-might-row select {
-	flex: 2;
+.litm--might-name-wrapper {
+	font-weight: 600;
 	font-size: var(--font-size-14);
+	cursor: help;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+}
+
+.litm--might-name-wrapper i {
+	font-size: var(--font-size-11);
+	opacity: 0.5;
+}
+
+.litm--might-radio-row {
+	display: flex;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	overflow: hidden;
+}
+
+.litm--might-option {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.3rem 0.4rem;
+	font-size: var(--font-size-16);
+	font-weight: 500;
+	cursor: pointer;
+	border-right: 1px solid var(--color-border);
+	transition:
+		background var(--transition-normal),
+		color var(--transition-normal);
+}
+
+
+.litm--might-option:last-child {
+	border-right: none;
+}
+
+.litm--might-option input[type="radio"] {
+	display: none;
+}
+
+
+.litm--might-option:hover:not(.is-active) {
+	background: var(--color-text-primary-10);
+}
+
+.litm--might-option.is-active {
+	font-weight: bold;
+	background: var(--color-text-primary-15);
+	box-shadow: inset 0 -2px 0 var(--color-warm-1);
+}
+
+/* Might scale tooltip — override Foundry's #tooltip max-width */
+#tooltip:has(.litm--might-tooltip) {
+	max-width: none;
+}
+
+.litm--might-tooltip {
+	padding: 0.75rem 1rem;
+	width: 36rem;
+}
+
+.litm--might-tooltip-title {
+	margin: 0 0 0.6rem;
+	font-weight: 700;
+	font-size: var(--font-size-16);
+	text-align: center;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+}
+
+.litm--might-table {
+	border-collapse: collapse;
+	font-size: var(--font-size-13);
+	width: 100%;
+}
+
+.litm--might-table th {
+	padding: 0.5rem 0.75rem;
+	text-align: center;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	font-weight: 600;
+	font-size: var(--font-size-11);
+	color: var(--table-header-text-color);
+	background: var(--table-header-bg-color);
+}
+
+.litm--might-table td {
+	padding: 0.5rem 0.75rem;
+	text-align: center;
+}
+
+/* Reset Foundry's built-in row striping */
+.litm--might-table tbody tr {
+	background: transparent;
+}
+
+/* Tier-representative scale numbers colored to match tier icons */
+.litm--might-scale-accent {
+	font-weight: 700;
+}
+
+.litm--might-scale-origin { color: #7bc49a; }
+.litm--might-scale-adventure { color: #c47a7b; }
+.litm--might-scale-greatness { color: #9a9ad4; }
+
+/* Tinted backgrounds for colored breakpoint buttons */
+.litm--might-option:has(.litm--might-scale-origin) { background: rgba(76, 127, 97, 0.15); }
+.litm--might-option:has(.litm--might-scale-adventure) { background: rgba(125, 59, 60, 0.15); }
+.litm--might-option:has(.litm--might-scale-greatness) { background: rgba(92, 92, 146, 0.15); }
+
+/* Tier name column */
+.litm--might-table-tier {
+	font-weight: 600;
+	text-transform: capitalize;
+	vertical-align: middle;
+	text-align: center;
+}
+
+.litm--might-table-tier img {
+	display: block;
+	width: 1.25rem;
+	height: 1.25rem;
+	margin: 0 auto 0.15rem;
 }
 
 /* Modifier stepper: -/value/+ */
@@ -5404,10 +5536,32 @@ fieldset.litm-party-overview {
 	text-indent: -0.5em;
 }
 
+.litm-party-overview__quests p {
+	margin-bottom: 0;
+}
+
 .litm-party-overview__quests em {
 	font-weight: 600;
 	text-transform: uppercase;
 	font-style: normal;
+}
+
+.litm-party-overview__quest-tracks {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.75rem;
+	margin-top: 2px;
+}
+
+.litm-party-overview__quest-track {
+	font-size: var(--font-size-sm);
+	color: var(--color-text-subtle);
+}
+
+.litm-party-overview__quest-track small {
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	margin-right: 0.25em;
 }
 
 .litm-party-overview__tags {

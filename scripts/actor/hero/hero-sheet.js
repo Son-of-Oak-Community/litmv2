@@ -242,11 +242,7 @@ export class HeroSheet extends LitmActorSheet {
 			? {
 					name: backpackItem.name,
 					id: backpackItem.id,
-					tags: [...backpackItem.system.tags]
-						.sort((a, b) => a.name.localeCompare(b.name))
-						.sort((a, b) =>
-							a.active && b.active ? 0 : a.active ? -1 : 1,
-						),
+					tags: [...backpackItem.system.tags],
 				}
 			: null;
 

@@ -52,7 +52,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		type,
 		speaker,
 		modifier = 0,
-		might = "equal",
+		might = 0,
 		tradePower = 0,
 		sacrificeLevel,
 		sacrificeThemeId,
@@ -246,7 +246,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			title,
 			speaker: this.speaker,
 			modifier,
-			might,
+			might: Number(might) || 0,
 			tradePower: Number(tradePower) || 0,
 			sacrificeLevel: type === "sacrifice" ? sacrificeLevel : undefined,
 			sacrificeThemeId: type === "sacrifice" ? sacrificeThemeId : undefined,
@@ -274,7 +274,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#selectionMap = new Map();
 
 	#modifier = 0;
-	#might = "equal";
+	#might = 0;
 	#tradePower = 0;
 	#sacrificeLevel = "painful";
 	#sacrificeThemeId = null;
@@ -286,7 +286,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 		this.tagState = options.tagState || [];
 		this.#modifier = options.modifier || 0;
-		this.#might = options.might || "equal";
+		this.#might = Number(options.might) || 0;
 		this.#tradePower = options.tradePower || 0;
 		this.#sacrificeLevel = options.sacrificeLevel || "painful";
 		this.#sacrificeThemeId = options.sacrificeThemeId || null;
@@ -867,15 +867,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			totalPower: this.totalPower,
 			modifier: this.#modifier,
 			might: this.#might,
+			mightRange: Array.from({ length: 13 }, (_, i) => i - 6),
 			tradePower: this.#tradePower,
 			canHedge: this.totalPower >= 2,
-			mightOptions: {
-				equal: "LITM.Ui.might_equal",
-				favored: "LITM.Ui.might_favored",
-				extremely_favored: "LITM.Ui.might_extremely_favored",
-				imperiled: "LITM.Ui.might_imperiled",
-				extremely_imperiled: "LITM.Ui.might_extremely_imperiled",
-			},
 			sacrificeLevel: this.#sacrificeLevel,
 			sacrificeLevelOptions: {
 				painful: "LITM.Ui.sacrifice_painful",
@@ -893,27 +887,23 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#hedgeRadioEl = null;
 		Hooks.callAll("litm.rollDialogRendered", this.actor, this);
 
-		// Setup modifier change listener
+		// Setup might change listener (radio buttons)
 		this.element
-			.querySelector("[data-update='modifier']")
-			?.addEventListener("change", this.#handleModifierChange.bind(this));
+			.querySelectorAll("input[name='might']")
+			.forEach((radio) => radio.addEventListener("change", this.#handleMightChange.bind(this)));
 
-		// Setup modifier stepper buttons
-		this.element.querySelectorAll("[data-adjust='modifier']").forEach((btn) => {
-			btn.addEventListener("click", (event) => {
-				event.preventDefault();
-				const delta = Number(btn.dataset.delta) || 0;
-				const input = this.element.querySelector("[data-update='modifier']");
-				if (!input) return;
-				input.value = (Number(input.value) || 0) + delta;
-				input.dispatchEvent(new Event("change"));
+		// Might scale tooltip
+		const mightLabel = this.element.querySelector(".litm--might-name-wrapper");
+		const mightTooltipTemplate = this.element.querySelector(".litm--might-tooltip-template");
+		if (mightLabel && mightTooltipTemplate) {
+			const tooltipContent = mightTooltipTemplate.content.firstElementChild.cloneNode(true);
+			mightLabel.addEventListener("pointerenter", () => {
+				game.tooltip.activate(mightLabel, { content: tooltipContent, direction: "DOWN" });
 			});
-		});
-
-		// Setup might change listener
-		this.element
-			.querySelector("[data-update='might']")
-			?.addEventListener("change", this.#handleMightChange.bind(this));
+			mightLabel.addEventListener("pointerleave", () => {
+				game.tooltip.deactivate();
+			});
+		}
 
 		// Delegated listener for checkbox changes and label clicks
 		this.element.addEventListener("change", (event) => {
@@ -1155,7 +1145,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.tagState = [];
 		this.clearSelections();
 		this.#modifier = 0;
-		this.#might = "equal";
+		this.#might = 0;
 		this.#tradePower = 0;
 		this.#sacrificeLevel = "painful";
 		this.#sacrificeThemeId = null;
@@ -1204,7 +1194,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (!this.element) return;
 		// Hide might/modifier and total power for sacrifice rolls
 		const mightFieldset = this.element
-			.querySelector("[data-update='might']")
+			.querySelector(".litm--roll-dialog-might")
 			?.closest("fieldset");
 		const totalPowerEl = this.element.querySelector(
 			".litm--roll-dialog-total-power",
@@ -1303,16 +1293,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#dispatchUpdate();
 	}
 
-	#handleModifierChange(event) {
-		const input = event.currentTarget;
-		this.#modifier = Number(input.value) || 0;
-		this.#updateTotalPower();
-		this.#dispatchUpdate();
-	}
-
 	#handleMightChange(event) {
-		const select = event.currentTarget;
-		this.#might = select.value;
+		const input = event.currentTarget;
+		this.#might = Number(input.value) || 0;
+		this.element
+			.querySelectorAll(".litm--might-option")
+			.forEach((label) => {
+				const radio = label.querySelector("input[type='radio']");
+				label.classList.toggle("is-active", radio?.value === String(this.#might));
+			});
 		this.#updateTotalPower();
 		this.#dispatchUpdate();
 	}

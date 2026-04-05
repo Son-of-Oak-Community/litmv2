@@ -56,21 +56,107 @@
 		<!-- Modifiers: Might, Modifier stepper, and Trade Power -->
 		<fieldset>
 			<legend>{{localize "LITM.Ui.modifiers"}}</legend>
-			<div class="litm--roll-dialog-might-row">
-				<select id="might-select" name="might" data-update="might">
-					{{selectOptions mightOptions selected=might localize=true}}
-				</select>
-				<div class="litm--modifier-stepper">
-					<button type="button" data-adjust="modifier" data-delta="-1" data-tooltip="{{localize 'LITM.Ui.decrease'}}" aria-label="{{localize 'LITM.Ui.decrease'}}">
-						<i class="fa-solid fa-minus" aria-hidden="true"></i>
-					</button>
-					<input id="modifier-input" type="number" name="modifier" value="{{modifier}}"
-						data-update="modifier" aria-label="{{localize 'LITM.Ui.modifiers'}}" />
-					<button type="button" data-adjust="modifier" data-delta="1" data-tooltip="{{localize 'LITM.Ui.increase'}}" aria-label="{{localize 'LITM.Ui.increase'}}">
-						<i class="fa-solid fa-plus" aria-hidden="true"></i>
-					</button>
+			<div class="litm--roll-dialog-might">
+				<div class="litm--might-label-row">
+					<span class="litm--might-name-wrapper">
+						{{localize "LITM.Terms.might"}}
+						<i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+					</span>
+				</div>
+				<div class="litm--might-radio-row">
+					{{#each mightRange}}
+					<label class="litm--might-option {{#if (eq ../might this)}}is-active{{/if}}"
+						{{#if (eq this -6)}}data-tooltip="{{localize 'LITM.Ui.might_extremely_imperiled_short'}}"
+						{{else if (eq this -3)}}data-tooltip="{{localize 'LITM.Ui.might_imperiled_short'}}"
+						{{else if (eq this 0)}}data-tooltip="{{localize 'LITM.Ui.might_equal_short'}}"
+						{{else if (eq this 3)}}data-tooltip="{{localize 'LITM.Ui.might_favored_short'}}"
+						{{else if (eq this 6)}}data-tooltip="{{localize 'LITM.Ui.might_extremely_favored_short'}}"
+						{{/if}}>
+						<input type="radio" name="might" value="{{this}}" {{checked (eq ../might this)}} />
+						{{#if (eq this -6)}}<span class="litm--might-scale-greatness">-6</span>
+						{{else if (eq this -3)}}<span class="litm--might-scale-adventure">-3</span>
+						{{else if (eq this 0)}}<span class="litm--might-scale-origin">0</span>
+						{{else if (eq this 3)}}<span class="litm--might-scale-adventure">+3</span>
+						{{else if (eq this 6)}}<span class="litm--might-scale-greatness">+6</span>
+						{{else if (gt this 0)}}<span>+{{this}}</span>
+						{{else}}<span>{{this}}</span>
+						{{/if}}
+					</label>
+					{{/each}}
 				</div>
 			</div>
+			<template class="litm--might-tooltip-template">
+				<div class="litm--might-tooltip">
+					<h3 class="litm--might-tooltip-title">{{localize "LITM.Ui.might_scale_title"}}</h3>
+					<table class="litm--might-table">
+						<thead>
+							<tr>
+								<th>{{localize "LITM.Terms.might"}}</th>
+								<th>{{localize "LITM.Ui.might_scale_header_scale"}}</th>
+								<th>{{localize "LITM.Ui.might_scale_header_area"}}</th>
+								<th>{{localize "LITM.Ui.might_scale_header_size"}}</th>
+								<th>{{localize "LITM.Ui.might_scale_header_group"}}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td rowspan="2" class="litm--might-table-tier">
+									<img src="systems/litmv2/assets/media/icons/origin.svg" alt="" />
+									<span>{{localize "LITM.Terms.origin"}}</span>
+								</td>
+								<td class="litm--might-scale-accent litm--might-scale-origin">0</td>
+								<td>{{localize "LITM.Ui.might_scale_area_0"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_size_0"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_group_0"}}</td>
+							</tr>
+							<tr>
+								<td>1</td>
+								<td>{{localize "LITM.Ui.might_scale_area_1"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_size_1"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_group_1"}}</td>
+							</tr>
+							<tr>
+								<td rowspan="3" class="litm--might-table-tier">
+									<img src="systems/litmv2/assets/media/icons/adventure.svg" alt="" />
+									<span>{{localize "LITM.Terms.adventure"}}</span>
+								</td>
+								<td>2</td>
+								<td>{{localize "LITM.Ui.might_scale_area_2"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_size_2"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_group_2"}}</td>
+							</tr>
+							<tr>
+								<td class="litm--might-scale-accent litm--might-scale-adventure">3</td>
+								<td>{{localize "LITM.Ui.might_scale_area_3"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_size_3"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_group_3"}}</td>
+							</tr>
+							<tr>
+								<td>4</td>
+								<td>{{localize "LITM.Ui.might_scale_area_4"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_size_4"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_group_4"}}</td>
+							</tr>
+							<tr>
+								<td rowspan="2" class="litm--might-table-tier">
+									<img src="systems/litmv2/assets/media/icons/greatness.svg" alt="" />
+									<span>{{localize "LITM.Terms.greatness"}}</span>
+								</td>
+								<td>5</td>
+								<td>{{localize "LITM.Ui.might_scale_area_5"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_size_5"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_group_5"}}</td>
+							</tr>
+							<tr>
+								<td class="litm--might-scale-accent litm--might-scale-greatness">6</td>
+								<td>{{localize "LITM.Ui.might_scale_area_6"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_size_6"}}</td>
+								<td>{{localize "LITM.Ui.might_scale_group_6"}}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</template>
 			<div class="litm--trade-power-fieldset hidden">
 				<div class="litm--roll-type-bar litm--trade-power-bar">
 					<label class="litm--roll-type-option {{#if (eq tradePower -1)}}is-active{{/if}}" data-tooltip="{{localize 'LITM.Ui.trade_caution_hint'}}">

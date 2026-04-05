@@ -217,14 +217,7 @@ export class LitmRoll extends foundry.dice.Roll {
 
 		const modifier = Number(tags.modifier) || 0;
 
-		const mightOffsets = {
-			equal: 0,
-			favored: 3,
-			extremely_favored: 6,
-			imperiled: -3,
-			extremely_imperiled: -6,
-		};
-		const mightOffset = mightOffsets[tags.might] || 0;
+		const mightOffset = Number(tags.might) || 0;
 
 		const totalPower =
 			scratchedValue +
@@ -286,7 +279,7 @@ export class LitmRoll extends foundry.dice.Roll {
 			negativeStatuses: this.litm.negativeStatuses,
 			modifier: this.modifier,
 			mightOffset: this.litm.mightOffset || 0,
-			might: this.litm.might || "equal",
+			might: this.litm.might ?? 0,
 		};
 	}
 }
