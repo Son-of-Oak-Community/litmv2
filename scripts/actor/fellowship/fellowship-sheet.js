@@ -416,6 +416,7 @@ export class FellowshipSheet extends LitmActorSheet {
 
 		const themebooks = await queryItemsFromPacks({
 			type: "themebook",
+			category: "themebooks",
 			filter: isFellowship,
 			indexFields: [
 				"img",
@@ -427,6 +428,7 @@ export class FellowshipSheet extends LitmActorSheet {
 		});
 		const themekits = await queryItemsFromPacks({
 			type: "theme",
+			category: "themekits",
 			filter: isFellowship,
 			indexFields: [
 				"img",

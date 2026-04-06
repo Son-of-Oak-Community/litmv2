@@ -98,15 +98,7 @@
 		"verified": 14,
 		"maximum": 14
 	},
-	"packs": [
-		{
-			"name": "statuses",
-			"label": "Statuses",
-			"path": "packs/statuses",
-			"type": "ActiveEffect",
-			"system": "litmv2"
-		}
-	],
+	"packs": [],
 	"flags": {
 		"hotReload": {
 			"extensions": ["css", "html", "js", "json"],

@@ -56,7 +56,9 @@ import {
 import { LitmHooks } from "./scripts/system/hooks/index.js";
 import { KeyBindings } from "./scripts/system/keybindings.js";
 import { migrateWorld } from "./scripts/system/migrations.js";
+import { loadStatusCompendium } from "./scripts/system/hooks/token-hooks.js";
 import { LitmSettings } from "./scripts/system/settings.js";
+import { ContentSources } from "./scripts/system/content-sources.js";
 import { Sockets } from "./scripts/system/sockets.js";
 
 // Register Custom Elements
@@ -88,6 +90,7 @@ Hooks.once("init", () => {
 		SpendPowerApp,
 		ThemeAdvancementApp,
 		rollDialogHud: null,
+		ContentSources,
 	};
 
 	info("Initializing Config...");
@@ -243,6 +246,8 @@ Hooks.once("i18nInit", () => {
 // Ready Hook — needs game world + socket
 Hooks.once("ready", async () => {
 	await migrateWorld();
+	await ContentSources.seedStatuses();
+	await loadStatusCompendium();
 
 	Sockets.registerListeners();
 

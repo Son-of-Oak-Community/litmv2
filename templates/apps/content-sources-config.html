@@ -1,0 +1,20 @@
+{{#each sections}}
+<fieldset>
+    <legend>{{label}}</legend>
+    {{#each packs}}
+    <label class="flexrow">
+        <input type="checkbox" name="{{../category}}" value="{{id}}" {{#if checked}}checked{{/if}}>
+        <span class="flex1">{{label}}</span>
+        <span class="litm--source-label">{{source}}</span>
+    </label>
+    {{/each}}
+    {{#unless hasSelection}}
+    <p class="litm--no-packs notes">{{localize "LITM.Settings.content_sources_no_filter"}}</p>
+    {{/unless}}
+    {{#if isStatuses}}
+    <button type="button" data-action="resetStatuses">
+        <i class="fas fa-undo"></i> {{localize "LITM.Settings.content_sources_reset_statuses"}}
+    </button>
+    {{/if}}
+</fieldset>
+{{/each}}

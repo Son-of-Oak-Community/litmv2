@@ -1,3 +1,5 @@
+import { ContentSources } from "./system/content-sources.js";
+
 /**
  * Extract and remove keys matching a prefix from form data, returning a
  * nested map keyed by document ID. Uses `foundry.utils.setProperty` for
@@ -237,6 +239,7 @@ export async function queryItemsFromPacks({
 	filter,
 	indexFields = [],
 	map,
+	category,
 } = {}) {
 	const results = [];
 
@@ -247,7 +250,9 @@ export async function queryItemsFromPacks({
 	}
 
 	// Compendium packs
-	const packs = game.packs.filter((pack) => pack.documentName === "Item");
+	const packs = category
+		? ContentSources.getPacks(category)
+		: game.packs.filter((pack) => pack.documentName === "Item");
 	for (const pack of packs) {
 		await pack.getIndex({ fields: ["type", "name", ...indexFields] });
 		for (const entry of pack.index?.contents || []) {

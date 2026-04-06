@@ -131,6 +131,7 @@ export class ThemeSheet extends LitmItemSheet {
 	async #getThemebookOptions() {
 		const entries = await queryItemsFromPacks({
 			type: "themebook",
+			category: "themebooks",
 			indexFields: ["system.theme_level", "system.isFellowship"],
 			map: (item) => ({
 				name: item.name,

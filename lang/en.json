@@ -132,6 +132,16 @@
 		"Settings": {
 			"hero_limit": "Hero Limit",
 			"hero_limit_hint": "The base Limit for hero characters. Lower values create grittier campaigns, higher values feel more heroic.",
+			"content_sources": "Content Sources",
+			"content_sources_hint": "Configure which compendium packs are used for browsing themebooks, themekits, tropes, and statuses.",
+			"content_sources_label": "Configure",
+			"content_sources_themebooks": "Themebooks",
+			"content_sources_themekits": "Themekits",
+			"content_sources_tropes": "Tropes",
+			"content_sources_statuses": "Statuses",
+			"content_sources_no_filter": "No packs selected — all available compendium packs will be searched.",
+			"content_sources_reset_statuses": "Reset Default Statuses",
+			"content_sources_reset_confirm": "This will delete all statuses in the world pack and re-populate with defaults. Continue?",
 			"custom_dice": "Themed Dice",
 			"custom_dice_hint": "Use the custom Legend in the Mist dice visuals instead of standard d6s. Requires the Dice So Nice module.",
 			"popout_tags_sidebar": "Auto Pop-out Tags Sidebar",
@@ -597,6 +607,14 @@
 		}
 	},
 	"TYPES": {
+		"ActiveEffect": {
+			"fellowship_tag": "Fellowship Tag",
+			"power_tag": "Power Tag",
+			"relationship_tag": "Relationship Tag",
+			"status_tag": "Status Card",
+			"story_tag": "Story Tag",
+			"weakness_tag": "Weakness Tag"
+		},
 		"Actor": {
 			"challenge": "Challenge",
 			"fellowship": "Fellowship",

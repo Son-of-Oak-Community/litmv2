@@ -1,7 +1,6 @@
 import { THEME_TAG_TYPES, POWER_TAG_TYPES } from "../system/config.js";
 import { localize as t, powerTagEffect, weaknessTagEffect } from "../utils.js";
-
-const MODULE_ID = "legend-in-the-mist";
+import { ContentSources } from "../system/content-sources.js";
 const THEME_SLOTS = 4;
 
 const LEVEL_ICONS = new Set(["origin", "adventure", "greatness", "variable"]);
@@ -113,19 +112,19 @@ export class HeroCreationData {
 	async ensureIndexes() {
 		if (this._cache.loaded) return;
 
-		this._cache.tropes = await this.#loadPackIndex("Tropes", [
+		this._cache.tropes = await this.#loadPackIndex("tropes", "trope", [
 			"name",
 			"img",
 			"type",
 			"system.category",
 		]);
-		this._cache.themekits = await this.#loadPackIndex("Themekits", [
+		this._cache.themekits = await this.#loadPackIndex("themekits", "theme", [
 			"name",
 			"img",
 			"type",
 			"system.level",
 		]);
-		this._cache.themebooks = await this.#loadPackIndex("Themebooks", [
+		this._cache.themebooks = await this.#loadPackIndex("themebooks", "themebook", [
 			"name",
 			"img",
 			"type",
@@ -135,10 +134,9 @@ export class HeroCreationData {
 		this._cache.loaded = true;
 	}
 
-	async #loadPackIndex(prefix, fields) {
-		const packs = this.#getModulePacks(prefix);
+	async #loadPackIndex(category, type, fields) {
+		const packs = ContentSources.getPacks(category);
 		const results = [];
-		const type = HeroCreationData.#typeForPrefix(prefix);
 
 		for (const pack of packs) {
 			await pack.getIndex({ fields });
@@ -178,37 +176,6 @@ export class HeroCreationData {
 		}
 
 		return results.sort((a, b) => a.name.localeCompare(b.name));
-	}
-
-	#getModulePacks(prefix) {
-		const normalized = prefix.toLowerCase();
-		const packs = game.packs.filter(
-			(pack) =>
-				pack.documentName === "Item" &&
-				pack.metadata?.packageName === MODULE_ID,
-		);
-
-		const matching = packs.filter((pack) =>
-			(pack.metadata?.label || "").toLowerCase().startsWith(normalized),
-		);
-		if (matching.length) return matching;
-
-		return packs.filter((pack) =>
-			(pack.metadata?.label || "").toLowerCase().includes(normalized),
-		);
-	}
-
-	static #typeForPrefix(prefix) {
-		switch (prefix.toLowerCase()) {
-			case "tropes":
-				return "trope";
-			case "themekits":
-				return "theme";
-			case "themebooks":
-				return "themebook";
-			default:
-				return "";
-		}
 	}
 
 	// ---------------------------------------------------------------------------

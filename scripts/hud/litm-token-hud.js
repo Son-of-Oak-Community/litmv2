@@ -1,4 +1,5 @@
 // scripts/hud/litm-token-hud.js
+import { ContentSources } from "../system/content-sources.js";
 import { localize as t, resolveEffect } from "../utils.js";
 
 const { TokenHUD } = foundry.applications.hud;
@@ -36,17 +37,28 @@ export class LitmTokenHUD extends TokenHUD {
 	 * Diff the compendium index against CONFIG.statusEffects and rebuild if stale.
 	 */
 	async #syncStatuses() {
-		const pack = game.packs.get("litmv2.statuses");
-		if (!pack) return;
-		const index = await pack.getIndex();
+		const packs = ContentSources.getPacks("statuses");
+		if (!packs.length) return;
+
+		// Build a combined index from all status packs
+		const indexIds = new Set();
+		for (const pack of packs) {
+			const index = await pack.getIndex();
+			for (const entry of index) indexIds.add(entry._id);
+		}
+
 		const currentIds = new Set(CONFIG.statusEffects.map((s) => s._id));
-		const indexIds = new Set(index.map((e) => e._id));
 		const stale =
 			currentIds.size !== indexIds.size ||
 			[...indexIds].some((id) => !currentIds.has(id));
 		if (!stale) return;
-		const docs = await pack.getDocuments();
-		CONFIG.statusEffects = docs.map((doc) => ({
+
+		const allDocs = [];
+		for (const pack of packs) {
+			const docs = await pack.getDocuments();
+			allDocs.push(...docs);
+		}
+		CONFIG.statusEffects = allDocs.map((doc) => ({
 			id: doc.name.slugify({ strict: true }),
 			_id: doc.id,
 			name: doc.name,

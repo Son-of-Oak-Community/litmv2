@@ -1,3 +1,5 @@
+import { ContentSourcesConfig } from "../apps/content-sources-config.js";
+
 export class LitmSettings {
 	static get popoutTagsSidebar() {
 		return game.settings.get("litmv2", "popout_tags_sidebar");
@@ -43,7 +45,63 @@ export class LitmSettings {
 		return game.settings.set("litmv2", "fellowshipId", v);
 	}
 
+	static get statusesSeeded() {
+		return game.settings.get("litmv2", "statusesSeeded");
+	}
+
+	static setStatusesSeeded(v) {
+		return game.settings.set("litmv2", "statusesSeeded", v);
+	}
+
+	static getCompendiumSetting(category) {
+		return game.settings.get("litmv2", `compendium.${category}`);
+	}
+
+	static setCompendiumSetting(category, value) {
+		return game.settings.set("litmv2", `compendium.${category}`, value);
+	}
+
 	static register() {
+		game.settings.registerMenu("litmv2", "contentSources", {
+			name: "LITM.Settings.content_sources",
+			hint: "LITM.Settings.content_sources_hint",
+			label: "LITM.Settings.content_sources_label",
+			icon: "fas fa-atlas",
+			type: ContentSourcesConfig,
+			restricted: true,
+		});
+
+		game.settings.register("litmv2", "compendium.themebooks", {
+			scope: "world",
+			config: false,
+			type: Array,
+			default: [],
+		});
+		game.settings.register("litmv2", "compendium.themekits", {
+			scope: "world",
+			config: false,
+			type: Array,
+			default: [],
+		});
+		game.settings.register("litmv2", "compendium.tropes", {
+			scope: "world",
+			config: false,
+			type: Array,
+			default: [],
+		});
+		game.settings.register("litmv2", "compendium.statuses", {
+			scope: "world",
+			config: false,
+			type: Array,
+			default: [],
+		});
+		game.settings.register("litmv2", "statusesSeeded", {
+			scope: "world",
+			config: false,
+			type: Boolean,
+			default: false,
+		});
+
 		game.settings.register("litmv2", "welcomed", {
 			name: "LITM.Settings.welcome_screen",
 			hint: "Welcome Scene, Message, and Journal Entry has been created and displayed.",
