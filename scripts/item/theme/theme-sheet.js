@@ -56,15 +56,15 @@ export class ThemeSheet extends LitmItemSheet {
 		// Computed properties
 		const levels = CONFIG.litmv2.theme_levels
 			? Object.keys(CONFIG.litmv2.theme_levels).reduce((acc, level) => {
-					acc[level] = game.i18n.localize(`LITM.Terms.${level}`);
-					return acc;
-				}, {})
+				acc[level] = game.i18n.localize(`LITM.Terms.${level}`);
+				return acc;
+			}, {})
 			: {};
 
 		const themebooks = await this.#getThemebookOptions();
 		const selectedThemebook = await findThemebookByName(this.system.themebook);
-		const allPowerQuestions =
-			selectedThemebook?.system?.powerTagQuestions || [];
+		const allPowerQuestions = selectedThemebook?.system?.powerTagQuestions ||
+			[];
 		const allWeaknessQuestions =
 			selectedThemebook?.system?.weaknessTagQuestions || [];
 		const powerQuestionOptions = toQuestionOptions(
@@ -185,6 +185,7 @@ export class ThemeSheet extends LitmItemSheet {
 	static async #onAddTag(_event, target) {
 		const type = target.dataset.type;
 		const themebook = await findThemebookByName(this.system.themebook);
+		const isActive = this.document.isEmbedded;
 
 		if (type === "weaknessTag") {
 			const weaknessTags = [...this.system.weaknessTags];
@@ -192,18 +193,17 @@ export class ThemeSheet extends LitmItemSheet {
 				weaknessTags.map((t) => t.question).filter(Boolean),
 			);
 			const allWeaknessQs = themebook?.system?.weaknessTagQuestions || [];
-			const nextQuestion =
-				allWeaknessQs
-					.map((q, i) => ({ q, i }))
-					.filter(
-						({ q, i }) => `${q ?? ""}`.trim() && !usedQuestions.has(String(i)),
-					)
-					.map(({ i }) => String(i))[0] ?? "";
+			const nextQuestion = allWeaknessQs
+				.map((q, i) => ({ q, i }))
+				.filter(
+					({ q, i }) => `${q ?? ""}`.trim() && !usedQuestions.has(String(i)),
+				)
+				.map(({ i }) => String(i))[0] ?? "";
 			weaknessTags.push({
 				id: foundry.utils.randomID(),
 				name: "",
 				question: nextQuestion,
-				isActive: false,
+				isActive,
 				isScratched: false,
 				isSingleUse: false,
 				type: "weaknessTag",
@@ -215,19 +215,18 @@ export class ThemeSheet extends LitmItemSheet {
 				powerTags.map((t) => t.question).filter(Boolean),
 			);
 			const allPowerQs = themebook?.system?.powerTagQuestions || [];
-			const nextQuestion =
-				allPowerQs
-					.map((q, i) => ({ q, i }))
-					.filter(
-						({ q, i }) =>
-							i > 0 && `${q ?? ""}`.trim() && !usedQuestions.has(String(i)),
-					)
-					.map(({ i }) => String(i))[0] ?? "";
+			const nextQuestion = allPowerQs
+				.map((q, i) => ({ q, i }))
+				.filter(
+					({ q, i }) =>
+						i > 0 && `${q ?? ""}`.trim() && !usedQuestions.has(String(i)),
+				)
+				.map(({ i }) => String(i))[0] ?? "";
 			powerTags.push({
 				id: foundry.utils.randomID(),
 				name: "",
 				question: nextQuestion,
-				isActive: false,
+				isActive,
 				isScratched: false,
 				isSingleUse: false,
 				type: "powerTag",
