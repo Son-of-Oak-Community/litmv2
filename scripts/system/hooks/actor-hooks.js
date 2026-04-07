@@ -63,23 +63,23 @@ function _prepareCharacterOnCreate() {
 						},
 					]);
 				}
-				return;
+			} else if (actor.type === "journey") {
+				if (!actor.system.generalConsequences) {
+					const [vignette] = await actor.createEmbeddedDocuments("Item", [
+						{
+							name: t("LITM.Terms.general_consequences"),
+							type: "vignette",
+							"system.isConsequenceOnly": true,
+						},
+					]);
+					await actor.update({
+						"system.generalConsequences": vignette?.id || "",
+					});
+				}
 			}
 
-			if (actor.type !== "journey") return;
-
-			if (!actor.system.generalConsequences) {
-				const [vignette] = await actor.createEmbeddedDocuments("Item", [
-					{
-						name: t("LITM.Terms.general_consequences"),
-						type: "vignette",
-						"system.isConsequenceOnly": true,
-					},
-				]);
-				await actor.update({
-					"system.generalConsequences": vignette?.id || "",
-				});
-			}
+			// Open the sheet in edit mode for newly created actors
+			if (actor.isOwner) actor.sheet.render(true, { mode: 1 });
 		})().catch((err) => error("Failed to setup actor", err));
 	});
 }
