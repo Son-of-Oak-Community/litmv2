@@ -205,6 +205,7 @@ export class ThemeSheet extends LitmItemSheet {
 				question: nextQuestion,
 				isActive: false,
 				isScratched: false,
+				isSingleUse: false,
 				type: "weaknessTag",
 			});
 			await this.document.update({ "system.weaknessTags": weaknessTags });
@@ -228,6 +229,7 @@ export class ThemeSheet extends LitmItemSheet {
 				question: nextQuestion,
 				isActive: false,
 				isScratched: false,
+				isSingleUse: false,
 				type: "powerTag",
 			});
 			await this.document.update({ "system.powerTags": powerTags });
