@@ -428,6 +428,7 @@
 			"warn_fellowship_not_fellowship": "Only fellowship themes can be added to a fellowship actor.",
 			"warn_fellowship_singleton": "Only one fellowship can exist.",
 			"warn_fellowship_no_delete": "The fellowship actor cannot be deleted.",
+				"warn_fellowship_not_character": "The fellowship cannot be assigned as a player character.",
 			"warn_backpack_limit": "You already have a backpack. Please remove it before adding another.",
 			"replace_general_consequence_content": "Replace the current general consequence vignette?",
 			"replace_general_consequence_title": "Replace General Consequences",

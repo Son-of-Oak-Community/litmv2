@@ -5,6 +5,7 @@ export function registerFellowshipHooks() {
 	_ensureFellowshipSingleton();
 	_blockDuplicateFellowship();
 	_blockFellowshipDeletion();
+	_blockFellowshipAsCharacter();
 	_hideFromCreateDialog();
 	_autoLinkNewHeroes();
 	_rerenderHeroSheetsOnFellowshipChange();
@@ -107,6 +108,20 @@ function _blockFellowshipDeletion() {
 		const singletonId = LitmSettings.fellowshipId;
 		if (actor.id === singletonId) {
 			ui.notifications.warn(t("LITM.Ui.warn_fellowship_no_delete"));
+			return false;
+		}
+	});
+}
+
+/**
+ * Prevent assigning the fellowship actor as a user's character.
+ */
+function _blockFellowshipAsCharacter() {
+	Hooks.on("preUpdateUser", (user, changes) => {
+		if (!("character" in changes)) return;
+		const fellowshipId = LitmSettings.fellowshipId;
+		if (changes.character === fellowshipId) {
+			ui.notifications.warn(t("LITM.Ui.warn_fellowship_not_character"));
 			return false;
 		}
 	});

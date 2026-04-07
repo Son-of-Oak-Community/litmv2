@@ -109,7 +109,7 @@ export class FellowshipSheet extends LitmActorSheet {
 		const fellowshipId = this.document.id;
 		const playerCharacterIds = new Set(
 			game.users
-				.filter((u) => u.character?.type === "hero")
+				.filter((u) => u.active && u.character?.type === "hero")
 				.map((u) => u.character.id),
 		);
 		const heroes = game.actors.filter(

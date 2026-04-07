@@ -266,6 +266,7 @@
 			"warn_fellowship_not_fellowship": "只有伙伴关系主题才能添加到伙伴关系角色。",
 			"warn_fellowship_singleton": "Only one fellowship can exist.",
 			"warn_fellowship_no_delete": "The fellowship actor cannot be deleted.",
+				"warn_fellowship_not_character": "The fellowship cannot be assigned as a player character.",
 			"fellowship_name": "伙伴关系名称",
 			"new_story_theme": "新故事主题",
 			"fellowship_setup_cta": "Drop a fellowship themebook or themekit here, or click the book icon to browse.",
