@@ -7,6 +7,7 @@ export function registerUiHooks() {
 	_listenToContentLinks();
 	_addSceneTagsTool();
 	_handleTagDropInEditor();
+	_refreshOnPlayerChange();
 }
 
 function _iconOnlyHeaderButtons() {
@@ -112,6 +113,27 @@ function _listenToContentLinks() {
 			if (!scene) return;
 			scene.view();
 		});
+	});
+}
+
+/**
+ * Re-render the story tag sidebar and fellowship sheet when players connect/disconnect
+ * or change their assigned character, so that only active players' heroes appear.
+ */
+function _refreshOnPlayerChange() {
+	const refresh = () => {
+		ui.combat?.invalidateCache();
+		if (ui.combat?.rendered) ui.combat.render();
+
+		const fellowshipId = game.litmv2?.fellowship?.id;
+		if (!fellowshipId) return;
+		const fellowship = game.actors.get(fellowshipId);
+		if (fellowship?.sheet?.rendered) fellowship.sheet.render();
+	};
+
+	Hooks.on("userConnected", refresh);
+	Hooks.on("updateUser", (user, changes) => {
+		if ("character" in changes) refresh();
 	});
 }
 

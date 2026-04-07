@@ -261,6 +261,7 @@
 			"warn_fellowship_not_fellowship": "Bare fellesskapstemaer kan legges til en fellesskapsaktør.",
 			"warn_fellowship_singleton": "Only one fellowship can exist.",
 			"warn_fellowship_no_delete": "The fellowship actor cannot be deleted.",
+				"warn_fellowship_not_character": "The fellowship cannot be assigned as a player character.",
 			"fellowship_name": "Felleskapsnavn",
 			"new_story_theme": "Nytt Historietema",
 			"fellowship_setup_cta": "Drop a fellowship themebook or themekit here, or click the book icon to browse.",

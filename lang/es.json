@@ -261,6 +261,7 @@
 			"warn_fellowship_not_fellowship": "Solo se pueden añadir temas de hermandad a un actor de hermandad.",
 			"warn_fellowship_singleton": "Only one fellowship can exist.",
 			"warn_fellowship_no_delete": "The fellowship actor cannot be deleted.",
+				"warn_fellowship_not_character": "The fellowship cannot be assigned as a player character.",
 			"fellowship_name": "Nombre de Hermandad",
 			"new_story_theme": "Nuevo Tema de Historia",
 			"fellowship_setup_cta": "Drop a fellowship themebook or themekit here, or click the book icon to browse.",

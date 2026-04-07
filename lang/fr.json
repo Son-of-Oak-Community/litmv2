@@ -428,6 +428,7 @@
 			"warn_fellowship_not_fellowship": "Seuls les thèmes de compagnie peuvent être ajoutés à un acteur de compagnie.",
 			"warn_fellowship_singleton": "Une seule compagnie peut exister.",
 			"warn_fellowship_no_delete": "L'acteur de compagnie ne peut pas être supprimé.",
+				"warn_fellowship_not_character": "The fellowship cannot be assigned as a player character.",
 			"warn_backpack_limit": "Vous avez déjà un sac à dos. Veuillez le supprimer avant d'en ajouter un autre.",
 			"replace_general_consequence_content": "Remplacer la vignette de conséquence générale actuelle ?",
 			"replace_general_consequence_title": "Remplacer les conséquences générales",

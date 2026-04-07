@@ -106,7 +106,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	get #userCharacterIds() {
 		return new Set(
-			game.users.filter((u) => u.character).map((u) => u.character._id),
+			game.users.filter((u) => u.active && u.character).map((u) => u.character._id),
 		);
 	}
 
