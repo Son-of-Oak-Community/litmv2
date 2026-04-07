@@ -6,6 +6,13 @@ import { confirmDelete, enrichHTML, localize as t } from "../utils.js";
 
 const AbstractSidebarTab = foundry.applications.sidebar.AbstractSidebarTab;
 
+/** Actor types that store limits in flags rather than system data. */
+const FLAG_LIMIT_TYPES = new Set(["hero", "fellowship", "journey"]);
+
+function getActorLimits(actor) {
+	return actor.getFlag("litmv2", "limits") ?? [];
+}
+
 export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicationMixin(
 	AbstractSidebarTab,
 ) {
@@ -268,15 +275,27 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			context.hasSceneTokens = false;
 		}
 
-		// Partition actor tags by limit (GM only, challenges/journeys only)
+		// Partition actor tags by limit (GM only)
+		const heroLimit = LitmSettings.heroLimit;
 		for (const actor of context.actors) {
 			const actorDoc = game.actors.get(actor.id);
-			const isChallenge =
-				actor.type === "challenge" || actor.type === "journey";
+			const isChallenge = actor.type === "challenge";
+			const isHero = actor.type === "hero";
+			const usesFlagLimits = FLAG_LIMIT_TYPES.has(actor.type);
 
-			if (game.user.isGM && isChallenge && actorDoc) {
+			actor.isChallenge = isChallenge;
+			actor.fixedMax = isHero;
+
+			const canSeeLimits = (isChallenge || usesFlagLimits) && actorDoc
+				&& (game.user.isGM || (usesFlagLimits && actorDoc.isOwner));
+
+			if (canSeeLimits) {
+				const rawLimits = isChallenge
+					? (actorDoc.system.limits ?? [])
+					: getActorLimits(actorDoc);
+
 				const actorLimits = await Promise.all(
-					(actorDoc.system.limits ?? []).map(async (limit) => {
+					rawLimits.map(async (limit) => {
 						const groupedTags = actor.tags.filter(
 							(t) => t.limitId === limit.id,
 						);
@@ -286,9 +305,10 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						const computedValue = StatusCardData.stackTiers(statusTierArrays);
 						return {
 							...limit,
+							max: isHero ? heroLimit : limit.max,
 							tags: groupedTags,
 							computedValue,
-							enrichedOutcome: limit.outcome
+							enrichedOutcome: isChallenge && limit.outcome
 								? await enrichHTML(limit.outcome, actorDoc)
 								: "",
 						};
@@ -663,20 +683,22 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				const isExternal = !data.sourceId;
 
 				if (source === "story") {
-					if (isExternal) {
-						// Add new story tag with limitId
-						const newTag = { ...data, id: data.id ?? foundry.utils.randomID(), limitId };
-						const tags = [...this.config.tags, newTag];
-						if (game.user.isGM) await this.setTags(tags);
-						else this.#broadcastUpdate("tags", tags);
-					} else {
-						// Update existing story tag's limitId
+					// Same container — update limitId on existing story tag
+					const existingTag = data.sourceId && this.config.tags.find((t) => t.id === data.sourceId);
+					if (existingTag) {
 						const tags = this.config.tags.map((t) =>
 							t.id === data.sourceId ? { ...t, limitId } : t,
 						);
 						if (game.user.isGM) await this.setTags(tags);
 						else this.#broadcastUpdate("tags", tags);
+						return;
 					}
+					// Cross-container or external — add new story tag with limitId
+					const newTag = { ...data, id: data.id ?? foundry.utils.randomID(), limitId };
+					const tags = [...this.config.tags, newTag];
+					if (game.user.isGM) await this.setTags(tags);
+					else this.#broadcastUpdate("tags", tags);
+					if (data.sourceContainer) await this.#removeFromSource(data);
 					return;
 				}
 
@@ -688,13 +710,19 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 					// #addTagToActor handles recalculate + broadcast internally
 					return this.#addTagToActor({ id: source, tag: { ...data, limitId } });
 				}
-				// Update existing actor effect's limitId
-				if (!actor.effects.has(data.sourceId)) return;
-				await actor.updateEmbeddedDocuments("ActiveEffect", [
-					{ _id: data.sourceId, "system.limitId": limitId },
-				]);
-				await this.#recalculateChallengeLimits(source);
-				return this.#broadcastRender();
+
+				// Same actor — just update limitId
+				if (actor.effects.has(data.sourceId)) {
+					await actor.updateEmbeddedDocuments("ActiveEffect", [
+						{ _id: data.sourceId, "system.limitId": limitId },
+					]);
+					await this.#recalculateActorLimits(source);
+					return this.#broadcastRender();
+				}
+
+				// Cross-container — move tag to this actor's limit
+				await this.#addTagToActor({ id: source, tag: { ...data, limitId } });
+				return this.#removeFromSource(data);
 			}
 
 			// Same-container drop → sort instead of duplicate
@@ -715,7 +743,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 							await actor.updateEmbeddedDocuments("ActiveEffect", [
 								{ _id: data.sourceId, "system.limitId": null },
 							]);
-							await this.#recalculateChallengeLimits(data.sourceContainer);
+							await this.#recalculateActorLimits(data.sourceContainer);
 							return this.#broadcastRender();
 						}
 					}
@@ -846,9 +874,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			}),
 		);
 
-		// Recalculate challenge limits after actor tag updates
+		// Recalculate actor limits after tag updates
 		for (const id of Object.keys(actors)) {
-			if (game.actors.has(id)) await this.#recalculateChallengeLimits(id);
+			if (game.actors.has(id)) await this.#recalculateActorLimits(id);
 		}
 
 		const storyTags = Object.entries(story || {}).map(([tagId, data]) => {
@@ -873,19 +901,44 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			};
 		});
 
-		// Process limit form data
+		// Process limit form data (namespaced as limits.{source}.{limitId}.*)
 		let updatedLimits = this.config.limits ?? [];
 		const limitsData = data.limits;
 		if (limitsData && game.user.isGM) {
-			updatedLimits = updatedLimits.map((limit) => {
-				const formLimit = limitsData[limit.id];
-				if (!formLimit) return limit;
-				return {
-					...limit,
-					label: formLimit.label ?? limit.label,
-					max: formLimit.max ?? limit.max,
-				};
-			});
+			// Story limits
+			const storyLimitsData = limitsData.story;
+			if (storyLimitsData) {
+				updatedLimits = updatedLimits.map((limit) => {
+					const formLimit = storyLimitsData[limit.id];
+					if (!formLimit) return limit;
+					return {
+						...limit,
+						label: formLimit.label ?? limit.label,
+						max: formLimit.max ?? limit.max,
+					};
+				});
+			}
+
+			// Actor flag limits (hero/fellowship/journey)
+			const flagUpdates = [];
+			for (const [source, sourceLimits] of Object.entries(limitsData)) {
+				if (source === "story") continue;
+				const actor = game.actors.get(source);
+				if (!actor?.isOwner) continue;
+				if (!FLAG_LIMIT_TYPES.has(actor.type)) continue;
+				const existing = getActorLimits(actor);
+				const updated = existing.map((limit) => {
+					const formLimit = sourceLimits[limit.id];
+					if (!formLimit) return limit;
+					return {
+						...limit,
+						label: formLimit.label ?? limit.label,
+						max: actor.type === "hero" ? limit.max : (formLimit.max ?? limit.max),
+					};
+				});
+				flagUpdates.push(actor.setFlag("litmv2", "limits", updated));
+			}
+			await Promise.all(flagUpdates);
 		}
 
 		// Write tags and limits together in a single setting update
@@ -932,19 +985,53 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const raw = input.value.trim();
 		if (!raw) return;
 
-		// Limit: "name:N" — only for story tags, GM only
-		const limitMatch = raw.match(/^(.+):(\d+)$/);
-		if (limitMatch && sectionId === "story" && game.user.isGM) {
+		// Limit: "name:N" or "name:" — story tags (GM), hero/fellowship actors (owner)
+		const limitMatch = raw.match(/^(.+):(\d*)$/);
+		if (limitMatch) {
 			const label = limitMatch[1].trim();
-			const max = limitMatch[2];
-			const limits = [
-				...(this.config.limits ?? []),
-				{ id: foundry.utils.randomID(), label, max, value: 0 },
-			];
-			input.value = "";
-			await this.setLimits(limits);
-			this.#refocusQuickAdd(sectionId);
-			return;
+			const heroLimit = LitmSettings.heroLimit;
+			const actor = game.actors.get(sectionId);
+			const isHeroActor = actor?.type === "hero";
+			const defaultMax = isHeroActor ? heroLimit : 3;
+			const max = limitMatch[2] ? Number(limitMatch[2]) : defaultMax;
+
+			if (sectionId === "story" && game.user.isGM) {
+				const limits = [
+					...(this.config.limits ?? []),
+					{ id: foundry.utils.randomID(), label, max, value: 0 },
+				];
+				input.value = "";
+				await this.setLimits(limits);
+				this.#refocusQuickAdd(sectionId);
+				return;
+			}
+
+			if (actor?.isOwner && FLAG_LIMIT_TYPES.has(actor.type)) {
+				const existing = getActorLimits(actor);
+				await actor.setFlag("litmv2", "limits", [
+					...existing,
+					{ id: foundry.utils.randomID(), label, max: isHeroActor ? heroLimit : max, value: 0 },
+				]);
+				input.value = "";
+				this.invalidateCache();
+				this.#broadcastRender();
+				this.#refocusQuickAdd(sectionId);
+				return;
+			}
+
+			if (actor?.isOwner && actor.type === "challenge") {
+				await actor.update({
+					"system.limits": [
+						...actor.system.limits,
+						{ id: foundry.utils.randomID(), label, outcome: "", max, value: 0 },
+					],
+				});
+				input.value = "";
+				this.invalidateCache();
+				this.#broadcastRender();
+				this.#refocusQuickAdd(sectionId);
+				return;
+			}
 		}
 
 		// Status: "name-N" where N is 1-6
@@ -1021,13 +1108,34 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		this.removeTag(target);
 	}
 
-	static #onAddLimit(_event, _target) {
+	static async #onAddLimit(_event, target) {
+		const source = target.dataset.source;
+
+		if (source && source !== "story") {
+			const actor = game.actors.get(source);
+			if (!actor?.isOwner) return;
+			if (!FLAG_LIMIT_TYPES.has(actor.type)) return;
+			const existing = getActorLimits(actor);
+			const heroLimit = LitmSettings.heroLimit;
+			await actor.setFlag("litmv2", "limits", [
+				...existing,
+				{
+					id: foundry.utils.randomID(),
+					label: game.i18n.localize("LITM.Ui.new_limit"),
+					max: actor.type === "hero" ? heroLimit : 3,
+					value: 0,
+				},
+			]);
+			this.invalidateCache();
+			return this.#broadcastRender();
+		}
+
 		const limits = [
 			...(this.config.limits ?? []),
 			{
 				id: foundry.utils.randomID(),
 				label: game.i18n.localize("LITM.Ui.new_limit"),
-				max: "3",
+				max: 3,
 				value: 0,
 			},
 		];
@@ -1037,6 +1145,22 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	static async #onRemoveLimit(_event, target) {
 		const limitId = target.dataset.limitId;
 		if (!limitId) return;
+		const source = target.dataset.source;
+
+		// Actor flag limits (hero/fellowship/journey)
+		if (source && source !== "story") {
+			const actor = game.actors.get(source);
+			if (!actor?.isOwner) return;
+			const existing = getActorLimits(actor);
+			await actor.setFlag("litmv2", "limits", existing.filter((l) => l.id !== limitId));
+			// Clear limitId on any effects referencing this limit
+			const updates = [...actor.effects]
+				.filter((e) => e.system?.limitId === limitId)
+				.map((e) => ({ _id: e.id, "system.limitId": null }));
+			if (updates.length) await actor.updateEmbeddedDocuments("ActiveEffect", updates);
+			this.invalidateCache();
+			return this.#broadcastRender();
+		}
 
 		const limits = (this.config.limits ?? []).filter((l) => l.id !== limitId);
 
@@ -1234,38 +1358,54 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			await actor.updateEmbeddedDocuments("ActiveEffect", [
 				{ _id: tagId, "system.tiers": newTiers },
 			]);
-			await this.#recalculateChallengeLimits(source);
+			await this.#recalculateActorLimits(source);
 			this.#broadcastRender();
 		}
 	}
 
-	async #recalculateChallengeLimits(actorId) {
+	async #recalculateActorLimits(actorId) {
 		const actor = game.actors.get(actorId);
 		if (!actor?.isOwner) return;
-		if (actor.type !== "challenge" && actor.type !== "journey") return;
+
+		const isChallenge = actor.type === "challenge";
+		const isHero = actor.type === "hero";
+		const usesFlagLimits = FLAG_LIMIT_TYPES.has(actor.type);
+		if (!isChallenge && !usesFlagLimits) return;
+
+		const oldLimits = isChallenge
+			? (actor.system.limits ?? [])
+			: getActorLimits(actor);
+		if (!oldLimits.length) return;
 
 		const effects = [...actor.effects]
 			.filter((e) => e.type === "status_card" && e.system?.limitId)
 			.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 
-		const limits = (actor.system.limits ?? []).map((limit) => {
+		const heroLimit = LitmSettings.heroLimit;
+
+		const limits = oldLimits.map((limit) => {
 			const grouped = effects.filter((e) => e.system.limitId === limit.id);
 			const tierArrays = grouped.map((e) => e.system.tiers);
 			const computedValue = StatusCardData.stackTiers(tierArrays);
 			return { ...limit, value: computedValue };
 		});
 
-		// Detect limit-reached transitions
+		// Detect limit-reached transitions (hero max is derived from setting, not stored)
 		for (let i = 0; i < limits.length; i++) {
-			const oldLimit = actor.system.limits[i];
+			const oldLimit = oldLimits[i];
 			const newLimit = limits[i];
-			if (!oldLimit || newLimit.max === 0) continue;
-			if (oldLimit.value < newLimit.max && newLimit.value >= newLimit.max) {
-				this.#sendLimitReachedMessage(newLimit, actor);
+			const effectiveMax = isHero ? heroLimit : newLimit.max;
+			if (!oldLimit || effectiveMax === 0) continue;
+			if (oldLimit.value < effectiveMax && newLimit.value >= effectiveMax) {
+				this.#sendLimitReachedMessage({ ...newLimit, max: effectiveMax }, actor);
 			}
 		}
 
-		await actor.update({ "system.limits": limits });
+		if (isChallenge) {
+			await actor.update({ "system.limits": limits });
+		} else {
+			await actor.setFlag("litmv2", "limits", limits);
+		}
 	}
 
 	async #sendLimitReachedMessage(limit, actor) {
@@ -1419,7 +1559,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			},
 		]);
 		if (created) this._editOnRender = created.id;
-		await this.#recalculateChallengeLimits(id);
+		await this.#recalculateActorLimits(id);
 		return this.#broadcastRender();
 	}
 
@@ -1440,7 +1580,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (!actor.isOwner) return;
 
 		await actor.deleteEmbeddedDocuments("ActiveEffect", [id]);
-		await this.#recalculateChallengeLimits(actorId);
+		await this.#recalculateActorLimits(actorId);
 		return this.#broadcastRender();
 	}
 

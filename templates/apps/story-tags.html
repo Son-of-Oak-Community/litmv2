@@ -62,19 +62,19 @@
 {{/if}}
 {{/inline}}
 
-{{#*inline 'limitGroup' limit source editable isGM isChallenge}}
+{{#*inline 'limitGroup' limit source editable isGM isChallenge fixedMax}}
 <div class="litm--limit-group" data-limit-id="{{limit.id}}" data-source="{{source}}">
 	<div class="litm--limit-header" data-limit-id="{{limit.id}}" data-source="{{source}}">
 		<img src="systems/litmv2/assets/media/icons/limit.svg" alt="" class="litm--limit-icon" aria-hidden="true" />
 		{{#if (and editable (not isChallenge))}}
-		<input class="litm--limit-label litm--locked" type="text" name="limits.{{limit.id}}.label" value="{{limit.label}}"
+		<input class="litm--limit-label litm--locked" type="text" name="limits.{{source}}.{{limit.id}}.label" value="{{limit.label}}"
 			data-focus="select" />
 		{{else}}
 		<span class="litm--limit-label">{{limit.label}}</span>
 		{{/if}}
 		<span class="litm--limit-value">
-			{{limit.computedValue}} / {{#if (and editable (not isChallenge))}}<input class="litm--limit-max litm--locked" type="text"
-				name="limits.{{limit.id}}.max" value="{{limit.max}}" />{{else}}{{limit.max}}{{/if}}
+			{{limit.computedValue}} / {{#if (and editable (not isChallenge) (not fixedMax))}}<input class="litm--limit-max litm--locked" type="text"
+				name="limits.{{source}}.{{limit.id}}.max" value="{{limit.max}}" />{{else}}{{limit.max}}{{/if}}
 		</span>
 		{{#if (and isChallenge limit.outcome)}}
 		<i class="fa-solid fa-circle-info litm--limit-info" aria-hidden="true"
@@ -83,7 +83,7 @@
 		{{#if editable}}
 		{{#unless isChallenge}}
 		<button type="button" class="litm--tag-action-btn" data-action="remove-limit" data-limit-id="{{limit.id}}"
-			data-tooltip="{{localize 'LITM.Ui.remove_limit'}}" aria-label="{{localize 'LITM.Ui.remove_limit'}}">
+			data-source="{{source}}" data-tooltip="{{localize 'LITM.Ui.remove_limit'}}" aria-label="{{localize 'LITM.Ui.remove_limit'}}">
 			<i class="fa-solid fa-xmark" aria-hidden="true"></i>
 		</button>
 		{{/unless}}
@@ -126,9 +126,9 @@
 	</h3>
 	<div class="litm--section-body">
 		<div class="litm--section-body-inner">
-			{{#if (and ../isGM limits.length)}}
+			{{#if limits.length}}
 			{{#each limits as |limit|}}
-			{{> limitGroup limit=limit source=../id editable=../isOwner isGM=true isChallenge=true}}
+			{{> limitGroup limit=limit source=../id editable=../isOwner isGM=../../isGM isChallenge=../isChallenge fixedMax=../fixedMax}}
 			{{/each}}
 			{{/if}}
 			<ul class="plain">
@@ -170,7 +170,7 @@
 					</h3>
 					{{#if isGM}}
 					{{#each storyLimits as |limit|}}
-					{{> limitGroup limit=limit source="story" editable=true isGM=true isChallenge=false}}
+					{{> limitGroup limit=limit source="story" editable=true isGM=true isChallenge=false fixedMax=false}}
 					{{/each}}
 					{{/if}}
 					<ul class="plain">
