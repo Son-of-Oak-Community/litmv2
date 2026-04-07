@@ -75,6 +75,20 @@ export function LitmSheetMixin(Base) {
 				{ capture: true },
 			);
 
+			this.element.addEventListener("drop", (event) => {
+				const textarea = event.target.closest("textarea");
+				if (!textarea) return;
+				const data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
+				if (!data?.uuid) return;
+				event.preventDefault();
+				event.stopPropagation();
+				const doc = foundry.utils.fromUuidSync(data.uuid);
+				const link = doc?.link ?? `@UUID[${data.uuid}]`;
+				const { selectionStart, selectionEnd } = textarea;
+				textarea.setRangeText(link, selectionStart, selectionEnd, "end");
+				textarea.dispatchEvent(new Event("change", { bubbles: true }));
+			});
+
 			this.element.addEventListener("keydown", (event) => {
 				if (event.key !== "Enter" && event.key !== " ") return;
 				const actionEl = event.target.closest("[data-action]");

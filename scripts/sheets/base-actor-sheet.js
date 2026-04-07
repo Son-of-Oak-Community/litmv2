@@ -77,18 +77,16 @@ export class LitmActorSheet extends LitmSheetMixin(
 
 	/** @override */
 	_configureRenderOptions(options) {
-		super._configureRenderOptions(options);
-
-		// Non-owners are always locked to play mode
+		// Set mode BEFORE super — HandlebarsApplicationMixin calls _configureRenderParts
+		// inside super._configureRenderOptions, which needs the correct _mode to pick the template.
 		if (!this.document.isOwner) {
 			this._mode = this.constructor.MODES.PLAY;
-			return options;
+		} else {
+			const { mode } = options;
+			this._mode = mode ?? this._mode ?? this.constructor.MODES.PLAY;
 		}
 
-		// Set initial mode - use passed mode, or fall back to existing, or default to PLAY
-		const { mode } = options;
-		this._mode = mode ?? this._mode ?? this.constructor.MODES.PLAY;
-
+		super._configureRenderOptions(options);
 		return options;
 	}
 
