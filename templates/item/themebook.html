@@ -8,20 +8,15 @@
 	<fieldset>
 		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Ui.themebook_details" action="addEntry" path="system.envisioningTags" tooltip="LITM.Ui.add_tag"}}
 		<div class="form-group">
-			<div class="form-field">
-				<label for="theme_level">{{localize "LITM.Ui.theme_level"}}</label>
-				<select id="theme_level" name="system.theme_level">
-					{{selectOptions levels selected=system.theme_level localize=true}}
-				</select>
-			</div>
-
-			<div class="form-field flexrow gap-sm" style="align-items: center;">
-				<input type="checkbox" id="isFellowship" name="system.isFellowship" {{checked system.isFellowship}}
-					data-dtype="Boolean" style="flex: 0 0 auto; margin: 0;" />
-				<label class="checkbox-label" for="isFellowship" style="flex: 1; margin: 0; cursor: pointer;">
-					{{localize "LITM.Terms.fellowship"}}
-				</label>
-			</div>
+			<label for="theme_level">{{localize "LITM.Ui.theme_level"}}</label>
+			<select id="theme_level" name="system.theme_level">
+				{{selectOptions levels selected=system.theme_level localize=true}}
+			</select>
+		</div>
+		<div class="form-group">
+			<label for="isFellowship-{{document.id}}">{{localize "LITM.Terms.fellowship"}}</label>
+			<input type="checkbox" id="isFellowship-{{document.id}}" name="system.isFellowship" {{checked system.isFellowship}}
+				data-dtype="Boolean" />
 		</div>
 		<label>{{localize "LITM.Ui.themebook_envisioning"}}</label>
 		<ul class="plain">

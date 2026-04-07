@@ -910,7 +910,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (mightLabel && mightTooltipTemplate) {
 			const tooltipContent = mightTooltipTemplate.content.firstElementChild.cloneNode(true);
 			mightLabel.addEventListener("pointerenter", () => {
-				game.tooltip.activate(mightLabel, { content: tooltipContent, direction: "DOWN" });
+				game.tooltip.activate(mightLabel, { html: tooltipContent, direction: "DOWN" });
 			});
 			mightLabel.addEventListener("pointerleave", () => {
 				game.tooltip.deactivate();

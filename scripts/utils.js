@@ -87,27 +87,25 @@ export async function enrichHTML(text, document) {
 
 export function toQuestionOptions(questions = [], skipFirst = 0) {
 	const options = {};
-	let displayIndex = skipFirst;
 
 	(questions || []).forEach((question, idx) => {
 		if (idx < skipFirst) return;
 		if (!question || `${question}`.trim().length === 0) return;
 
-		options[String(idx)] = String.fromCharCode(65 + displayIndex);
-		displayIndex++;
+		options[String(idx)] = idx < 26 ? String.fromCharCode(65 + idx) : `${idx + 1}`;
 	});
 
 	return options;
 }
 
 export function powerTagEffect({
-	name = "",
+	name,
 	isActive = false,
 	question = null,
 	isScratched = false,
 } = {}) {
 	return {
-		name,
+		name: name || game.i18n.localize("LITM.Terms.tag"),
 		type: "power_tag",
 		disabled: !isActive,
 		system: { question, isScratched },
@@ -115,12 +113,12 @@ export function powerTagEffect({
 }
 
 export function weaknessTagEffect({
-	name = "",
+	name,
 	isActive = false,
 	question = null,
 } = {}) {
 	return {
-		name,
+		name: name || game.i18n.localize("LITM.Terms.tag"),
 		type: "weakness_tag",
 		disabled: !isActive,
 		system: { question },
@@ -128,13 +126,13 @@ export function weaknessTagEffect({
 }
 
 export function fellowshipTagEffect({
-	name = "",
+	name,
 	isActive = false,
 	question = null,
 	isScratched = false,
 } = {}) {
 	return {
-		name,
+		name: name || game.i18n.localize("LITM.Terms.tag"),
 		type: "fellowship_tag",
 		disabled: !isActive,
 		system: { question, isScratched },
@@ -142,11 +140,11 @@ export function fellowshipTagEffect({
 }
 
 export function relationshipTagEffect({
-	name = "",
+	name,
 	targetId = "",
 } = {}) {
 	return {
-		name,
+		name: name || game.i18n.localize("LITM.Terms.tag"),
 		type: "relationship_tag",
 		system: { targetId },
 	};
@@ -163,14 +161,14 @@ export function relationshipTagEffect({
  * @returns {object} Effect creation data
  */
 export function storyTagEffect({
-	name = "",
+	name,
 	isScratched = false,
 	isSingleUse = false,
 	isHidden = false,
 	limitId = null,
 } = {}) {
 	return {
-		name,
+		name: name || game.i18n.localize("LITM.Terms.tag"),
 		type: "story_tag",
 		system: { isScratched, isSingleUse, isHidden, limitId },
 	};
@@ -186,13 +184,13 @@ export function storyTagEffect({
  * @returns {object} Effect creation data
  */
 export function statusTagEffect({
-	name = "",
+	name,
 	tiers = [false, false, false, false, false, false],
 	isHidden = false,
 	limitId = null,
 } = {}) {
 	return {
-		name,
+		name: name || game.i18n.localize("LITM.Terms.status"),
 		type: "status_tag",
 		system: { tiers, isHidden, limitId },
 	};

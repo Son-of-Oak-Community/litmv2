@@ -8,7 +8,7 @@ export class LitmTokenHUD extends TokenHUD {
 	static DEFAULT_OPTIONS = {
 		actions: {
 			effect: { handler: LitmTokenHUD.#onToggleEffect, buttons: [0, 2] },
-			tier: LitmTokenHUD.#onClickTier,
+			tier: { handler: LitmTokenHUD.#onClickTier, buttons: [0, 2] },
 			visibility: LitmTokenHUD.#onToggleVisibility,
 			sidebar: LitmTokenHUD.#onToggleSidebar,
 		},
@@ -209,6 +209,8 @@ export class LitmTokenHUD extends TokenHUD {
 
 	/**
 	 * Handle clicking a tier box on an active status.
+	 * Left-click: mark/unmark individual tiers.
+	 * Right-click: reduce by 1 tier (shift all marks down).
 	 * @this {LitmTokenHUD}
 	 */
 	static async #onClickTier(event, target) {
@@ -219,18 +221,25 @@ export class LitmTokenHUD extends TokenHUD {
 		const effect = resolveEffect(effectId, this.actor, { fellowship: false });
 		if (!effect) return;
 
-		const currentTier = effect.system.currentTier;
-		if (tier <= currentTier) {
-			const unmarkTiers = [...effect.system.tiers];
-			for (let i = tier - 1; i < 6; i++) unmarkTiers[i] = false;
-			if (unmarkTiers.every((t) => !t)) {
+		// Right-click: reduce by 1
+		if (event.button === 2) {
+			if (!effect.system.tiers.some(Boolean)) return;
+			const newTiers = effect.system.calculateReduction(1);
+			if (newTiers.every((t) => !t)) {
 				await this.actor.system.removeStatus(effectId);
 				return;
 			}
-			await effect.update({ "system.tiers": unmarkTiers });
-		} else {
-			const newTiers = effect.system.calculateMark(tier);
 			await effect.update({ "system.tiers": newTiers });
+			return;
 		}
+
+		// Left-click: toggle the individual tier box
+		const newTiers = [...effect.system.tiers];
+		newTiers[tier - 1] = !newTiers[tier - 1];
+		if (newTiers.every((t) => !t)) {
+			await this.actor.system.removeStatus(effectId);
+			return;
+		}
+		await effect.update({ "system.tiers": newTiers });
 	}
 }

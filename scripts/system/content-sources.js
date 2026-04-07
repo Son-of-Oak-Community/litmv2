@@ -1,4 +1,4 @@
-import { info, error } from "../logger.js";
+import { error, info } from "../logger.js";
 import { LitmSettings } from "./settings.js";
 
 /**
@@ -44,13 +44,29 @@ const STATUS_ICONS = {
  * @type {string[]}
  */
 const DEFAULT_STATUSES = [
-	"wounded", "poisoned", "burned", "stunned", "paralyzed", "crushed",
-	"exhausted", "hungry",
-	"scared", "confused",
-	"convinced", "intimidated", "humiliated",
-	"prone", "exposed", "surprised",
-	"drained", "cursed", "warded",
-	"alert", "hidden", "inspired", "invigorated",
+	"wounded",
+	"poisoned",
+	"burned",
+	"stunned",
+	"paralyzed",
+	"crushed",
+	"exhausted",
+	"hungry",
+	"scared",
+	"confused",
+	"convinced",
+	"intimidated",
+	"humiliated",
+	"prone",
+	"exposed",
+	"surprised",
+	"drained",
+	"cursed",
+	"warded",
+	"alert",
+	"hidden",
+	"inspired",
+	"invigorated",
 ];
 
 const WORLD_STATUS_PACK_ID = "world.litmv2-statuses";
@@ -110,7 +126,9 @@ export class ContentSources {
 		const docs = await pack.getDocuments();
 		const ids = docs.map((d) => d.id);
 		if (ids.length) {
-			await foundry.documents.ActiveEffect.deleteDocuments(ids, { pack: pack.collection });
+			await foundry.documents.ActiveEffect.deleteDocuments(ids, {
+				pack: pack.collection,
+			});
 		}
 		await ContentSources.#populateStatusPack(pack);
 		info("Reset world statuses compendium to defaults");
@@ -122,19 +140,23 @@ export class ContentSources {
 	static async #createAndPopulateStatusPack() {
 		let pack = game.packs.get(WORLD_STATUS_PACK_ID);
 		if (!pack) {
-			pack = await CompendiumCollection.createCompendium({
-				name: "litmv2-statuses",
-				label: "Statuses",
-				type: "ActiveEffect",
-				system: "litmv2",
-			});
+			pack = await foundry.documents.collections.CompendiumCollection
+				.createCompendium({
+					name: "litmv2-statuses",
+					label: "Statuses",
+					type: "ActiveEffect",
+					system: "litmv2",
+				});
 		}
 		await ContentSources.#populateStatusPack(pack);
 
 		// Auto-add to the statuses setting
 		const current = LitmSettings.getCompendiumSetting("statuses");
 		if (!current.includes(pack.collection)) {
-			await LitmSettings.setCompendiumSetting("statuses", [...current, pack.collection]);
+			await LitmSettings.setCompendiumSetting("statuses", [
+				...current,
+				pack.collection,
+			]);
 		}
 	}
 
@@ -154,6 +176,8 @@ export class ContentSources {
 				limitId: null,
 			},
 		}));
-		await foundry.documents.ActiveEffect.createDocuments(statusData, { pack: pack.collection });
+		await foundry.documents.ActiveEffect.createDocuments(statusData, {
+			pack: pack.collection,
+		});
 	}
 }

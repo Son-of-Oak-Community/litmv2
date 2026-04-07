@@ -11,10 +11,11 @@ export class ContentSourcesConfig extends HandlebarsApplicationMixin(Application
 		window: {
 			title: "LITM.Settings.content_sources",
 			icon: "fas fa-atlas",
+			contentClasses: ["standard-form"],
 		},
 		position: {
 			width: 480,
-			height: "auto",
+			height: 500,
 		},
 		form: {
 			closeOnSubmit: true,
@@ -28,6 +29,7 @@ export class ContentSourcesConfig extends HandlebarsApplicationMixin(Application
 	static PARTS = {
 		form: {
 			template: "systems/litmv2/templates/apps/content-sources-config.html",
+			scrollable: [".scrollable"],
 		},
 		footer: {
 			template: "templates/generic/form-footer.hbs",
@@ -65,7 +67,7 @@ export class ContentSourcesConfig extends HandlebarsApplicationMixin(Application
 		});
 
 		context.buttons = [
-			{ type: "submit", icon: "fas fa-save", label: "SETTINGS.SaveChanges" },
+			{ type: "submit", icon: "fas fa-save", label: "SETTINGS.Save" },
 		];
 
 		return context;

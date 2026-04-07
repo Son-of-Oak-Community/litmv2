@@ -24,6 +24,7 @@
    18.  Light Mode .............. Light theme window header overrides
    19.  Party Overview .......... Hero cards with quests, weaknesses, statuses
    20.  Dark Mode ............... Theme overrides for dark interface
+   21.  Active Effect Sheet ..... Simplified tag/status editing
 ======================================== */
 
 /* ========================================
@@ -170,9 +171,9 @@ body,
 	--color-litm-success-text: rgba(140, 210, 140, 0.9);
 
 	/* Might scale tier accent colors */
-	--color-litm-might-origin: #7bc49a;
-	--color-litm-might-adventure: #c47a7b;
-	--color-litm-might-greatness: #9a9ad4;
+	--color-litm-might-origin: #3a7d54;
+	--color-litm-might-adventure: #9b3a3b;
+	--color-litm-might-greatness: #5c5c92;
 	--color-litm-might-origin-bg: rgba(76, 127, 97, 0.15);
 	--color-litm-might-adventure-bg: rgba(125, 59, 60, 0.15);
 	--color-litm-might-greatness-bg: rgba(92, 92, 146, 0.15);
@@ -1119,8 +1120,6 @@ body,
 /* Floating themebook label above the card header */
 .litm .theme-card__book {
 	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
 	max-width: 100%;
 }
 
@@ -1343,6 +1342,10 @@ body,
 	display: flex;
 	gap: 0.35rem;
 	align-items: flex-start;
+}
+
+.litm .special-improvements-list .litm-tag-check {
+	margin-top: 2px;
 }
 
 .litm .special-improvements-list h5 {
@@ -1617,7 +1620,7 @@ body,
 	margin-top: 0.25rem;
 }
 
-.addon-detail__section + .addon-detail__section {
+.addon-detail__section+.addon-detail__section {
 	margin-top: 0.5rem;
 }
 
@@ -1999,14 +2002,30 @@ body,
 	font-weight: 700;
 }
 
-.litm--might-scale-origin { color: var(--color-litm-might-origin); }
-.litm--might-scale-adventure { color: var(--color-litm-might-adventure); }
-.litm--might-scale-greatness { color: var(--color-litm-might-greatness); }
+.litm--might-scale-origin {
+	color: var(--color-litm-might-origin);
+}
+
+.litm--might-scale-adventure {
+	color: var(--color-litm-might-adventure);
+}
+
+.litm--might-scale-greatness {
+	color: var(--color-litm-might-greatness);
+}
 
 /* Tinted backgrounds for colored breakpoint buttons */
-.litm--might-option:has(.litm--might-scale-origin) { background: var(--color-litm-might-origin-bg); }
-.litm--might-option:has(.litm--might-scale-adventure) { background: var(--color-litm-might-adventure-bg); }
-.litm--might-option:has(.litm--might-scale-greatness) { background: var(--color-litm-might-greatness-bg); }
+.litm--might-option:has(.litm--might-scale-origin) {
+	background: var(--color-litm-might-origin-bg);
+}
+
+.litm--might-option:has(.litm--might-scale-adventure) {
+	background: var(--color-litm-might-adventure-bg);
+}
+
+.litm--might-option:has(.litm--might-scale-greatness) {
+	background: var(--color-litm-might-greatness-bg);
+}
 
 /* Tier name column */
 .litm--might-table-tier {
@@ -5546,35 +5565,47 @@ fieldset.litm-party-overview {
 	padding: 0;
 	font-family: var(--font-serif);
 	font-size: var(--font-size-14);
-	line-height: var(--line-height-relaxed);
+	line-height: var(--line-height-tight);
 }
 
 .litm-party-overview__quests li {
-	margin-bottom: 2px;
-	padding-left: 0.5em;
-	text-indent: -0.5em;
+	margin-bottom: 0.5em;
+	padding-left: 1.25em;
+}
+
+.litm-party-overview__quest-text {
+	display: flex;
+	gap: 0.25rem;
+	margin-left: -1.25em;
+}
+
+.litm-party-overview__quest-text img {
+	flex-shrink: 0;
+	margin-top: 0.25em;
+	filter: invert(1);
 }
 
 .litm-party-overview__quests p {
-	margin-bottom: 0;
+	margin-top: 0.2em;
 }
 
 .litm-party-overview__quests em {
 	font-weight: 600;
 	text-transform: uppercase;
 	font-style: normal;
+	white-space: nowrap;
 }
 
 .litm-party-overview__quest-tracks {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: flex-start;
 	gap: 0.75rem;
-	margin-top: 2px;
 }
 
 .litm-party-overview__quest-track {
-	font-size: var(--font-size-sm);
+	font-size: var(--font-size-12);
 	color: var(--color-text-subtle);
+	line-height: 1;
 }
 
 .litm-party-overview__quest-track small {
@@ -5996,4 +6027,27 @@ body.theme-dark .application:not(.theme-light),
 #litm-token-tooltip .litm-tag,
 #litm-token-tooltip .litm-status {
 	font-size: var(--font-size-24);
+}
+
+/* ========================================
+   21. Active Effect Sheet
+   Simplified tag/status editing sheet.
+======================================== */
+
+.litm-active-effect-sheet .standard-form {
+	gap: 0.375rem;
+}
+
+.litm-active-effect-sheet .standard-form .form-group>label {
+	font-weight: normal;
+}
+
+.litm-ae-tiers {
+	flex: none;
+}
+
+.litm-active-effect-sheet .litm--tier-box {
+	filter: var(--litm-icon-filter);
+	width: 18px;
+	height: 18px;
 }

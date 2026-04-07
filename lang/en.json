@@ -127,7 +127,8 @@
 			"challenge_landscape": "Challenge Sheet (Landscape)",
 			"journey_landscape": "Journey Sheet (Landscape)",
 			"fellowship_landscape": "Fellowship Sheet (Landscape)",
-			"addon": "Add-On Sheet"
+			"addon": "Add-On Sheet",
+			"active_effect": "Tag Sheet"
 		},
 		"Settings": {
 			"hero_limit": "Hero Limit",
@@ -180,6 +181,7 @@
 			"failure": "Consequence",
 			"fellowship": "Fellowship",
 			"general_consequences": "General Consequences",
+			"hidden": "Hidden",
 			"greatness": "Greatness",
 			"journey": "Journey",
 			"journeys": "Journeys",
@@ -200,6 +202,7 @@
 			"rating_bonus": "Rating Bonus",
 			"relationship": "Relationship",
 			"roll": "Roll",
+			"scratched": "Scratched",
 			"single_use": "Single-use",
 			"snc": "Success & Consequence",
 			"special_features": "Special Features",
@@ -218,6 +221,7 @@
 			"themekits": "Themekits",
 			"themes": "Themes",
 			"threat": "Threat",
+			"title_tag": "Title Tag",
 			"threats_consequences": "Threats & Consequences",
 			"total_power": "Total Power",
 			"transfer": "Transfer",
@@ -308,6 +312,7 @@
 			"edit": "Edit",
 			"edit_backpack": "Edit Backpack",
 			"edit_image": "Edit Image",
+			"effect_active": "Active",
 			"error_no_actor": "No actor found. Please make sure the actor exists and is properly configured.",
 			"error_no_backpack": "No backpack found. Create a new Backpack item and add it to this hero.",
 			"error_validating_item": "There was an error validating the item. Please see the console for more information.",
@@ -611,7 +616,7 @@
 			"fellowship_tag": "Fellowship Tag",
 			"power_tag": "Power Tag",
 			"relationship_tag": "Relationship Tag",
-			"status_tag": "Status Card",
+			"status_tag": "Status",
 			"story_tag": "Story Tag",
 			"weakness_tag": "Weakness Tag"
 		},

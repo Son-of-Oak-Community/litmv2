@@ -6,7 +6,6 @@ export function registerActorHooks() {
 	_prepareCharacterOnCreate();
 	_validateFellowshipThemes();
 	_enforceHeroItemLimits();
-	_setStatusTagIcon();
 	_validateEffectType();
 	_syncUiOnEffectChange();
 }
@@ -143,24 +142,6 @@ function _validateFellowshipThemes() {
 }
 
 /**
- * Set icon and showIcon on story_tag and status_tag effects so they appear on tokens.
- */
-function _setStatusTagIcon() {
-	const icons = {
-		story_tag: "systems/litmv2/assets/media/icons/unfurled-scroll.svg",
-		status_tag: "systems/litmv2/assets/media/icons/consequences.svg",
-	};
-	Hooks.on("preCreateActiveEffect", (effect) => {
-		const icon = icons[effect.type];
-		if (!icon) return;
-		effect.updateSource({
-			img: icon,
-			showIcon: foundry.CONST.ACTIVE_EFFECT_SHOW_ICON.NONE,
-		});
-	});
-}
-
-/**
  * Prevent incompatible effect types from being created on wrong parent documents.
  * Theme-bound tag effects belong on theme/story_theme items only.
  */
@@ -168,7 +149,8 @@ function _validateEffectType() {
 	Hooks.on("preCreateActiveEffect", (effect) => {
 		if (!THEME_TAG_TYPES.has(effect.type)) return;
 		const parent = effect.parent;
-		if (parent?.documentName === "Item" && ["theme", "story_theme"].includes(parent.type)) return;
+		if (!parent) return; // Allow creation in compendiums
+		if (parent.documentName === "Item" && ["theme", "story_theme"].includes(parent.type)) return;
 		ui.notifications.warn("LITM.Ui.warn_invalid_effect_target", { localize: true });
 		return false;
 	});

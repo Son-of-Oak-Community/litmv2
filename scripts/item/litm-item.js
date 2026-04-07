@@ -63,6 +63,23 @@ export class LitmItem extends foundry.documents.Item {
 	}
 
 	/**
+	 * Ensure a theme or story_theme item has a title tag effect.
+	 * Creates one from the item name if missing. Shared by createLegacyEffects
+	 * and the createItem hook for freshly created items.
+	 */
+	static async ensureTitleTag(item) {
+		if (item.type !== "theme" && item.type !== "story_theme") return;
+		if (item.system.themeTag) return;
+		const type = item.system.isFellowship ? "fellowship_tag" : "power_tag";
+		await item.createEmbeddedDocuments("ActiveEffect", [{
+			name: item.name || "",
+			type,
+			disabled: false,
+			system: { question: "0", isScratched: false, isTitleTag: true },
+		}]);
+	}
+
+	/**
 	 * Create effects from stashed legacy data after item creation.
 	 * Handles compendium imports and any other path where items are
 	 * created without the world migration running.

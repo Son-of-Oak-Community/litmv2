@@ -1,8 +1,9 @@
 <section class="standard-form scrollable">
 	<!-- Header -->
 	<div class="flexrow gap-md" style="align-items: stretch;">
-		<img class="profile-img draggable noflex" data-edit="img" src="{{document.img}}" data-action="editImage" role="button" tabindex="0"
-			alt="{{document.name}}" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}"
+		<img class="profile-img draggable noflex" data-edit="img" src="{{document.img}}" data-action="editImage"
+			role="button" tabindex="0" alt="{{document.name}}" data-tooltip="{{localize 'LITM.Ui.edit_image'}}"
+			aria-label="{{localize 'LITM.Ui.edit_image'}}"
 			style="width: 100px; height: 100px; border-radius: 4px; object-fit: cover;" />
 
 		<div class="flex1 flexcol gap-sm">
@@ -92,7 +93,8 @@
 			{{#if fellowship.hasTheme}}
 			<div data-fellowship-actor-id="{{fellowship.actorId}}">
 				<div class="theme-card item" data-id="{{fellowship._id}}">
-					{{> systems/litmv2/templates/partials/theme-card-header.html fellowship action="toggleTagActive" tooltip=(localize "LITM.Ui.click_to_scratch_tag")}}
+					{{> systems/litmv2/templates/partials/theme-card-header.html fellowship action="toggleTagActive"
+					tooltip=(localize "LITM.Ui.click_to_scratch_tag")}}
 
 					{{> systems/litmv2/templates/partials/edit-theme-tags-activatable.html fellowship}}
 					{{> systems/litmv2/templates/partials/theme-special-improvements.html fellowship}}
@@ -109,7 +111,8 @@
 			</div>
 			{{else}}
 			<p class="flexrow gap-sm hint">
-				{{> systems/litmv2/templates/partials/icon-fellowship-hint.html}}<span>{{localize "LITM.Ui.fellowship_no_theme_edit"}}</span>
+				{{> systems/litmv2/templates/partials/icon-fellowship-hint.html}}<span>{{localize
+					"LITM.Ui.fellowship_no_theme_edit"}}</span>
 			</p>
 			{{/if}}
 			<hr style="margin:0;" />
@@ -150,7 +153,8 @@
 					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</legend>
-			{{> systems/litmv2/templates/partials/theme-card-header.html theme action="toggleTagActive" tooltip=(localize "LITM.Ui.click_to_scratch_tag")}}
+			{{> systems/litmv2/templates/partials/theme-card-header.html theme action="toggleTagActive" tooltip=(localize
+			"LITM.Ui.click_to_scratch_tag")}}
 
 			{{> systems/litmv2/templates/partials/edit-theme-tags-activatable.html theme}}
 
@@ -201,8 +205,8 @@
 				{{/if}}
 				<div class="flexcol gap-xs">
 					<div class="flexrow noflex gap-sm">
-						<img class="noflex icon-md" src="{{theme.levelIcon}}"
-							alt="{{theme.levelLabel}}" data-tooltip="{{theme.levelLabel}}" />
+						<img class="noflex icon-md" src="{{theme.levelIcon}}" alt="{{theme.levelLabel}}"
+							data-tooltip="{{theme.levelLabel}}" />
 						{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag
 						action="toggleTagActive"
 						tooltip=(localize "LITM.Ui.click_to_scratch_tag")
@@ -276,16 +280,14 @@
 				</span>
 				<div class="progress-display" style="flex: 0 0 auto;" data-id="system.tiers">
 					{{#each tag.system.tiers as |checked|}}
-					<button type="button" class="progress-box {{#if checked}}checked{{/if}}"
-						data-action="adjustProgress" data-index="{{@index}}" data-effect-id="{{tag.id}}"
-						aria-pressed="{{#if checked}}true{{else}}false{{/if}}">
+					<button type="button" class="progress-box {{#if checked}}checked{{/if}}" data-action="adjustProgress"
+						data-index="{{@index}}" data-effect-id="{{tag.id}}" aria-pressed="{{#if checked}}true{{else}}false{{/if}}">
 						<img src="systems/litmv2/assets/media/checkbox{{ifThen checked '-c' ''}}.svg" alt="" aria-hidden="true" />
 					</button>
 					{{/each}}
 				</div>
 				<button type="button" style="flex:none;" data-action="removeEffect" data-id="{{tag.id}}"
-					data-tooltip="{{localize 'LITM.Ui.remove'}} status"
-					aria-label="{{localize 'LITM.Ui.remove'}} status">
+					data-tooltip="{{localize 'LITM.Ui.remove'}} status" aria-label="{{localize 'LITM.Ui.remove'}} status">
 					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>

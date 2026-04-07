@@ -10,7 +10,7 @@
 {{#if status.isActive}}
 <span class="litm-status litm-hud-active" data-text="{{status.title}}" data-effect-id="{{status.effectId}}">
 	<span>{{status.title}}</span>
-	<span class="litm--tag-item-status">
+	<span class="litm--tag-item-status" data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}">
 		{{#each status.tiers as |filled|}}
 		<img class="litm--tier-box" data-action="tier" data-tier="{{sum @index 1}}"
 			alt="" aria-hidden="true"

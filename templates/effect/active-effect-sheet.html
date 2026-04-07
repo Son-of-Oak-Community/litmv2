@@ -1,0 +1,63 @@
+<section class="standard-form" style="--ae-accent: var({{accentVar}});">
+	<header class="img-name">
+		<img src="{{effect.img}}" data-edit="img" data-action="editImage" role="button" tabindex="0"
+			data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}" />
+		<input type="text" name="name" value="{{effect.name}}" placeholder="{{localize 'LITM.Terms.name'}}" required />
+	</header>
+
+	<div class="form-group">
+		<label for="ae-active">{{localize "LITM.Ui.effect_active"}}</label>
+		<input id="ae-active" type="checkbox" name="isActive" {{checked isActive}} />
+	</div>
+
+	{{#if hasQuestion}}
+	<div class="form-group">
+		<label>{{localize "LITM.Ui.themebook_question"}}</label>
+		<input type="text" name="system.question" value="{{system.question}}" placeholder="{{localize 'LITM.Ui.themebook_question'}}" />
+	</div>
+	{{/if}}
+
+	{{#if hasTitleTag}}
+	<div class="form-group">
+		<label for="ae-title-tag">{{localize "LITM.Terms.title_tag"}}</label>
+		<input id="ae-title-tag" type="checkbox" name="system.isTitleTag" {{checked system.isTitleTag}} />
+	</div>
+	{{/if}}
+
+	{{#if hasScratched}}
+	<div class="form-group">
+		<label for="ae-scratched">{{localize "LITM.Terms.scratched"}}</label>
+		<input id="ae-scratched" type="checkbox" name="system.isScratched" {{checked system.isScratched}} />
+	</div>
+	{{/if}}
+
+	{{#if isStoryTag}}
+	<div class="form-group">
+		<label for="ae-single-use">{{localize "LITM.Terms.single_use"}}</label>
+		<input id="ae-single-use" type="checkbox" name="system.isSingleUse" {{checked system.isSingleUse}} />
+	</div>
+	<div class="form-group">
+		<label for="ae-st-hidden">{{localize "LITM.Terms.hidden"}}</label>
+		<input id="ae-st-hidden" type="checkbox" name="system.isHidden" {{checked system.isHidden}} />
+	</div>
+	{{/if}}
+
+	{{#if isStatusTag}}
+	<div class="form-group">
+		<label for="ae-status-hidden">{{localize "LITM.Terms.hidden"}}</label>
+		<input id="ae-status-hidden" type="checkbox" name="system.isHidden" {{checked system.isHidden}} />
+	</div>
+	<div class="form-group">
+		<label>{{localize "LITM.Ui.tier"}}</label>
+		<div class="litm--tag-item-status litm-ae-tiers">
+			{{#each system.tiers}}
+			<label class="litm--tier-label">
+				<input name="system.tiers.{{@index}}" type="checkbox" {{checked this}} data-dtype="Boolean" />
+				<img class="litm--tier-box" alt="" aria-hidden="true"
+					src="systems/litmv2/assets/media/checkbox{{ifThen this '-c' ''}}.svg" />
+			</label>
+			{{/each}}
+		</div>
+	</div>
+	{{/if}}
+</section>

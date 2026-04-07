@@ -4,6 +4,7 @@ import { levelIcon } from "../../utils.js";
 export function registerItemHooks() {
 	_prepareThemeOnCreate();
 	_migrateLegacyItemOnCreate();
+	_syncTitleTagOnRename();
 	_syncThemeImageOnLevelChange();
 	_syncAddonEffectsOnUpdate();
 }
@@ -15,6 +16,7 @@ export function registerItemHooks() {
 function _migrateLegacyItemOnCreate() {
 	Hooks.on("createItem", (item) => {
 		LitmItem.createLegacyEffects(item);
+		LitmItem.ensureTitleTag(item);
 	});
 	// Actor import — embedded items don't fire createItem
 	Hooks.on("createActor", (actor) => {
@@ -22,6 +24,7 @@ function _migrateLegacyItemOnCreate() {
 			if (item.flags?.litmv2?.legacyTags || item.flags?.litmv2?.legacyContents) {
 				LitmItem.createLegacyEffects(item);
 			}
+			LitmItem.ensureTitleTag(item);
 		}
 	});
 }
@@ -61,6 +64,19 @@ function _prepareThemeOnCreate() {
 				img = icons.default;
 		}
 		item.updateSource({ img });
+	});
+}
+
+/**
+ * When a theme or story_theme is renamed, sync the title tag effect name.
+ */
+function _syncTitleTagOnRename() {
+	Hooks.on("updateItem", (item, data) => {
+		if (item.type !== "theme" && item.type !== "story_theme") return;
+		if (!("name" in data)) return;
+		const titleTag = item.system.themeTag;
+		if (!titleTag || titleTag.name === data.name) return;
+		titleTag.update({ name: data.name });
 	});
 }
 

@@ -127,7 +127,6 @@
 				<ul class="litm-party-overview__quests">
 					{{#each hero.quests as |quest|}}
 					<li>
-						<p>&middot; <em>{{quest.themeName}}:</em> {{quest.description}}</p>
 						<div class="litm-party-overview__quest-tracks">
 							<span class="litm-party-overview__quest-track">
 								<small>{{localize "LITM.Themes.milestone"}}</small>
@@ -137,6 +136,10 @@
 								<small>{{localize "LITM.Themes.abandon"}}</small>
 								{{quest.abandon}} / 3
 							</span>
+						</div>
+						<div class="litm-party-overview__quest-text">
+							<img src="systems/litmv2/assets/media/checkbox-c.svg" aria-hidden="true" height="12" width="12" />
+							<p><em>{{quest.themeName}}:</em> {{quest.description}}</p>
 						</div>
 					</li>
 					{{/each}}

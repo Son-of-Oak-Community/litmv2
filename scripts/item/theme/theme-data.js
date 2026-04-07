@@ -1,4 +1,4 @@
-import { THEME_TAG_TYPES, POWER_TAG_TYPES } from "../../system/config.js";
+import { POWER_TAG_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
 import { levelIcon, localize as t } from "../../utils.js";
 
 export class ThemeData extends foundry.abstract.TypeDataModel {

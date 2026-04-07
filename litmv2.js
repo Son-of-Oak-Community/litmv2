@@ -24,6 +24,7 @@ import {
 	StatusTagData,
 } from "./scripts/data/active-effects/index.js";
 import { LitmActiveEffect } from "./scripts/data/active-effects/litm-active-effect.js";
+import { LitmActiveEffectSheet } from "./scripts/data/active-effects/active-effect-sheet.js";
 import { BackpackData } from "./scripts/item/backpack/backpack-data.js";
 import { BackpackSheet } from "./scripts/item/backpack/backpack-sheet.js";
 import { LitmItem } from "./scripts/item/litm-item.js";
@@ -119,6 +120,14 @@ Hooks.once("init", () => {
 	CONFIG.ActiveEffect.dataModels.relationship_tag = RelationshipTagData;
 	CONFIG.ActiveEffect.dataModels.story_tag = StoryTagData;
 	CONFIG.ActiveEffect.dataModels.status_tag = StatusTagData;
+	CONFIG.ActiveEffect.typeLabels = {
+		power_tag: "TYPES.ActiveEffect.power_tag",
+		weakness_tag: "TYPES.ActiveEffect.weakness_tag",
+		fellowship_tag: "TYPES.ActiveEffect.fellowship_tag",
+		relationship_tag: "TYPES.ActiveEffect.relationship_tag",
+		story_tag: "TYPES.ActiveEffect.story_tag",
+		status_tag: "TYPES.ActiveEffect.status_tag",
+	};
 	CONFIG.litmv2 = new LitmConfig();
 	CONFIG.Token.hudClass = LitmTokenHUD;
 
@@ -230,6 +239,7 @@ Hooks.once("init", () => {
 		types: ["trope"],
 		makeDefault: true,
 	});
+	LitmActiveEffectSheet.register();
 
 	HandlebarsHelpers.register();
 	HandlebarsPartials.register();
