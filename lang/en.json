@@ -128,7 +128,8 @@
 			"journey_landscape": "Journey Sheet (Landscape)",
 			"fellowship_landscape": "Fellowship Sheet (Landscape)",
 			"addon": "Add-On Sheet",
-			"active_effect": "Tag Sheet"
+			"active_effect": "Tag Sheet",
+			"story_theme": "Story Theme Sheet"
 		},
 		"Settings": {
 			"hero_limit": "Hero Limit",
@@ -454,6 +455,7 @@
 			"no_themebook": "No themebook selected",
 			"no_themebook_improvements": "This themebook has no special improvements.",
 			"no_themes": "No themes yet. Drag a theme here to get started.",
+			"story_theme_actor_empty": "This story theme has no content yet.",
 			"no_vignettes": "No vignettes yet. Drag one here or use the + button to create one.",
 			"opened_by": "Opened by {name}",
 			"options": "Options",
@@ -481,6 +483,8 @@
 			"warn_fellowship_no_delete": "The fellowship actor cannot be deleted.",
 				"warn_fellowship_not_character": "The fellowship cannot be assigned as a player character.",
 			"warn_backpack_limit": "You already have a backpack. Please remove it before adding another.",
+			"warn_story_theme_actor_item_type": "Story theme characters can only contain story themes.",
+			"warn_story_theme_actor_limit": "Story theme characters can only contain one story theme.",
 			"warn_invalid_effect_target": "This effect type cannot be applied to that document.",
 			"replace_general_consequence_content": "Replace the current general consequence vignette?",
 			"replace_general_consequence_title": "Replace General Consequences",
@@ -624,7 +628,8 @@
 			"challenge": "Challenge",
 			"fellowship": "Fellowship",
 			"hero": "Hero",
-			"journey": "Journey"
+			"journey": "Journey",
+			"story_theme": "Story Theme"
 		},
 		"Item": {
 			"addon": "Add-On",

@@ -7,6 +7,8 @@ export function registerItemHooks() {
 	_syncTitleTagOnRename();
 	_syncThemeImageOnLevelChange();
 	_syncAddonEffectsOnUpdate();
+	_hideStoryThemeFromCreateDialog();
+	_syncStoryThemeItemToActor();
 }
 
 /**
@@ -93,6 +95,35 @@ function _syncThemeImageOnLevelChange() {
 				data.img = levelIcon(newLevel);
 			}
 		}
+	});
+}
+
+/**
+ * Sync story_theme item name/image back to its parent actor when the item changes.
+ */
+function _syncStoryThemeItemToActor() {
+	Hooks.on("updateItem", (item, data) => {
+		if (item.type !== "story_theme") return;
+		const actor = item.parent;
+		if (!actor || actor.type !== "story_theme") return;
+
+		const updates = {};
+		if ("name" in data && actor.name !== data.name) updates.name = data.name;
+		if ("img" in data && actor.img !== data.img) updates.img = data.img;
+		if (Object.keys(updates).length) actor.update(updates);
+	});
+}
+
+function _hideStoryThemeFromCreateDialog() {
+	Hooks.once("ready", () => {
+		const ItemCls = foundry.documents.Item;
+		const original = ItemCls.createDialog;
+		ItemCls.createDialog = function (data, options, dialogOptions = {}) {
+			dialogOptions.types ??= ItemCls.TYPES.filter(
+				(type) => type !== "story_theme",
+			);
+			return original.call(this, data, options, dialogOptions);
+		};
 	});
 }
 

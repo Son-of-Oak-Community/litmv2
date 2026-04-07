@@ -8,6 +8,8 @@ export function registerActorHooks() {
 	_enforceHeroItemLimits();
 	_validateEffectType();
 	_syncUiOnEffectChange();
+	_syncStoryThemeActorToItem();
+	_enforceStoryThemeActorLimits();
 }
 
 function _prepareCharacterOnCreate() {
@@ -31,6 +33,11 @@ function _prepareCharacterOnCreate() {
 			journey: {
 				disposition: foundry.CONST.TOKEN_DISPOSITIONS.NEUTRAL,
 			},
+			story_theme: {
+				actorLink: true,
+				disposition: foundry.CONST.TOKEN_DISPOSITIONS.FRIENDLY,
+				texture: { src: actor.prototypeToken?.texture?.src || actor.img },
+			},
 		};
 		const prototypeToken = tokenDefaults[data.type] ?? null;
 		if (prototypeToken) actor.updateSource({ prototypeToken });
@@ -51,6 +58,17 @@ function _prepareCharacterOnCreate() {
 	Hooks.on("createActor", (actor, options) => {
 		(async () => {
 			if (!game.user.isGM) return;
+
+			if (actor.type === "story_theme") {
+				const hasTheme = actor.items.some((i) => i.type === "story_theme");
+				if (!hasTheme) {
+					await actor.createEmbeddedDocuments("Item", [
+						{ name: actor.name, type: "story_theme" },
+					]);
+				}
+				return;
+			}
+
 			if (actor.type === "hero") {
 				if (options?.litm?.skipAutoSetup) return;
 				const missingThemes = Math.max(
@@ -206,5 +224,42 @@ function _enforceHeroItemLimits() {
 				return false;
 			}
 		}
+	});
+}
+
+/**
+ * Prevent incompatible items on story_theme actors and limit to 1 story_theme item.
+ */
+function _enforceStoryThemeActorLimits() {
+	Hooks.on("preCreateItem", (item) => {
+		const actor = item.parent;
+		if (!actor || actor.type !== "story_theme") return;
+
+		if (item.type !== "story_theme") {
+			ui.notifications.warn(t("LITM.Ui.warn_story_theme_actor_item_type"));
+			return false;
+		}
+
+		const existing = actor.items.filter((i) => i.type === "story_theme");
+		if (existing.length >= 1) {
+			ui.notifications.warn(t("LITM.Ui.warn_story_theme_actor_limit"));
+			return false;
+		}
+	});
+}
+
+/**
+ * Sync story_theme actor name/image to its embedded item when the actor changes.
+ */
+function _syncStoryThemeActorToItem() {
+	Hooks.on("updateActor", (actor, data) => {
+		if (actor.type !== "story_theme") return;
+		const theme = actor.items.find((i) => i.type === "story_theme");
+		if (!theme) return;
+
+		const updates = {};
+		if ("name" in data && theme.name !== data.name) updates.name = data.name;
+		if ("img" in data && theme.img !== data.img) updates.img = data.img;
+		if (Object.keys(updates).length) theme.update(updates);
 	});
 }

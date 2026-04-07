@@ -48,12 +48,6 @@
 		<i class="fa-solid {{ifThen tag.hidden 'fa-eye-slash' 'fa-eye'}}" aria-hidden="true"></i>
 	</button>
 	{{/if}}
-	{{#if (and (not (eq source "story")) (eq tag.type "tag"))}}
-	<button type="button" class="litm--tag-action-btn" data-action="deactivate-tag"
-		data-id="{{tag.id}}" data-actor-id="{{source}}" data-tooltip="{{localize 'LITM.Ui.deactivate_tag'}}" aria-label="{{localize 'LITM.Ui.deactivate_tag'}}">
-		<i class="fa-solid fa-xmark" aria-hidden="true"></i>
-	</button>
-	{{/if}}
 	<button type="button" class="litm--tag-action-btn" data-action="remove-tag"
 		data-id="{{tag.id}}" data-type="{{source}}" data-tooltip="{{localize 'LITM.Ui.remove'}}" aria-label="{{localize 'LITM.Ui.remove'}}">
 		<i class="fa-solid fa-trash" aria-hidden="true"></i>

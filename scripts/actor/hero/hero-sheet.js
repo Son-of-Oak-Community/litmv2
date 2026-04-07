@@ -710,8 +710,11 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	/** @override */
-	async _onDropActor(_event, _actor) {
-		// Fellowship linking is automatic — no manual drops needed
+	async _onDropActor(_event, actor) {
+		if (actor.type !== "story_theme") return;
+		const theme = actor.items.find((i) => i.type === "story_theme");
+		if (!theme) return;
+		return this.document.createEmbeddedDocuments("Item", [theme.toObject()]);
 	}
 
 	/**

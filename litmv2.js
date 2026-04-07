@@ -6,6 +6,8 @@ import { HeroData } from "./scripts/actor/hero/hero-data.js";
 import { HeroSheet } from "./scripts/actor/hero/hero-sheet.js";
 import { JourneyData } from "./scripts/actor/journey/journey-data.js";
 import { JourneySheet } from "./scripts/actor/journey/journey-sheet.js";
+import { StoryThemeActorData } from "./scripts/actor/story-theme/story-theme-actor-data.js";
+import { StoryThemeActorSheet } from "./scripts/actor/story-theme/story-theme-actor-sheet.js";
 import { DoubleSix } from "./scripts/apps/dice.js";
 import { LitmRoll } from "./scripts/apps/roll.js";
 import { LitmRollDialog } from "./scripts/apps/roll-dialog.js";
@@ -99,6 +101,7 @@ Hooks.once("init", () => {
 	CONFIG.Actor.dataModels.challenge = ChallengeData;
 	CONFIG.Actor.dataModels.journey = JourneyData;
 	CONFIG.Actor.dataModels.fellowship = FellowshipData;
+	CONFIG.Actor.dataModels.story_theme = StoryThemeActorData;
 	CONFIG.Actor.trackableAttributes.hero = HeroData.getTrackableAttributes();
 	LitmSettings.register();
 	if (LitmSettings.customDice) {
@@ -208,6 +211,15 @@ Hooks.once("init", () => {
 			types: ["fellowship"],
 			makeDefault: false,
 			label: "LITM.Sheets.fellowship_landscape",
+		},
+	);
+	foundry.documents.collections.Actors.registerSheet(
+		"litmv2",
+		StoryThemeActorSheet,
+		{
+			types: ["story_theme"],
+			makeDefault: true,
+			label: "LITM.Sheets.story_theme",
 		},
 	);
 	foundry.documents.collections.Items.registerSheet("litmv2", BackpackSheet, {

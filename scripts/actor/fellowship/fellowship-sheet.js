@@ -565,4 +565,12 @@ export class FellowshipSheet extends LitmActorSheet {
 			return this.document.createEmbeddedDocuments("Item", [item.toObject()]);
 		}
 	}
+
+	/** @override */
+	async _onDropActor(_event, actor) {
+		if (actor.type !== "story_theme") return;
+		const theme = actor.items.find((i) => i.type === "story_theme");
+		if (!theme) return;
+		return this.document.createEmbeddedDocuments("Item", [theme.toObject()]);
+	}
 }

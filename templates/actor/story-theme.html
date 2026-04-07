@@ -1,0 +1,56 @@
+<section class="story-theme-actor-sheet standard-form scrollable">
+	{{#if theme}}
+	<fieldset class="theme-card story-theme-card draggable" data-action="openThemeSheet"
+		data-item-id="{{theme._id}}" draggable="true" style="cursor: pointer;">
+		<legend>
+			<span class="litm-banner theme-card__book">{{localize "LITM.Terms.story"}}</span>
+		</legend>
+
+		<div class="story-theme-card__header">
+			{{#if theme.hasCustomImage}}
+			<img class="story-theme-card__portrait" src="{{theme.img}}" alt="{{theme.name}}" />
+			{{/if}}
+			<div class="flexcol gap-xs">
+				<div class="flexrow noflex gap-sm">
+					<img class="noflex icon-md" src="{{theme.levelIcon}}"
+						alt="{{theme.levelLabel}}" data-tooltip="{{theme.levelLabel}}" />
+					{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag
+					noBurn=true
+					extraClass="litm-title_tag"
+					}}
+				</div>
+				{{> systems/litmv2/templates/partials/play-theme-tags.html theme
+				noBurn=true
+				}}
+			</div>
+		</div>
+
+		{{#if theme.enrichedDescription}}
+		<div class="enriched-content">{{{theme.enrichedDescription}}}</div>
+		{{/if}}
+	</fieldset>
+
+	<!-- Story Tags & Statuses -->
+	{{#if storyTags.length}}
+	<fieldset>
+		<legend>{{localize "LITM.Terms.story_tags_statuses"}}</legend>
+		<div class="litm--play-tags">
+			{{#each storyTags as |tag|}}
+			{{#if (eq tag.type "status")}}
+			<span class="litm-status{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}"
+				data-tag-id="{{tag.id}}" draggable="true" tabindex="0"
+				data-text="{{tag.name}}-{{tag.value}}">{{tag.name}}-{{tag.value}}</span>
+			{{else}}
+			<span class="litm-tag{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}"
+				data-tag-id="{{tag.id}}" draggable="true" tabindex="0" data-text="{{tag.name}}">{{tag.name}}</span>
+			{{/if}}
+			{{/each}}
+		</div>
+	</fieldset>
+	{{/if}}
+	{{else}}
+	<div class="empty-state">
+		<p class="hint">{{localize "LITM.Ui.story_theme_actor_empty"}}</p>
+	</div>
+	{{/if}}
+</section>
