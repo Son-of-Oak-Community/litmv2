@@ -1,12 +1,12 @@
 <div class="litm dice-roll" data-roll-id="{{rollId}}" data-action="expandRoll">
 	<div class="dice-effect">
-		<p class="gmOnly"><em><a class="content-link" draggable="true" data-link="" data-uuid="Actor.{{id}}"
+		<p class="litm--moderation-gm-hint"><em><a class="content-link" draggable="true" data-link="" data-uuid="Actor.{{id}}"
 					data-id="{{id}}" data-type="Actor" data-tooltip="{{name}}"><i class="fas fa-user" aria-hidden="true"></i>{{name}}</a>
 				{{localize "LITM.Ui.moderate_roll_gm_hint"}}
 				{{localize (concat "LITM.Ui.roll_" type)}}
 				{{#if sacrificeLevel}}({{localize (concat "LITM.Ui.sacrifice_" sacrificeLevel)}}){{/if}}
 				{{localize "LITM.Terms.outcome"}}.</em></p>
-		<p class="playerOnly">
+		<p class="litm--moderation-player-hint">
 			<em>{{localize 'LITM.Ui.moderate_roll_player_hint'}}</em>
 		</p>
 	</div>
@@ -70,11 +70,11 @@
 		</div>
 		{{/if}}
 		<h4 class="dice-total">{{localize 'LITM.Ui.total_power'}}: {{totalPower}}</h4>
-		<footer class="dice-footer flexrow">
-			<button type="button" class="gmOnly litm--roll-approve-button" data-click="approve-moderation">
+		<footer class="dice-footer flexrow litm--moderation-actions">
+			<button type="button" class="litm--roll-approve-button" data-click="approve-moderation">
 				<i class="fas fa-check" aria-hidden="true"></i> {{localize 'LITM.Ui.approve'}}
 			</button>
-			<button type="button" class="gmOnly litm--roll-reject-button" data-click="reject-moderation">
+			<button type="button" class="litm--roll-reject-button" data-click="reject-moderation">
 				<i class="fas fa-times" aria-hidden="true"></i> {{localize 'LITM.Ui.reject'}}
 			</button>
 		</footer>
