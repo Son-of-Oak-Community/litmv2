@@ -1,12 +1,8 @@
 import { detectTrackCompletion, buildTrackCompleteContent } from "../../system/chat.js";
-<<<<<<< HEAD
 import { LitmSettings } from "../../system/settings.js";
-import { statusTagEffect } from "../../utils.js";
-=======
 import { THEME_TAG_TYPES } from "../../system/config.js";
-import { EffectTagsMixin } from "../effect-tags-mixin.js";
 import { resolveEffect } from "../../utils.js";
->>>>>>> ffcf973 (refactor: Code Quality)
+import { EffectTagsMixin } from "../effect-tags-mixin.js";
 
 export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	static defineSchema() {

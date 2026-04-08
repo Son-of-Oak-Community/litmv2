@@ -81,18 +81,27 @@ export class LitmTokenHUD extends TokenHUD {
 		return context;
 	}
 
+	/**
+	 * The UUID to use for sidebar operations.
+	 * Linked tokens use the world actor UUID; unlinked tokens use the token document UUID.
+	 */
+	get #sidebarUuid() {
+		return this.document?.isLinked ? this.actor?.uuid : this.document?.uuid;
+	}
+
 	#isSidebarLocked() {
 		if (!this.actor) return false;
-		const userCharacterIds = new Set(
-			game.users.filter((u) => u.character).map((u) => u.character._id),
+		const userCharacterUuids = new Set(
+			game.users.filter((u) => u.character).map((u) => u.character.uuid),
 		);
-		const fellowshipId = game.litmv2?.fellowship?.id;
-		return userCharacterIds.has(this.actor.id) || this.actor.id === fellowshipId;
+		const fellowshipUuid = game.litmv2?.fellowship?.uuid;
+		return userCharacterUuids.has(this.actor.uuid) || this.actor.uuid === fellowshipUuid;
 	}
 
 	#isInSidebar() {
 		if (!this.actor) return false;
-		return ui.combat?.actors?.some((a) => a.id === this.actor.id) ?? false;
+		const uuid = this.#sidebarUuid;
+		return ui.combat?.actors?.some((a) => a.id === uuid) ?? false;
 	}
 
 	#canToggleSidebarVisibility() {
@@ -180,11 +189,12 @@ export class LitmTokenHUD extends TokenHUD {
 		const sidebar = ui.combat;
 		const isInSidebar = this.#isInSidebar();
 
+		const uuid = this.#sidebarUuid;
 		if (isInSidebar) {
-			const actors = sidebar.config.actors.filter((id) => id !== this.actor.id);
+			const actors = sidebar.config.actors.filter((id) => id !== uuid);
 			await sidebar.setActors(actors);
 		} else {
-			await sidebar.setActors([...sidebar.config.actors, this.actor.id]);
+			await sidebar.setActors([...sidebar.config.actors, uuid]);
 		}
 
 		target.classList.toggle("active", !isInSidebar);
@@ -201,9 +211,15 @@ export class LitmTokenHUD extends TokenHUD {
 		const updates = this.layer.controlled.map((o) => ({ _id: o.id, hidden: !isHidden }));
 		target.classList.toggle("active", !isHidden);
 		await canvas.scene.updateEmbeddedDocuments(this.document.documentName, updates);
-		// Also toggle sidebar visibility for non-user-character actors
-		if (this.#canToggleSidebarVisibility()) {
-			await ui.combat?._toggleActorVisibility(this.actor.id, { syncTokens: false });
+		// Sync sidebar visibility — explicitly match the new token state instead of
+		// blindly toggling, which breaks when hiddenActors has stale entries.
+		if (this.#canToggleSidebarVisibility() && ui.combat) {
+			const uuid = this.#sidebarUuid;
+			const shouldBeHidden = !isHidden;
+			const isHiddenInSidebar = (ui.combat.config.hiddenActors ?? []).includes(uuid);
+			if (shouldBeHidden !== isHiddenInSidebar) {
+				await ui.combat._toggleActorVisibility(uuid, { syncTokens: false });
+			}
 		}
 	}
 

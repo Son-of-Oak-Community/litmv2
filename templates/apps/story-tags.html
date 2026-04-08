@@ -1,23 +1,23 @@
-{{#*inline 'tagItem' tag source editable isGM isHero}}
+{{#*inline 'tagItem' tag source formKey editable isGM isHero}}
 <li class="litm--tag-row{{#if tag.hidden}} litm--tag-hidden{{/if}}{{#if tag.isScratched}} litm--tag-scratched{{/if}}" data-tag-item data-id="{{tag.id}}" data-type="{{source}}"
 	data-text="{{tag.name}}{{#if (eq tag.type 'status')}}-{{tag.value}}{{/if}}">
 	<span
 		class="litm--tag-item litm--{{ifThen (eq tag.type 'status') 'status' 'tag'}} litm-{{tag.type}}"
 		draggable="true" tabindex="0"
 		data-tooltip="{{localize (concat 'LITM.Terms.' tag.type)}}: {{tag.name}}{{#if (and (eq tag.type 'status') tag.value)}}{{concat '-' tag.value}}{{/if}}">
-		<input type="hidden" name="{{source}}.{{tag.id}}.tagType" value="{{tag.type}}" />
-		<input type="hidden" name="{{source}}.{{tag.id}}.limitId" value="{{tag.limitId}}" />
+		<input type="hidden" name="{{formKey}}.{{tag.id}}.tagType" value="{{tag.type}}" />
+		<input type="hidden" name="{{formKey}}.{{tag.id}}.limitId" value="{{tag.limitId}}" />
 		<input class="litm--tag-item-name {{ifThen editable 'litm--locked' ''}}" data-focus="select"
-			name="{{source}}.{{tag.id}}.name" value="{{tag.name}}" {{ifThen editable "" "readonly"}} />
+			name="{{formKey}}.{{tag.id}}.name" value="{{tag.name}}" {{ifThen editable "" "readonly"}} />
 		{{#if (eq tag.type "tag")}}
 		<label class="litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
-			<input class="litm--single-use" type="checkbox" name="{{source}}.{{tag.id}}.isSingleUse" {{disabled (not editable)}}
+			<input class="litm--single-use" type="checkbox" name="{{formKey}}.{{tag.id}}.isSingleUse" {{disabled (not editable)}}
 				{{checked tag.isSingleUse}} />
 			<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
 		</label>
 		{{#if isHero}}
 		<label class="litm--scratch-label" data-tooltip="{{localize 'LITM.Tags.burn'}}">
-			<input class="litm--scratch" type="checkbox" name="{{source}}.{{tag.id}}.isScratched" {{disabled (not editable)}}
+			<input class="litm--scratch" type="checkbox" name="{{formKey}}.{{tag.id}}.isScratched" {{disabled (not editable)}}
 				{{checked tag.isScratched}} />
 			<img class="litm--scratch-indicator" src="systems/litmv2/assets/media/icons/scratch.svg" alt="" aria-hidden="true" />
 		</label>
@@ -27,8 +27,8 @@
 		<div class="litm--tag-item-status" {{#if editable}}data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}"{{/if}}>
 			{{#each tag.values as |status|}}
 			<label class="litm--tier-label">
-				<input name="{{../source}}.{{../tag.id}}.values" type="checkbox" value="{{add @index 1}}" {{disabled (not
-					../editable)}} {{checked status}} />
+				<input name="{{../../formKey}}.{{../tag.id}}.values" type="checkbox" value="{{add @index 1}}" {{disabled (not
+					../../editable)}} {{checked status}} />
 				<img class="litm--tier-box" alt="" aria-hidden="true"
 					src="systems/litmv2/assets/media/checkbox{{ifThen status '-c' ''}}.svg" />
 			</label>
@@ -69,19 +69,19 @@
 {{/if}}
 {{/inline}}
 
-{{#*inline 'limitGroup' limit source editable isGM isChallenge fixedMax isHero}}
+{{#*inline 'limitGroup' limit source formKey editable isGM isChallenge fixedMax isHero}}
 <div class="litm--limit-group" data-limit-id="{{limit.id}}" data-source="{{source}}">
 	<div class="litm--limit-header" data-limit-id="{{limit.id}}" data-source="{{source}}">
 		<img src="systems/litmv2/assets/media/icons/limit.svg" alt="" class="litm--limit-icon" aria-hidden="true" />
 		{{#if (and editable (not isChallenge))}}
-		<input class="litm--limit-label litm--locked" type="text" name="limits.{{source}}.{{limit.id}}.label" value="{{limit.label}}"
+		<input class="litm--limit-label litm--locked" type="text" name="limits.{{formKey}}.{{limit.id}}.label" value="{{limit.label}}"
 			data-focus="select" />
 		{{else}}
 		<span class="litm--limit-label">{{limit.label}}</span>
 		{{/if}}
 		<span class="litm--limit-value">
 			{{limit.computedValue}} / {{#if (and editable (not isChallenge) (not fixedMax))}}<input class="litm--limit-max litm--locked" type="text"
-				name="limits.{{source}}.{{limit.id}}.max" value="{{limit.max}}" />{{else}}{{limit.max}}{{/if}}
+				name="limits.{{formKey}}.{{limit.id}}.max" value="{{limit.max}}" />{{else}}{{limit.max}}{{/if}}
 		</span>
 		{{#if (and isChallenge limit.outcome)}}
 		<i class="fa-solid fa-circle-info litm--limit-info" aria-hidden="true"
@@ -99,7 +99,7 @@
 	{{#if limit.tags.length}}
 	<ul class="plain">
 		{{#each limit.tags as |tag|}}
-		{{> tagItem tag=tag source=../source editable=../editable isGM=../isGM isHero=../isHero}}
+		{{> tagItem tag=tag source=../source formKey=../formKey editable=../editable isGM=../isGM isHero=../isHero}}
 		{{/each}}
 	</ul>
 	{{else}}
@@ -135,12 +135,12 @@
 		<div class="litm--section-body-inner">
 			{{#if limits.length}}
 			{{#each limits as |limit|}}
-			{{> limitGroup limit=limit source=../id editable=../isOwner isGM=../../isGM isChallenge=../isChallenge fixedMax=../fixedMax isHero=(or (eq ../type "hero") (eq ../type "fellowship"))}}
+			{{> limitGroup limit=limit source=../id formKey=../actorId editable=../isOwner isGM=../../isGM isChallenge=../isChallenge fixedMax=../fixedMax isHero=(or (eq ../type "hero") (eq ../type "fellowship"))}}
 			{{/each}}
 			{{/if}}
 			<ul class="plain">
 				{{#each ungroupedTags as |tag|}}
-				{{> tagItem tag=tag source=../id editable=../isOwner isGM=../../isGM isHero=(or (eq ../type "hero") (eq ../type "fellowship"))}}
+				{{> tagItem tag=tag source=../id formKey=../actorId editable=../isOwner isGM=../../isGM isHero=(or (eq ../type "hero") (eq ../type "fellowship"))}}
 				{{/each}}
 			</ul>
 			{{#if isOwner}}
@@ -177,12 +177,12 @@
 					</h3>
 					{{#if isGM}}
 					{{#each storyLimits as |limit|}}
-					{{> limitGroup limit=limit source="story" editable=true isGM=true isChallenge=false fixedMax=false isHero=false}}
+					{{> limitGroup limit=limit source="story" formKey="story" editable=true isGM=true isChallenge=false fixedMax=false isHero=false}}
 					{{/each}}
 					{{/if}}
 					<ul class="plain">
 						{{#each tags as |tag|}}
-						{{> tagItem tag=tag source="story" editable=../isGM isGM=../isGM isHero=false}}
+						{{> tagItem tag=tag source="story" formKey="story" editable=../isGM isGM=../isGM isHero=false}}
 						{{/each}}
 					</ul>
 					{{> sectionActions id="story" editable=isGM}}

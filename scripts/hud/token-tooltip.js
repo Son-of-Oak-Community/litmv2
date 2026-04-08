@@ -63,18 +63,18 @@ function _showTooltip(token) {
 
 /**
  * Position the tooltip to the left of the token, vertically centered.
+ * Coordinates are in canvas space — the #hud container handles zoom scaling.
+ * We apply uiScale to match Foundry's own HUD sizing (see BasePlaceableHUD._updatePosition).
  * @param {Token} token
  * @param {HTMLElement} tooltip
  */
 function _positionTooltip(token, tooltip) {
 	const { x, y, height } = token.bounds;
-	const scale = canvas.dimensions.uiScale;
-	const screenX = x * scale;
-	const screenY = (y + height / 2) * scale;
-
-	tooltip.style.left = `${screenX - 8}px`;
-	tooltip.style.top = `${screenY}px`;
-	tooltip.style.transform = `translate(-100%, -50%) scale(${scale})`;
+	const s = canvas.dimensions.uiScale;
+	tooltip.style.left = `${x -8}px`;
+	tooltip.style.top = `${y + height / 2}px`;
+	tooltip.style.transformOrigin = "right center";
+	tooltip.style.transform = `translate(-100%, -50%) scale(${s})`;
 }
 
 /**

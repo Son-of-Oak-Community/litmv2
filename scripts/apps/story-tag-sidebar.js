@@ -19,6 +19,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	#dragDrop = null;
 	#cachedActors = null;
 
+	/** @type {Token|null} Currently highlighted token from sidebar hover */
+	_highlighted = null;
+
 	/** @type {Set<string>} Actor IDs whose sections are collapsed */
 	_collapsedActors = new Set();
 
@@ -105,6 +108,12 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (!config || foundry.utils.isEmpty(config)) {
 			return { actors: [], tags: [], limits: [] };
 		}
+		// Normalize bare actor IDs to Actor UUIDs
+		const toUuid = (id) => foundry.utils.parseUuid(id) ? id : `Actor.${id}`;
+		if (config.actors?.some((id) => !foundry.utils.parseUuid(id))) {
+			config.actors = config.actors.map(toUuid);
+			config.hiddenActors = (config.hiddenActors ?? []).map(toUuid);
+		}
 		return config;
 	}
 
@@ -112,34 +121,77 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		this.#cachedActors = null;
 	}
 
-	get #userCharacterIds() {
+	/**
+	 * Resolve a stored UUID (or raw actor ID for legacy compat) to the correct actor.
+	 * Token document UUIDs (unlinked tokens) resolve via `.actor`.
+	 * @param {string} id  A UUID like `Actor.xxx` / `Scene.xxx.Token.yyy`, or a raw actor ID
+	 * @returns {Actor|null}
+	 */
+	#resolveActor(id) {
+		if (!id) return null;
+		// Raw actor IDs (not valid UUIDs) — used by form field keys
+		if (!foundry.utils.parseUuid(id)) return game.actors.get(id) ?? null;
+		const doc = foundry.utils.fromUuidSync(id, { strict: false });
+		if (!doc) return null;
+		return doc.documentName === "Token" ? doc.actor : doc;
+	}
+
+	/**
+	 * Find the canvas Token placeable for a sidebar UUID.
+	 * Token document UUIDs resolve directly; actor UUIDs find the first matching token.
+	 * @param {string} uuid
+	 * @returns {Token|null}
+	 */
+	#findToken(uuid) {
+		if (!canvas.ready) return null;
+		const doc = foundry.utils.parseUuid(uuid)
+			? foundry.utils.fromUuidSync(uuid, { strict: false })
+			: null;
+		// Token document UUID → exact token
+		if (doc?.documentName === "Token") return doc.object ?? null;
+		// World actor UUID → only match linked tokens (unlinked ones have their own sidebar entries)
+		const actor = doc ?? game.actors.get(uuid);
+		if (!actor) return null;
+		return canvas.tokens?.placeables?.find(
+			(t) => t.document.isLinked && t.actor?.id === actor.id,
+		) ?? null;
+	}
+
+	get #userCharacterUuids() {
 		return new Set(
-			game.users.filter((u) => u.active && u.character).map((u) => u.character._id),
+			game.users.filter((u) => u.active && u.character).map((u) => u.character.uuid),
 		);
 	}
 
 	get actors() {
 		if (this.#cachedActors) return this.#cachedActors;
-		// Merge stored actors with user-assigned characters and the fellowship so they always appear
-		const storedIds = this.config.actors ?? [];
-		const userCharacterIds = this.#userCharacterIds;
-		const fellowshipId = game.litmv2?.fellowship?.id;
-		const autoIds = [...userCharacterIds];
-		if (fellowshipId) autoIds.push(fellowshipId);
-		const mergedIds = [...new Set([...autoIds, ...storedIds])];
+		// Merge stored UUIDs with user-assigned characters and the fellowship so they always appear
+		const storedUuids = this.config.actors ?? [];
+		const userCharacterUuids = this.#userCharacterUuids;
+		const fellowshipUuid = game.litmv2?.fellowship?.uuid;
+		const autoUuids = [...userCharacterUuids];
+		if (fellowshipUuid) autoUuids.push(fellowshipUuid);
+		const mergedUuids = [...new Set([...autoUuids, ...storedUuids])];
 		const result =
-			mergedIds
-				.map((id) => game.actors.get(id))
+			mergedUuids
+				.map((uuid) => {
+					const doc = foundry.utils.parseUuid(uuid)
+						? foundry.utils.fromUuidSync(uuid, { strict: false })
+						: null;
+					const actor = doc?.documentName === "Token" ? doc.actor : (doc ?? game.actors.get(uuid));
+					return actor ? { uuid, actor, tokenDoc: doc?.documentName === "Token" ? doc : null } : null;
+				})
 				.filter(Boolean)
-				.map((actor) => ({
-					name: actor.name,
+				.map(({ uuid, actor, tokenDoc }) => ({
+					name: tokenDoc?.name ?? actor.name,
 					type: actor.type,
-					img: actor.prototypeToken.texture.src || actor.img,
-					id: actor._id,
+					img: tokenDoc?.texture?.src || actor.prototypeToken?.texture?.src || actor.img,
+					id: uuid,
+					actorId: actor._id,
 					isOwner: actor.isOwner,
 					isUserCharacter:
-						userCharacterIds.has(actor._id) || actor._id === fellowshipId,
-					hidden: (this.config.hiddenActors ?? []).includes(actor._id),
+						userCharacterUuids.has(actor.uuid) || actor.uuid === fellowshipUuid,
+					hidden: (this.config.hiddenActors ?? []).includes(uuid),
 					tags: [...(actor.system.storyTags ?? []), ...(actor.system.statusEffects ?? [])]
 						.filter((e) => !e.disabled)
 						.filter((e) => game.user.isGM || !(e.system?.isHidden ?? false))
@@ -164,6 +216,19 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						}),
 				}))
 				.filter((actor) => game.user.isGM || !actor.hidden) || [];
+		// Disambiguate duplicate names with a numbered suffix
+		const nameCounts = new Map();
+		for (const actor of result) {
+			nameCounts.set(actor.name, (nameCounts.get(actor.name) ?? 0) + 1);
+		}
+		const nameIndex = new Map();
+		for (const actor of result) {
+			if (nameCounts.get(actor.name) > 1) {
+				const i = (nameIndex.get(actor.name) ?? 0) + 1;
+				nameIndex.set(actor.name, i);
+				actor.name = `${actor.name} (${i})`;
+			}
+		}
 		this.#cachedActors = result;
 		return result;
 	}
@@ -266,10 +331,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				sceneData?.tags?.length || sceneData?.limits?.length
 			);
 
-			const sidebarActorIds = new Set(context.actors.map((a) => a.id));
+			const sidebarUuids = new Set(context.actors.map((a) => a.id));
 			const newTokenActors = (canvas.tokens?.placeables ?? [])
-				.map((t) => t.actor)
-				.filter((a) => a && !sidebarActorIds.has(a.id));
+				.filter((t) => {
+					if (!t.actor) return false;
+					const uuid = t.document.isLinked ? t.actor.uuid : t.document.uuid;
+					return !sidebarUuids.has(uuid);
+				});
 			context.hasSceneTokens = newTokenActors.length > 0;
 		} else {
 			context.hasSceneTags = false;
@@ -279,7 +347,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		// Partition actor tags by limit (GM only)
 		const heroLimit = LitmSettings.heroLimit;
 		for (const actor of context.actors) {
-			const actorDoc = game.actors.get(actor.id);
+			const actorDoc = this.#resolveActor(actor.id);
 			const isChallenge = actor.type === "challenge";
 			const isHero = actor.type === "hero";
 			const usesFlagLimits = FLAG_LIMIT_TYPES.has(actor.type);
@@ -466,7 +534,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			if (!input) return;
 			const source = li.dataset.type;
 			const isStory = source === "story";
-			const isOwner = !isStory && game.actors.get(source)?.isOwner;
+			const isOwner = !isStory && this.#resolveActor(source)?.isOwner;
 			if (!game.user.isGM && isStory) return;
 			if (!isStory && !isOwner) return;
 
@@ -567,6 +635,21 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			}
 		}
 
+		// Highlight token on canvas when hovering over an actor section header
+		for (const header of this.element.querySelectorAll(".litm--section-header[data-id]")) {
+			header.addEventListener("pointerenter", (event) => {
+				const token = this.#findToken(header.dataset.id);
+				if (token?.visible) {
+					token._onHoverIn(event, { hoverOutOthers: true });
+					this._highlighted = token;
+				}
+			});
+			header.addEventListener("pointerleave", (event) => {
+				this._highlighted?._onHoverOut(event);
+				this._highlighted = null;
+			});
+		}
+
 		// Auto-focus newly added tag
 		if (this._editOnRender) {
 			const tagId = this._editOnRender;
@@ -665,7 +748,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		}
 
 		if (!["Actor", "tag", "status"].includes(data.type)) return;
-		const id = data.uuid?.split(".").pop() || data.id;
+		const id = data.type === "Actor" ? (data.uuid || `Actor.${data.id}`) : data.id;
 
 		// Add tags and statuses to the story / Actor
 		if (data.type === "tag" || data.type === "status") {
@@ -703,7 +786,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 					return;
 				}
 
-				const actor = game.actors.get(source);
+				const actor = this.#resolveActor(source);
 				if (!actor?.isOwner) return;
 
 				if (isExternal) {
@@ -735,7 +818,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				if (isSameContainer) {
 					// If dragging out of a limit group, clear limitId
 					if (data.sourceContainer && data.sourceContainer !== "story") {
-						const actor = game.actors.get(data.sourceContainer);
+						const actor = this.#resolveActor(data.sourceContainer);
 						const effect = actor?.effects.get(data.sourceId);
 						if (
 							effect?.system?.limitId &&
@@ -782,7 +865,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (this.actors.map((a) => a.id).includes(id)) return;
 
 		// Add current tags and statuses from a challenge
-		const actor = game.actors.get(id);
+		const actor = this.#resolveActor(id);
 		if (!actor) return;
 		if (
 			(actor.type === "challenge" || actor.type === "journey") &&
@@ -849,7 +932,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		};
 
 		for (const [actorId, tags] of Object.entries(actors)) {
-			const actor = game.actors.get(actorId);
+			const actor = this.#resolveActor(actorId);
 			if (!actor?.isOwner) continue;
 
 			const updates = Object.entries(tags).map(([effectId, data]) => {
@@ -921,7 +1004,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			const flagUpdates = [];
 			for (const [source, sourceLimits] of Object.entries(limitsData)) {
 				if (source === "story") continue;
-				const actor = game.actors.get(source);
+				const actor = this.#resolveActor(source);
 				if (!actor?.isOwner) continue;
 				if (!FLAG_LIMIT_TYPES.has(actor.type)) continue;
 				const existing = getActorLimits(actor);
@@ -988,7 +1071,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (limitMatch) {
 			const label = limitMatch[1].trim();
 			const heroLimit = LitmSettings.heroLimit;
-			const actor = game.actors.get(sectionId);
+			const actor = this.#resolveActor(sectionId);
 			const isHeroActor = actor?.type === "hero";
 			const defaultMax = isHeroActor ? heroLimit : 3;
 			const max = limitMatch[2] ? Number(limitMatch[2]) : defaultMax;
@@ -1082,7 +1165,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	static #onOpenSheet(_event, target) {
 		const id = target.dataset.id;
-		const actor = game.actors.get(id);
+		const actor = this.#resolveActor(id);
 		if (!actor) return;
 		actor.sheet.render(true);
 	}
@@ -1109,7 +1192,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	static async #onDeactivateTag(_event, target) {
 		const id = target.dataset.id;
 		const actorId = target.dataset.actorId;
-		const actor = game.actors.get(actorId);
+		const actor = this.#resolveActor(actorId);
 		if (!actor?.isOwner) return;
 		await updateEffectsByParent(actor, [{ _id: id, disabled: true }]);
 		this.invalidateCache();
@@ -1120,7 +1203,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const source = target.dataset.source;
 
 		if (source && source !== "story") {
-			const actor = game.actors.get(source);
+			const actor = this.#resolveActor(source);
 			if (!actor?.isOwner) return;
 			if (!FLAG_LIMIT_TYPES.has(actor.type)) return;
 			const existing = getActorLimits(actor);
@@ -1157,7 +1240,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		// Actor flag limits (hero/fellowship/journey)
 		if (source && source !== "story") {
-			const actor = game.actors.get(source);
+			const actor = this.#resolveActor(source);
 			if (!actor?.isOwner) return;
 			const existing = getActorLimits(actor);
 			await actor.setFlag("litmv2", "limits", existing.filter((l) => l.id !== limitId));
@@ -1235,15 +1318,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	static async #onLoadSceneTokens(_event, _target) {
 		const config = this.config;
-		const existingActorIds = new Set(this.actors.map((a) => a.id));
-		const tokenActorIds = (canvas.tokens?.placeables ?? [])
-			.map((t) => t.actor?.id)
-			.filter((id) => id && !existingActorIds.has(id));
+		const existingUuids = new Set(this.actors.map((a) => a.id));
+		const tokenUuids = (canvas.tokens?.placeables ?? [])
+			.filter((t) => t.actor)
+			.map((t) => t.document.isLinked ? t.actor.uuid : t.document.uuid)
+			.filter((uuid) => !existingUuids.has(uuid));
 
-		if (!tokenActorIds.length) return;
+		if (!tokenUuids.length) return;
 
 		// Deduplicate (multiple tokens may share the same actor)
-		const uniqueNewIds = [...new Set(tokenActorIds)];
+		const uniqueNewIds = [...new Set(tokenUuids)];
 
 		await LitmSettings.setStoryTags({
 			...config,
@@ -1258,7 +1342,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/* -------------------------------------------- */
 
 	async _toggleEffectVisibility(effectId, actorId) {
-		const actor = game.actors.get(actorId);
+		const actor = this.#resolveActor(actorId);
 		if (!actor) return;
 		const effect = resolveEffect(effectId, actor, { fellowship: false });
 		if (!effect) return;
@@ -1277,7 +1361,10 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		// Sync token visibility on the canvas
 		if (syncTokens) {
 			const isHidden = hidden.has(id);
-			const tokens = canvas.scene?.tokens?.filter((t) => t.actorId === id) ?? [];
+			const actor = this.#resolveActor(id);
+			const tokens = actor
+				? (canvas.scene?.tokens?.filter((t) => t.actorId === actor._id) ?? [])
+				: [];
 			if (tokens.length) {
 				await canvas.scene.updateEmbeddedDocuments(
 					"Token",
@@ -1367,7 +1454,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			});
 			await this.setTags(updatedTags);
 		} else {
-			const actor = game.actors.get(source);
+			const actor = this.#resolveActor(source);
 			if (!actor?.isOwner) return;
 
 			const effect = actor.effects.get(tagId);
@@ -1384,7 +1471,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	}
 
 	async #recalculateActorLimits(actorId) {
-		const actor = game.actors.get(actorId);
+		const actor = this.#resolveActor(actorId);
 		if (!actor?.isOwner) return;
 
 		const isChallenge = actor.type === "challenge";
@@ -1455,7 +1542,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			return this.#broadcastUpdate("tags", tags);
 		}
 
-		const actor = game.actors.get(data.sourceContainer);
+		const actor = this.#resolveActor(data.sourceContainer);
 		if (!actor?.isOwner) return;
 
 		// Check backpack item for hero actors
@@ -1478,7 +1565,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		// Sort within an actor's effects
 		if (container !== "story") {
-			const actor = game.actors.get(container);
+			const actor = this.#resolveActor(container);
 			if (!actor?.isOwner) return;
 
 			const allEffects = [...actor.effects];
@@ -1550,7 +1637,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	}
 
 	async #addTagToActor({ id, tag }) {
-		const actor = game.actors.get(id);
+		const actor = this.#resolveActor(id);
 		if (!actor) {
 			return ui.notifications.error("LITM.Ui.error_no_actor", {
 				localize: true,
@@ -1608,7 +1695,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 
 	async #removeTagFromActor({ actorId, id }) {
-		const actor = game.actors.get(actorId);
+		const actor = this.#resolveActor(actorId);
 
 		if (!actor) {
 			return ui.notifications.error("LITM.Ui.error_no_actor", {
@@ -1636,12 +1723,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (!game.user.isGM) return;
 
 		// User-assigned characters and the fellowship can't be removed from the sidebar
-		if (this.#userCharacterIds.has(id)) {
+		const actor = this.#resolveActor(id);
+		if (actor && this.#userCharacterUuids.has(actor.uuid)) {
 			return ui.notifications.warn("LITM.Ui.warn_user_character", {
 				localize: true,
 			});
 		}
-		if (id === game.litmv2?.fellowship?.id) {
+		if (actor && actor.uuid === game.litmv2?.fellowship?.uuid) {
 			return ui.notifications.warn("LITM.Ui.warn_user_character", {
 				localize: true,
 			});
