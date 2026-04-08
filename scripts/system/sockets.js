@@ -68,14 +68,21 @@ export class Sockets {
 				game.i18n.format("LITM.Ui.roll_rejected", { name }),
 			);
 			const actor = game.actors.get(actorId);
-			if (!actor?.sheet?.rendered) return;
+			if (!actor?.sheet?.hasRollDialog) return;
 			actor.sheet.renderRollDialog();
 		});
 
 		Sockets.on("resetRollDialog", ({ data: { actorId } }) => {
 			const actor = game.actors.get(actorId);
-			if (!actor?.sheet?.rendered) return;
+			if (!actor?.sheet?.hasRollDialog) return;
 			actor.sheet.resetRollDialog();
+		});
+
+		Sockets.on("closeRollDialog", ({ data: { actorId } }) => {
+			const actor = game.actors.get(actorId);
+			if (!actor?.sheet?.hasRollDialog) return;
+			const dialog = actor.sheet.rollDialogInstance;
+			if (dialog?.rendered) dialog.close();
 		});
 	}
 

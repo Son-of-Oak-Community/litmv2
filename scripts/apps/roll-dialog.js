@@ -1141,6 +1141,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#tradePower = 0;
 		this.#sacrificeLevel = "painful";
 		this.#sacrificeThemeId = null;
+		if (this.rendered) this.close();
 		if (this.actor?.sheet?.rendered) this.actor.sheet.render(true);
 	}
 
@@ -1163,6 +1164,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const result = await super.close(options);
 		if (shouldClosePresence) {
 			await this.updatePresence(false);
+			if (wasRendered) Sockets.dispatch("closeRollDialog", { actorId: this.actorId });
 		}
 		if (wasRendered) Hooks.callAll("litm.rollDialogClosed", this.actor);
 		return result;
@@ -1353,10 +1355,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			modifier: data.modifier,
 			might: data.might,
 		});
-		const recipients = Object.entries(this.actor.ownership)
-			.filter((u) => u[1] === 3 && u[0] !== "default")
-			.map((u) => u[0]);
-
 		await foundry.documents.ChatMessage.create({
 			content: await foundry.applications.handlebars.renderTemplate(
 				"systems/litmv2/templates/chat/moderation.html",
@@ -1383,7 +1381,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					totalPower,
 				},
 			),
-			whisper: recipients,
 			flags: { litmv2: { id, userId, data } },
 		});
 	}

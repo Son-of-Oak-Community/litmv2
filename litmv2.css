@@ -2184,6 +2184,10 @@ body,
 	background: transparent;
 }
 
+.litm.dice-roll .dice-total:last-child {
+	padding-block-end: 0.5rem;
+}
+
 .litm.dice-roll .dice-result-details {
 	width: 100%;
 }
