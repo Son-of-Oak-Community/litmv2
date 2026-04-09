@@ -2,11 +2,14 @@ import { localize as t } from "../../utils.js";
 import { LitmSettings } from "../settings.js";
 
 export function registerFellowshipHooks() {
+	_hideFromCreateDialog();
+
+	if (!LitmSettings.useFellowship) return;
+
 	_ensureFellowshipSingleton();
 	_blockDuplicateFellowship();
 	_blockFellowshipDeletion();
 	_blockFellowshipAsCharacter();
-	_hideFromCreateDialog();
 	_autoLinkNewHeroes();
 	_rerenderHeroSheetsOnFellowshipChange();
 }

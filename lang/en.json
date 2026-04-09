@@ -128,6 +128,8 @@
 		"Settings": {
 			"hero_limit": "Hero Limit",
 			"hero_limit_hint": "The base Limit for hero characters. Lower values create grittier campaigns, higher values feel more heroic.",
+			"use_fellowship": "Use Fellowship",
+			"use_fellowship_hint": "Enable the shared Fellowship actor, fellowship themes, and relationship tags. Disable for solo play or games without a fellowship. Requires reload.",
 			"custom_dice": "Themed Dice",
 			"custom_dice_hint": "Use the custom Legend in the Mist dice visuals instead of standard d6s. Requires the Dice So Nice module.",
 			"popout_tags_sidebar": "Auto Pop-out Tags Sidebar",

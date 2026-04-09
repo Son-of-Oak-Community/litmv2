@@ -70,6 +70,7 @@ Hooks.once("init", () => {
 			calculatePower: LitmRollDialog.calculatePower,
 		},
 		get fellowship() {
+			if (!game.settings?.get("litmv2", "use_fellowship")) return null;
 			const id = game.settings?.get("litmv2", "fellowshipId");
 			return id ? (game.actors?.get(id) ?? null) : null;
 		},

@@ -35,6 +35,10 @@ export class LitmSettings {
 		return game.settings.get("litmv2", "hero_limit");
 	}
 
+	static get useFellowship() {
+		return game.settings.get("litmv2", "use_fellowship");
+	}
+
 	static get fellowshipId() {
 		return game.settings.get("litmv2", "fellowshipId");
 	}
@@ -86,6 +90,15 @@ export class LitmSettings {
 			type: Number,
 			default: 5,
 			range: { min: 1, max: 10, step: 1 },
+			requiresReload: true,
+		});
+		game.settings.register("litmv2", "use_fellowship", {
+			name: "LITM.Settings.use_fellowship",
+			hint: "LITM.Settings.use_fellowship_hint",
+			scope: "world",
+			config: true,
+			type: Boolean,
+			default: true,
 			requiresReload: true,
 		});
 		game.settings.register("litmv2", "custom_dice", {

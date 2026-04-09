@@ -79,6 +79,7 @@
 		{{/if}}
 
 		<!-- Relationship Tags & Fellowship -->
+		{{#if hasFellowship}}
 		<fieldset data-tour="fellowship-section">
 			<legend class="control flexrow gap-sm">
 				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.fellowship"}}</span>
@@ -128,6 +129,7 @@
 			<p class="hint">{{localize "LITM.Ui.no_relationship_tags"}}</p>
 			{{/if}}
 		</fieldset>
+		{{/if}}
 	</div>
 
 	<!-- Themes -->

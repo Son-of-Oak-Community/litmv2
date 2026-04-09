@@ -1,5 +1,6 @@
 import { error, info, warn } from "../logger.js";
 import { createSampleHero } from "./sample-hero.js";
+import { LitmSettings } from "./settings.js";
 
 const { Tour } = foundry.nue;
 
@@ -177,9 +178,12 @@ async function _doRegisterTours() {
 	info("Registering Tours...");
 	const tours = [
 		["heroSheetBasics", "tours/hero-sheet-basics.json"],
-		["fellowship", "tours/fellowship.json"],
 		["storyTagSidebar", "tours/story-tag-sidebar.json"],
 	];
+
+	if (LitmSettings.useFellowship) {
+		tours.push(["fellowship", "tours/fellowship.json"]);
+	}
 
 	for (const [id, path] of tours) {
 		try {

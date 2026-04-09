@@ -1,5 +1,6 @@
 import { LitmActorSheet } from "../sheets/base-actor-sheet.js";
 import { localize as t } from "../utils.js";
+import { LitmSettings } from "./settings.js";
 
 export class KeyBindings {
 	static register() {
@@ -88,6 +89,11 @@ export class KeyBindings {
 				},
 			],
 			onDown: () => {
+				if (!LitmSettings.useFellowship) {
+					return ui.notifications.warn("LITM.Ui.warn_no_fellowship", {
+						localize: true,
+					});
+				}
 				const fellowship = game.actors.find((a) => a.type === "fellowship");
 				if (!fellowship) {
 					return ui.notifications.warn("LITM.Ui.warn_no_fellowship", {

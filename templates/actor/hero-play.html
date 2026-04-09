@@ -31,7 +31,7 @@
 	<!-- Description Section -->
 	{{#if enriched.description}}
 	<div class="enriched-content" data-field="system.description">{{{enriched.description}}}</div>
-	{{/if}} {{#if (or relationshipVisible.length fellowship fellowshipActorId momentOfFulfillmentVisible.length)}}
+	{{/if}} {{#if (or (and hasFellowship (or relationshipVisible.length fellowship.hasTheme)) momentOfFulfillmentVisible.length)}}
 	<div class="grid-2col">
 		<!-- Moment of Fulfillment -->
 		{{#if momentOfFulfillmentVisible.length}}
@@ -54,6 +54,7 @@
 		{{/if}}
 
 		<!-- Relationship Tags & Fellowship -->
+		{{#if hasFellowship}}
 		<fieldset class="theme-card item" data-tour="fellowship-section">
 			<legend class="litm-banner theme-card__book">{{localize "LITM.Terms.fellowship"}}</legend>
 			{{#if fellowship.hasTheme}}
@@ -102,6 +103,7 @@
 			</ul>
 			{{/if}}
 		</fieldset>
+		{{/if}}
 	</div>
 	{{/if}}
 
