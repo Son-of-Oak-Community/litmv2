@@ -1,3 +1,4 @@
+import { createLegacyRelationshipEffects } from "../../actor/hero/hero-data.js";
 import { LitmItem } from "../../item/litm-item.js";
 import { levelIcon } from "../../utils.js";
 
@@ -28,6 +29,7 @@ function _migrateLegacyItemOnCreate() {
 			}
 			LitmItem.ensureTitleTag(item);
 		}
+		createLegacyRelationshipEffects(actor);
 	});
 }
 

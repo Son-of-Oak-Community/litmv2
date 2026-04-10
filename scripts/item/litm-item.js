@@ -1,6 +1,67 @@
 import { THEME_TAG_TYPES } from "../system/config.js";
 
 /**
+ * Build ActiveEffect creation data from legacy theme tag arrays.
+ * Shared by document-level createLegacyEffects and the world migration.
+ * @param {object} legacy - { powerTags, weaknessTags, isFellowship }
+ * @param {object} [titleTag] - { name, isScratched } for the title tag, or falsy to skip
+ * @returns {object[]}
+ */
+export function buildThemeTagEffects(legacy, titleTag) {
+	const { powerTags = [], weaknessTags = [], isFellowship = false } = legacy;
+	const powerType = isFellowship ? "fellowship_tag" : "power_tag";
+	const effects = [
+		...powerTags.map((t) => ({
+			name: t.name || "",
+			type: powerType,
+			disabled: !(t.isActive ?? false),
+			system: {
+				question: t.question ?? null,
+				isScratched: t.isScratched ?? false,
+			},
+		})),
+		...weaknessTags.map((t) => ({
+			name: t.name || "",
+			type: "weakness_tag",
+			disabled: !(t.isActive ?? false),
+			system: { question: t.question ?? null },
+		})),
+	];
+	if (titleTag?.name) {
+		effects.push({
+			name: titleTag.name,
+			type: powerType,
+			disabled: false,
+			system: {
+				question: "0",
+				isScratched: titleTag.isScratched ?? false,
+				isTitleTag: true,
+			},
+		});
+	}
+	return effects;
+}
+
+/**
+ * Build ActiveEffect creation data from legacy backpack contents.
+ * @param {object[]} contents - Array of legacy tag objects
+ * @returns {object[]}
+ */
+export function buildBackpackTagEffects(contents) {
+	return contents.map((t) => ({
+		name: t.name || "",
+		type: "story_tag",
+		transfer: true,
+		disabled: !(t.isActive ?? true),
+		system: {
+			isScratched: t.isScratched ?? false,
+			isSingleUse: t.isSingleUse ?? false,
+			isHidden: false,
+		},
+	}));
+}
+
+/**
  * Custom Item document class for Legend in the Mist.
  *
  * migrateData stashes legacy tag arrays in flags before schema validation
@@ -86,62 +147,46 @@ export class LitmItem extends foundry.documents.Item {
 	 */
 	static async createLegacyEffects(item) {
 		if (item.type === "theme" || item.type === "story_theme") {
-			const legacy = item.getFlag("litmv2", "legacyTags");
-			if (!legacy) return;
-
-			const { powerTags = [], weaknessTags = [], isFellowship = false } = legacy;
-			const powerType = isFellowship ? "fellowship_tag" : "power_tag";
-
-			const effectData = [
-				...powerTags.map((t) => ({
-					name: t.name || "",
-					type: powerType,
-					disabled: !(t.isActive ?? false),
-					system: { question: t.question ?? null, isScratched: t.isScratched ?? false },
-				})),
-				...weaknessTags.map((t) => ({
-					name: t.name || "",
-					type: "weakness_tag",
-					disabled: !(t.isActive ?? false),
-					system: { question: t.question ?? null },
-				})),
-			];
-
-			if (item.name) {
-				effectData.push({
-					name: item.name,
-					type: powerType,
-					disabled: false,
-					system: { question: "0", isScratched: item.system?.isScratched ?? false, isTitleTag: true },
-				});
-			}
-
-			if (effectData.length) {
-				await item.createEmbeddedDocuments("ActiveEffect", effectData);
-			}
-			await item.unsetFlag("litmv2", "legacyTags");
+			await LitmItem.#createLegacyThemeEffects(item);
 		}
-
 		if (item.type === "backpack") {
-			const contents = item.getFlag("litmv2", "legacyContents");
-			if (!Array.isArray(contents) || !contents.length) return;
-
-			const effectData = contents.map((t) => ({
-				name: t.name || "",
-				type: "story_tag",
-				transfer: true,
-				disabled: !(t.isActive ?? true),
-				system: {
-					isScratched: t.isScratched ?? false,
-					isSingleUse: t.isSingleUse ?? false,
-					isHidden: false,
-				},
-			}));
-
-			if (effectData.length) {
-				await item.createEmbeddedDocuments("ActiveEffect", effectData);
-			}
-			await item.unsetFlag("litmv2", "legacyContents");
+			await LitmItem.#createLegacyBackpackEffects(item);
 		}
+	}
+
+	static async #createLegacyThemeEffects(item) {
+		const legacy = item.getFlag("litmv2", "legacyTags");
+		if (!legacy || item.effects.size) return;
+
+		const effectData = buildThemeTagEffects(legacy, {
+			name: item.name,
+			isScratched: item.system?.isScratched ?? false,
+		});
+
+		if (effectData.length) {
+			await item.createEmbeddedDocuments("ActiveEffect", effectData);
+		}
+		const { ForcedDeletion } = foundry.data.operators;
+		await item.update({
+			system: { powerTags: new ForcedDeletion(), weaknessTags: new ForcedDeletion() },
+			flags: { litmv2: { legacyTags: new ForcedDeletion() } },
+		});
+	}
+
+	static async #createLegacyBackpackEffects(item) {
+		const contents = item.getFlag("litmv2", "legacyContents");
+		if (!Array.isArray(contents) || !contents.length) return;
+		if (item.effects.some((e) => e.type === "story_tag")) return;
+
+		const effectData = buildBackpackTagEffects(contents);
+
+		if (effectData.length) {
+			await item.createEmbeddedDocuments("ActiveEffect", effectData);
+		}
+		const { ForcedDeletion } = foundry.data.operators;
+		await item.update({
+			system: { contents: new ForcedDeletion() },
+			flags: { litmv2: { legacyContents: new ForcedDeletion() } },
+		});
 	}
 }

@@ -4,8 +4,7 @@ export class BackpackData extends foundry.abstract.TypeDataModel {
 	}
 
 	static migrateData(source) {
-		// Legacy contents field is ignored by the schema — no action needed.
-		// Migration v1 in migrations.js handles converting contents to effects.
+		delete source.contents;
 		return super.migrateData(source);
 	}
 

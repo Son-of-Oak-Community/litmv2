@@ -4,6 +4,43 @@ import { THEME_TAG_TYPES } from "../../system/config.js";
 import { resolveEffect } from "../../utils.js";
 import { EffectTagsMixin } from "../effect-tags-mixin.js";
 
+/**
+ * Build ActiveEffect creation data from legacy relationship arrays.
+ * Shared by createLegacyRelationshipEffects and the world migration.
+ * @param {object[]} relationships - Array of { tag, actorId, isScratched }
+ * @returns {object[]}
+ */
+export function buildRelationshipEffects(relationships) {
+	return relationships
+		.filter((r) => r.tag && r.actorId)
+		.map((r) => ({
+			name: r.tag,
+			type: "relationship_tag",
+			system: { targetId: r.actorId, isScratched: r.isScratched ?? false },
+		}));
+}
+
+/**
+ * Create relationship_tag effects from stashed legacy data after actor creation.
+ * @param {Actor} actor
+ */
+export async function createLegacyRelationshipEffects(actor) {
+	if (actor.type !== "hero") return;
+	const rels = actor.getFlag("litmv2", "legacyRelationships");
+	if (!Array.isArray(rels) || !rels.length) return;
+	if (actor.effects.some((e) => e.type === "relationship_tag")) return;
+
+	const effectData = buildRelationshipEffects(rels);
+	if (effectData.length) {
+		await actor.createEmbeddedDocuments("ActiveEffect", effectData);
+	}
+	const { ForcedDeletion } = foundry.data.operators;
+	await actor.update({
+		system: { relationships: new ForcedDeletion() },
+		flags: { litmv2: { legacyRelationships: new ForcedDeletion() } },
+	});
+}
+
 export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	static defineSchema() {
 		const fields = foundry.data.fields;
@@ -31,6 +68,12 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	}
 
 	static migrateData(source) {
+		const relationships = source.relationships;
+		if (Array.isArray(relationships) && relationships.length) {
+			source.flags ??= {};
+			source.flags.litmv2 ??= {};
+			source.flags.litmv2.legacyRelationships = relationships;
+		}
 		delete source.relationships;
 		return super.migrateData(source);
 	}
