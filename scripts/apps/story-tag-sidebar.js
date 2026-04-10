@@ -108,11 +108,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (!config || foundry.utils.isEmpty(config)) {
 			return { actors: [], tags: [], limits: [] };
 		}
-		// Normalize bare actor IDs to Actor UUIDs
-		const toUuid = (id) => foundry.utils.parseUuid(id) ? id : `Actor.${id}`;
-		if (config.actors?.some((id) => !foundry.utils.parseUuid(id))) {
+		// Normalize bare actor IDs to Actor UUIDs (legacy data)
+		const isUuid = (id) => !!foundry.utils.parseUuid(id)?.collection;
+		if (config.actors?.some((id) => !isUuid(id))) {
+			const toUuid = (id) => isUuid(id) ? id : `Actor.${id}`;
 			config.actors = config.actors.map(toUuid);
 			config.hiddenActors = (config.hiddenActors ?? []).map(toUuid);
+			LitmSettings.setStoryTags(config);
 		}
 		return config;
 	}
@@ -129,8 +131,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	 */
 	#resolveActor(id) {
 		if (!id) return null;
-		// Raw actor IDs (not valid UUIDs) — used by form field keys
-		if (!foundry.utils.parseUuid(id)) return game.actors.get(id) ?? null;
+		// Raw actor IDs — used by form field keys and legacy stored data
+		if (!foundry.utils.parseUuid(id)?.collection) return game.actors.get(id) ?? null;
 		const doc = foundry.utils.fromUuidSync(id, { strict: false });
 		if (!doc) return null;
 		return doc.documentName === "Token" ? doc.actor : doc;
@@ -144,16 +146,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	 */
 	#findToken(uuid) {
 		if (!canvas.ready) return null;
-		const doc = foundry.utils.parseUuid(uuid)
-			? foundry.utils.fromUuidSync(uuid, { strict: false })
-			: null;
+		const doc = foundry.utils.fromUuidSync(uuid, { strict: false });
 		// Token document UUID → exact token
 		if (doc?.documentName === "Token") return doc.object ?? null;
 		// World actor UUID → only match linked tokens (unlinked ones have their own sidebar entries)
-		const actor = doc ?? game.actors.get(uuid);
-		if (!actor) return null;
+		if (!doc) return null;
 		return canvas.tokens?.placeables?.find(
-			(t) => t.document.isLinked && t.actor?.id === actor.id,
+			(t) => t.document.isLinked && t.actor?.id === doc.id,
 		) ?? null;
 	}
 
@@ -175,11 +174,11 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const result =
 			mergedUuids
 				.map((uuid) => {
-					const doc = foundry.utils.parseUuid(uuid)
-						? foundry.utils.fromUuidSync(uuid, { strict: false })
-						: null;
-					const actor = doc?.documentName === "Token" ? doc.actor : (doc ?? game.actors.get(uuid));
-					return actor ? { uuid, actor, tokenDoc: doc?.documentName === "Token" ? doc : null } : null;
+					const doc = foundry.utils.fromUuidSync(uuid, { strict: false });
+					if (!doc) return null;
+					const isToken = doc.documentName === "Token";
+					const actor = isToken ? doc.actor : doc;
+					return actor ? { uuid, actor, tokenDoc: isToken ? doc : null } : null;
 				})
 				.filter(Boolean)
 				.map(({ uuid, actor, tokenDoc }) => ({
@@ -305,15 +304,15 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	async _prepareContext(_options) {
 		const context = await super._prepareContext(_options);
 		context.isGM = game.user.isGM;
-		const fellowshipId = game.litmv2?.fellowship?.id;
+		const fellowshipUuid = game.litmv2?.fellowship?.uuid;
 		context.actors = this.actors.sort((a, b) => {
 			// User characters first
 			if (a.isUserCharacter !== b.isUserCharacter) {
 				return a.isUserCharacter ? -1 : 1;
 			}
 			// Fellowship before other user characters
-			if (a.id === fellowshipId) return -1;
-			if (b.id === fellowshipId) return 1;
+			if (a.id === fellowshipUuid) return -1;
+			if (b.id === fellowshipUuid) return 1;
 			// Then non-challenges before challenges
 			if ((a.type === "challenge") !== (b.type === "challenge")) {
 				return a.type === "challenge" ? 1 : -1;
@@ -484,6 +483,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const form = this.element.querySelector("form");
 		if (form) {
 			form.addEventListener("change", () => {
+				if (!form.isConnected) return;
 				if (this._suppressNextChange) {
 					this._suppressNextChange = false;
 					return;
@@ -957,7 +957,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		// Recalculate actor limits after tag updates
 		for (const id of Object.keys(actors)) {
-			if (game.actors.has(id)) await this.#recalculateActorLimits(id);
+			await this.#recalculateActorLimits(id);
 		}
 
 		const storyTags = Object.entries(story || {}).map(([tagId, data]) => {

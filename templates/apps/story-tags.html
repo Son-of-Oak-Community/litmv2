@@ -27,8 +27,8 @@
 		<div class="litm--tag-item-status" {{#if editable}}data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}"{{/if}}>
 			{{#each tag.values as |status|}}
 			<label class="litm--tier-label">
-				<input name="{{../../formKey}}.{{../tag.id}}.values" type="checkbox" value="{{add @index 1}}" {{disabled (not
-					../../editable)}} {{checked status}} />
+				<input name="{{../formKey}}.{{../tag.id}}.values" type="checkbox" value="{{add @index 1}}" {{disabled (not
+					../editable)}} {{checked status}} />
 				<img class="litm--tier-box" alt="" aria-hidden="true"
 					src="systems/litmv2/assets/media/checkbox{{ifThen status '-c' ''}}.svg" />
 			</label>
