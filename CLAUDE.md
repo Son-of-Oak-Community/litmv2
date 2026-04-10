@@ -157,18 +157,35 @@ Foundry's `changeTab()` handles all switching, active-class toggling, and state 
 
 **Gotcha:** `<button>` inside a `<form>` defaults to `type="submit"`. Always use `type="button"` for non-submit buttons in ApplicationV2 apps with `tag: "form"`.
 
+### Tag Access Model
+
+All tags are ActiveEffects with custom types. Foundry's `allApplicableEffects()` is the single source of truth for "what effects are on this actor" — it yields the actor's own effects plus all transferred effects from owned items. Item effects default to `transfer: true`, so all item-level tags are included automatically.
+
+**Access rules:**
+1. **Actor-level queries** (all tags on a character) → use `allApplicableEffects()`, never `actor.effects`
+2. **Item-level queries** (tags on a specific theme) → use `item.effects` directly
+3. **Finding an effect by ID** → search `allApplicableEffects()` or use `resolveEffect()` from `utils.js`
+4. **Mutating an effect** → resolve via `allApplicableEffects()`, use `effect.parent` for the target document
+5. **Never set `transfer: true` explicitly** — it's the Foundry default for item-parented effects
+
+**Storage:**
+- Theme tags (`power_tag`, `weakness_tag`, `fellowship_tag`) → on theme/story_theme items
+- Story tags (`story_tag`) → on backpack item (heroes) or actor (others)
+- Status tags (`status_tag`) → always on the actor directly
+- Relationship tags (`relationship_tag`) → on the hero actor directly
+
 ### HeroData Getters (`scripts/actor/hero/hero-data.js`)
 
-`HeroData` provides computed getters for accessing tags and effects. **Always use these instead of manually traversing items/effects** — they handle fellowship inclusion, effect caching, hidden-tag filtering, and consistent data shapes.
+`HeroData` provides computed getters for accessing tags and effects. **Always use these instead of manually traversing items/effects.**
 
 - `fellowshipActor` — linked fellowship actor (falls back to singleton)
-- `allTags` — all tags from backpack + all active themes (including fellowship themes)
-- `powerTags` / `weaknessTags` — theme tags split by type
-- `backpack` — story tags on the hero's backpack item
-- `effectTags` — all applicable `story_tag` and `status_card` effects (includes transferred effects from items)
-- `statuses` — status cards formatted for UI (filters hidden for non-GMs)
-- `storyTags` — story tags formatted for UI (filters hidden for non-GMs)
-- `relationshipTags` — relationship tags formatted for the roll dialog
+- `themes` — `[{ theme: Item, tags: ActiveEffect[] }]` own non-fellowship themes with their tag AEs
+- `backpack` — story tags on the hero's backpack item (via `BackpackData.tags`)
+- `storyTags` — all `story_tag` effects via `allApplicableEffects()`
+- `statuses` — all `status_tag` effects via `allApplicableEffects()`
+- `relationships` — all `relationship_tag` effects via `allApplicableEffects()`
+- `fellowship` — `{ themes, tags }` from the linked fellowship actor via its `allApplicableEffects()`
+- `scratchedTags` — all scratched AEs across hero + fellowship via `allApplicableEffects()`
 
 ### Custom System Hooks
 
@@ -231,9 +248,12 @@ success("Done");              // console.log with styled prefix (green)
 - `titleCase(str)` — converts to title case, skipping articles (and, the, of, etc.).
 - `sleep(ms)` — Promise-based delay.
 - `effectToTag(effect, typeOverride)` — maps an ActiveEffect to a TagData-compatible plain object (synthesizes `isActive` from `!effect.disabled`).
-- `themeTagEffect({name, tagType, question, isScratched, isSingleUse})` — builds `theme_tag` ActiveEffect creation data.
-- `storyTagEffect({name, isScratched, isSingleUse, isHidden, limitId})` — builds `story_tag` ActiveEffect creation data. Add `transfer: true` at the call site for item-level tags.
-- `statusCardEffect({name, tier, isHidden, limitId})` — builds `status_card` ActiveEffect creation data.
+- `powerTagEffect({name, isActive, question, isScratched})` — builds `power_tag` ActiveEffect creation data.
+- `weaknessTagEffect({name, isActive, question})` — builds `weakness_tag` ActiveEffect creation data.
+- `fellowshipTagEffect({name, isActive, question, isScratched})` — builds `fellowship_tag` ActiveEffect creation data.
+- `relationshipTagEffect({name, targetId})` — builds `relationship_tag` ActiveEffect creation data.
+- `storyTagEffect({name, isScratched, isSingleUse, isHidden, limitId})` — builds `story_tag` ActiveEffect creation data.
+- `statusTagEffect({name, tiers, isHidden, limitId})` — builds `status_tag` ActiveEffect creation data.
 - `updateEffectsByParent(actor, updates)` — routes batched effect updates to the correct parent document (actor or embedded item).
 
 ### Testing

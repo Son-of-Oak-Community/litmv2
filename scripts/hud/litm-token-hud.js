@@ -24,7 +24,9 @@ export class LitmTokenHUD extends TokenHUD {
 	/** @override */
 	async _onRender(context, options) {
 		await super._onRender(context, options);
-		const palette = this.element.querySelector('.palette[data-palette="effects"]');
+		const palette = this.element.querySelector(
+			'.palette[data-palette="effects"]',
+		);
 		if (!palette) return;
 		const html = await foundry.applications.handlebars.renderTemplate(
 			"systems/litmv2/templates/hud/token-hud-effects.html",
@@ -48,8 +50,7 @@ export class LitmTokenHUD extends TokenHUD {
 		}
 
 		const currentIds = new Set(CONFIG.statusEffects.map((s) => s._id));
-		const stale =
-			currentIds.size !== indexIds.size ||
+		const stale = currentIds.size !== indexIds.size ||
 			[...indexIds].some((id) => !currentIds.has(id));
 		if (!stale) return;
 
@@ -70,7 +71,7 @@ export class LitmTokenHUD extends TokenHUD {
 	async _prepareContext(options) {
 		await this.#syncStatuses();
 		const context = await super._prepareContext(options);
-		const isLocked = this.#isSidebarLocked();
+		const isLocked = !this.#canToggleSidebarVisibility();
 		const isInSidebar = this.#isInSidebar();
 		context.canToggleSidebar = ui.combat !== null;
 		context.sidebarClass = isInSidebar ? "active" : "";
@@ -81,31 +82,24 @@ export class LitmTokenHUD extends TokenHUD {
 		return context;
 	}
 
-	/**
-	 * The UUID to use for sidebar operations.
-	 * Linked tokens use the world actor UUID; unlinked tokens use the token document UUID.
-	 */
-	get #sidebarUuid() {
-		return this.document?.isLinked ? this.actor?.uuid : this.document?.uuid;
-	}
-
-	#isSidebarLocked() {
-		if (!this.actor) return false;
-		const userCharacterUuids = new Set(
-			game.users.filter((u) => u.character).map((u) => u.character.uuid),
-		);
-		const fellowshipUuid = game.litmv2?.fellowship?.uuid;
-		return userCharacterUuids.has(this.actor.uuid) || this.actor.uuid === fellowshipUuid;
-	}
-
 	#isInSidebar() {
 		if (!this.actor) return false;
-		const uuid = this.#sidebarUuid;
-		return ui.combat?.actors?.some((a) => a.id === uuid) ?? false;
+		return ui.combat?.actors?.some((a) => a.id === this.actor.uuid) ?? false;
 	}
 
 	#canToggleSidebarVisibility() {
-		return !this.#isSidebarLocked();
+		if (!this.actor) return false;
+
+		// Either it's not the Fellowship
+		if (this.actor.uuid === game.litmv2?.fellowship?.uuid) return false;
+
+		// Or it is not the character of an active user
+		const userCharacterUuids = new Set(
+			game.users.filter((u) => u.active && u.character).map((u) =>
+				u.character.uuid
+			),
+		);
+		return !userCharacterUuids.has(this.actor.uuid);
 	}
 
 	/**
@@ -135,7 +129,9 @@ export class LitmTokenHUD extends TokenHUD {
 		}
 
 		// Match active status_tag effects on the actor by name
-		const activeEffects = this.actor ? [...this.actor.allApplicableEffects()] : [];
+		const activeEffects = this.actor
+			? [...this.actor.allApplicableEffects()]
+			: [];
 		for (const effect of activeEffects) {
 			if (effect.type !== "status_tag") continue;
 			const slug = effect.name.slugify({ strict: true });
@@ -159,7 +155,7 @@ export class LitmTokenHUD extends TokenHUD {
 	 * Right-click: remove entirely.
 	 * @this {LitmTokenHUD}
 	 */
-	static async #onToggleEffect(event, target) {
+	static async #onToggleEffect(_event, target) {
 		if (!this.actor) {
 			ui.notifications.warn("HUD.WarningEffectNoActor", { localize: true });
 			return;
@@ -182,19 +178,20 @@ export class LitmTokenHUD extends TokenHUD {
 	 * Toggle the actor's presence in the Tags sidebar.
 	 * @this {LitmTokenHUD}
 	 */
-	static async #onToggleSidebar(event, target) {
+	static async #onToggleSidebar(_event, target) {
 		if (!this.actor || !ui.combat) return;
-		if (this.#isSidebarLocked()) return;
+		if (!this.#canToggleSidebarVisibility()) return;
 
 		const sidebar = ui.combat;
 		const isInSidebar = this.#isInSidebar();
 
-		const uuid = this.#sidebarUuid;
 		if (isInSidebar) {
-			const actors = sidebar.config.actors.filter((id) => id !== uuid);
+			const actors = sidebar.config.actors.filter((id) =>
+				id !== this.actor.uuid
+			);
 			await sidebar.setActors(actors);
 		} else {
-			await sidebar.setActors([...sidebar.config.actors, uuid]);
+			await sidebar.setActors([...sidebar.config.actors, this.actor.uuid]);
 		}
 
 		target.classList.toggle("active", !isInSidebar);
@@ -205,20 +202,27 @@ export class LitmTokenHUD extends TokenHUD {
 	 * falls back to default token hidden toggle for user characters.
 	 * @this {LitmTokenHUD}
 	 */
-	static async #onToggleVisibility(event, target) {
+	static async #onToggleVisibility(_event, target) {
 		if (!this.actor) return;
 		const isHidden = !!this.document?.hidden;
-		const updates = this.layer.controlled.map((o) => ({ _id: o.id, hidden: !isHidden }));
-		target.classList.toggle("active", !isHidden);
-		await canvas.scene.updateEmbeddedDocuments(this.document.documentName, updates);
-		// Sync sidebar visibility — explicitly match the new token state instead of
-		// blindly toggling, which breaks when hiddenActors has stale entries.
+		const updates = this.layer.controlled.map((o) => ({
+			_id: o.id,
+			hidden: !isHidden,
+		}));
+		await canvas.scene.updateEmbeddedDocuments(
+			this.document.documentName,
+			updates,
+		);
+
+		// Sync sidebar visibility
 		if (this.#canToggleSidebarVisibility() && ui.combat) {
-			const uuid = this.#sidebarUuid;
+			const uuid = this.actor.uuid;
 			const shouldBeHidden = !isHidden;
-			const isHiddenInSidebar = (ui.combat.config.hiddenActors ?? []).includes(uuid);
+			const isHiddenInSidebar = (ui.combat.config.hiddenActors ?? []).includes(
+				uuid,
+			);
 			if (shouldBeHidden !== isHiddenInSidebar) {
-				await ui.combat._toggleActorVisibility(uuid, { syncTokens: false });
+				await ui.combat._toggleActorVisibility(uuid);
 			}
 		}
 	}

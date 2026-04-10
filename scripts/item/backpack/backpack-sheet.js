@@ -63,7 +63,7 @@ export class BackpackSheet extends LitmItemSheet {
 	 */
 	static async #onAddTag(_event, _target) {
 		await this.document.createEmbeddedDocuments("ActiveEffect", [
-			{ ...storyTagEffect({ name: t("LITM.Ui.name_tag") }), transfer: true },
+			storyTagEffect({ name: t("LITM.Ui.name_tag") }),
 		]);
 	}
 

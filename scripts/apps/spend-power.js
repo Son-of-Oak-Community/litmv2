@@ -113,7 +113,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 
 	#getStatusCards(actor) {
 		const statuses = [];
-		for (const effect of actor.effects) {
+		for (const effect of actor.allApplicableEffects()) {
 			if (effect.type === "status_tag") {
 				const tier = effect.system?.currentTier ?? 0;
 				if (tier > 0) {
@@ -454,7 +454,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				// Apply the reductions to the actual effects
 				const bodyLines = [];
 				for (const { effectId, name, tiers } of reductions) {
-					const effect = actor.effects.get(effectId);
+					const effect = [...actor.allApplicableEffects()].find((e) => e.id === effectId);
 					if (!effect) continue;
 					const oldTier = effect.system.currentTier;
 					const newTiers = effect.system.calculateReduction(tiers);

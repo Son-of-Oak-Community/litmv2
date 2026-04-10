@@ -33,7 +33,7 @@ export function TagStringSyncMixin(Base) {
 					}
 					return `[${e.name}]`;
 				})
-				.join(" ");
+				.join(", ");
 		}
 
 		async _syncEffectsFromString(tagsString) {
@@ -66,10 +66,10 @@ export function TagStringSyncMixin(Base) {
 						type: t.isStatus ? "status_tag" : "story_tag",
 						system: t.isStatus
 							? {
-									tiers: Array(6)
-										.fill(false)
-										.map((_, i) => i + 1 === t.tier),
-								}
+								tiers: Array(6)
+									.fill(false)
+									.map((_, i) => i + 1 === t.tier),
+							}
 							: { isScratched: false, isSingleUse: false },
 					})),
 				);
@@ -116,8 +116,9 @@ export function TagStringSyncMixin(Base) {
 			await super._onFirstRender(context, options);
 			if (this.document.isOwner) {
 				this._syncTagsAndEffects().catch((err) => {
-					const error =
-						err instanceof Error ? err : new Error(String(err), { cause: err });
+					const error = err instanceof Error
+						? err
+						: new Error(String(err), { cause: err });
 					Hooks.onError(
 						`litmv2.${this.document.type}Sheet.syncTagsAndEffects`,
 						error,
@@ -134,15 +135,15 @@ export function TagStringSyncMixin(Base) {
 					if (effect.parent !== this.document) return;
 					if (this._syncing) return;
 					if (!this.document.isOwner) return;
-					if (effect.type !== "story_tag" && effect.type !== "status_tag")
+					if (effect.type !== "story_tag" && effect.type !== "status_tag") {
 						return;
+					}
 					if (effect.getFlag("litmv2", "addonId")) return;
-					const tag =
-						effect.type === "status_tag"
-							? `[${effect.name}-${effect.system?.currentTier ?? 1}]`
-							: `[${effect.name}]`;
+					const tag = effect.type === "status_tag"
+						? `[${effect.name}-${effect.system?.currentTier ?? 1}]`
+						: `[${effect.name}]`;
 					const current = this.system.tags || "";
-					const separator = current.length ? " " : "";
+					const separator = current.length ? ", " : "";
 					this.document.update({
 						"system.tags": current + separator + tag,
 					});
@@ -169,8 +170,9 @@ export function TagStringSyncMixin(Base) {
 					if (effect.parent !== this.document) return;
 					if (this._syncing) return;
 					if (!this.document.isOwner) return;
-					if (effect.type !== "story_tag" && effect.type !== "status_tag")
+					if (effect.type !== "story_tag" && effect.type !== "status_tag") {
 						return;
+					}
 					if (effect.getFlag("litmv2", "addonId")) return;
 					const name = effect.name;
 					const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

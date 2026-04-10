@@ -129,11 +129,6 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 		return this.backpackItem?.system.tags ?? [];
 	}
 
-	/** @override — route status creation to the backpack item. */
-	get statusParent() {
-		return this.backpackItem ?? this.parent;
-	}
-
 	/**
 	 * Everything from the fellowship actor: theme groups + story tags/statuses.
 	 * @returns {{ themes: { theme: Item, tags: ActiveEffect[] }[], tags: ActiveEffect[] }}
@@ -141,16 +136,22 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	get fellowship() {
 		const actor = this.fellowshipActor;
 		if (!actor) return { themes: [], tags: [] };
-		const themes = actor.items
-			.filter((i) => i.type === "theme" || i.type === "story_theme")
-			.map((theme) => ({
-				theme,
-				tags: [...theme.effects]
-					.filter((e) => THEME_TAG_TYPES.has(e.type))
-					.sort((a, b) => (b.system.isTitleTag ? 1 : 0) - (a.system.isTitleTag ? 1 : 0)),
-			}));
-		const tags = [...actor.allApplicableEffects()]
-			.filter((e) => e.type === "story_tag" || e.type === "status_tag");
+		const themeMap = new Map();
+		const tags = [];
+		for (const e of actor.allApplicableEffects()) {
+			if (THEME_TAG_TYPES.has(e.type)) {
+				const item = e.parent;
+				if (!item || item === actor) continue;
+				if (!themeMap.has(item.id)) themeMap.set(item.id, { theme: item, tags: [] });
+				themeMap.get(item.id).tags.push(e);
+			} else if (e.type === "story_tag" || e.type === "status_tag") {
+				tags.push(e);
+			}
+		}
+		const themes = [...themeMap.values()].map(({ theme, tags: t }) => ({
+			theme,
+			tags: t.sort((a, b) => (b.system.isTitleTag ? 1 : 0) - (a.system.isTitleTag ? 1 : 0)),
+		}));
 		return { themes, tags };
 	}
 
@@ -159,12 +160,12 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	 * @returns {ActiveEffect[]}
 	 */
 	get relationships() {
-		return [...this.parent.effects]
+		return [...this.parent.allApplicableEffects()]
 			.filter((e) => e.type === "relationship_tag");
 	}
 
 	/**
-	 * Status tag AEs on the hero's backpack (transferred to actor).
+	 * All status_tag effects applicable to this hero.
 	 * @returns {ActiveEffect[]}
 	 */
 	get statuses() {
@@ -197,24 +198,22 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	}
 
 	/**
-	 * All scratched AEs across hero + fellowship items.
+	 * All scratched AEs across hero + fellowship.
 	 * @returns {ActiveEffect[]}
 	 */
 	get scratchedTags() {
 		const scratched = [];
-		const itemSources = [...this.parent.items];
-		const fellowship = this.fellowshipActor;
-		if (fellowship) itemSources.push(...fellowship.items);
-		for (const item of itemSources) {
-			for (const effect of item.effects) {
-				if (effect.system?.isScratched && effect.type !== "weakness_tag") {
-					scratched.push(effect);
-				}
+		for (const e of this.parent.allApplicableEffects()) {
+			if (e.system?.isScratched && e.type !== "weakness_tag" && e.type !== "status_tag") {
+				scratched.push(e);
 			}
 		}
-		for (const effect of this.parent.effects) {
-			if (effect.system?.isScratched && effect.type !== "status_tag") {
-				scratched.push(effect);
+		const fellowship = this.fellowshipActor;
+		if (fellowship) {
+			for (const e of fellowship.allApplicableEffects()) {
+				if (e.system?.isScratched && e.type !== "weakness_tag" && e.type !== "status_tag") {
+					scratched.push(e);
+				}
 			}
 		}
 		return scratched;

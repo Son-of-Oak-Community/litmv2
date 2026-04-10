@@ -174,7 +174,7 @@ export class FellowshipSheet extends LitmActorSheet {
 	 */
 	static async #onToggleEffectVisibility(_event, target) {
 		const effectId = target.dataset.id;
-		const effect = this.document.effects.get(effectId);
+		const effect = [...this.document.allApplicableEffects()].find((e) => e.id === effectId);
 		if (!effect) return;
 		await effect.update({ "system.isHidden": !effect.system.isHidden });
 		this._notifyStoryTags();

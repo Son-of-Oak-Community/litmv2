@@ -414,10 +414,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				...tag,
 				state: ts?.state || "",
 				contributorId: ts?.contributorId || null,
-				states:
-					tag.type === "tag" && !tag.isSingleUse
-						? ",positive,negative,scratched"
-						: ",positive,negative",
 			};
 		});
 	}
@@ -476,6 +472,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				type: effect.type,
 				system: effect.system,
 				state: sel.state,
+				value: effect.type === "status_tag" ? (effect.system?.currentTier ?? 0) : undefined,
 			});
 		}
 		// Scene tags from tagState
@@ -879,8 +876,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			if (!checkbox) return;
 
 			if (event.shiftKey && !checkbox.disabled) {
-				const tagType = label.dataset.tagType;
-				const canScratch = !["weakness_tag", "status_tag"].includes(tagType);
+				const canScratch = checkbox.getAttribute("states")?.includes("scratched");
 				if (canScratch) {
 					const newValue =
 						checkbox.value === "scratched" ? "" : "scratched";

@@ -35,7 +35,6 @@
 
 	<div class="grid-2col">
 		<!-- Moment of Fulfillment -->
-		{{#if (gte source.system.promise 5)}}
 		<fieldset>
 			<legend class="control flexrow gap-sm">
 				<span class="litm-banner theme-card__book">{{localize "LITM.Hero.moment_of_fulfillment"}}</span>
@@ -77,7 +76,6 @@
 			<p class="hint">{{localize "LITM.Ui.no_moments_of_fulfillment"}}</p>
 			{{/if}}
 		</fieldset>
-		{{/if}}
 
 		<!-- Relationship Tags & Fellowship -->
 		{{#if hasFellowship}}
@@ -264,7 +262,6 @@
 	{{/if}}
 
 	<!-- Statuses -->
-	{{#if statuses.length}}
 	<fieldset>
 		<legend class="control flexrow gap-sm">
 			<span class="litm-banner theme-card__book">{{localize "LITM.Terms.statuses"}}</span>
@@ -296,5 +293,4 @@
 			{{/each}}
 		</ul>
 	</fieldset>
-	{{/if}}
 </section>

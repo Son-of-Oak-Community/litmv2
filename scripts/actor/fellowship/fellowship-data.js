@@ -20,17 +20,14 @@ export class FellowshipData extends EffectTagsMixin(foundry.abstract.TypeDataMod
 	}
 
 	get allTags() {
-		const items = [this.theme, ...this.storyThemes].filter(Boolean);
-		return items.flatMap((item) => [...item.effects]
-			.filter((e) => THEME_TAG_TYPES.has(e.type))
-		);
+		return [...this.parent.allApplicableEffects()]
+			.filter((e) => THEME_TAG_TYPES.has(e.type));
 	}
 
 	async scratchTag(_tagType, tagId) {
-		for (const item of this.parent.items) {
-			const effect = item.effects.get(tagId);
-			if (effect) {
-				await effect.system.toggleScratch();
+		for (const e of this.parent.allApplicableEffects()) {
+			if (e.id === tagId) {
+				await e.system.toggleScratch();
 				return;
 			}
 		}

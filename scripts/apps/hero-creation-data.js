@@ -794,7 +794,6 @@ export class HeroCreationData {
 			effects: backpackTags.map((tag, index) => ({
 				name: tag,
 				type: "story_tag",
-				transfer: true,
 				disabled:
 					appState.mode === "trope"
 						? tag !== selectedBackpackTag

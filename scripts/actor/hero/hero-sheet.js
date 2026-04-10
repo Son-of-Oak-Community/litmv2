@@ -418,22 +418,16 @@ export class HeroSheet extends LitmActorSheet {
 		const actionTarget = target.closest?.("[data-tag-id]") ?? target;
 		const tagId = actionTarget.dataset.tagId || actionTarget.dataset.id;
 		if (!tagId) return;
-		const tagType = actionTarget.dataset.tagType;
-		const toScratch = event.shiftKey;
-		const toScratchNoRoll = event.altKey;
 
 		const tagFromSystem = this._buildAllRollTags().find((e) => e.id === tagId);
 		const sel = this.rollDialogInstance.getSelection(tagId);
-		const effectType = tagFromSystem?.type ?? tagType ?? "power_tag";
-		const isWeaknessTag = effectType === "weakness_tag";
-		const isRelationshipTag = effectType === "relationship_tag";
+		const isWeaknessTag = (tagFromSystem?.type ?? actionTarget.dataset.tagType) === "weakness_tag";
 		const isScratched = tagFromSystem?.system?.isScratched ?? false;
 		const selected = !!sel.state;
 
-		// Scratch tag without rolling
-		if (toScratchNoRoll) {
-			if (isWeaknessTag) return;
-			if (!tagFromSystem) return;
+		// Scratch/unscratch tag without rolling (alt-click)
+		if (event.altKey) {
+			if (!tagFromSystem?.system?.toggleScratch) return;
 			return this.toggleScratchTag(tagFromSystem);
 		}
 
@@ -444,18 +438,8 @@ export class HeroSheet extends LitmActorSheet {
 		if (selected) {
 			this.rollDialogInstance.setCharacterTagState(tagId, "");
 		} else {
-			const nextState =
-				isWeaknessTag
-					? toScratch
-						? "positive"
-						: "negative"
-					: isRelationshipTag
-						? toScratch
-							? "negative"
-							: "positive"
-						: toScratch
-							? "scratched"
-							: "positive";
+			const states = (tagFromSystem?.system?.allowedStates ?? ",positive").split(",");
+			const nextState = event.shiftKey ? states[states.length - 1] : states[1];
 			this.rollDialogInstance.setCharacterTagState(tagId, nextState);
 		}
 
@@ -609,7 +593,7 @@ export class HeroSheet extends LitmActorSheet {
 		const tier = Number.parseInt(target.dataset.tier, 10);
 		if (!effectId || !Number.isFinite(tier)) return;
 
-		const effect = this.document.effects.get(effectId);
+		const effect = [...this.document.allApplicableEffects()].find((e) => e.id === effectId);
 		if (!effect || effect.type !== "status_tag") return;
 
 		const newTiers = [...effect.system.tiers];
@@ -622,7 +606,7 @@ export class HeroSheet extends LitmActorSheet {
 		if (!statusRow) return;
 		event.preventDefault();
 
-		const effect = this.document.effects.get(statusRow.dataset.effectId);
+		const effect = [...this.document.allApplicableEffects()].find((e) => e.id === statusRow.dataset.effectId);
 		if (!effect || effect.type !== "status_tag") return;
 		if (!effect.system.tiers.some(Boolean)) return;
 

@@ -27,15 +27,6 @@ export function EffectTagsMixin(Base) {
 		}
 
 		/**
-		 * The document that owns status effects for this actor.
-		 * Override in subclasses to route to a different parent (e.g. backpack).
-		 * @returns {Actor|Item}
-		 */
-		get statusParent() {
-			return this.parent;
-		}
-
-		/**
 		 * Create a status_tag effect on the actor.
 		 * @param {string} name
 		 * @param {object} [options]
@@ -47,9 +38,7 @@ export function EffectTagsMixin(Base) {
 			const data = statusTagEffect({ name });
 			if (tiers) data.system.tiers = tiers;
 			if (img) data.img = img;
-			const parent = this.statusParent;
-			if (parent !== this.parent) data.transfer = true;
-			return parent.createEmbeddedDocuments("ActiveEffect", [data]);
+			return this.parent.createEmbeddedDocuments("ActiveEffect", [data]);
 		}
 
 		/**

@@ -404,12 +404,12 @@ export class LitmActorSheet extends LitmSheetMixin(
 				return;
 			}
 			await backpack.createEmbeddedDocuments("ActiveEffect", [
-				{ ...storyTagEffect({
+				storyTagEffect({
 					name: data.name ?? game.i18n.localize("LITM.Terms.tag"),
 					isScratched: data.isScratched ?? false,
 					isSingleUse: data.isSingleUse ?? false,
 					isHidden: game.user.isGM,
-				}), transfer: true },
+				}),
 			]);
 			this._notifyStoryTags();
 			return;
@@ -419,7 +419,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 
 		// For statuses, check if one with the same name already exists and stack
 		if (isStatus && droppedName) {
-			const existing = this.document.effects.find(
+			const existing = [...this.document.allApplicableEffects()].find(
 				(e) =>
 					e.type === "status_tag" &&
 					e.name.toLowerCase() === droppedName.toLowerCase(),
@@ -483,7 +483,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 			const backpack = this.document.system.backpackItem;
 			if (backpack) {
 				await backpack.createEmbeddedDocuments("ActiveEffect", [
-					{ ...storyTagEffect({ name: game.i18n.localize("LITM.Terms.tag") }), transfer: true },
+					storyTagEffect({ name: game.i18n.localize("LITM.Terms.tag") }),
 				]);
 				this._notifyStoryTags();
 				return;
