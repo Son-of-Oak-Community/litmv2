@@ -28,8 +28,8 @@ jobs:
             "notes": "https://github.com/Son-of-Oak-Community/litmv2/releases/tag/${{ github.event.release.tag_name }}",
             "compatibility": {
             "minimum": "13",
-            "verified": "14",
-            "maximum": "14"
+            "verified": "13",
+            "maximum": "13"
             }
             }
             }'
