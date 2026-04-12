@@ -1,4 +1,5 @@
 import { StatusTagData } from "../data/active-effects/index.js";
+import { error } from "../logger.js";
 import { buildTrackCompleteContent } from "../system/chat.js";
 import { LitmSettings } from "../system/settings.js";
 import { Sockets } from "../system/sockets.js";
@@ -112,19 +113,79 @@ export class StoryTagSidebar
 	/*  Data Accessors                              */
 	/* -------------------------------------------- */
 
+	/**
+	 * Gets the story tags configuration, validating and normalizing actor UUIDs.
+	 *
+	 * @returns {Object} The story tags configuration object
+	 * @returns {string[]} config.actors - Array of valid actor UUIDs
+	 * @returns {string[]} config.tags - Array of story tags
+	 * @returns {Object[]} config.limits - Array of tag limits
+	 * @returns {string[]} config.hiddenActors - Array of hidden actor UUIDs
+	 *
+	 * @description
+	 * - Returns default empty config if settings are empty
+	 * - Validates all actor IDs to ensure they are valid Actor UUIDs
+	 * - Normalizes legacy bare actor IDs to full Actor UUIDs (e.g., "abc123" → "Actor.abc123")
+	 * - Persists normalized config to settings if user is GM
+	 * - Filters out invalid actor references before normalization
+	 */
 	get config() {
 		const config = LitmSettings.storyTags;
 		if (!config || foundry.utils.isEmpty(config)) {
 			return { actors: [], tags: [], limits: [] };
 		}
-		// Normalize bare actor IDs to Actor UUIDs (legacy data)
-		const isUuid = (id) => !!foundry.utils.parseUuid(id)?.collection;
-		if (config.actors?.some((id) => !isUuid(id))) {
-			const toUuid = (id) => isUuid(id) ? id : `Actor.${id}`;
-			config.actors = config.actors.map(toUuid);
-			config.hiddenActors = (config.hiddenActors ?? []).map(toUuid);
-			if (game.user?.isGM) void LitmSettings.setStoryTags(config).catch(console.error);
+
+		const toValidUuid = (id) => {
+			const trimmed = (typeof id === "string") && id.trim();
+			const parsed = foundry.utils.parseUuid(trimmed);
+
+			switch (true) {
+				case (!trimmed):
+					return { id: null, changed: true };
+				case (!parsed?.collection):
+					return game.actors?.has(trimmed)
+						? { id: `Actor.${trimmed}`, changed: true }
+						: { id: null, changed: true };
+				case (parsed.type === "Token"): {
+					const doc = foundry.utils.fromUuidSync(trimmed, { strict: false });
+					if (!doc?.actor) return { id: null, changed: true };
+					return { id: doc.actor.uuid, changed: true };
+				}
+				case (parsed.type !== "Actor"):
+					return { id: null, changed: true };
+				case (trimmed !== id):
+					return { id: trimmed, changed: true };
+				default:
+					return { id, changed: false };
+			}
+		};
+
+		const validatedActors = (config.actors || []).map(toValidUuid);
+		const validatedHiddenActors = (config.hiddenActors || []).map(toValidUuid);
+		const actorSet = new Set(validatedActors.map((a) => a.id).filter(Boolean));
+		const hiddenActorIds = validatedHiddenActors
+			.map((a) => a.id)
+			.filter((id) => id && actorSet.has(id));
+		const hiddenPruned =
+			hiddenActorIds.length !== validatedHiddenActors.filter((a) => a.id)
+				.length;
+
+		if (
+			![...validatedActors, ...validatedHiddenActors].some((a) => a.changed) &&
+			!hiddenPruned
+		) {
+			return config;
 		}
+
+		config.actors = validatedActors.map((a) => a.id).filter(Boolean);
+		config.hiddenActors = hiddenActorIds;
+		config.tags = Array.isArray(config.tags) ? config.tags : [];
+		config.limits = Array.isArray(config.limits) ? config.limits : [];
+
+		if (game.user?.isGM && game.ready) {
+			void LitmSettings.setStoryTags(config).catch(error);
+		}
+
 		return config;
 	}
 
@@ -340,7 +401,7 @@ export class StoryTagSidebar
 			const newTokenActors = (canvas.tokens?.placeables ?? [])
 				.filter((t) => {
 					if (!t.actor) return false;
-					const uuid = t.document.isLinked ? t.actor.uuid : t.document.uuid;
+					const uuid = t.actor.uuid;
 					return !sidebarUuids.has(uuid);
 				});
 			context.hasSceneTokens = newTokenActors.length > 0;
@@ -1361,7 +1422,7 @@ export class StoryTagSidebar
 		const existingUuids = new Set(this.actors.map((a) => a.id));
 		const tokenUuids = (canvas.tokens?.placeables ?? [])
 			.filter((t) => t.actor)
-			.map((t) => t.document.isLinked ? t.actor.uuid : t.document.uuid)
+			.map((t) => t.actor.uuid)
 			.filter((uuid) => !existingUuids.has(uuid));
 
 		if (!tokenUuids.length) return;

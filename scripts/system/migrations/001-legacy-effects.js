@@ -1,11 +1,14 @@
 import { buildRelationshipEffects } from "../../actor/hero/hero-data.js";
 import { error, warn } from "../../logger.js";
-import { buildThemeTagEffects, buildBackpackTagEffects } from "../../item/litm-item.js";
+import {
+	buildBackpackTagEffects,
+	buildThemeTagEffects,
+} from "../../item/litm-item.js";
 
 /**
  * Collect all effect changes for an actor and its items.
  */
-function collectActorChanges(actor, changes) {
+async function collectActorChanges(actor, changes) {
 	const entry = getEntry(changes, actor);
 
 	// Re-save legacy status_card effects with the corrected type.
@@ -17,8 +20,11 @@ function collectActorChanges(actor, changes) {
 	if (!actor.isToken) {
 		for (const e of actor.effects) {
 			if (e.type !== "status_tag") continue;
-			entry.toDelete.push(e.id);
-			entry.toCreate.push(e.toObject());
+			entry.toUpdate.push({
+				_id: e._id,
+				type: "status_tag",
+				system: _replace(e.system.toObject() || {}),
+			});
 		}
 	}
 
@@ -26,8 +32,10 @@ function collectActorChanges(actor, changes) {
 	// as a flag by HeroData.migrateData, then clean up the DB.
 	if (actor.type === "hero") {
 		const rels = actor.getFlag("litmv2", "legacyRelationships");
-		if (Array.isArray(rels) && rels.length
-			&& !actor.effects.some((e) => e.type === "relationship_tag")) {
+		if (
+			Array.isArray(rels) && rels.length &&
+			!actor.effects.some((e) => e.type === "relationship_tag")
+		) {
 			entry.toCreate.push(...buildRelationshipEffects(rels));
 			entry.flagsToUnset.push("legacyRelationships");
 		}
@@ -75,8 +83,8 @@ function getEntry(changes, parent) {
 		changes.set(uuid, {
 			parentUuid: uuid,
 			isItem: parent.documentName === "Item",
-			toDelete: [],
 			toCreate: [],
+			toUpdate: [],
 			flagsToUnset: [],
 			systemFieldsToUnset: [],
 		});
@@ -86,7 +94,7 @@ function getEntry(changes, parent) {
 
 /**
  * Apply all collected changes in three phases:
- * 1. Deletes — actors first to clear invalid types (e.g. status_card)
+ * 1. Updates —  to clear invalid types (e.g. status_card)
  *    from the DB before any item operations touch the parent actor.
  * 2. Creates — items first so their effects exist before actor creates
  *    trigger re-initialization hooks and migrateData guards.
@@ -97,17 +105,13 @@ async function applyChanges(changes) {
 	const AE = CONFIG.ActiveEffect.documentClass;
 	const entries = [...changes.values()];
 
-	// Phase 1: deletes — actors before items
-	const deletesActorsFirst = entries.toSorted((a, b) =>
-		a.isItem === b.isItem ? 0 : a.isItem ? 1 : -1
-	);
-	for (const { parentUuid, toDelete } of deletesActorsFirst) {
-		if (!toDelete.length) continue;
-		try {
-			await AE.deleteDocuments(toDelete, { parentUuid });
-		} catch (err) {
-			failures.push({ uuid: parentUuid, error: err });
-		}
+	// Phase 1: Updates Active Effects  status_card -> status_tag
+	for (const { parentUuid, toUpdate } of entries) {
+		if (!toUpdate.length) continue;
+		await AE.updateDocuments(
+			toUpdate,
+			{ parentUuid, diff: false },
+		);
 	}
 
 	// Phase 2: creates — items before actors
@@ -138,7 +142,9 @@ async function applyChanges(changes) {
 			}
 			if (systemFieldsToUnset.length) {
 				const system = {};
-				for (const field of systemFieldsToUnset) system[field] = new ForcedDeletion();
+				for (const field of systemFieldsToUnset) {
+					system[field] = new ForcedDeletion();
+				}
 				update.system = system;
 			}
 			await doc.update(update);

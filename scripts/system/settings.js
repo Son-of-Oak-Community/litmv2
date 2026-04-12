@@ -17,6 +17,10 @@ export class LitmSettings {
 		return game.settings.get("litmv2", "storytags");
 	}
 
+	/**
+	 * @param {T} v Value
+	 * @returns {Promise<T>}
+	 */
 	static setStoryTags(v) {
 		return game.settings.set("litmv2", "storytags", v);
 	}
@@ -108,7 +112,8 @@ export class LitmSettings {
 
 		game.settings.register("litmv2", "welcomed", {
 			name: "LITM.Settings.welcome_screen",
-			hint: "Welcome Scene, Message, and Journal Entry has been created and displayed.",
+			hint:
+				"Welcome Scene, Message, and Journal Entry has been created and displayed.",
 			scope: "world",
 			config: false,
 			type: Boolean,
