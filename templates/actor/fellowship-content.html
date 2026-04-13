@@ -1,24 +1,4 @@
-<section class="standard-form scrollable">
-	<!-- Header -->
-	<header class="img-name">
-		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" role="button" tabindex="0"
-			data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}"
-			style="width: 100px; height: 100px; border-radius: 4px; object-fit: cover;" />
-		<div class="form-group stacked">
-			<input type="text" name="name" id="name" value="{{document.name}}" required
-				placeholder="{{localize 'LITM.Ui.fellowship_name'}}" />
-		</div>
-	</header>
-
-	<!-- Description -->
-	<fieldset>
-		<legend>{{localize "LITM.Terms.description"}}</legend>
-		<prose-mirror class="journal-entry-content" name="system.description" data-document-uuid="{{document.uuid}}"
-			value="{{source.system.description}}" compact>
-			{{{ enriched.description }}}
-		</prose-mirror>
-	</fieldset>
-
+<section class="flexcol gap-lg">
 	<!-- Fellowship Theme -->
 	{{#if theme}}
 	<fieldset class="theme-card item draggable" data-item-id="{{theme._id}}">

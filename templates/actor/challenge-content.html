@@ -1,31 +1,4 @@
-<section class="standard-form scrollable">
-	<!-- Header -->
-	<header class="img-name">
-		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" role="button" tabindex="0" data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}" />
-
-		<input type="text" name="name" id="name" value="{{document.name}}" required
-			style="padding: 0.5rem; border: 1px solid var(--color-border); border-radius: 3px;" />
-	</header>
-
-	<!-- Challenge Type -->
-	<div class="form-group">
-		<label for="category" class="flex1">{{localize "LITM.Terms.category"}}</label>
-		<input id="category" type="text" name="system.category" value="{{source.system.category}}" />
-
-
-		<label for="rating" class="flex1">{{localize "LITM.Terms.rating"}}</label>
-		<input class="flex2" id="rating" type="number" name="system.rating" value="{{rating}}" min="0" max="5" step="1" />
-	</div>
-
-	<!-- Description -->
-	<fieldset>
-		<legend>{{localize "LITM.Terms.description"}}</legend>
-		<prose-mirror class="journal-entry-content" name="system.description" data-document-uuid="{{document.uuid}}"
-			value="{{source.system.description}}" compact>
-			{{{ enriched.description }}}
-		</prose-mirror>
-	</fieldset>
-
+<section class="flexcol gap-lg">
 	<!-- Special Features -->
 	<fieldset>
 		<legend>{{localize "LITM.Terms.special_features"}}</legend>

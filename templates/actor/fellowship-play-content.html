@@ -1,18 +1,4 @@
-<section class="fellowship-play-mode standard-form scrollable">
-	<!-- Header -->
-	<div class="flexrow gap-md fellowship-play-header">
-		{{> systems/litmv2/templates/partials/play-profile-img.html}}
-
-		<div class="flex1 flexcol gap-sm">
-			<h1>{{document.name}}</h1>
-		</div>
-	</div>
-
-	<!-- Description -->
-	{{#if enriched.description}}
-	<div class="enriched-content" data-field="system.description">{{{enriched.description}}}</div>
-	{{/if}}
-
+<section class="flexcol gap-lg">
 	<div class="grid-2col">
 		<!-- Fellowship Theme -->
 		{{#if theme}}

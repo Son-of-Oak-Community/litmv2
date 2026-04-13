@@ -1,0 +1,24 @@
+<section class="flexcol gap-lg">
+	<!-- General Consequences -->
+	{{#if generalConsequence}}
+	<fieldset>
+		<legend class="litm-banner vignette-card-label">
+			{{localize "LITM.Terms.general_consequences"}}
+		</legend>
+		<ul class="consequences-list">
+			{{#each generalConsequence.system.consequences as |consequence|}}
+			<li class="consequence-item">{{{consequence}}}</li>
+			{{/each}}
+		</ul>
+	</fieldset>
+	{{/if}}
+
+	<!-- Vignettes -->
+	{{#if displayVignettes.length}}
+	<div class="grid-2col">
+		{{#each displayVignettes as |vignette|}}
+		{{> systems/litmv2/templates/partials/vignette-card-play.html vignette=vignette}}
+		{{/each}}
+	</div>
+	{{/if}}
+</section>

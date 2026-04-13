@@ -217,11 +217,11 @@ export function TagStringSyncMixin(Base) {
 				await this._syncEffectsFromString(this.system.tags ?? "");
 				this._syncing = false;
 			}
-			// Toggle mode and re-render
-			this._mode = wasEditMode
+			// Toggle mode via render option to avoid race with submit-triggered re-render
+			const newMode = wasEditMode
 				? this.constructor.MODES.PLAY
 				: this.constructor.MODES.EDIT;
-			return this.render(true);
+			return this.render({ force: true, mode: newMode });
 		}
 	};
 }

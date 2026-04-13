@@ -31,21 +31,12 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 
 	/** @override */
 	static PARTS = {
-		form: {
-			template: "systems/litmv2/templates/actor/journey.html",
-			scrollable: [""],
-		},
+		header: { template: "systems/litmv2/templates/parts/header.html" },
+		description: { template: "systems/litmv2/templates/parts/description.html" },
+		content: { template: "systems/litmv2/templates/actor/journey-content.html" },
 	};
 
-	/** @override */
-	static _getEditModeTemplate() {
-		return "systems/litmv2/templates/actor/journey.html";
-	}
-
-	/** @override */
-	static _getPlayModeTemplate() {
-		return "systems/litmv2/templates/actor/journey-play.html";
-	}
+	static PLAY_CONTENT_TEMPLATE = "systems/litmv2/templates/actor/journey-play-content.html";
 
 	/* -------------------------------------------- */
 	/*  Rendering                                   */
@@ -75,8 +66,16 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 
 		return {
 			...context,
-			isOwner: this.document.isOwner,
-			isEditMode: this._isEditMode,
+			headerFields: [
+				{
+					id: "category",
+					label: "LITM.Terms.type",
+					name: "system.category",
+					type: "text",
+					value: this.document._source.system.category,
+					placeholder: "LITM.Ui.name_category",
+				},
+			],
 			enriched: {
 				description: enrichedDescription,
 				tags: enrichedTags,
