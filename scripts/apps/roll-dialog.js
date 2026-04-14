@@ -940,9 +940,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const localById = new Map(local.map((t) => [t.id, t]));
 		const incomingById = new Map(incoming.map((t) => [t.id, t]));
 
-		// For tags in both: prefer local if current user set state on it
+		// For tags in both: accept incoming if someone else modified it,
+		// otherwise prefer local if current user set state on it
 		const merged = incoming.map((t) => {
 			const localTag = localById.get(t.id);
+			if (t.contributorId && t.contributorId !== game.user.id) return t;
 			if (localTag?.contributorId === game.user.id && localTag.state) {
 				return localTag;
 			}

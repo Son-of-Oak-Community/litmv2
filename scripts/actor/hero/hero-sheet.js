@@ -706,9 +706,20 @@ export class HeroSheet extends LitmActorSheet {
 			}
 			case "tag": {
 				const effect = this.document.effects.get(tag.id);
-				if (!effect || effect.type !== "story_tag") return;
-				const isScratched = effect.system.isScratched ?? false;
-				await effect.update({ "system.isScratched": !isScratched });
+				if (effect?.type === "story_tag") {
+					const isScratched = effect.system.isScratched ?? false;
+					if (!isScratched) {
+						await effect.delete();
+					} else {
+						await effect.update({ "system.isScratched": false });
+					}
+				} else {
+					// Scene/global story tag — remove via sidebar (handles GM permissions)
+					const sidebar = game.litmv2.storyTags;
+					if (sidebar) {
+						await sidebar.removeTag({ dataset: { id: tag.id, type: "story" } });
+					}
+				}
 				break;
 			}
 			case "relationshipTag": {

@@ -30,15 +30,16 @@
 		{{> section name=tag.name value=3 flavor=(localize 'LITM.Tags.is_burnt') flavorClass="flavor-burned"}}
 		{{/each}}
 		{{#each data.powerTags as |tag|}}
-		{{> section name=tag.name value=1 flavor=(ifThen (eq tag.type 'storyTag') (localize "LITM.Terms.tag") "")
-		flavorClass=(ifThen (eq tag.type "storyTag") "flavor-tag" "")}}
+		{{> section name=tag.name value=1 flavor=(ifThen tag.isSingleUse (localize "LITM.Terms.single_use") "")
+		flavorClass=(ifThen tag.isSingleUse "flavor-tag" "")}}
 		{{/each}}
 		{{#if data.mitigate}}
 		{{> section name=(localize 'LITM.Effects.mitigate.key') value=1}}
 		{{/if}}
 		{{#each data.weaknessTags as |tag|}}
-		{{> section name=tag.name value=-1 flavor=(ifThen (eq tag.type 'weaknessTag') (localize 'LITM.Tags.weakness')
-		(localize 'LITM.Terms.tag')) flavorClass=(ifThen (eq tag.type 'weaknessTag') "flavor-weakness" "flavor-tag")}}
+		{{> section name=tag.name value=-1 flavor=(ifThen tag.isSingleUse (localize 'LITM.Terms.single_use')
+		(ifThen (eq tag.type 'weaknessTag') (localize 'LITM.Tags.weakness') ""))
+		flavorClass=(ifThen tag.isSingleUse "flavor-tag" (ifThen (eq tag.type 'weaknessTag') "flavor-weakness" ""))}}
 		{{/each}}
 		{{#each data.positiveStatuses as |tag|}}
 		{{> section name=tag.name value=tag.value flavor=(localize 'LITM.Terms.status') flavorClass="flavor-status"}}
