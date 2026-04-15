@@ -109,6 +109,10 @@ function _renderRollDialogHud(container) {
 							{ name: ownerName },
 						)}</span>
 					</span>
+					<span class="litm-roll-dialog-hud__action">
+						<i class="fa-solid fa-dice" aria-hidden="true"></i>
+						${t("LITM.Ui.click_to_join_roll")}
+					</span>
 				</button>
 			`;
 		})
