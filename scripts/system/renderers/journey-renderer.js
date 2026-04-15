@@ -1,5 +1,6 @@
 import { enrichHTML, localize as t } from "../../utils.js";
 import { renderVignette } from "./vignette-renderer.js";
+import { makeActorCard } from "./renderer-utils.js";
 
 /**
  * Renders a Journey actor as a read-only embed card.
@@ -9,31 +10,8 @@ import { renderVignette } from "./vignette-renderer.js";
  */
 export async function renderJourney(actor) {
 	const sys = actor.system;
-	const hasCustomImage = actor.img !== "icons/svg/mystery-man.svg";
 
-	const container = document.createElement("div");
-	container.classList.add("litm", "litm-render", "litm-render--journey");
-	container.dataset.uuid = actor.uuid;
-	container.addEventListener("click", () => actor.sheet.render(true));
-
-	// ── Header: portrait + name + category ──
-	const header = document.createElement("div");
-	header.classList.add("litm-render--journey__header");
-
-	if (hasCustomImage) {
-		const img = document.createElement("img");
-		img.classList.add("litm-render--journey__portrait");
-		img.src = actor.img;
-		header.appendChild(img);
-	}
-
-	const headerText = document.createElement("div");
-	headerText.classList.add("litm-render--journey__header-text");
-
-	const title = document.createElement("h3");
-	title.classList.add("litm-render__title");
-	title.textContent = actor.name;
-	headerText.appendChild(title);
+	const { container, headerText } = makeActorCard(actor, "litm-render--journey");
 
 	if (sys.category) {
 		const cat = document.createElement("span");
@@ -41,9 +19,6 @@ export async function renderJourney(actor) {
 		cat.textContent = sys.category;
 		headerText.appendChild(cat);
 	}
-
-	header.appendChild(headerText);
-	container.appendChild(header);
 
 	// ── Description ──
 	if (sys.description) {

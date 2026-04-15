@@ -23,4 +23,8 @@ export class StoryTagData extends ScratchableMixin(foundry.data.ActiveEffectType
 	get defaultPolarity() {
 		return null;
 	}
+
+	toTagString(name) {
+		return `[${name}]`;
+	}
 }

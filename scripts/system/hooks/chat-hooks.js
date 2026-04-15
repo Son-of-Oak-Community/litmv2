@@ -1,5 +1,5 @@
 import { WelcomeOverlay } from "../../apps/welcome-overlay.js";
-import { POWER_TAG_TYPES } from "../config.js";
+import { applyThemeSacrifice } from "../../actor/hero/hero-data.js";
 import { localize as t } from "../../utils.js";
 import { Sockets } from "../sockets.js";
 
@@ -83,11 +83,7 @@ async function _handleCompleteSacrifice(target) {
 	});
 	if (!confirmed) return;
 
-	await _applySacrificeConsequence(
-		actor,
-		sacrificeLevel,
-		sacrificeThemeId,
-	);
+	await applyThemeSacrifice(actor, sacrificeThemeId, sacrificeLevel);
 
 	// Mark sacrifice as completed so button disappears
 	roll.options.sacrificeCompleted = true;
@@ -189,41 +185,6 @@ function onRenderChatMessage(app, html, _data) {
 			const handler = CLICK_HANDLERS[click];
 			if (handler) await handler(target, app);
 		});
-	}
-}
-
-async function _applySacrificeConsequence(actor, level, themeId) {
-	const theme = actor.items.get(themeId);
-	if (!theme) return;
-	const themeName = theme.name;
-
-	if (level === "painful") {
-		// Scratch all power tags and the theme tag
-		const powerEffects = theme.effects.filter(
-			(e) => POWER_TAG_TYPES.has(e.type),
-		);
-		if (powerEffects.length) {
-			await theme.updateEmbeddedDocuments(
-				"ActiveEffect",
-				powerEffects.map((e) => ({ _id: e.id, "system.isScratched": true })),
-			);
-		}
-		await actor.updateEmbeddedDocuments("Item", [
-			{ _id: theme.id, "system.isScratched": true },
-		]);
-		ui.notifications.info(
-			game.i18n.format("LITM.Ui.sacrifice_theme_scratched", {
-				theme: themeName,
-			}),
-		);
-	} else if (level === "scarring") {
-		// Remove the theme entirely
-		await actor.deleteEmbeddedDocuments("Item", [theme.id]);
-		ui.notifications.info(
-			game.i18n.format("LITM.Ui.sacrifice_theme_removed", {
-				theme: themeName,
-			}),
-		);
 	}
 }
 

@@ -1,6 +1,6 @@
 import { error } from "../../logger.js";
-import { THEME_TAG_TYPES } from "../config.js";
-import { localize as t } from "../../utils.js";
+import { ACTOR_TAG_TYPES, THEME_TAG_TYPES } from "../config.js";
+import { getStoryTagSidebar, localize as t } from "../../utils.js";
 
 export function registerActorHooks() {
 	_prepareCharacterOnCreate();
@@ -47,7 +47,7 @@ function _prepareCharacterOnCreate() {
 			actor.updateSource({
 				ownership: { default: foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
 			});
-			if (actor.img === "icons/svg/mystery-man.svg") {
+			if (actor.img === CONFIG.litmv2.assets.icons.defaultActor) {
 				actor.updateSource({
 					img: "systems/litmv2/assets/media/icons/fellowship.svg",
 				});
@@ -55,61 +55,57 @@ function _prepareCharacterOnCreate() {
 		}
 	});
 
+	const ACTOR_SETUP = {
+		async story_theme(actor) {
+			const hasTheme = actor.items.some((i) => i.type === "story_theme");
+			if (!hasTheme) {
+				await actor.createEmbeddedDocuments("Item", [
+					{ name: actor.name, type: "story_theme" },
+				]);
+			}
+		},
+		async hero(actor, options) {
+			if (options?.litm?.skipAutoSetup) return;
+			const missingThemes = Math.max(
+				4 - actor.items.filter((it) => it.type === "theme").length,
+				0,
+			);
+			if (missingThemes > 0) {
+				const themeItems = Array(missingThemes)
+					.fill()
+					.map((_, i) => ({
+						name: `${t("TYPES.Item.theme")} ${i + 1}`,
+						type: "theme",
+					}));
+				await actor.createEmbeddedDocuments("Item", themeItems);
+			}
+			const backpack = actor.items.find((it) => it.type === "backpack");
+			if (!backpack) {
+				await actor.createEmbeddedDocuments("Item", [
+					{ name: t("TYPES.Item.backpack"), type: "backpack" },
+				]);
+			}
+		},
+		async journey(actor) {
+			if (!actor.system.generalConsequences) {
+				const [vignette] = await actor.createEmbeddedDocuments("Item", [
+					{
+						name: t("LITM.Terms.general_consequences"),
+						type: "vignette",
+						"system.isConsequenceOnly": true,
+					},
+				]);
+				await actor.update({
+					"system.generalConsequences": vignette?.id || "",
+				});
+			}
+		},
+	};
+
 	Hooks.on("createActor", (actor, options) => {
 		(async () => {
 			if (!game.user.isGM) return;
-
-			if (actor.type === "story_theme") {
-				const hasTheme = actor.items.some((i) => i.type === "story_theme");
-				if (!hasTheme) {
-					await actor.createEmbeddedDocuments("Item", [
-						{ name: actor.name, type: "story_theme" },
-					]);
-				}
-				return;
-			}
-
-			if (actor.type === "hero") {
-				if (options?.litm?.skipAutoSetup) return;
-				const missingThemes = Math.max(
-					4 - actor.items.filter((it) => it.type === "theme").length,
-					0,
-				);
-
-				if (missingThemes > 0) {
-					const themeItems = Array(missingThemes)
-						.fill()
-						.map((_, i) => ({
-							name: `${t("TYPES.Item.theme")} ${i + 1}`,
-							type: "theme",
-						}));
-					await actor.createEmbeddedDocuments("Item", themeItems);
-				}
-				const backpack = actor.items.find((it) => it.type === "backpack");
-				if (!backpack) {
-					await actor.createEmbeddedDocuments("Item", [
-						{
-							name: t("TYPES.Item.backpack"),
-							type: "backpack",
-						},
-					]);
-				}
-			} else if (actor.type === "journey") {
-				if (!actor.system.generalConsequences) {
-					const [vignette] = await actor.createEmbeddedDocuments("Item", [
-						{
-							name: t("LITM.Terms.general_consequences"),
-							type: "vignette",
-							"system.isConsequenceOnly": true,
-						},
-					]);
-					await actor.update({
-						"system.generalConsequences": vignette?.id || "",
-					});
-				}
-			}
-
-			// Open the sheet in edit mode for newly created actors
+			await ACTOR_SETUP[actor.type]?.(actor, options);
 			if (actor.isOwner) actor.sheet.render(true, { mode: 1 });
 		})().catch((err) => error("Failed to setup actor", err));
 	});
@@ -179,11 +175,10 @@ function _validateEffectType() {
  * Centralized here so the HUD, sidebar, macros, etc. don't each need their own hooks.
  */
 function _syncUiOnEffectChange() {
-	const TAG_TYPES = new Set(["status_tag", "story_tag"]);
 	const sync = (effect) => {
-		if (!TAG_TYPES.has(effect.type)) return;
+		if (!ACTOR_TAG_TYPES.has(effect.type)) return;
 		// Sidebar
-		const sidebar = ui.combat;
+		const sidebar = getStoryTagSidebar();
 		if (sidebar) {
 			sidebar.invalidateCache();
 			sidebar.render();
@@ -254,7 +249,7 @@ function _enforceStoryThemeActorLimits() {
 function _syncStoryThemeActorToItem() {
 	Hooks.on("updateActor", (actor, data) => {
 		if (actor.type !== "story_theme") return;
-		const theme = actor.items.find((i) => i.type === "story_theme");
+		const theme = actor.system.storyTheme;
 		if (!theme) return;
 
 		const updates = {};

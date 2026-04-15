@@ -1,4 +1,5 @@
 import { localize as t } from "../utils.js";
+import { toTiers } from "./story-tag-helpers.js";
 
 export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
@@ -112,7 +113,7 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 					isSingleUse: tagData.isSingleUse ?? existing.isSingleUse,
 					values:
 						existing.type === "status"
-							? SceneTagDialog.#toTiers(
+							? toTiers(
 									Array.isArray(tagData.values)
 										? tagData.values
 										: tagData.values != null
@@ -142,21 +143,6 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 			limits: updatedLimits,
 		});
 		this.render();
-	}
-
-	static #toTiers(values = []) {
-		if (!Array.isArray(values)) return new Array(6).fill(false);
-		if (values.length === 6 && values.some((v) => v === null || v === false)) {
-			return values.map((v) => v !== null && v !== false && v !== "");
-		}
-		const tiers = new Array(6).fill(false);
-		for (const value of values) {
-			const index = Number.parseInt(value, 10) - 1;
-			if (Number.isFinite(index) && index >= 0 && index < 6) {
-				tiers[index] = true;
-			}
-		}
-		return tiers;
 	}
 
 	async #quickAddFromInput(input) {

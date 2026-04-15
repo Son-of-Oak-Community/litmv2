@@ -1,7 +1,7 @@
-import { detectTrackCompletion, buildTrackCompleteContent } from "../../system/chat.js";
+import { detectTrackCompletion } from "../../system/chat.js";
 import { LitmSettings } from "../../system/settings.js";
-import { THEME_TAG_TYPES } from "../../system/config.js";
-import { resolveEffect } from "../../utils.js";
+import { ACTOR_TAG_TYPES, ACTOR_TYPES, EFFECT_TYPES, ITEM_TYPES, POWER_TAG_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
+import { partitionEffects } from "../../utils.js";
 import { EffectTagsMixin } from "../effect-tags-mixin.js";
 
 /**
@@ -15,7 +15,7 @@ export function buildRelationshipEffects(relationships) {
 		.filter((r) => r.tag && r.actorId)
 		.map((r) => ({
 			name: r.tag,
-			type: "relationship_tag",
+			type: EFFECT_TYPES.relationship_tag,
 			system: { targetId: r.actorId, isScratched: r.isScratched ?? false },
 		}));
 }
@@ -25,10 +25,10 @@ export function buildRelationshipEffects(relationships) {
  * @param {Actor} actor
  */
 export async function createLegacyRelationshipEffects(actor) {
-	if (actor.type !== "hero") return;
+	if (actor.type !== ACTOR_TYPES.hero) return;
 	const rels = actor.getFlag("litmv2", "legacyRelationships");
 	if (!Array.isArray(rels) || !rels.length) return;
-	if (actor.effects.some((e) => e.type === "relationship_tag")) return;
+	if (actor.effects.some((e) => e.type === EFFECT_TYPES.relationship_tag)) return;
 
 	const effectData = buildRelationshipEffects(rels);
 	if (effectData.length) {
@@ -39,6 +39,78 @@ export async function createLegacyRelationshipEffects(actor) {
 		system: { relationships: new ForcedDeletion() },
 		flags: { litmv2: { legacyRelationships: new ForcedDeletion() } },
 	});
+}
+
+/**
+ * Mark improvement on the theme that owns the given tag effect.
+ * @param {Actor} actor - The hero actor
+ * @param {object} tag - Tag object with uuid and type properties
+ * @returns {Promise<{theme: Item, actor: Actor, trackInfo: object}|null>} Track completion data or null
+ */
+export async function gainImprovement(actor, tag) {
+	// Relationship tags always improve the fellowship theme
+	if (tag.type === EFFECT_TYPES.relationship_tag) {
+		const fellowship = actor.system.fellowshipActor;
+		if (!fellowship) return null;
+		const theme = fellowship.items.find(
+			(i) => i.type === ITEM_TYPES.theme && i.system.isFellowship,
+		);
+		if (!theme) return null;
+		const newValue = theme.system.improve.value + 1;
+		await fellowship.updateEmbeddedDocuments("Item", [
+			{ _id: theme.id, "system.improve.value": newValue },
+		]);
+		return detectTrackCompletion("system.improve.value", newValue, theme, fellowship);
+	}
+
+	// Trace effect → parent theme → owner actor via UUID
+	if (!tag.uuid) return null;
+	const effect = await foundry.utils.fromUuid(tag.uuid);
+	if (!effect) return null;
+	const parentTheme = effect.parent;
+	if (!parentTheme || ![ITEM_TYPES.theme, ITEM_TYPES.story_theme].includes(parentTheme.type)) return null;
+	const owner = parentTheme.parent;
+	if (!owner) return null;
+	const newValue = parentTheme.system.improve.value + 1;
+	await owner.updateEmbeddedDocuments("Item", [
+		{ _id: parentTheme.id, "system.improve.value": newValue },
+	]);
+	return detectTrackCompletion("system.improve.value", newValue, parentTheme, owner);
+}
+
+/**
+ * Apply the consequence of a sacrifice roll to a hero's theme.
+ * @param {Actor} actor - The hero actor
+ * @param {string} themeId - The sacrificed theme's ID
+ * @param {string} level - "painful" or "scarring"
+ */
+export async function applyThemeSacrifice(actor, themeId, level) {
+	const theme = actor.items.get(themeId);
+	if (!theme) return;
+	const themeName = theme.name;
+
+	if (level === "painful") {
+		const powerEffects = theme.effects.filter(
+			(e) => POWER_TAG_TYPES.has(e.type),
+		);
+		if (powerEffects.length) {
+			await theme.updateEmbeddedDocuments(
+				"ActiveEffect",
+				powerEffects.map((e) => ({ _id: e.id, "system.isScratched": true })),
+			);
+		}
+		await actor.updateEmbeddedDocuments("Item", [
+			{ _id: theme.id, "system.isScratched": true },
+		]);
+		ui.notifications.info(
+			game.i18n.format("LITM.Ui.sacrifice_theme_scratched", { theme: themeName }),
+		);
+	} else if (level === "scarring") {
+		await actor.deleteEmbeddedDocuments("Item", [theme.id]);
+		ui.notifications.info(
+			game.i18n.format("LITM.Ui.sacrifice_theme_removed", { theme: themeName }),
+		);
+	}
 }
 
 export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
@@ -87,12 +159,13 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 
 	get fellowshipActor() {
 		if (!LitmSettings.useFellowship) return null;
+		const actors = this.parent.collection;
 		if (this.fellowshipId) {
-			const actor = game.actors.get(this.fellowshipId);
+			const actor = actors.get(this.fellowshipId);
 			if (actor) return actor;
 		}
 		// Fallback to the global singleton
-		return game.litmv2?.fellowship ?? null;
+		return actors.find(a => a.type === "fellowship") ?? null;
 	}
 
 	/**
@@ -111,14 +184,20 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 			}));
 	}
 
+	/** @type {ActiveEffect[]} Cached relationship_tag effects */
+	_relationships = [];
+
 	/**
-	 * All story_tag effects applicable to this hero (from backpack transfer).
-	 * Compatible with the EffectTagsMixin interface.
-	 * @returns {ActiveEffect[]}
+	 * Single-pass partition of allApplicableEffects into the mixin's story/status
+	 * buckets plus a local relationships bucket. Called once per prepareDerivedData cycle.
 	 */
-	get storyTags() {
-		return [...this.parent.allApplicableEffects()]
-			.filter((e) => e.type === "story_tag");
+	#partitionAllEffects() {
+		const { story_tag, status_tag, relationship_tag } = partitionEffects(
+			this.parent, "story_tag", "status_tag", "relationship_tag",
+		);
+		this._cachedStoryTags = story_tag;
+		this._cachedStatusEffects = status_tag;
+		this._relationships = relationship_tag;
 	}
 
 	get backpackItem() {
@@ -131,6 +210,7 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 
 	/**
 	 * Everything from the fellowship actor: theme groups + story tags/statuses.
+	 * Uses the fellowship actor's allApplicableEffects (separate document, not cached here).
 	 * @returns {{ themes: { theme: Item, tags: ActiveEffect[] }[], tags: ActiveEffect[] }}
 	 */
 	get fellowship() {
@@ -144,7 +224,7 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 				if (!item || item === actor) continue;
 				if (!themeMap.has(item.id)) themeMap.set(item.id, { theme: item, tags: [] });
 				themeMap.get(item.id).tags.push(e);
-			} else if (e.type === "story_tag" || e.type === "status_tag") {
+			} else if (ACTOR_TAG_TYPES.has(e.type)) {
 				tags.push(e);
 			}
 		}
@@ -160,41 +240,29 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	 * @returns {ActiveEffect[]}
 	 */
 	get relationships() {
-		return [...this.parent.allApplicableEffects()]
-			.filter((e) => e.type === "relationship_tag");
+		return this._relationships;
 	}
+
 
 	/**
-	 * All status_tag effects applicable to this hero.
+	 * All tags applicable to a roll for this hero, including fellowship tags when enabled.
+	 * Returns raw ActiveEffect instances; callers are responsible for mapping to plain objects.
 	 * @returns {ActiveEffect[]}
 	 */
-	get statuses() {
-		return [...this.parent.allApplicableEffects()]
-			.filter((e) => e.type === "status_tag");
-	}
-
-	get statusEffects() {
-		return this.statuses;
-	}
-
-	get relationshipEntries() {
-		const heroActors = (game.actors ?? []).filter(
-			(actor) => actor.type === "hero" && actor.id !== this.parent.id,
-		);
-		const existing = this.relationships;
-		return heroActors
-			.map((actor) => {
-				const effect = existing.find((e) => e.system.targetId === actor.id);
-				return {
-					actorId: actor.id,
-					name: actor.name,
-					img: actor.img,
-					tag: effect?.name ?? "",
-					isScratched: effect?.system?.isScratched ?? false,
-					effectId: effect?.id ?? null,
-				};
-			})
-			.sort((a, b) => a.name.localeCompare(b.name));
+	get allRollTags() {
+		const tags = [
+			...this.themes.flatMap((g) => g.tags),
+			...this.storyTags,
+			...this.statusEffects,
+		];
+		if (LitmSettings.useFellowship) {
+			tags.push(
+				...this.fellowship.themes.flatMap((g) => g.tags),
+				...this.fellowship.tags,
+				...this.relationships.filter((e) => e.name),
+			);
+		}
+		return tags;
 	}
 
 	/**
@@ -202,84 +270,14 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	 * @returns {ActiveEffect[]}
 	 */
 	get scratchedTags() {
-		const scratched = [];
-		for (const e of this.parent.allApplicableEffects()) {
-			if (e.system?.isScratched && e.type !== "weakness_tag" && e.type !== "status_tag") {
-				scratched.push(e);
-			}
-		}
-		const fellowship = this.fellowshipActor;
-		if (fellowship) {
-			for (const e of fellowship.allApplicableEffects()) {
-				if (e.system?.isScratched && e.type !== "weakness_tag" && e.type !== "status_tag") {
-					scratched.push(e);
-				}
-			}
-		}
-		return scratched;
+	const isScratchedPlayTag = (e) => e.system?.isScratched && e.type !== EFFECT_TYPES.weakness_tag && e.type !== EFFECT_TYPES.status_tag;
+	const scratched = [...this.parent.allApplicableEffects()].filter(isScratchedPlayTag);
+	const fellowship = this.fellowshipActor;
+	if (fellowship) {
+		scratched.push(...[...fellowship.allApplicableEffects()].filter(isScratchedPlayTag));
 	}
-
-	/**
-	 * Toggle scratch state of a tag.
-	 * @param {object} tag  Tag object with at least `id`
-	 */
-	async toggleScratchTag(tag) {
-		if (Hooks.call("litm.preTagScratched", this.parent, tag) === false) return;
-		const effect = this.#findEffect(tag.id);
-		if (!effect) return;
-		await effect.system.toggleScratch();
-		Hooks.callAll("litm.tagScratched", this.parent, tag);
-	}
-
-	#findEffect(effectId) {
-		return resolveEffect(effectId, this.parent);
-	}
-
-	/**
-	 * Gain improvement from using a weakness tag or relationship tag as negative.
-	 * Resolves the effect by UUID to trace it back to its parent theme.
-	 * @param {object} tag  The tag with `uuid` and `type`
-	 */
-	async gainImprovement(tag) {
-		// Relationship tags always improve the fellowship theme
-		if (tag.type === "relationship_tag") {
-			const fellowship = this.fellowshipActor;
-			if (!fellowship) return;
-			const theme = fellowship.items.find(
-				(i) => i.type === "theme" && i.system.isFellowship,
-			);
-			if (!theme) return;
-			const newValue = theme.system.improve.value + 1;
-			await fellowship.updateEmbeddedDocuments("Item", [
-				{ _id: theme.id, "system.improve.value": newValue },
-			]);
-			await this.#notifyTrackCompletion(theme, fellowship, newValue);
-			return;
-		}
-
-		// Trace effect → parent theme → owner actor via UUID
-		if (!tag.uuid) return;
-		const effect = await foundry.utils.fromUuid(tag.uuid);
-		if (!effect) return;
-		const parentTheme = effect.parent;
-		if (!parentTheme || !["theme", "story_theme"].includes(parentTheme.type)) return;
-		const owner = parentTheme.parent;
-		if (!owner) return;
-		const newValue = parentTheme.system.improve.value + 1;
-		await owner.updateEmbeddedDocuments("Item", [
-			{ _id: parentTheme.id, "system.improve.value": newValue },
-		]);
-		await this.#notifyTrackCompletion(parentTheme, owner, newValue);
-	}
-
-	async #notifyTrackCompletion(theme, actor, newValue) {
-		const trackInfo = detectTrackCompletion("system.improve.value", newValue, theme, actor);
-		if (!trackInfo) return;
-		await foundry.documents.ChatMessage.create({
-			content: buildTrackCompleteContent(trackInfo),
-			speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
-		});
-	}
+	return scratched;
+}
 
 	getRollData() {
 		const allThemeTags = this.themes.flatMap((g) => g.tags);
@@ -287,15 +285,16 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 			promise: this.promise,
 			limit: this.limit.value,
 			limitMax: this.limit.max,
-			power: allThemeTags.filter((e) => e.type !== "weakness_tag" && e.active).length,
-			weakness: allThemeTags.filter((e) => e.type === "weakness_tag" && e.active).length,
+			power: allThemeTags.filter((e) => e.type !== EFFECT_TYPES.weakness_tag && e.active).length,
+			weakness: allThemeTags.filter((e) => e.type === EFFECT_TYPES.weakness_tag && e.active).length,
 		};
 	}
 
 	prepareDerivedData() {
 		super.prepareDerivedData();
+		this.#partitionAllEffects();
 		const baseLimit = LitmSettings?.heroLimit ?? 5;
-		const highestStatus = this.statuses
+		const highestStatus = this._cachedStatusEffects
 			.filter((e) => e.active)
 			.reduce((max, e) => Math.max(max, e.system.currentTier), 0);
 		this.limit.value = baseLimit - highestStatus;

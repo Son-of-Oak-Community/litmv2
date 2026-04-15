@@ -1,26 +1,8 @@
 import { localize as t } from "../../utils.js";
+import { EFFECT_TYPE_COLORS } from "../../system/config.js";
 
 const { DocumentSheetV2, HandlebarsApplicationMixin } =
 	foundry.applications.api;
-
-const ALL_TYPES = [
-	"power_tag",
-	"weakness_tag",
-	"fellowship_tag",
-	"relationship_tag",
-	"story_tag",
-	"status_tag",
-];
-
-/** Maps effect type → CSS variable name for the accent color. */
-const TYPE_COLOR_VAR = {
-	power_tag: "--color-litm-tag",
-	weakness_tag: "--color-litm-weakness",
-	fellowship_tag: "--color-litm-tag",
-	relationship_tag: "--color-litm-tag",
-	story_tag: "--color-litm-tag",
-	status_tag: "--color-litm-status",
-};
 
 /**
  * Simplified ActiveEffect sheet for Legend in the Mist tags and statuses.
@@ -58,7 +40,7 @@ export class LitmActiveEffectSheet extends HandlebarsApplicationMixin(
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 		const effect = this.document;
-		const colorVar = TYPE_COLOR_VAR[effect.type] ?? "--color-litm-tag";
+		const colorVar = EFFECT_TYPE_COLORS[effect.type] ?? "--color-litm-tag";
 
 		return {
 			...context,
@@ -70,12 +52,9 @@ export class LitmActiveEffectSheet extends HandlebarsApplicationMixin(
 			isActive: !effect.disabled,
 			isStoryTag: effect.type === "story_tag",
 			isStatusTag: effect.type === "status_tag",
-			hasQuestion:
-				"question" in (effect.system ?? {}),
-			hasScratched:
-				"isScratched" in (effect.system ?? {}),
-			hasTitleTag:
-				"isTitleTag" in (effect.system ?? {}),
+			hasQuestion: effect.system?.schema?.has("question") ?? false,
+			hasScratched: effect.system?.schema?.has("isScratched") ?? false,
+			hasTitleTag: effect.system?.schema?.has("isTitleTag") ?? false,
 		};
 	}
 
@@ -99,7 +78,7 @@ export class LitmActiveEffectSheet extends HandlebarsApplicationMixin(
 			"litmv2",
 			LitmActiveEffectSheet,
 			{
-				types: ALL_TYPES,
+				types: Object.keys(EFFECT_TYPE_COLORS),
 				makeDefault: true,
 				label: "LITM.Sheets.active_effect",
 			},

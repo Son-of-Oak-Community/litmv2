@@ -1,6 +1,5 @@
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { TagStringSyncMixin } from "../../sheets/tag-string-sync-mixin.js";
-import { enrichHTML } from "../../utils.js";
 
 /**
  * Journey sheet for Legend in the Mist
@@ -46,15 +45,7 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 
-		const enrichedDescription = await enrichHTML(
-			this.system.description,
-			this.document,
-		);
-
-		const enrichedTags = await enrichHTML(
-			this.system.tags || "",
-			this.document,
-		);
+		const enriched = await this._enrichFields("description", "tags");
 
 		// Prepare vignette items
 		const generalConsequenceId = this.system.generalConsequences;
@@ -76,10 +67,7 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 					placeholder: "LITM.Ui.name_category",
 				},
 			],
-			enriched: {
-				description: enrichedDescription,
-				tags: enrichedTags,
-			},
+			enriched,
 			tagsString: this.system.tags || "",
 			generalConsequenceId,
 			generalConsequence,

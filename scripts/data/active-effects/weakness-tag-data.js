@@ -18,4 +18,8 @@ export class WeaknessTagData extends foundry.data.ActiveEffectTypeDataModel {
 	get defaultPolarity() {
 		return -1;
 	}
+
+	toTagString(name) {
+		return `[${name}]`;
+	}
 }

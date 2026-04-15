@@ -87,4 +87,21 @@
 			<i class="fas fa-bolt" aria-hidden="true"></i> {{localize "LITM.Ui.spend"}}
 		</button>
 	</div>
+	<template id="entry-row-template">
+		<li class="litm-spend-power__entry">
+			<input type="text" class="litm-spend-power__entry-name" placeholder="{{localize 'LITM.Ui.tag_name'}}" />
+			<button type="button" class="litm-spend-power__remove-entry" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+				<i class="fas fa-times" aria-hidden="true"></i>
+			</button>
+		</li>
+	</template>
+	<template id="entry-row-tier-template">
+		<li class="litm-spend-power__entry">
+			<input type="text" class="litm-spend-power__entry-name" placeholder="{{localize 'LITM.Ui.status_name'}}" />
+			<input type="number" class="litm-spend-power__entry-tier" value="1" min="1" max="6" />
+			<button type="button" class="litm-spend-power__remove-entry" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
+				<i class="fas fa-times" aria-hidden="true"></i>
+			</button>
+		</li>
+	</template>
 </div>

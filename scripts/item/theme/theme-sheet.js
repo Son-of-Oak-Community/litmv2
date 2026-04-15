@@ -1,7 +1,7 @@
 import { error } from "../../logger.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
+import { getThemeLevels } from "../../system/config.js";
 import {
-	enrichHTML,
 	fellowshipTagEffect,
 	findThemebookByName,
 	powerTagEffect,
@@ -9,6 +9,12 @@ import {
 	toQuestionOptions,
 	weaknessTagEffect,
 } from "../../utils.js";
+
+/** Maps tag type + fellowship context to the correct effect factory. */
+const TAG_FACTORIES = {
+	weakness_tag: () => weaknessTagEffect,
+	power_tag: (isFellowship) => isFellowship ? fellowshipTagEffect : powerTagEffect,
+};
 
 /**
  * Theme sheet for Legend in the Mist
@@ -58,12 +64,10 @@ export class ThemeSheet extends LitmItemSheet {
 		const context = await super._prepareContext(options);
 
 		// Computed properties
-		const levels = CONFIG.litmv2.theme_levels
-			? Object.keys(CONFIG.litmv2.theme_levels).reduce((acc, level) => {
-				acc[level] = game.i18n.localize(`LITM.Terms.${level}`);
-				return acc;
-			}, {})
-			: {};
+		const levels = getThemeLevels().reduce((acc, level) => {
+			acc[level] = game.i18n.localize(`LITM.Terms.${level}`);
+			return acc;
+		}, {});
 
 		const themebooks = await this.#getThemebookOptions();
 		const selectedThemebook = await findThemebookByName(this.system.themebook);
@@ -91,19 +95,14 @@ export class ThemeSheet extends LitmItemSheet {
 				.filter(([, q]) => `${q ?? ""}`.trim()),
 		);
 
-		const enrichedDescription = await enrichHTML(
-			this.system.description,
-			this.document,
-		);
+		const enriched = await this._enrichFields("description");
 
 		// Theme tag question (Question A) for placeholder
 		const themeTagQuestion = `${allPowerQuestions[0] ?? ""}`.trim();
 
 		return {
 			...context,
-			enriched: {
-				description: enrichedDescription,
-			},
+			enriched,
 			// Document data
 			item: this.document,
 			system: this.system,
@@ -194,23 +193,12 @@ export class ThemeSheet extends LitmItemSheet {
 		const themebook = await findThemebookByName(this.system.themebook);
 		const isActive = this.document.isEmbedded;
 
-		const existingTags = tagType === "power_tag" ? this.system.powerTags : this.system.weaknessTags;
-		const usedQuestions = new Set(existingTags.map((t) => t.system?.question).filter(Boolean));
-		const allQuestions = tagType === "power_tag"
-			? (themebook?.system?.powerTagQuestions || [])
-			: (themebook?.system?.weaknessTagQuestions || []);
-		const startIndex = tagType === "power_tag" ? 1 : 0;
-		const nextQuestion = allQuestions
-			.map((q, i) => ({ q, i }))
-			.filter(({ q, i }) => i >= startIndex && `${q ?? ""}`.trim() && !usedQuestions.has(String(i)))
-			.map(({ i }) => String(i))[0] ?? null;
+		const question = this.document.system.nextAvailableQuestion(tagType, themebook);
 
 		const isFellowship = this.document.system.isFellowship;
-		const factory = tagType === "weakness_tag" ? weaknessTagEffect
-			: isFellowship ? fellowshipTagEffect
-			: powerTagEffect;
+		const factory = (TAG_FACTORIES[tagType] ?? TAG_FACTORIES.power_tag)(isFellowship);
 		await this.document.createEmbeddedDocuments("ActiveEffect", [
-			factory({ question: nextQuestion, isActive }),
+			factory({ question, isActive }),
 		]);
 	}
 

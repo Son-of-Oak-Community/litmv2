@@ -1,4 +1,4 @@
-import { LitmConfig } from "../system/config.js";
+import { BURN_POWER, ROLL_TYPES } from "../system/config.js";
 import { localize as t } from "../utils.js";
 
 export class LitmRoll extends foundry.dice.Roll {
@@ -20,55 +20,35 @@ export class LitmRoll extends foundry.dice.Roll {
 	}
 
 	get flavor() {
-		switch (this.litm.type) {
-			case "mitigate":
-				return t("LITM.Ui.roll_mitigate");
-			case "sacrifice": {
-				const levelKey = this.litm.sacrificeLevel || "painful";
-				return `${t(`LITM.Ui.sacrifice_${levelKey}`)} ${t("LITM.Ui.roll_sacrifice")}`;
-			}
-			case "tracked":
-				return t("LITM.Ui.roll_tracked");
-			default:
-				return t("LITM.Ui.roll_quick");
-		}
+		const cfg = ROLL_TYPES[this.litm.type] ?? ROLL_TYPES.quick;
+		const key = cfg.flavor(this);
+		return key.includes(" ") ? key.split(" ").map(k => t(k)).join(" ") : t(key);
 	}
 
 	get effect() {
-		if (this.litm.type !== "mitigate") return null;
-		return {
-			action: "LITM.Effects.mitigate.action",
-			description: "LITM.Effects.mitigate.description",
-			cost: "LITM.Effects.mitigate.cost",
-		};
+		const cfg = ROLL_TYPES[this.litm.type] ?? ROLL_TYPES.quick;
+		return cfg.effect(this);
 	}
 
 	get power() {
 		const { label: outcome } = this.outcome;
+		const cfg = ROLL_TYPES[this.litm.type] ?? ROLL_TYPES.quick;
 
-		// Quick outcomes don't need to track power
-		if (this.litm.type === "quick") return null;
-		// Sacrifice outcomes don't generate power
-		if (this.litm.type === "sacrifice") return 0;
+		if (!cfg.hasPower) return null;
 
 		if (outcome === "consequences") return 0;
 
-		// Minimum of 1 power
 		let totalPower = Math.max(this.litm.totalPower, 1);
 
-		// Trade Power: reverse the roll modifier for spending
-		// Caution (-1 to roll) → +1 spending; Hedge (+1 to roll) → -1 spending
 		const tradePower = this.litm.tradePower || 0;
 		if (tradePower) {
 			totalPower = Math.max(totalPower - tradePower, 1);
 		}
 
-		// Mitigate outcomes add 1 power on a strong success
 		if (this.litm.type === "mitigate" && outcome === "success") {
 			totalPower += 1;
 		}
 
-		// Pushing adds 1 power in exchange for accepting consequences
 		if (this.litm.pushed) {
 			totalPower += 1;
 		}
@@ -78,61 +58,29 @@ export class LitmRoll extends foundry.dice.Roll {
 
 	get outcome() {
 		const { resolver } = CONFIG.litmv2.roll;
-
 		if (typeof resolver === "function") return resolver(this);
 
-		if (this.litm.type === "sacrifice") {
-			if (this.total >= 10) {
-				return {
-					label: "success",
-					description: "LITM.Ui.roll_sacrifice_success",
-				};
-			}
-			if (this.total >= 7) {
-				return {
-					label: "snc",
-					description: "LITM.Ui.roll_sacrifice_mixed",
-				};
-			}
-			return {
-				label: "consequences",
-				description: "LITM.Ui.roll_sacrifice_failure",
-			};
-		}
+		const cfg = ROLL_TYPES[this.litm.type] ?? ROLL_TYPES.quick;
+		if (cfg.outcome) return cfg.outcome(this);
 
 		const diceTotal = this.dice.reduce((sum, die) => sum + die.total, 0);
 
 		if (diceTotal === 2) {
-			return {
-				label: "consequences",
-				description: "LITM.Ui.roll_failure",
-			};
+			return { label: "consequences", description: "LITM.Ui.roll_failure" };
 		}
 
 		if (diceTotal === 12 || this.total > 9) {
 			if (this.litm.pushed) {
-				return {
-					label: "snc",
-					description: "LITM.Ui.roll_consequence",
-				};
+				return { label: "snc", description: "LITM.Ui.roll_consequence" };
 			}
-			return {
-				label: "success",
-				description: "LITM.Ui.roll_success",
-			};
+			return { label: "success", description: "LITM.Ui.roll_success" };
 		}
 
-		if (this.total > 6) {
-			return {
-				label: "snc",
-				description: "LITM.Ui.roll_consequence",
-			};
+		if (this.total >= 7) {
+			return { label: "snc", description: "LITM.Ui.roll_consequence" };
 		}
 
-		return {
-			label: "consequences",
-			description: "LITM.Ui.roll_failure",
-		};
+		return { label: "consequences", description: "LITM.Ui.roll_failure" };
 	}
 
 	#getSacrificeThemeName() {
@@ -198,7 +146,7 @@ export class LitmRoll extends foundry.dice.Roll {
 
 	static calculatePower(tags) {
 		const scratchedTags = tags.scratchedTags ?? [];
-		const scratchedValue = scratchedTags.length * LitmConfig.BURN_POWER;
+		const scratchedValue = scratchedTags.length * BURN_POWER;
 
 		const powerValue = tags.powerTags.length;
 

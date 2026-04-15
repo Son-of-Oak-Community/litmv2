@@ -1,0 +1,13 @@
+<div class="litmv2 litm-spend-chat">
+	<header class="litm-spend-chat__header">
+		<img src="{{actorImg}}" alt="{{actorName}}" />
+		<div>
+			<span class="litm-spend-chat__name">{{actorName}}</span>
+			<span class="litm-spend-chat__action">{{action}}</span>
+		</div>
+	</header>
+	{{#if body}}
+	<div class="litm-spend-chat__body">{{{body}}}</div>
+	{{/if}}
+	<footer class="litm-spend-chat__cost">{{costLine}}</footer>
+</div>

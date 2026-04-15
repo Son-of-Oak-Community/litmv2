@@ -1,6 +1,7 @@
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
-import { THEME_TAG_TYPES } from "../../system/config.js";
-import { effectToPlain, enrichHTML, levelIcon, queryItemsFromPacks } from "../../utils.js";
+import { ACTOR_TYPES, getThemeLevels, getDefaultThemeLevel } from "../../system/config.js";
+import { effectToPlain, findApplicableEffect, levelIcon, queryItemsFromPacks, resolveEffect } from "../../utils.js";
+import { scratchTag } from "../../data/active-effects/scratchable-mixin.js";
 
 /**
  * Fellowship sheet for Legend in the Mist
@@ -24,6 +25,7 @@ export class FellowshipSheet extends LitmActorSheet {
 			openThemeAdvancement: FellowshipSheet.#onOpenThemeAdvancement,
 			browseThemes: FellowshipSheet.#onBrowseThemes,
 			"open-hero-sheet": FellowshipSheet.#onOpenHeroSheet,
+			scratchTag: FellowshipSheet.#onScratchTag,
 		},
 		form: {
 			handler: LitmActorSheet._onSubmitActorForm,
@@ -52,12 +54,7 @@ export class FellowshipSheet extends LitmActorSheet {
 	 * @returns {object[]}
 	 */
 	_buildAllRollTags() {
-		const sys = this.system;
-		return [
-			...sys.allTags,
-			...sys.storyTags,
-			...sys.statusEffects,
-		].map(effectToPlain);
+		return this.system.allRollTags.map(effectToPlain);
 	}
 
 	/* -------------------------------------------- */
@@ -68,10 +65,7 @@ export class FellowshipSheet extends LitmActorSheet {
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 
-		const enrichedDescription = await enrichHTML(
-			this.system.description,
-			this.document,
-		);
+		const enriched = await this._enrichFields("description");
 
 		// Prepare fellowship theme (single theme item with isFellowship)
 		const themeItem = this.document.items.find(
@@ -86,14 +80,12 @@ export class FellowshipSheet extends LitmActorSheet {
 			.map((i) => this._prepareThemeData(i));
 
 		// Party overview data (GM only)
-		const party = game.user.isGM ? this.#preparePartyOverview() : [];
+		const party = game.user.isGM ? this.#buildPartyOverview() : [];
 
 		return {
 			...context,
 			namePlaceholder: game.i18n.localize("LITM.Ui.fellowship_name"),
-			enriched: {
-				description: enrichedDescription,
-			},
+			enriched,
 			theme,
 			storyThemes,
 			storyTags: this._prepareStoryTags(),
@@ -101,74 +93,28 @@ export class FellowshipSheet extends LitmActorSheet {
 		};
 	}
 
+	/**
+	 * Strip HTML from hero descriptions (presentation concern) and filter to active players.
+	 * Aggregation logic lives in FellowshipData#partyOverview.
+	 * @returns {object[]}
+	 */
+	#buildPartyOverview() {
+		const activePlayerCharacterIds = new Set(
+			game.users
+				.filter((u) => u.active && u.character?.type === ACTOR_TYPES.hero)
+				.map((u) => u.character.id),
+		);
+		return this.system.partyOverview
+			.filter((hero) => activePlayerCharacterIds.has(hero.id))
+			.map((hero) => ({
+				...hero,
+				description: (hero.description ?? "").replace(/<[^>]*>/g, "").trim(),
+			}));
+	}
+
 	/* -------------------------------------------- */
 	/*  Event Handlers & Actions                    */
 	/* -------------------------------------------- */
-
-	/**
-	 * Prepare party overview data for all hero actors.
-	 * @returns {object[]}
-	 */
-	#preparePartyOverview() {
-		const fellowshipId = this.document.id;
-		const playerCharacterIds = new Set(
-			game.users
-				.filter((u) => u.active && u.character?.type === "hero")
-				.map((u) => u.character.id),
-		);
-		const heroes = game.actors.filter(
-			(a) =>
-				a.type === "hero" &&
-				playerCharacterIds.has(a.id) &&
-				a.system.fellowshipId === fellowshipId,
-		);
-		return heroes.map((hero) => {
-			const themes = hero.items.filter(
-				(i) =>
-					i.type === "theme" && !i.system.isFellowship && !i.system.isScratched,
-			);
-
-			const quests = themes
-				.filter((theme) => theme.system.quest?.description)
-				.map((theme) => ({
-					themeName: theme.name,
-					description: theme.system.quest.description,
-					milestone: theme.system.quest.tracks.milestone.value,
-					abandon: theme.system.quest.tracks.abandon.value,
-				}));
-
-			const weaknesses = themes
-				.flatMap((theme) => theme.system.weaknessTags)
-				.filter((tag) => tag.active && !tag.system.isScratched)
-				.map((tag) => tag.name);
-
-			const relationshipTags = hero.system.relationships
-				.filter((e) => e.name && !e.system?.isScratched);
-			const storyTags = hero.system.backpack
-				.filter((e) => e.active && (game.user.isGM || !e.system?.isHidden));
-			const statuses = hero.system.statuses
-				.filter((e) => e.active && (e.system?.currentTier ?? 0) > 0);
-
-			// Strip HTML from description
-			const desc = hero.system.description ?? "";
-			const div = document.createElement("div");
-			div.innerHTML = desc;
-			const description = div.textContent?.trim() ?? "";
-
-			return {
-				id: hero.id,
-				name: hero.name,
-				img: hero.img,
-				description,
-				quests,
-				weaknesses,
-				relationshipTags,
-				storyTags,
-				statuses,
-				hasTagsOrStatuses: storyTags.length > 0 || statuses.length > 0,
-			};
-		});
-	}
 
 	/**
 	 * Toggle the hidden state of a story tag / status card effect.
@@ -178,7 +124,7 @@ export class FellowshipSheet extends LitmActorSheet {
 	 */
 	static async #onToggleEffectVisibility(_event, target) {
 		const effectId = target.dataset.id;
-		const effect = [...this.document.allApplicableEffects()].find((e) => e.id === effectId);
+		const effect = resolveEffect(effectId, this.document);
 		if (!effect) return;
 		await effect.update({ "system.isHidden": !effect.system.isHidden });
 		this._notifyStoryTags();
@@ -211,43 +157,38 @@ export class FellowshipSheet extends LitmActorSheet {
 
 	/**
 	 * Toggle the active state of a tag in edit mode.
-	 * Click = Scratch/Unscratch, Shift+Click = Activate/Deactivate.
+	 * Handles fellowship_tag items locally (scratch on item itself),
+	 * delegates theme tags to the shared handler.
 	 * @private
 	 */
 	static async #onToggleTagActive(event, target) {
 		const actionTarget = target.closest?.("[data-tag-id]") ?? target;
-		const tagId = actionTarget.dataset.tagId || actionTarget.dataset.id;
-		const tagName = actionTarget.dataset.text;
 		const tagType = actionTarget.dataset.tagType;
-		if (!tagId && !tagName) return;
-
-		const scratch = !event.shiftKey;
-
-		const itemEl = target.closest("[data-item-id]") ?? target.closest(".item");
-		const itemId = itemEl?.dataset?.itemId ?? itemEl?.dataset?.id;
-		if (!itemId) return;
-
-		const item = this.document.items.get(itemId);
-		if (!item) return;
 
 		if (tagType === "fellowship_tag") {
+			const itemEl = target.closest("[data-item-id]") ?? target.closest(".item");
+			const itemId = itemEl?.dataset?.itemId ?? itemEl?.dataset?.id;
+			if (!itemId) return;
+			const item = this.document.items.get(itemId);
+			if (!item) return;
 			await item.update({ "system.isScratched": !item.system.isScratched });
 			return;
 		}
 
-		const effect = item.effects.get(tagId)
-			?? [...item.effects].find((e) => e.name === tagName && THEME_TAG_TYPES.has(e.type));
-		if (!effect) return;
+		return LitmActorSheet._onToggleTagActive.call(this, event, target);
+	}
 
-		if (scratch) {
-			await item.updateEmbeddedDocuments("ActiveEffect", [
-				{ _id: effect.id, "system.isScratched": !effect.system.isScratched },
-			]);
-		} else {
-			await item.updateEmbeddedDocuments("ActiveEffect", [
-				{ _id: effect.id, disabled: !effect.disabled },
-			]);
-		}
+	/**
+	 * Scratch a tag by effect ID (Alt+Click from play mode).
+	 * @param {Event} _event
+	 * @param {HTMLElement} target
+	 * @private
+	 */
+	static async #onScratchTag(_event, target) {
+		const effectId = target.closest("[data-effect-id]")?.dataset.effectId;
+		if (!effectId) return;
+		const effect = findApplicableEffect(this.document, (e) => e.id === effectId);
+		if (effect) await scratchTag(this.document, effect);
 	}
 
 	/**
@@ -256,7 +197,7 @@ export class FellowshipSheet extends LitmActorSheet {
 	 * Alt+Click scratches the tag (except weakness tags).
 	 * @private
 	 */
-	static #onSelectTag(event, target) {
+	static async #onSelectTag(event, target) {
 		if (this._isEditMode) return;
 
 		const tagType = target.dataset.tagType;
@@ -267,105 +208,16 @@ export class FellowshipSheet extends LitmActorSheet {
 		// Alt+Click: scratch (except weakness tags)
 		if (event.altKey) {
 			if (tagType === "weakness_tag") return;
-			return this.system.scratchTag(tagType, tagId, tagName);
+			const effect = findApplicableEffect(this.document, (e) => e.id === tagId);
+			if (effect) await scratchTag(this.document, effect);
+			return;
 		}
 
 		// Regular click: add to user's hero roll dialog
 		const hero = game.user.character;
 		if (!hero || hero.type !== "hero") return;
-		const heroSheet = hero.sheet;
-		if (!heroSheet) return;
 
-		const dialog = heroSheet.rollDialogInstance;
-
-		// Find the tag by id, then by name fallback
-		const allTags = heroSheet._buildAllRollTags();
-		let tagRef =
-			(tagId && allTags.find((t) => t.id === tagId)) ||
-			(tagName && allTags.find((t) => t.name === tagName));
-		if (!tagRef) {
-			tagRef = FellowshipSheet.#buildTagData.call(this, tagType, tagId, tagName);
-		}
-		if (!tagRef) return;
-
-		const tagKey = tagRef.uuid ?? tagRef.id;
-		const isWeaknessTag = tagRef.type === "weakness_tag";
-		const isScratched = tagRef.system?.isScratched ?? false;
-		const sel = dialog.getSelection(tagKey);
-		const selected = !!sel.state;
-
-		if (!selected && isScratched && !isWeaknessTag) return;
-
-		if (selected) {
-			dialog.setCharacterTagState(tagKey, "");
-		} else {
-			const nextState = isWeaknessTag ? "negative" : "positive";
-			dialog.setCharacterTagState(tagKey, nextState);
-		}
-
-		if (!dialog.rendered) {
-			heroSheet.renderRollDialog();
-		} else {
-			dialog.render();
-		}
-		heroSheet.render();
-	}
-
-	/**
-	 * Build a roll-dialog-compatible tag object directly from this actor's items.
-	 * Used as a fallback when the hero sheet's _buildAllRollTags() doesn't include the tag.
-	 * Falls back to name matching when id is empty (legacy data without persisted tag IDs).
-	 * @param {string} tagType
-	 * @param {string} tagId
-	 * @param {string} [tagName]
-	 * @returns {object|null}
-	 * @private
-	 */
-	static #buildTagData(tagType, tagId, tagName) {
-		if (tagType === "fellowship_tag") {
-			const theme = this.document.items.get(tagId);
-			if (!theme) return null;
-			return {
-				id: tagId,
-				name: theme.name,
-				displayName: theme.name,
-				themeId: theme.id,
-				themeName: theme.name,
-				type: "fellowship_tag",
-				isSingleUse: true,
-				fromFellowship: true,
-				state: "",
-				states: ",positive",
-			};
-		}
-
-		const tagArrayKey =
-			tagType === "weakness_tag" ? "weaknessTags" : "powerTags";
-		const match = (t) =>
-			(tagId && t.id === tagId) || (tagName && t.name === tagName);
-		for (const item of this.document.items) {
-			if (!["theme", "story_theme"].includes(item.type)) continue;
-			const tag = (item.system[tagArrayKey] ?? []).find(match);
-			if (!tag) continue;
-			// Use the stored id if present, otherwise generate a stable key from name
-			const id = tag.id || `${item.id}-${tag.name}`;
-			return {
-				id,
-				name: `${item.name} - ${tag.name}`,
-				displayName: tag.name,
-				themeId: item.id,
-				themeName: item.name,
-				type: tag.type ?? tagType,
-				isSingleUse: true,
-				fromFellowship: true,
-				state: "",
-				states:
-					tagType === "weakness_tag"
-						? ",negative,positive"
-						: ",positive,negative",
-			};
-		}
-		return null;
+		hero.sheet?.selectTagForRoll?.(tagType, tagId, tagName, { shiftKey: event.shiftKey });
 	}
 
 	/**
@@ -484,27 +336,36 @@ export class FellowshipSheet extends LitmActorSheet {
 		if (!doc) return;
 
 		if (result.type === "themebook") {
-			const validLevels = Object.keys(CONFIG.litmv2.theme_levels);
-			const level = validLevels.includes(doc.system.theme_level)
-				? doc.system.theme_level
-				: validLevels[0];
-			const img = levelIcon(level);
-			const [theme] = await this.document.createEmbeddedDocuments("Item", [
-				{
-					name: doc.name,
-					type: "theme",
-					img,
-					system: {
-						themebook: doc.name,
-						level,
-						isFellowship: true,
-					},
-				},
-			]);
-			theme.sheet.render(true);
+			await this.#createThemeFromThemebook(doc);
 		} else {
 			await this.document.createEmbeddedDocuments("Item", [doc.toObject()]);
 		}
+	}
+
+	/**
+	 * Create a fellowship theme item from a themebook document.
+	 * Shared by #onBrowseThemes and _onDropItem.
+	 * @param {Item} doc  The source themebook document
+	 */
+	async #createThemeFromThemebook(doc) {
+		const validLevels = getThemeLevels();
+		const level = validLevels.includes(doc.system.theme_level)
+			? doc.system.theme_level
+			: getDefaultThemeLevel();
+		const img = levelIcon(level);
+		const [theme] = await this.document.createEmbeddedDocuments("Item", [
+			{
+				name: doc.name,
+				type: "theme",
+				img,
+				system: {
+					themebook: doc.name,
+					level,
+					isFellowship: true,
+				},
+			},
+		]);
+		theme.sheet.render(true);
 	}
 
 	/* -------------------------------------------- */
@@ -513,68 +374,30 @@ export class FellowshipSheet extends LitmActorSheet {
 
 	/** @override */
 	async _onDropItem(event, item) {
-		if (!["theme", "story_theme", "themebook"].includes(item.type)) return;
-
-		// Handle sorting if the item is already on this actor
 		if (this.actor.uuid === item.parent?.uuid) {
 			return this._onSortItem(event, item);
 		}
 
-		// Themebook drop: create a new theme from the themebook
-		if (item.type === "themebook") {
-			if (!item.system.isFellowship) {
-				return ui.notifications.warn(
-					game.i18n.localize("LITM.Ui.warn_fellowship_not_fellowship"),
-				);
-			}
+		const handlers = {
+			themebook: async () => {
+				if (!item.system.isFellowship) {
+					return ui.notifications.warn(game.i18n.localize("LITM.Ui.warn_fellowship_not_fellowship"));
+				}
+				if (this.#hasReachedThemeLimit()) return;
+				return this.#createThemeFromThemebook(item);
+			},
+			theme: () => {
+				if (!item.system.isFellowship) {
+					return ui.notifications.warn(game.i18n.localize("LITM.Ui.warn_fellowship_not_fellowship"));
+				}
+				if (this.#hasReachedThemeLimit()) return;
+				return this.document.createEmbeddedDocuments("Item", [item.toObject()]);
+			},
+			story_theme: () => this.document.createEmbeddedDocuments("Item", [item.toObject()]),
+		};
 
-			if (this.#hasReachedThemeLimit()) return;
-
-			const validLevels = Object.keys(CONFIG.litmv2.theme_levels);
-			const level = validLevels.includes(item.system.theme_level)
-				? item.system.theme_level
-				: validLevels[0];
-			const img = levelIcon(level);
-			const [theme] = await this.document.createEmbeddedDocuments("Item", [
-				{
-					name: item.name,
-					type: "theme",
-					img,
-					system: {
-						themebook: item.name,
-						level,
-						isFellowship: true,
-					},
-				},
-			]);
-			theme.sheet.render(true);
-			return;
-		}
-
-		// Fellowship theme: only allow themes with isFellowship flag, limit 1
-		if (item.type === "theme") {
-			if (!item.system.isFellowship) {
-				return ui.notifications.warn(
-					game.i18n.localize("LITM.Ui.warn_fellowship_not_fellowship"),
-				);
-			}
-
-			if (this.#hasReachedThemeLimit()) return;
-
-			return this.document.createEmbeddedDocuments("Item", [item.toObject()]);
-		}
-
-		// Story themes: allow unlimited
-		if (item.type === "story_theme") {
-			return this.document.createEmbeddedDocuments("Item", [item.toObject()]);
-		}
+		const handler = handlers[item.type];
+		if (handler) return handler();
 	}
 
-	/** @override */
-	async _onDropActor(_event, actor) {
-		if (actor.type !== "story_theme") return;
-		const theme = actor.items.find((i) => i.type === "story_theme");
-		if (!theme) return;
-		return this.document.createEmbeddedDocuments("Item", [theme.toObject()]);
-	}
 }

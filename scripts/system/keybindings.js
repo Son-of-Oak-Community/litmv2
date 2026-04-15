@@ -1,5 +1,5 @@
 import { LitmActorSheet } from "../sheets/base-actor-sheet.js";
-import { localize as t } from "../utils.js";
+import { getStoryTagSidebar, localize as t } from "../utils.js";
 import { LitmSettings } from "./settings.js";
 
 export class KeyBindings {
@@ -72,8 +72,8 @@ export class KeyBindings {
 				},
 			],
 			onDown: () => {
-				if (ui.combat?.popout?.rendered) ui.combat.popout.close();
-				else ui.combat?.renderPopout();
+				if (getStoryTagSidebar()?.popout?.rendered) getStoryTagSidebar().popout.close();
+				else getStoryTagSidebar()?.renderPopout();
 			},
 			onUp: () => {},
 			restricted: false,

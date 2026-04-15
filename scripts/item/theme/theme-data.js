@@ -1,5 +1,4 @@
-import { POWER_TAG_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
-import { levelIcon, localize as t } from "../../utils.js";
+import { POWER_TAG_TYPES, THEME_TAG_TYPES, getThemeLevels, getDefaultThemeLevel } from "../../system/config.js";
 
 export class ThemeData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
@@ -14,9 +13,8 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 			}),
 			level: new fields.StringField({
 				trim: true,
-				initial: () => Object.keys(CONFIG.litmv2.theme_levels)[0],
-				validate: (level) =>
-					Object.keys(CONFIG.litmv2.theme_levels).includes(level),
+				initial: () => getDefaultThemeLevel(),
+				validate: (level) => getThemeLevels().includes(level),
 			}),
 			isScratched: new fields.BooleanField({ initial: false }),
 			isFellowship: new fields.BooleanField({
@@ -75,11 +73,8 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 	}
 
 	static migrateData(source) {
-		if (
-			"level" in source &&
-			!Object.keys(CONFIG.litmv2.theme_levels).includes(source.level)
-		) {
-			source.level = Object.keys(CONFIG.litmv2.theme_levels)[0];
+		if ("level" in source && !getThemeLevels().includes(source.level)) {
+			source.level = getDefaultThemeLevel();
 		}
 		// Strip legacy array fields — tags are now ActiveEffects.
 		// (These would be pruned by schema validation anyway, but explicit is clearer.)
@@ -119,19 +114,22 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 			.filter((e) => THEME_TAG_TYPES.has(e.type));
 	}
 
-	get levelIcon() {
-		return levelIcon(this.level);
+	nextAvailableQuestion(tagType, themebook) {
+		const questionKey = tagType === "power_tag" ? "powerTagQuestions" : "weaknessTagQuestions";
+		const questions = themebook?.system?.[questionKey] ?? [];
+		const usedQuestions = new Set(
+			[...this.parent.effects]
+				.filter((e) => e.type === tagType)
+				.map((e) => e.system?.question)
+				.filter((q) => q != null),
+		);
+		const startIdx = tagType === "power_tag" ? 1 : 0;
+		for (let i = startIdx; i < questions.length; i++) {
+			if (!`${questions[i] ?? ""}`.trim()) continue;
+			const idx = String(i);
+			if (!usedQuestions.has(idx)) return idx;
+		}
+		return null;
 	}
 
-	get levels() {
-		const levels = CONFIG.litmv2.theme_levels || {};
-		return Object.keys(levels).reduce((acc, level) => {
-			acc[level] = t(`LITM.Terms.${level}`);
-			return acc;
-		}, {});
-	}
-
-	get themebooks() {
-		return CONFIG.litmv2.theme_levels?.[this.level] || [];
-	}
 }

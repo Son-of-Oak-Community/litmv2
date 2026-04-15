@@ -1,5 +1,7 @@
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
-import { enrichHTML } from "../../utils.js";
+import { enrichHTML, removeAtIndex } from "../../utils.js";
+import { MIGHT_OPTIONS } from "../../system/config.js";
+import { ChallengeData } from "../../actor/challenge/challenge-data.js";
 
 export class AddonSheet extends LitmItemSheet {
 	/** @override */
@@ -45,14 +47,7 @@ export class AddonSheet extends LitmItemSheet {
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 
-		const enrichedDescription = await enrichHTML(
-			this.system.description,
-			this.document,
-		);
-		const enrichedSpecialFeatures = await enrichHTML(
-			this.system.specialFeatures,
-			this.document,
-		);
+		const enriched = await this._enrichFields("description", "specialFeatures");
 
 		const threats = await Promise.all(
 			this.system.threats.map(async (t, index) => ({
@@ -68,15 +63,9 @@ export class AddonSheet extends LitmItemSheet {
 		return {
 			...context,
 			system: this.system,
-			enriched: {
-				description: enrichedDescription,
-				specialFeatures: enrichedSpecialFeatures,
-			},
+			enriched,
 			threats,
-			mightOptions: {
-				adventure: "LITM.Terms.adventure",
-				greatness: "LITM.Terms.greatness",
-			},
+			mightOptions: MIGHT_OPTIONS,
 		};
 	}
 
@@ -91,29 +80,16 @@ export class AddonSheet extends LitmItemSheet {
 	}
 
 	static async #onRemoveCategory(_event, target) {
-		const index = Number(target.dataset.index);
-		const categories = this.system.categories.filter((_, i) => i !== index);
-		await this.document.update({ "system.categories": categories });
+		await removeAtIndex(this.document, "system.categories", Number(target.dataset.index));
 	}
 
 	static async #onAddLimit(_event, _target) {
-		const limits = [
-			...this.system.limits,
-			{
-				id: foundry.utils.randomID(),
-				label: game.i18n.localize("LITM.Ui.new_limit"),
-				outcome: "",
-				max: 3,
-				value: 0,
-			},
-		];
+		const limits = [...this.system.limits, ChallengeData.newLimit()];
 		await this.document.update({ "system.limits": limits });
 	}
 
 	static async #onRemoveLimit(_event, target) {
-		const index = Number(target.dataset.index);
-		const limits = this.system.limits.filter((_, i) => i !== index);
-		await this.document.update({ "system.limits": limits });
+		await removeAtIndex(this.document, "system.limits", Number(target.dataset.index));
 	}
 
 	static async #onAddMight(_event, _target) {
@@ -125,9 +101,7 @@ export class AddonSheet extends LitmItemSheet {
 	}
 
 	static async #onRemoveMight(_event, target) {
-		const index = Number(target.dataset.index);
-		const might = this.system.might.filter((_, i) => i !== index);
-		await this.document.update({ "system.might": might });
+		await removeAtIndex(this.document, "system.might", Number(target.dataset.index));
 	}
 
 	static async #onAddThreat(_event, _target) {
@@ -144,9 +118,7 @@ export class AddonSheet extends LitmItemSheet {
 	}
 
 	static async #onRemoveThreat(_event, target) {
-		const index = Number(target.dataset.index);
-		const threats = this.system.threats.filter((_, i) => i !== index);
-		await this.document.update({ "system.threats": threats });
+		await removeAtIndex(this.document, "system.threats", Number(target.dataset.index));
 	}
 
 	static async #onAddConsequence(_event, target) {

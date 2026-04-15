@@ -1,5 +1,6 @@
 import { localize as t } from "../../utils.js";
 import { LitmSettings } from "../settings.js";
+import { ACTOR_TYPES } from "../config.js";
 
 export function registerFellowshipHooks() {
 	_hideFromCreateDialog();
@@ -30,12 +31,12 @@ function _ensureFellowshipSingleton() {
 
 		let fellowshipId;
 
-		if (storedActor?.type === "fellowship") {
+		if (storedActor?.type === ACTOR_TYPES.fellowship) {
 			// Stored ID is valid — nothing to create
 			fellowshipId = storedId;
 		} else {
 			// Find existing fellowship actors (pick first match)
-			const existing = game.actors.find((a) => a.type === "fellowship");
+			const existing = game.actors.find((a) => a.type === ACTOR_TYPES.fellowship);
 
 			if (existing) {
 				fellowshipId = existing.id;
@@ -45,7 +46,7 @@ function _ensureFellowshipSingleton() {
 				const actor = await foundry.documents.Actor.create(
 					{
 						name: t("LITM.Terms.fellowship"),
-						type: "fellowship",
+						type: ACTOR_TYPES.fellowship,
 						ownership: {
 							default: foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
 						},
@@ -70,7 +71,7 @@ async function _linkAllHeroes(fellowshipId) {
 	if (!fellowshipId) return;
 
 	const updates = game.actors
-		.filter((a) => a.type === "hero" && a.system.fellowshipId !== fellowshipId)
+		.filter((a) => a.type === ACTOR_TYPES.hero && a.system.fellowshipId !== fellowshipId)
 		.map((a) => ({
 			_id: a.id,
 			"system.fellowshipId": fellowshipId,
@@ -86,7 +87,7 @@ async function _linkAllHeroes(fellowshipId) {
  */
 function _blockDuplicateFellowship() {
 	Hooks.on("preCreateActor", (actor, _data, options) => {
-		if (actor.type !== "fellowship") return;
+		if (actor.type !== ACTOR_TYPES.fellowship) return;
 		if (options?.litm?.skipSingletonCheck) return;
 
 		const existingId = LitmSettings.fellowshipId;
@@ -105,7 +106,7 @@ function _blockDuplicateFellowship() {
  */
 function _blockFellowshipDeletion() {
 	Hooks.on("preDeleteActor", (actor, options) => {
-		if (actor.type !== "fellowship") return;
+		if (actor.type !== ACTOR_TYPES.fellowship) return;
 		if (options?.litm?.forceDelete) return;
 
 		const singletonId = LitmSettings.fellowshipId;
@@ -139,7 +140,7 @@ function _hideFromCreateDialog() {
 		const original = ActorCls.createDialog;
 		ActorCls.createDialog = function (data, options, dialogOptions = {}) {
 			dialogOptions.types ??= ActorCls.TYPES.filter(
-				(type) => type !== "fellowship",
+				(type) => type !== ACTOR_TYPES.fellowship,
 			);
 			return original.call(this, data, options, dialogOptions);
 		};
@@ -165,7 +166,7 @@ function _rerenderHeroSheetsOnFellowshipChange() {
 		// Fellowship changed → re-render linked hero sheets
 		if (actorId === fellowshipId) {
 			for (const actor of game.actors) {
-				if (actor.type !== "hero") continue;
+				if (actor.type !== ACTOR_TYPES.hero) continue;
 				if (actor.system.fellowshipId !== fellowshipId) continue;
 				if (actor.sheet?.rendered) actor.sheet.render();
 			}
@@ -174,7 +175,7 @@ function _rerenderHeroSheetsOnFellowshipChange() {
 
 		// Hero changed → debounce re-render of fellowship sheet (party overview)
 		const actor = game.actors.get(actorId);
-		if (!actor || actor.type !== "hero") return;
+		if (!actor || actor.type !== ACTOR_TYPES.hero) return;
 		if (!game.user.isGM) return;
 
 		const fellowship = game.actors.get(fellowshipId);
@@ -203,7 +204,7 @@ function _rerenderHeroSheetsOnFellowshipChange() {
  */
 function _autoLinkNewHeroes() {
 	Hooks.on("createActor", async (actor) => {
-		if (actor.type !== "hero") return;
+		if (actor.type !== ACTOR_TYPES.hero) return;
 		if (!game.user.isGM) return;
 
 		const fellowshipId = LitmSettings.fellowshipId;

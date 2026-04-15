@@ -1,4 +1,5 @@
 import { EffectTagsMixin } from "../effect-tags-mixin.js";
+import { EFFECT_TYPES, ITEM_TYPES } from "../../system/config.js";
 
 export class ChallengeData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	static defineSchema() {
@@ -114,6 +115,17 @@ export class ChallengeData extends EffectTagsMixin(foundry.abstract.TypeDataMode
 			name: a.name,
 			ratingBonus: a.system.ratingBonus,
 		}));
+
+		// Derive limit display properties
+		const allLimits = this.derivedLimits ?? this.limits ?? [];
+		for (const limit of allLimits) {
+			limit.isImpossible = limit.max === 0;
+			const hasGroupedStatuses = this.parent.effects.some(
+				(e) => e.type === EFFECT_TYPES.status_tag && e.system?.limitId === limit.id,
+			);
+			const isFromAddon = !(this.limits ?? []).some((l) => l.id === limit.id);
+			limit.isAutoManaged = hasGroupedStatuses || isFromAddon;
+		}
 	}
 
 	/**
@@ -148,6 +160,46 @@ export class ChallengeData extends EffectTagsMixin(foundry.abstract.TypeDataMode
 		return merged;
 	}
 
+	/**
+	 * Merged list of vignette items and addon threats for display purposes.
+	 * Addon threats are shaped to match the vignette item interface.
+	 * @returns {object[]}
+	 */
+	get allDisplayThreats() {
+		const vignettes = this.parent.items
+			.filter((i) => i.type === ITEM_TYPES.vignette)
+			.map((v) => v);
+		const addonThreats = (this.addonThreats || []).map((t) => ({
+			_id: null,
+			name: t.name,
+			system: {
+				threat: t.threat,
+				consequences: t.consequences,
+				isConsequenceOnly: t.isConsequenceOnly,
+			},
+		}));
+		return [...vignettes, ...addonThreats];
+	}
+
+	/**
+	 * Create a new blank limit object for use in add-limit actions.
+	 * @returns {object}
+	 */
+	static newLimit() {
+		return {
+			id: foundry.utils.randomID(),
+			label: game.i18n.localize("LITM.Ui.new_limit"),
+			outcome: "",
+			max: 3,
+			value: 0,
+		};
+	}
+
+	/**
+	 * Challenge type definitions from system config.
+	 * Reads from CONFIG.litmv2 (acceptable for static configuration constants).
+	 * @returns {object}
+	 */
 	get challenges() {
 		return CONFIG.litmv2.challenge_types;
 	}

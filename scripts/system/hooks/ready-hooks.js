@@ -1,6 +1,7 @@
 import { WelcomeOverlay } from "../../apps/welcome-overlay.js";
+import { RollDialogHud } from "../../hud/roll-dialog-hud.js";
 import { error } from "../../logger.js";
-import { localize as t } from "../../utils.js";
+import { getStoryTagSidebar } from "../../utils.js";
 import { LitmSettings } from "../settings.js";
 import { registerTours } from "../tours.js";
 
@@ -14,13 +15,9 @@ export function registerReadyHooks() {
 
 function _setupRollDialogHud() {
 	Hooks.once("ready", async () => {
-		game.litmv2.rollDialogHud = {
-			update: () => _ensureHudContainer(),
-		};
+		const hud = new RollDialogHud();
+		game.litmv2.rollDialogHud = hud;
 
-		// Clean up stale roll dialog flags before rendering HUD.
-		// No dialog is open on a fresh page load, so clear own flags.
-		// GMs also clean up flags from disconnected users.
 		const unsetPromises = [];
 		for (const actor of game.actors) {
 			const flag = actor.getFlag("litmv2", "rollDialogOwner");
@@ -32,94 +29,17 @@ function _setupRollDialogHud() {
 			}
 		}
 		await Promise.all(unsetPromises);
-
-		game.litmv2.rollDialogHud.update();
+		hud.render();
 	});
 
-	// Re-inject HUD after Players app re-renders (user connect/disconnect)
 	Hooks.on("renderPlayers", () => {
-		game.litmv2.rollDialogHud?.update?.();
+		game.litmv2.rollDialogHud?.render?.();
 	});
 
-	// Re-render HUD whenever an actor's flags change
-	Hooks.on("updateActor", (_actor) => {
-		if (_actor.type !== "hero") return;
-		game.litmv2.rollDialogHud?.update?.();
+	Hooks.on("updateActor", (actor) => {
+		if (actor.type !== "hero") return;
+		game.litmv2.rollDialogHud?.render?.();
 	});
-}
-
-function _ensureHudContainer() {
-	const parent = document.getElementById("players");
-	if (!parent) return;
-
-	let container = parent.querySelector("#litm-roll-dialog-hud");
-	if (!container) {
-		container = document.createElement("div");
-		container.id = "litm-roll-dialog-hud";
-		container.classList.add("litm-roll-dialog-hud", "is-hidden");
-		container.addEventListener("click", (event) => {
-			const target = event.target.closest("[data-actor-id]");
-			if (!target) return;
-			const actorId = target.dataset.actorId;
-			const actor = game.actors.get(actorId);
-			if (!actor?.sheet) return;
-			actor.sheet.renderRollDialog();
-		});
-		parent.prepend(container);
-	}
-
-	_renderRollDialogHud(container);
-}
-
-function _renderRollDialogHud(container) {
-	const entries =
-		game.actors
-			?.filter((a) => {
-				const flag = a.getFlag("litmv2", "rollDialogOwner");
-				if (!flag || flag.ownerId === game.user.id) return false;
-				// Hide entries for disconnected users
-				return game.users.get(flag.ownerId)?.active;
-			})
-			.map((a) => ({
-				actorId: a.id,
-				ownerId: a.getFlag("litmv2", "rollDialogOwner").ownerId,
-			})) || [];
-
-	if (!entries.length) {
-		container.innerHTML = "";
-		container.classList.add("is-hidden");
-		return;
-	}
-
-	const escapeHTML = foundry.utils.escapeHTML;
-	const rows = entries
-		.map(({ actorId, ownerId }) => {
-			const actor = game.actors.get(actorId);
-			const owner = game.users.get(ownerId);
-			const actorName = escapeHTML(actor?.name || t("LITM.Ui.unknown_hero"));
-			const ownerName = escapeHTML(owner?.name || t("LITM.Ui.unknown_user"));
-			const img = escapeHTML(actor?.img || "icons/svg/mystery-man.svg");
-			return `
-				<button type="button" class="litm-roll-dialog-hud__item" data-actor-id="${actorId}">
-					<img class="litm-roll-dialog-hud__img" src="${img}" alt="" />
-					<span class="litm-roll-dialog-hud__text">
-						<span class="litm-roll-dialog-hud__title">${actorName}</span>
-						<span class="litm-roll-dialog-hud__meta">${game.i18n.format(
-							"LITM.Ui.opened_by",
-							{ name: ownerName },
-						)}</span>
-					</span>
-					<span class="litm-roll-dialog-hud__action">
-						<i class="fa-solid fa-dice" aria-hidden="true"></i>
-						${t("LITM.Ui.click_to_join_roll")}
-					</span>
-				</button>
-			`;
-		})
-		.join("");
-
-	container.innerHTML = rows;
-	container.classList.remove("is-hidden");
 }
 
 function _listenToTagDragTransfer() {
@@ -160,7 +80,7 @@ function _listenToTagDragTransfer() {
 
 function _popoutTagsSidebar() {
 	Hooks.once("ready", () => {
-		if (LitmSettings.popoutTagsSidebar) ui.combat.renderPopout();
+		if (LitmSettings.popoutTagsSidebar) getStoryTagSidebar()?.renderPopout();
 	});
 }
 

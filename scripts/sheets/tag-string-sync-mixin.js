@@ -1,3 +1,5 @@
+import { ACTOR_TAG_TYPES } from "../system/config.js";
+
 /**
  * Mixin that adds bidirectional tag-string ↔ ActiveEffect synchronisation.
  * Shared by ChallengeSheet and JourneySheet, both of which store a `system.tags`
@@ -22,17 +24,11 @@ export function TagStringSyncMixin(Base) {
 		_effectsToTagString() {
 			const effects = this.document.effects.filter(
 				(e) =>
-					(e.type === "story_tag" || e.type === "status_tag") &&
+					ACTOR_TAG_TYPES.has(e.type) &&
 					!e.getFlag("litmv2", "addonId"),
 			);
 			return effects
-				.map((e) => {
-					if (e.type === "status_tag") {
-						const tier = e.system?.currentTier ?? 0;
-						return `[${e.name}-${tier}]`;
-					}
-					return `[${e.name}]`;
-				})
+				.map((e) => e.system.toTagString(e.name))
 				.join(", ");
 		}
 
@@ -49,7 +45,7 @@ export function TagStringSyncMixin(Base) {
 			const toDelete = this.document.effects
 				.filter(
 					(e) =>
-						(e.type === "story_tag" || e.type === "status_tag") &&
+						ACTOR_TAG_TYPES.has(e.type) &&
 						!e.getFlag("litmv2", "addonId"),
 				)
 				.map((e) => e.id);
@@ -100,7 +96,7 @@ export function TagStringSyncMixin(Base) {
 			if (this.system.tags?.length && !this._syncing) {
 				const hasEffects = this.document.effects.some(
 					(e) =>
-						(e.type === "story_tag" || e.type === "status_tag") &&
+						ACTOR_TAG_TYPES.has(e.type) &&
 						!e.getFlag("litmv2", "addonId"),
 				);
 				if (!hasEffects) {
@@ -139,9 +135,7 @@ export function TagStringSyncMixin(Base) {
 						return;
 					}
 					if (effect.getFlag("litmv2", "addonId")) return;
-					const tag = effect.type === "status_tag"
-						? `[${effect.name}-${effect.system?.currentTier ?? 1}]`
-						: `[${effect.name}]`;
+					const tag = effect.system.toTagString(effect.name);
 					const current = this.system.tags || "";
 					const separator = current.length ? ", " : "";
 					this.document.update({

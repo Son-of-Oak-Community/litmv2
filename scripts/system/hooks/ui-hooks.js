@@ -1,5 +1,5 @@
 import { SceneTagDialog } from "../../apps/scene-tag-dialog.js";
-import { localize as t } from "../../utils.js";
+import { getStoryTagSidebar, localize as t } from "../../utils.js";
 
 export function registerUiHooks() {
 	_iconOnlyHeaderButtons();
@@ -116,8 +116,8 @@ function _listenToContentLinks() {
  */
 function _refreshOnPlayerChange() {
 	const refresh = () => {
-		ui.combat?.invalidateCache();
-		if (ui.combat?.rendered) ui.combat.render();
+		getStoryTagSidebar()?.invalidateCache();
+		if (getStoryTagSidebar()?.rendered) getStoryTagSidebar().render();
 
 		const fellowshipId = game.litmv2?.fellowship?.id;
 		if (!fellowshipId) return;

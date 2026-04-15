@@ -1,19 +1,5 @@
 import { enrichHTML, localize as t } from "../../utils.js";
-
-/**
- * Creates a tag span matching the hero play sheet pattern.
- * @param {string} name - Tag name
- * @param {string} type - Tag CSS class (litm-power_tag, litm-weakness_tag, etc.)
- * @returns {HTMLElement}
- */
-function tagSpan(name, type) {
-	const span = document.createElement("span");
-	span.classList.add(type);
-	span.dataset.text = name;
-	span.draggable = true;
-	span.textContent = name;
-	return span;
-}
+import { tagSpan, makeActorCard } from "./renderer-utils.js";
 
 /**
  * Renders a Hero actor as a read-only embed card.
@@ -23,31 +9,8 @@ function tagSpan(name, type) {
  */
 export async function renderHero(actor) {
 	const sys = actor.system;
-	const hasCustomImage = actor.img !== "icons/svg/mystery-man.svg";
 
-	const container = document.createElement("div");
-	container.classList.add("litm", "litm-render", "litm-render--hero");
-	container.dataset.uuid = actor.uuid;
-	container.addEventListener("click", () => actor.sheet.render(true));
-
-	// ── Header: portrait + name + promise ──
-	const header = document.createElement("div");
-	header.classList.add("litm-render--hero__header");
-
-	if (hasCustomImage) {
-		const img = document.createElement("img");
-		img.classList.add("litm-render--hero__portrait");
-		img.src = actor.img;
-		header.appendChild(img);
-	}
-
-	const headerText = document.createElement("div");
-	headerText.classList.add("litm-render--hero__header-text");
-
-	const title = document.createElement("h3");
-	title.classList.add("litm-render__title");
-	title.textContent = actor.name;
-	headerText.appendChild(title);
+	const { container, headerText } = makeActorCard(actor, "litm-render--hero");
 
 	// Promise track
 	if (sys.promise > 0) {
@@ -73,9 +36,6 @@ export async function renderHero(actor) {
 
 		headerText.appendChild(promise);
 	}
-
-	header.appendChild(headerText);
-	container.appendChild(header);
 
 	// ── Description ──
 	if (sys.description) {
@@ -131,7 +91,7 @@ export async function renderHero(actor) {
 
 	// ── Story Tags & Statuses ──
 	const storyTags = sys.storyTags ?? [];
-	const statuses = sys.statuses ?? [];
+	const statuses = sys.statusEffects ?? [];
 	if (storyTags.length || statuses.length) {
 		const section = document.createElement("div");
 		section.classList.add("litm-render--hero__story-tags");

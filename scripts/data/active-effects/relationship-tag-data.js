@@ -25,4 +25,8 @@ export class RelationshipTagData extends ScratchableMixin(foundry.data.ActiveEff
 	get defaultPolarity() {
 		return 1;
 	}
+
+	toTagString(name) {
+		return `[${name}]`;
+	}
 }

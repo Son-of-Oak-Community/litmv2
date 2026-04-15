@@ -151,21 +151,29 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		return actor?.items.get(this.themeId) || null;
 	}
 
-	static #canSelect(theme) {
-		return (theme?.system?.improve?.value || 0) >= 3;
+	/**
+	 * Guard: resolve theme and check if advancement is available.
+	 * Returns the theme if advancement can proceed, null otherwise.
+	 * @returns {Item|null}
+	 */
+	static #getAdvancableTheme() {
+		const theme = ThemeAdvancementApp.#getTheme.call(this);
+		if (!theme || (theme.system?.improve?.value || 0) < 3) return null;
+		return theme;
 	}
 
+	/**
+	 * Spend improvement track: reset to 0 and fire the advancement hook.
+	 */
 	static async #spendImprove(theme, updateData = {}) {
-		if (ThemeAdvancementApp.#canSelect(theme)) {
-			updateData["system.improve.value"] = 0;
-		}
+		updateData["system.improve.value"] = 0;
 		await theme.update(updateData);
 		Hooks.callAll("litm.themeAdvanced", theme.actor, theme, updateData);
 	}
 
 	static async #onAddSpecialImprovement(_event, target) {
-		const theme = ThemeAdvancementApp.#getTheme.call(this);
-		if (!theme || !ThemeAdvancementApp.#canSelect(theme)) return;
+		const theme = ThemeAdvancementApp.#getAdvancableTheme.call(this);
+		if (!theme) return;
 
 		const container = target.closest("fieldset");
 		const select = container?.querySelector(
@@ -237,8 +245,8 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 	}
 
 	static async #onAddPowerTag(_event, target) {
-		const theme = ThemeAdvancementApp.#getTheme.call(this);
-		if (!theme || !ThemeAdvancementApp.#canSelect(theme)) return;
+		const theme = ThemeAdvancementApp.#getAdvancableTheme.call(this);
+		if (!theme) return;
 		const container = target.closest("fieldset");
 		const select = container?.querySelector(
 			"[data-role='power-tag-question-select']",
@@ -258,8 +266,8 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 	}
 
 	static async #onAddWeaknessTag(_event, target) {
-		const theme = ThemeAdvancementApp.#getTheme.call(this);
-		if (!theme || !ThemeAdvancementApp.#canSelect(theme)) return;
+		const theme = ThemeAdvancementApp.#getAdvancableTheme.call(this);
+		if (!theme) return;
 		const container = target.closest("fieldset");
 		const select = container?.querySelector(
 			"[data-role='weakness-tag-question-select']",
@@ -277,8 +285,8 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 	}
 
 	static async #onActivatePowerTag(_event, target) {
-		const theme = ThemeAdvancementApp.#getTheme.call(this);
-		if (!theme || !ThemeAdvancementApp.#canSelect(theme)) return;
+		const theme = ThemeAdvancementApp.#getAdvancableTheme.call(this);
+		if (!theme) return;
 		const container = target.closest("fieldset");
 		const select = container?.querySelector(
 			"[data-role='inactive-power-tag-select']",
@@ -294,8 +302,8 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 	}
 
 	static async #onActivateWeaknessTag(_event, target) {
-		const theme = ThemeAdvancementApp.#getTheme.call(this);
-		if (!theme || !ThemeAdvancementApp.#canSelect(theme)) return;
+		const theme = ThemeAdvancementApp.#getAdvancableTheme.call(this);
+		if (!theme) return;
 		const container = target.closest("fieldset");
 		const select = container?.querySelector(
 			"[data-role='inactive-weakness-tag-select']",
@@ -311,8 +319,8 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 	}
 
 	static async #onActivateSpecialImprovement(_event, target) {
-		const theme = ThemeAdvancementApp.#getTheme.call(this);
-		if (!theme || !ThemeAdvancementApp.#canSelect(theme)) return;
+		const theme = ThemeAdvancementApp.#getAdvancableTheme.call(this);
+		if (!theme) return;
 		const container = target.closest("fieldset");
 		const select = container?.querySelector(
 			"[data-role='inactive-special-improvement-select']",

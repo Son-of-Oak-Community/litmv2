@@ -1,4 +1,5 @@
 import { error, info, warn } from "../logger.js";
+import { getStoryTagSidebar } from "../utils.js";
 import { createSampleHero } from "./sample-hero.js";
 import { LitmSettings } from "./settings.js";
 
@@ -153,7 +154,7 @@ export class LitmTour extends Tour {
 	 * so tour selectors have something to point at.
 	 */
 	async #ensureSampleTags() {
-		const sidebar = ui.combat;
+		const sidebar = getStoryTagSidebar();
 		if (!sidebar || typeof sidebar.addTag !== "function") return;
 
 		await sidebar.activate();

@@ -125,7 +125,7 @@
 					{{/each}}
 				</div>
 				{{else}}
-				<label class="litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
+				<label class="litm--toggle-label litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
 					<input class="litm--single-use" type="checkbox" name="effects.{{tag.id}}.system.isSingleUse" {{#if
 						tag.system.isSingleUse}}checked{{/if}} />
 					<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>

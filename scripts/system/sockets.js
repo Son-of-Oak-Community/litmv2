@@ -18,20 +18,16 @@ export class Sockets {
 		});
 	}
 
-	static #handlers = new Map();
 	static #bound = false;
 
 	static on(event, cb) {
-		if (this.#handlers.has(event)) {
-			warn(`Sockets.on: handler for "${event}" is being overwritten.`);
-		}
-		this.#handlers.set(event, cb);
+		Hooks.on(`litm.socket.${event}`, cb);
 		if (this.#bound) return;
 		this.#bound = true;
 		game.socket.on("system.litmv2", (data) => {
 			const { event: e, senderId, ...d } = data;
 			if (senderId === game.userId) return;
-			this.#handlers.get(e)?.(d);
+			Hooks.callAll(`litm.socket.${e}`, d);
 		});
 	}
 
