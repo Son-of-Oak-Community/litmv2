@@ -1,6 +1,6 @@
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { THEME_TAG_TYPES } from "../../system/config.js";
-import { enrichHTML, levelIcon, queryItemsFromPacks } from "../../utils.js";
+import { effectToPlain, enrichHTML, levelIcon, queryItemsFromPacks } from "../../utils.js";
 
 /**
  * Fellowship sheet for Legend in the Mist
@@ -53,6 +53,20 @@ export class FellowshipSheet extends LitmActorSheet {
 	/** @override */
 	static _getPlayModeTemplate() {
 		return "systems/litmv2/templates/actor/fellowship-play.html";
+	}
+
+	/**
+	 * Build a flat list of all roll-dialog-compatible tags for this fellowship.
+	 * Used by the GM viewer in LitmRollDialog to populate the fellowship tab.
+	 * @returns {object[]}
+	 */
+	_buildAllRollTags() {
+		const sys = this.system;
+		return [
+			...sys.allTags,
+			...sys.storyTags,
+			...sys.statusEffects,
+		].map(effectToPlain);
 	}
 
 	/* -------------------------------------------- */
@@ -284,19 +298,19 @@ export class FellowshipSheet extends LitmActorSheet {
 		}
 		if (!tagRef) return;
 
-		const resolvedId = tagRef.id;
+		const tagKey = tagRef.uuid ?? tagRef.id;
 		const isWeaknessTag = tagRef.type === "weakness_tag";
 		const isScratched = tagRef.system?.isScratched ?? false;
-		const sel = dialog.getSelection(resolvedId);
+		const sel = dialog.getSelection(tagKey);
 		const selected = !!sel.state;
 
 		if (!selected && isScratched && !isWeaknessTag) return;
 
 		if (selected) {
-			dialog.setCharacterTagState(resolvedId, "");
+			dialog.setCharacterTagState(tagKey, "");
 		} else {
 			const nextState = isWeaknessTag ? "negative" : "positive";
-			dialog.setCharacterTagState(resolvedId, nextState);
+			dialog.setCharacterTagState(tagKey, nextState);
 		}
 
 		if (!dialog.rendered) {

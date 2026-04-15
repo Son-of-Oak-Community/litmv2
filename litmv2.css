@@ -2097,6 +2097,7 @@ body,
 
 /* Tags column fills remaining space and scrolls */
 .litm--roll-dialog-tags-fieldset {
+	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
 }
@@ -2142,6 +2143,10 @@ body,
 	flex-flow: row wrap;
 	gap: 0.35rem 0.6rem;
 	align-items: center;
+}
+
+.litm--roll-dialog-tags-summary li {
+	margin-bottom:0px;
 }
 
 .litm--roll-dialog-tag:hover {
@@ -2228,6 +2233,7 @@ body,
 	margin-bottom: 0.25rem;
 	flex-shrink: 0;
 	overflow-x: auto;
+	scrollbar-gutter: stable;
 }
 
 .litm--roll-dialog-tabs [data-tab] {

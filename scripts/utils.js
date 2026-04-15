@@ -98,6 +98,20 @@ export function toQuestionOptions(questions = [], skipFirst = 0) {
 	return options;
 }
 
+export function effectToPlain(e) {
+	return {
+		_id: e._id,
+		id: e.id ?? e._id,
+		uuid: e.uuid,
+		name: e.name,
+		type: e.type,
+		system: e.system,
+		active: e.active,
+		themeId: e.parent?.id,
+		themeName: e.parent?.name,
+	};
+}
+
 export function powerTagEffect({
 	name,
 	isActive = false,

@@ -17,19 +17,19 @@ export function registerItemHooks() {
  * create proper AEs from the stashed flag data.
  */
 function _migrateLegacyItemOnCreate() {
-	Hooks.on("createItem", (item) => {
-		LitmItem.createLegacyEffects(item);
-		LitmItem.ensureTitleTag(item);
+	Hooks.on("createItem", async (item) => {
+		await LitmItem.createLegacyEffects(item);
+		await LitmItem.ensureTitleTag(item);
 	});
 	// Actor import — embedded items don't fire createItem
-	Hooks.on("createActor", (actor) => {
+	Hooks.on("createActor", async (actor) => {
 		for (const item of actor.items) {
 			if (item.flags?.litmv2?.legacyTags || item.flags?.litmv2?.legacyContents) {
-				LitmItem.createLegacyEffects(item);
+				await LitmItem.createLegacyEffects(item);
 			}
-			LitmItem.ensureTitleTag(item);
+			await LitmItem.ensureTitleTag(item);
 		}
-		createLegacyRelationshipEffects(actor);
+		await createLegacyRelationshipEffects(actor);
 	});
 }
 

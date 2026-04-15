@@ -2,7 +2,7 @@ import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { THEME_TAG_TYPES } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
-import { enrichHTML, relationshipTagEffect } from "../../utils.js";
+import { effectToPlain, enrichHTML, relationshipTagEffect } from "../../utils.js";
 
 /**
  * Extract and remove `newRelationship.<actorId>` keys from submit data,
@@ -354,17 +354,6 @@ export class HeroSheet extends LitmActorSheet {
 
 	_buildAllRollTags() {
 		const sys = this.system;
-		const toPlain = (e) => ({
-			_id: e._id,
-			id: e.id ?? e._id,
-			uuid: e.uuid,
-			name: e.name,
-			type: e.type,
-			system: e.system,
-			active: e.active,
-			themeId: e.parent?.id,
-			themeName: e.parent?.name,
-		});
 		const tags = [
 			...sys.themes.flatMap((g) => g.tags),
 			...sys.backpack,
@@ -377,7 +366,7 @@ export class HeroSheet extends LitmActorSheet {
 				...sys.relationships.filter((e) => e.name),
 			);
 		}
-		return tags.map(toPlain);
+		return tags.map(effectToPlain);
 	}
 
 	/**
@@ -420,7 +409,8 @@ export class HeroSheet extends LitmActorSheet {
 		if (!tagId) return;
 
 		const tagFromSystem = this._buildAllRollTags().find((e) => e.id === tagId);
-		const sel = this.rollDialogInstance.getSelection(tagId);
+		const tagKey = tagFromSystem?.uuid ?? tagId;
+		const sel = this.rollDialogInstance.getSelection(tagKey);
 		const isWeaknessTag = (tagFromSystem?.type ?? actionTarget.dataset.tagType) === "weakness_tag";
 		const isScratched = tagFromSystem?.system?.isScratched ?? false;
 		const selected = !!sel.state;
@@ -436,11 +426,11 @@ export class HeroSheet extends LitmActorSheet {
 
 		// Add or remove the tag from the roll
 		if (selected) {
-			this.rollDialogInstance.setCharacterTagState(tagId, "");
+			this.rollDialogInstance.setCharacterTagState(tagKey, "");
 		} else {
 			const states = (tagFromSystem?.system?.allowedStates ?? ",positive").split(",");
 			const nextState = event.shiftKey ? states[states.length - 1] : states[1];
-			this.rollDialogInstance.setCharacterTagState(tagId, nextState);
+			this.rollDialogInstance.setCharacterTagState(tagKey, nextState);
 		}
 
 		// Open the roll dialog if not already open, otherwise re-render it
@@ -797,11 +787,12 @@ export class HeroSheet extends LitmActorSheet {
 		const activeOwner = activeOwnerId ? game.users.get(activeOwnerId) : null;
 		const hasActorPermission =
 			game.user.isGM || this.document.testUserPermission(game.user, "OWNER");
-		// GM should only be a viewer for actors that have a player owner
+		// GM should only be a viewer when a player is actively using the dialog
 		const hasPlayerOwner = game.users.some(
 			(u) => !u.isGM && this.document.testUserPermission(u, "OWNER"),
 		);
-		const gmAsViewer = game.user.isGM && hasPlayerOwner;
+		const gmAsViewer = game.user.isGM && hasPlayerOwner
+			&& !!activeOwnerId && !activeOwner?.isGM && !!activeOwner?.active;
 		const canClaimOwnership =
 			!gmAsViewer &&
 			(activeOwnerId === game.user.id ||

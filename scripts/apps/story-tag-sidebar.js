@@ -1,5 +1,6 @@
 import { StatusTagData } from "../data/active-effects/index.js";
-import { error } from "../logger.js";
+import { error, info } from "../logger.js";
+import { ContentSources } from "../system/content-sources.js";
 import { buildTrackCompleteContent } from "../system/chat.js";
 import { LitmSettings } from "../system/settings.js";
 import { Sockets } from "../system/sockets.js";
@@ -28,6 +29,9 @@ export class StoryTagSidebar
 	) {
 	#dragDrop = null;
 	#cachedActors = null;
+
+	/** @type {ActiveEffect[]|null} Cached pack documents */
+	#cachedStoryTags = null;
 
 	/** @type {Token[]} Currently highlighted tokens from sidebar hover */
 	_highlighted = [];
@@ -118,7 +122,6 @@ export class StoryTagSidebar
 	 *
 	 * @returns {Object} The story tags configuration object
 	 * @returns {string[]} config.actors - Array of valid actor UUIDs
-	 * @returns {string[]} config.tags - Array of story tags
 	 * @returns {Object[]} config.limits - Array of tag limits
 	 * @returns {string[]} config.hiddenActors - Array of hidden actor UUIDs
 	 *
@@ -132,7 +135,7 @@ export class StoryTagSidebar
 	get config() {
 		const config = LitmSettings.storyTags;
 		if (!config || foundry.utils.isEmpty(config)) {
-			return { actors: [], tags: [], limits: [] };
+			return { actors: [], limits: [] };
 		}
 
 		const toValidUuid = (id) => {
@@ -191,6 +194,40 @@ export class StoryTagSidebar
 
 	invalidateCache() {
 		this.#cachedActors = null;
+		this.#cachedStoryTags = null;
+	}
+
+	/**
+	 * Load story tag AEs from the compendium pack, with caching.
+	 * @returns {Promise<ActiveEffect[]>}
+	 */
+	async #loadStoryTags() {
+		if (this.#cachedStoryTags) return this.#cachedStoryTags;
+		try {
+			this.#cachedStoryTags = await ContentSources.getStoryTags();
+		} catch {
+			this.#cachedStoryTags = [];
+		}
+		return this.#cachedStoryTags;
+	}
+
+	/**
+	 * Migrate legacy JSON tags from the storyTags setting to the compendium pack.
+	 * Idempotent — only runs if the setting still contains a tags array.
+	 */
+	async #migrateLegacyTags() {
+		if (!game.ready || !game.user.isGM) return;
+		const config = LitmSettings.storyTags;
+		const legacyTags = config?.tags;
+		if (!legacyTags?.length) return;
+
+		const effectsData = legacyTags.map((t) => ContentSources.legacyTagToEffectData(t));
+		await ContentSources.createStoryTags(effectsData);
+
+		// Remove tags from settings, keep actors/limits/hiddenActors
+		const { tags: _, ...rest } = config;
+		await LitmSettings.setStoryTags(rest);
+		info("Migrated legacy story tags to compendium pack");
 	}
 
 	/**
@@ -270,6 +307,7 @@ export class StoryTagSidebar
 						const isStatus = e.type === "status_tag";
 						return {
 							id: e._id,
+							uuid: e.uuid,
 							name: e.name,
 							type: isStatus ? "status" : "tag",
 							system: e.system,
@@ -303,15 +341,28 @@ export class StoryTagSidebar
 	}
 
 	get tags() {
-		return this.config.tags
-			.map((tag) => ({
-				...tag,
-				isScratched: tag.isScratched ?? false,
-				isSingleUse: tag.isSingleUse ?? false,
-				hidden: tag.hidden ?? false,
-				limitId: tag.limitId ?? null,
-			}))
-			.filter((tag) => game.user.isGM || !tag.hidden);
+		const effects = this.#cachedStoryTags ?? [];
+		return effects
+			.filter((e) => game.user.isGM || !e.system.isHidden)
+			.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+			.map((e) => {
+				const isStatus = e.type === "status_tag";
+				return {
+					id: e._id,
+					uuid: e.uuid,
+					name: e.name,
+					type: isStatus ? "status" : "tag",
+					system: e.system,
+					isScratched: e.system?.isScratched ?? false,
+					isSingleUse: e.system?.isSingleUse ?? false,
+					hidden: e.system?.isHidden ?? false,
+					limitId: e.system?.limitId ?? null,
+					value: isStatus ? (e.system?.currentTier ?? 0) : 1,
+					values: isStatus
+						? (e.system?.tiers ?? new Array(6).fill(false))
+						: new Array(6).fill(false),
+				};
+			});
 	}
 
 	get storyLimits() {
@@ -330,11 +381,6 @@ export class StoryTagSidebar
 		return this.#broadcastRender();
 	}
 
-	async setTags(tags) {
-		await LitmSettings.setStoryTags({ ...this.config, tags });
-		return this.#broadcastRender();
-	}
-
 	async setLimits(limits) {
 		await LitmSettings.setStoryTags({ ...this.config, limits });
 		return this.#broadcastRender();
@@ -342,26 +388,51 @@ export class StoryTagSidebar
 
 	async addTag(target, type = "tag") {
 		const isStatus = type === "status";
+		const effectData = isStatus
+			? {
+				name: t("LITM.Ui.name_status"),
+				type: "status_tag",
+				img: "systems/litmv2/assets/media/icons/consequences.svg",
+				disabled: false,
+				system: {
+					isHidden: game.user.isGM,
+					tiers: [true, false, false, false, false, false],
+					limitId: null,
+				},
+			}
+			: {
+				name: t("LITM.Ui.name_tag"),
+				type: "story_tag",
+				img: "systems/litmv2/assets/media/icons/consequences.svg",
+				disabled: false,
+				system: {
+					isScratched: false,
+					isSingleUse: false,
+					isHidden: game.user.isGM,
+					limitId: null,
+				},
+			};
+
+		if (target === "story") {
+			if (game.user.isGM) {
+				const [created] = await ContentSources.createStoryTags([effectData]);
+				this._editOnRender = created._id;
+				return this.#broadcastRender();
+			}
+			return this.#broadcastUpdate("createTags", [effectData]);
+		}
+
+		// Actor tags still use the legacy shape for #addTagToActor
 		const tag = {
-			name: t(isStatus ? "LITM.Ui.name_status" : "LITM.Ui.name_tag"),
-			values: isStatus ? [true, false, false, false, false, false] : Array(6)
-				.fill()
-				.map(() => null),
-			type,
+			name: effectData.name,
+			type: isStatus ? "status" : "tag",
+			values: isStatus ? [true, false, false, false, false, false] : Array(6).fill().map(() => null),
 			isScratched: false,
 			isSingleUse: false,
 			hidden: game.user.isGM,
 			id: foundry.utils.randomID(),
 		};
-
-		// Auto-focus the new tag after render
 		this._editOnRender = tag.id;
-
-		if (target === "story") {
-			if (game.user.isGM) return this.setTags([...this.tags, tag]);
-			return this.#broadcastUpdate("tags", [...this.tags, tag]);
-		}
-
 		return this.#addTagToActor({ id: target, tag });
 	}
 
@@ -370,6 +441,7 @@ export class StoryTagSidebar
 	/* -------------------------------------------- */
 
 	async _prepareContext(_options) {
+		await this.#loadStoryTags();
 		const context = await super._prepareContext(_options);
 		context.isGM = game.user.isGM;
 		const fellowshipUuid = game.litmv2?.fellowship?.uuid;
@@ -497,6 +569,7 @@ export class StoryTagSidebar
 
 	async _onFirstRender(context, options) {
 		await super._onFirstRender(context, options);
+		await this.#migrateLegacyTags();
 
 		// One-time contextmenu listener on the persistent outer element
 		this.element.addEventListener("contextmenu", this._onContext.bind(this));
@@ -846,27 +919,23 @@ export class StoryTagSidebar
 				const isExternal = !data.sourceId;
 
 				if (source === "story") {
-					// Same container — update limitId on existing story tag
-					const existingTag = data.sourceId &&
-						this.config.tags.find((t) => t.id === data.sourceId);
-					if (existingTag) {
-						const tags = this.config.tags.map((t) =>
-							t.id === data.sourceId ? { ...t, limitId } : t
-						);
-						if (game.user.isGM) await this.setTags(tags);
-						else this.#broadcastUpdate("tags", tags);
+					// Same container — update limitId on existing pack AE
+					if (data.sourceId) {
+						const update = [{ _id: data.sourceId, "system.limitId": limitId }];
+						if (game.user.isGM) await ContentSources.updateStoryTags(update);
+						else this.#broadcastUpdate("updateTags", update);
+						this.#broadcastRender();
 						return;
 					}
-					// Cross-container or external — add new story tag with limitId
-					const newTag = {
+					// External — create new pack AE with limitId
+					const effectData = ContentSources.legacyTagToEffectData({
 						...data,
-						id: data.id ?? foundry.utils.randomID(),
 						limitId,
-					};
-					const tags = [...this.config.tags, newTag];
-					if (game.user.isGM) await this.setTags(tags);
-					else this.#broadcastUpdate("tags", tags);
+					});
+					if (game.user.isGM) await ContentSources.createStoryTags([effectData]);
+					else this.#broadcastUpdate("createTags", [effectData]);
 					if (data.sourceContainer) await this.#removeFromSource(data);
+					this.#broadcastRender();
 					return;
 				}
 
@@ -920,13 +989,12 @@ export class StoryTagSidebar
 						}
 					}
 					if (data.sourceContainer === "story") {
-						const tag = this.config.tags.find((t) => t.id === data.sourceId);
-						if (tag?.limitId && !dropTarget?.closest(".litm--limit-group")) {
-							const tags = this.config.tags.map((t) =>
-								t.id === data.sourceId ? { ...t, limitId: null } : t
-							);
-							if (game.user.isGM) await this.setTags(tags);
-							else this.#broadcastUpdate("tags", tags);
+						const effect = this.#cachedStoryTags?.find((e) => e._id === data.sourceId);
+						if (effect?.system?.limitId && !dropTarget?.closest(".litm--limit-group")) {
+							const update = [{ _id: data.sourceId, "system.limitId": null }];
+							if (game.user.isGM) await ContentSources.updateStoryTags(update);
+							else this.#broadcastUpdate("updateTags", update);
+							this.#broadcastRender();
 							return;
 						}
 					}
@@ -946,9 +1014,11 @@ export class StoryTagSidebar
 				return this.#removeFromSource(data);
 			}
 
-			if (game.user.isGM) await this.setTags([...this.tags, data]);
-			else this.#broadcastUpdate("tags", [...this.tags, data]);
-			return this.#removeFromSource(data);
+			const effectData = ContentSources.legacyTagToEffectData(data);
+			if (game.user.isGM) await ContentSources.createStoryTags([effectData]);
+			else this.#broadcastUpdate("createTags", [effectData]);
+			await this.#removeFromSource(data);
+			return this.#broadcastRender();
 		}
 
 		if (this.actors.map((a) => a.id).includes(id)) return;
@@ -996,7 +1066,7 @@ export class StoryTagSidebar
 	/* -------------------------------------------- */
 
 	async onSubmit(_event, _form, formData) {
-		this.invalidateCache();
+		this.#cachedActors = null;
 		const data = foundry.utils.expandObject(formData.object);
 		if (foundry.utils.isEmpty(data)) return;
 
@@ -1049,27 +1119,20 @@ export class StoryTagSidebar
 			await this.#recalculateActorLimits(id);
 		}
 
-		const storyTags = Object.entries(story || {}).map(([tagId, data]) => {
-			const existing = this.config.tags.find((t) => t.id === tagId);
-			const isStatus = existing?.type === "status";
-			const rawValues = Array.isArray(data.values)
-				? data.values
-				: data.values != null
-				? [data.values]
-				: [];
-			const tiers = toTiers(rawValues);
-			return {
-				id: tagId,
-				name: data.name,
-				values: isStatus ? tiers : new Array(6).fill(false),
-				isScratched: isStatus ? false : (data.isScratched ?? false),
-				isSingleUse: isStatus ? false : (data.isSingleUse ?? false),
-				type: existing?.type ?? "tag",
-				value: isStatus ? tiers.lastIndexOf(true) + 1 : null,
-				hidden: existing?.hidden ?? false,
-				limitId: data.limitId || existing?.limitId || null,
-			};
-		});
+		const storyTagUpdates = [];
+		for (const [tagId, data] of Object.entries(story || {})) {
+			const isStatus = data.tagType === "status";
+			const update = { _id: tagId, name: data.name };
+			if (isStatus) {
+				const rawValues = Array.isArray(data.values) ? data.values : data.values != null ? [data.values] : [];
+				update["system.tiers"] = toTiers(rawValues);
+			} else {
+				update["system.isScratched"] = !!data.isScratched;
+				update["system.isSingleUse"] = !!data.isSingleUse;
+			}
+			if (data.limitId !== undefined) update["system.limitId"] = data.limitId || null;
+			storyTagUpdates.push(update);
+		}
 
 		// Process limit form data (namespaced as limits.{source}.{limitId}.*)
 		let updatedLimits = this.config.limits ?? [];
@@ -1113,16 +1176,15 @@ export class StoryTagSidebar
 			await Promise.all(flagUpdates);
 		}
 
-		// Write tags and limits together in a single setting update
 		if (game.user.isGM) {
+			if (storyTagUpdates.length) await ContentSources.updateStoryTags(storyTagUpdates);
 			await LitmSettings.setStoryTags({
 				...this.config,
-				tags: storyTags,
 				limits: updatedLimits,
 			});
 			this.#broadcastRender();
 		} else {
-			this.#broadcastUpdate("tags", storyTags);
+			if (storyTagUpdates.length) this.#broadcastUpdate("updateTags", storyTagUpdates);
 		}
 	}
 
@@ -1241,8 +1303,13 @@ export class StoryTagSidebar
 		input.value = "";
 
 		if (sectionId === "story") {
-			if (game.user.isGM) await this.setTags([...this.tags, tag]);
-			else this.#broadcastUpdate("tags", [...this.tags, tag]);
+			const effectData = ContentSources.legacyTagToEffectData(tag);
+			if (game.user.isGM) {
+				await ContentSources.createStoryTags([effectData]);
+				this.#broadcastRender();
+			} else {
+				this.#broadcastUpdate("createTags", [effectData]);
+			}
 		} else {
 			await this.#addTagToActor({ id: sectionId, tag });
 		}
@@ -1358,12 +1425,13 @@ export class StoryTagSidebar
 		const limits = (this.config.limits ?? []).filter((l) => l.id !== limitId);
 
 		// Clear limitId on any story tags referencing this limit
-		const tags = this.config.tags.map((t) =>
-			t.limitId === limitId ? { ...t, limitId: null } : t
-		);
+		const storyUpdates = (this.#cachedStoryTags ?? [])
+			.filter((e) => e.system?.limitId === limitId)
+			.map((e) => ({ _id: e._id, "system.limitId": null }));
 
 		if (game.user.isGM) {
-			await LitmSettings.setStoryTags({ ...this.config, limits, tags });
+			if (storyUpdates.length) await ContentSources.updateStoryTags(storyUpdates);
+			await LitmSettings.setStoryTags({ ...this.config, limits });
 			return this.#broadcastRender();
 		}
 	}
@@ -1391,10 +1459,8 @@ export class StoryTagSidebar
 		if (!sceneData) return;
 
 		const config = this.config;
-		const existingTags = config.tags ?? [];
 		const existingLimits = config.limits ?? [];
 
-		// Build a mapping from old limit IDs to new limit IDs
 		const limitIdMap = new Map();
 		const newLimits = (sceneData.limits ?? []).map((l) => {
 			const newId = foundry.utils.randomID();
@@ -1402,17 +1468,16 @@ export class StoryTagSidebar
 			return { ...l, id: newId };
 		});
 
-		// Copy tags with fresh IDs, remapped limitIds, and hidden by default
-		const newTags = (sceneData.tags ?? []).map((t) => ({
-			...t,
-			id: foundry.utils.randomID(),
-			limitId: t.limitId ? (limitIdMap.get(t.limitId) ?? null) : null,
-			hidden: true,
-		}));
+		const effectsData = (sceneData.tags ?? []).map((t) => {
+			const data = ContentSources.legacyTagToEffectData(t);
+			data.system.isHidden = true;
+			if (t.limitId) data.system.limitId = limitIdMap.get(t.limitId) ?? null;
+			return data;
+		});
 
+		if (effectsData.length) await ContentSources.createStoryTags(effectsData);
 		await LitmSettings.setStoryTags({
 			...config,
-			tags: [...existingTags, ...newTags],
 			limits: [...existingLimits, ...newLimits],
 		});
 		this.#broadcastRender();
@@ -1478,11 +1543,14 @@ export class StoryTagSidebar
 	}
 
 	async _toggleTagVisibility(id) {
-		const tags = this.config.tags.map((tag) =>
-			tag.id === id ? { ...tag, hidden: !tag.hidden } : tag
-		);
-		if (game.user.isGM) await this.setTags(tags);
-		else this.#broadcastUpdate("tags", tags);
+		const effect = this.#cachedStoryTags?.find((e) => e._id === id);
+		if (!effect) return;
+		const newHidden = !effect.system.isHidden;
+		if (game.user.isGM) {
+			await ContentSources.updateStoryTags([{ _id: id, "system.isHidden": newHidden }]);
+			return this.#broadcastRender();
+		}
+		return this.#broadcastUpdate("updateTags", [{ _id: id, "system.isHidden": newHidden }]);
 	}
 
 	/* -------------------------------------------- */
@@ -1531,30 +1599,13 @@ export class StoryTagSidebar
 	async #reduceStatus(source, tagId) {
 		if (source === "story") {
 			if (!game.user.isGM) return;
-			const tag = this.config.tags.find((t) => t.id === tagId);
-			if (!tag || tag.type !== "status") return;
+			const effect = this.#cachedStoryTags?.find((e) => e._id === tagId);
+			if (!effect || effect.type !== "status_tag") return;
+			if (!effect.system.tiers.some(Boolean)) return;
 
-			const tiers = tag.values ?? new Array(6).fill(false);
-			if (!tiers.some(Boolean)) return;
-
-			// Shift all marks left by 1 (same logic as StatusTagData#calculateReduction)
-			const newTiers = Array(6).fill(false);
-			for (let i = 0; i < 6; i++) {
-				if (tiers[i]) {
-					const newIndex = i - 1;
-					if (newIndex >= 0) newTiers[newIndex] = true;
-				}
-			}
-
-			const updatedTags = this.config.tags.map((t) => {
-				if (t.id !== tagId) return t;
-				return {
-					...t,
-					values: newTiers,
-					value: newTiers.lastIndexOf(true) + 1,
-				};
-			});
-			await this.setTags(updatedTags);
+			const newTiers = effect.system.calculateReduction(1);
+			await ContentSources.updateStoryTags([{ _id: tagId, "system.tiers": newTiers }]);
+			return this.#broadcastRender();
 		} else {
 			const actor = this.#resolveActor(source);
 			if (!actor?.isOwner) return;
@@ -1644,9 +1695,9 @@ export class StoryTagSidebar
 		if (!data.sourceContainer || !data.sourceId) return;
 
 		if (data.sourceContainer === "story") {
-			const tags = this.config.tags.filter((t) => t.id !== data.sourceId);
-			if (game.user.isGM) return this.setTags(tags);
-			return this.#broadcastUpdate("tags", tags);
+			if (game.user.isGM) await ContentSources.deleteStoryTags([data.sourceId]);
+			else this.#broadcastUpdate("deleteTags", [data.sourceId]);
+			return this.#broadcastRender();
 		}
 
 		const actor = this.#resolveActor(data.sourceContainer);
@@ -1701,20 +1752,33 @@ export class StoryTagSidebar
 			return this.#broadcastRender();
 		}
 
-		// Sort within story tags
-		const tags = [...this.config.tags];
-		const sourceIndex = tags.findIndex((t) => t.id === sourceId);
-		if (sourceIndex === -1) return;
+		// Sort within story tags (pack AEs)
+		const effects = this.#cachedStoryTags ?? [];
+		const source = effects.find((e) => e._id === sourceId);
+		if (!source) return;
 
-		const [moved] = tags.splice(sourceIndex, 1);
-		const targetId = dropTarget?.dataset.id;
-		const targetIndex = targetId
-			? tags.findIndex((t) => t.id === targetId)
-			: tags.length;
-		tags.splice(targetIndex === -1 ? tags.length : targetIndex, 0, moved);
+		const target = dropTarget
+			? effects.find((e) => e._id === dropTarget.dataset.id)
+			: null;
 
-		if (game.user.isGM) return this.setTags(tags);
-		return this.#broadcastUpdate("tags", tags);
+		const siblings = effects
+			.filter((e) => e._id !== sourceId)
+			.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+
+		const sortUpdates = foundry.utils.performIntegerSort(source, {
+			target,
+			siblings,
+		});
+		const updates = sortUpdates.map(({ target: t, update }) => ({
+			_id: t._id,
+			sort: update.sort,
+		}));
+
+		if (updates.length) {
+			if (game.user.isGM) await ContentSources.updateStoryTags(updates);
+			else this.#broadcastUpdate("updateTags", updates);
+		}
+		return this.#broadcastRender();
 	}
 
 	async removeTag(target) {
@@ -1723,20 +1787,22 @@ export class StoryTagSidebar
 
 		if (type === "story") {
 			if (game.user.isGM) {
-				return this.setTags(this.config.tags.filter((t) => t.id !== id));
+				await ContentSources.deleteStoryTags([id]);
+				return this.#broadcastRender();
 			}
-			return this.#broadcastUpdate(
-				"tags",
-				this.config.tags.filter((t) => t.id !== id),
-			);
+			return this.#broadcastUpdate("deleteTags", [id]);
 		}
 		return this.#removeTagFromActor({ actorId: type, id });
 	}
 
 	async #removeAllTags() {
-		if (!this.config.tags.length || !(await confirmDelete())) return;
-		if (game.user.isGM) return this.setTags([]);
-		return this.#broadcastUpdate("tags", []);
+		const tags = this.#cachedStoryTags ?? [];
+		if (!tags.length || !(await confirmDelete())) return;
+		if (game.user.isGM) {
+			await ContentSources.deleteStoryTags(tags.map((t) => t._id));
+			return this.#broadcastRender();
+		}
+		return this.#broadcastUpdate("deleteTags", tags.map((t) => t._id));
 	}
 
 	async #addTagToActor({ id, tag }) {
@@ -1866,8 +1932,8 @@ export class StoryTagSidebar
 	/*  Socket Methods                              */
 	/* -------------------------------------------- */
 
-	#broadcastUpdate(component, data) {
-		return Sockets.dispatch("storyTagsUpdate", { component, data });
+	#broadcastUpdate(operation, data) {
+		return Sockets.dispatch("storyTagsUpdate", { operation, data });
 	}
 
 	#broadcastRender() {
@@ -1893,8 +1959,21 @@ export class StoryTagSidebar
 		});
 	}
 
-	async doUpdate(component, data) {
+	async doUpdate(operation, data) {
 		if (!game.user.isGM) return;
-		if (component === "tags") return this.setTags(data);
+		switch (operation) {
+			case "createTags":
+				await ContentSources.createStoryTags(data);
+				break;
+			case "updateTags":
+				await ContentSources.updateStoryTags(data);
+				break;
+			case "deleteTags":
+				await ContentSources.deleteStoryTags(data);
+				break;
+			default:
+				return;
+		}
+		return this.#broadcastRender();
 	}
 }

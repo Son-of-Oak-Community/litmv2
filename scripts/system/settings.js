@@ -122,13 +122,13 @@ export class LitmSettings {
 
 		game.settings.register("litmv2", "storytags", {
 			name: "LITM.Settings.story_tags",
-			hint: "Tags that are shared between all users.",
+			hint: "Sidebar configuration: tracked actors, limits, and visibility.",
 			scope: "world",
 			config: false,
 			type: Object,
 			default: {
-				tags: [],
 				actors: [],
+				limits: [],
 			},
 		});
 		game.settings.register("litmv2", "systemMigrationVersion", {

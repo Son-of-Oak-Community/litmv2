@@ -2,9 +2,9 @@
 <li>
 	<label
 		class="litm--roll-dialog-tag litm--{{tag.type}} {{#if tag.locked}}is-locked{{/if}} {{#if tag.state}}is-selected{{/if}}"
-		for="rd-{{tag.id}}" data-tag-type="{{tag.type}}">
+		for="rd-{{tag.key}}" data-tag-type="{{tag.type}}">
 		<span class="litm--sro">{{localize "LITM.Ui.select"}}</span>
-		<litm-super-checkbox name="{{tag.id}}" id="rd-{{tag.id}}" value="{{tag.state}}" data-type="{{tag.type}}"
+		<litm-super-checkbox name="{{tag.key}}" id="rd-{{tag.key}}" value="{{tag.state}}" data-type="{{tag.type}}"
 			states="{{tag.states}}" aria-label="{{tag.displayName}}" {{#if tag.locked}}disabled aria-disabled="true" data-locked="true"
 			{{/if}}></litm-super-checkbox>
 		<span class="litm--roll-dialog-badge litm-{{tag.type}}"
@@ -28,6 +28,19 @@
 			</label>
 			{{/each}}
 		</div>
+		{{/if}}
+
+		{{#if isGMViewer}}
+		<!-- GM Viewer: tabbed view per actor -->
+		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">
+			{{#each gmViewerTabs as |tab|}}
+			<a class="item {{tab.cssClass}}" data-action="tab" data-group="gm-viewer" data-tab="{{tab.id}}">
+				{{#if tab.actorImg}}<img src="{{tab.actorImg}}" alt="{{tab.label}}" />{{/if}}
+				{{#if tab.icon}}<i class="{{tab.icon}}" aria-hidden="true"></i>{{/if}}
+				<span>{{tab.label}}</span>
+			</a>
+			{{/each}}
+		</nav>
 		{{/if}}
 
 		<!-- Settings + Tags grid -->
@@ -180,18 +193,6 @@
 		<!-- Tags Summary -->
 		<fieldset class="litm--roll-dialog-tags-fieldset">
 			<legend>{{localize "LITM.Terms.tags"}}</legend>
-		{{#if isGMViewer}}
-		<!-- GM Viewer: tabbed view per actor -->
-		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">
-			{{#each gmViewerTabs as |tab|}}
-			<a class="item {{tab.cssClass}}" data-action="tab" data-group="gm-viewer" data-tab="{{tab.id}}">
-				{{#if tab.actorImg}}<img src="{{tab.actorImg}}" alt="{{tab.label}}" />{{/if}}
-				{{#if tab.icon}}<i class="{{tab.icon}}" aria-hidden="true"></i>{{/if}}
-				<span>{{tab.label}}</span>
-			</a>
-			{{/each}}
-		</nav>
-		{{/if}}
 
 			{{#if isGMViewer}}
 			{{#each gmViewerTabs as |tab|}}
@@ -199,7 +200,7 @@
 				{{#each tab.groups as |group|}}
 				<div class="litm--roll-dialog-theme-group">
 					{{#if group.themeName}}
-					<p class="litm--roll-dialog-theme-label">{{group.themeName}}</p>
+					<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{/if}}{{group.themeName}}</p>
 					{{/if}}
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
@@ -233,6 +234,7 @@
 			{{/if}}
 
 			<!-- Character Tags (grouped by theme) -->
+			{{#if characterTagGroups.length}}
 			<div class="litm--roll-dialog-section-break">
 			{{#each characterTagGroups as |group|}}
 			<div class="litm--roll-dialog-theme-group">
@@ -252,6 +254,7 @@
 			</div>
 			{{/each}}
 			</div>
+			{{/if}}
 
 			<!-- Contributed Tags (from other characters) -->
 			{{#each contributedTagGroups as |contributor|}}
@@ -263,7 +266,7 @@
 				</p>
 				{{#each contributor.themeGroups as |group|}}
 				<div class="litm--roll-dialog-theme-group">
-					<p class="litm--roll-dialog-theme-label">{{group.themeName}}</p>
+					<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{/if}}{{group.themeName}}</p>
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
 						{{> tag tag=tag}}

@@ -70,6 +70,7 @@ const DEFAULT_STATUSES = [
 ];
 
 const WORLD_STATUS_PACK_ID = "world.litmv2-statuses";
+const WORLD_STORY_TAG_PACK_ID = "world.litmv2-story-tags";
 
 export class ContentSources {
 	/**
@@ -180,4 +181,96 @@ export class ContentSources {
 			pack: pack.collection,
 		});
 	}
+
+	/**
+	 * Get or create the world story tag compendium pack.
+	 * @returns {Promise<CompendiumCollection>}
+	 */
+	static async getStoryTagPack() {
+		let pack = game.packs.get(WORLD_STORY_TAG_PACK_ID);
+		if (!pack) {
+			pack = await foundry.documents.collections.CompendiumCollection
+				.createCompendium({
+					name: "litmv2-story-tags",
+					label: "Story Tags",
+					type: "ActiveEffect",
+					system: "litmv2",
+				});
+		}
+		return pack;
+	}
+
+	/**
+	 * Load all documents from the story tag pack.
+	 * @returns {Promise<ActiveEffect[]>}
+	 */
+	static async getStoryTags() {
+		const pack = await ContentSources.getStoryTagPack();
+		return pack.getDocuments();
+	}
+
+	/**
+	 * Create story/status tag ActiveEffects in the pack.
+	 * @param {object[]} data - Array of AE creation data
+	 * @returns {Promise<ActiveEffect[]>}
+	 */
+	static async createStoryTags(data) {
+		const pack = await ContentSources.getStoryTagPack();
+		return foundry.documents.ActiveEffect.createDocuments(data, {
+			pack: pack.collection,
+		});
+	}
+
+	/**
+	 * Update story/status tag ActiveEffects in the pack.
+	 * @param {object[]} updates - Array of `{ _id, ...changes }` objects
+	 * @returns {Promise<ActiveEffect[]>}
+	 */
+	static async updateStoryTags(updates) {
+		const pack = await ContentSources.getStoryTagPack();
+		return foundry.documents.ActiveEffect.updateDocuments(updates, {
+			pack: pack.collection,
+		});
+	}
+
+	/**
+	 * Delete story/status tag ActiveEffects from the pack.
+	 * @param {string[]} ids - Array of document IDs to delete
+	 * @returns {Promise<void>}
+	 */
+	static async deleteStoryTags(ids) {
+		const pack = await ContentSources.getStoryTagPack();
+		return foundry.documents.ActiveEffect.deleteDocuments(ids, {
+			pack: pack.collection,
+		});
+	}
+
+	/**
+	 * Convert a legacy JSON scene tag to ActiveEffect creation data.
+	 * @param {object} tag - Legacy tag from settings `{ id, name, type, values, isScratched, isSingleUse, hidden, limitId }`
+	 * @returns {object} ActiveEffect creation data
+	 */
+	static legacyTagToEffectData(tag) {
+		const isStatus = tag.type === "status";
+		return {
+			name: tag.name,
+			type: isStatus ? "status_tag" : "story_tag",
+			img: "systems/litmv2/assets/media/icons/consequences.svg",
+			disabled: false,
+			system: isStatus
+				? {
+					isHidden: tag.hidden ?? false,
+					tiers: (tag.values ?? []).map((v) => v === true),
+					limitId: tag.limitId ?? null,
+				}
+				: {
+					isScratched: tag.isScratched ?? false,
+					isSingleUse: tag.isSingleUse ?? false,
+					isHidden: tag.hidden ?? false,
+					limitId: tag.limitId ?? null,
+				},
+		};
+	}
 }
+
+export { WORLD_STORY_TAG_PACK_ID };

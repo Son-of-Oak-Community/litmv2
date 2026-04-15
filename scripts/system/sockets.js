@@ -87,9 +87,9 @@ export class Sockets {
 	}
 
 	static #registerStoryTagsListeners() {
-		Sockets.on("storyTagsUpdate", ({ data: { component, data } }) => {
+		Sockets.on("storyTagsUpdate", ({ data: { operation, data } }) => {
 			const sidebar = game.litmv2.storyTags;
-			if (sidebar?.rendered) sidebar.doUpdate(component, data);
+			if (sidebar?.rendered) sidebar.doUpdate(operation, data);
 		});
 
 		Sockets.on("storyTagsRender", () => {
