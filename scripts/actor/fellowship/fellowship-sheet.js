@@ -39,21 +39,12 @@ export class FellowshipSheet extends LitmActorSheet {
 
 	/** @override */
 	static PARTS = {
-		form: {
-			template: "systems/litmv2/templates/actor/fellowship.html",
-			scrollable: [""],
-		},
+		header: { template: "systems/litmv2/templates/parts/header.html" },
+		description: { template: "systems/litmv2/templates/parts/description.html" },
+		content: { template: "systems/litmv2/templates/actor/fellowship-content.html" },
 	};
 
-	/** @override */
-	static _getEditModeTemplate() {
-		return "systems/litmv2/templates/actor/fellowship.html";
-	}
-
-	/** @override */
-	static _getPlayModeTemplate() {
-		return "systems/litmv2/templates/actor/fellowship-play.html";
-	}
+	static PLAY_CONTENT_TEMPLATE = "systems/litmv2/templates/actor/fellowship-play-content.html";
 
 	/**
 	 * Build a flat list of all roll-dialog-compatible tags for this fellowship.
@@ -99,8 +90,7 @@ export class FellowshipSheet extends LitmActorSheet {
 
 		return {
 			...context,
-			isOwner: this.document.isOwner,
-			isEditMode: this._isEditMode,
+			namePlaceholder: game.i18n.localize("LITM.Ui.fellowship_name"),
 			enriched: {
 				description: enrichedDescription,
 			},

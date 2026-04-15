@@ -44,21 +44,12 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 
 	/** @override */
 	static PARTS = {
-		form: {
-			template: "systems/litmv2/templates/actor/challenge.html",
-			scrollable: [""],
-		},
+		header: { template: "systems/litmv2/templates/parts/header.html" },
+		description: { template: "systems/litmv2/templates/parts/description.html" },
+		content: { template: "systems/litmv2/templates/actor/challenge-content.html" },
 	};
 
-	/** @override */
-	static _getEditModeTemplate() {
-		return "systems/litmv2/templates/actor/challenge.html";
-	}
-
-	/** @override */
-	static _getPlayModeTemplate() {
-		return "systems/litmv2/templates/actor/challenge-play.html";
-	}
+	static PLAY_CONTENT_TEMPLATE = "systems/litmv2/templates/actor/challenge-play-content.html";
 
 	/* -------------------------------------------- */
 	/*  Rendering                                   */
@@ -119,8 +110,27 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 
 		return {
 			...context,
-			isOwner: this.document.isOwner,
-			isEditMode: this._isEditMode,
+			headerFields: [
+				{
+					id: "category",
+					label: "LITM.Terms.category",
+					name: "system.category",
+					type: "text",
+					value: this.document._source.system.category,
+				},
+				{
+					id: "rating",
+					label: "LITM.Terms.rating",
+					name: "system.rating",
+					type: "number",
+					value: this._isEditMode
+						? this.document._source.system.rating
+						: (this.document.system.derivedRating ?? this.document._source.system.rating),
+					min: "0",
+					max: "5",
+					step: "1",
+				},
+			],
 			enriched: {
 				description: enrichedDescription,
 				specialFeatures: enrichedSpecialFeatures,

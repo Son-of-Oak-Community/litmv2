@@ -1,37 +1,5 @@
-<section class="hero-play-mode standard-form scrollable">
-	<!-- Header -->
-	<div class="flexrow gap-md" style="align-items: center;">
-		<!-- Profile Image -->
-		{{> systems/litmv2/templates/partials/play-profile-img.html}}
-
-		<!-- Name & Promise -->
-		<div class="flexcol flex0" style="min-width:25ch;gap:0.3rem;">
-			<h1 class="litm--hero-name">{{document.name}}</h1>
-			<div class="flexrow gap-xs">
-				<h2 class="flex0" style="font-size: var(--font-size-24); margin: 0">{{localize "LITM.Hero.promise"}}</h2>
-				<div class="promise-display" data-tour="promise-track" data-id="system.promise" role="group"
-					aria-label="{{localize 'LITM.Hero.promise'}}">
-					{{#progress-buttons source.system.promise 5}}
-					<button type="button" class="progress-box {{#if @checked}}checked{{/if}}" data-action="adjustProgress"
-						data-index="{{@index}}" aria-pressed="{{#if @checked}}true{{else}}false{{/if}}">
-						<img src="systems/litmv2/assets/media/checkbox{{ifThen @checked '-c' ''}}.svg" alt="" aria-hidden="true" />
-					</button>
-					{{/progress-buttons}}
-				</div>
-			</div>
-		</div>
-
-		<!-- Roll Button -->
-		<button type="button" class="noflex" style="margin-left:auto;" data-action="openRollDialog" data-tour="roll-button"
-			data-tooltip="{{localize 'LITM.Ui.roll'}}" aria-label="{{localize 'LITM.Ui.roll'}}">
-			<i class="fa-solid fa-dice" aria-hidden="true"></i>
-		</button>
-	</div>
-
-	<!-- Description Section -->
-	{{#if enriched.description}}
-	<div class="enriched-content" data-field="system.description">{{{enriched.description}}}</div>
-	{{/if}} {{#if (or (and hasFellowship (or relationshipVisible.length fellowship.hasTheme fellowshipActorId)) momentOfFulfillmentVisible.length)}}
+<section class="flexcol gap-lg">
+	{{#if (or (and hasFellowship (or relationshipVisible.length fellowship.hasTheme fellowshipActorId)) momentOfFulfillmentVisible.length)}}
 	<div class="grid-2col">
 		<!-- Moment of Fulfillment -->
 		{{#if momentOfFulfillmentVisible.length}}

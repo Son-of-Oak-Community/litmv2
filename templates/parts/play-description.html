@@ -1,0 +1,45 @@
+<div>
+	{{#if (eq type "challenge")}}
+	{{#if addons.length}}
+	<div class="addon-badges">
+		{{#each addons as |addon|}}
+		<span class="addon-badge">
+			<span class="addon-badge__name">{{addon.name}}</span>
+			{{#if addon.stars.length}}
+			<span class="addon-badge__stars">
+				{{#each addon.stars}}
+				{{> systems/litmv2/templates/partials/rating-star.html cssClass="filled"}}
+				{{/each}}
+			</span>
+			{{/if}}
+		</span>
+		{{/each}}
+	</div>
+	{{/if}}
+	{{#if (or enriched.description enriched.specialFeatures)}}
+	<div class="grid-2col">
+		{{#if enriched.description}}
+		<div class="enriched-content" data-field="system.description">{{{enriched.description}}}</div>
+		{{/if}}
+		{{#if enriched.specialFeatures}}
+		<fieldset>
+			<legend>{{localize "LITM.Terms.special_features"}}</legend>
+			<div class="enriched-content" data-field="system.specialFeatures">{{{enriched.specialFeatures}}}</div>
+		</fieldset>
+		{{/if}}
+	</div>
+	{{/if}}
+	{{else}}
+	{{#if enriched.description}}
+	<div class="enriched-content" data-field="system.description">{{{enriched.description}}}</div>
+	{{/if}}
+	{{#if (eq type "journey")}}
+	{{#if enriched.tags}}
+	<fieldset>
+		<legend>{{localize "LITM.Terms.tags_statuses"}}</legend>
+		<div class="litm--play-tags">{{{enriched.tags}}}</div>
+	</fieldset>
+	{{/if}}
+	{{/if}}
+	{{/if}}
+</div>

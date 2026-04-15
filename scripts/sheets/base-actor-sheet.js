@@ -26,12 +26,21 @@ export class LitmActorSheet extends LitmSheetMixin(
 	static PORTRAIT_WIDTH = 450;
 	static LANDSCAPE_WIDTH = 800;
 
+	/**
+	 * Part IDs that should NOT re-render on incremental (non-force) renders
+	 * in edit mode. These contain prose-mirror editors or user inputs that
+	 * would lose unsaved state if re-rendered by an external event.
+	 * @type {Set<string>}
+	 */
+	static EDITOR_PARTS = new Set(["header", "description"]);
+
 	static DEFAULT_OPTIONS = {
 		position: {
 			width: 450,
 			height: "auto",
 		},
 		window: {
+			contentClasses: ["standard-form"],
 			controls: [
 				{
 					icon: "fa-solid fa-passport",
@@ -60,41 +69,63 @@ export class LitmActorSheet extends LitmSheetMixin(
 		return this._mode === LitmActorSheet.MODES.EDIT;
 	}
 
+	static PLAY_HEADER_TEMPLATE = "systems/litmv2/templates/parts/play-header.html";
+	static PLAY_DESCRIPTION_TEMPLATE = "systems/litmv2/templates/parts/play-description.html";
+
 	/** @override */
 	_configureRenderParts(options) {
 		const parts = super._configureRenderParts(options);
-
-		// Dynamically set the template based on edit mode
-		const editTemplate = this.constructor._getEditModeTemplate();
-		const playTemplate = this.constructor._getPlayModeTemplate();
-
-		if (editTemplate && playTemplate && parts.form) {
-			const template = this._isEditMode ? editTemplate : playTemplate;
-			parts.form.template = template;
+		if (!this._isEditMode) {
+			const C = this.constructor;
+			if (C.PLAY_HEADER_TEMPLATE) parts.header.template = C.PLAY_HEADER_TEMPLATE;
+			if (C.PLAY_DESCRIPTION_TEMPLATE) parts.description.template = C.PLAY_DESCRIPTION_TEMPLATE;
+			if (C.PLAY_CONTENT_TEMPLATE) parts.content.template = C.PLAY_CONTENT_TEMPLATE;
 		}
-
 		return parts;
 	}
 
 	/** @override */
 	_configureRenderOptions(options) {
+		// Detect whether the caller explicitly set parts before super defaults them
+		const hasExplicitParts = Array.isArray(options.parts);
+
 		// Set mode BEFORE super — HandlebarsApplicationMixin calls _configureRenderParts
 		// inside super._configureRenderOptions, which needs the correct _mode to pick the template.
+		// Only update _mode when explicitly provided via options.mode (from _onChangeSheetMode)
+		// to avoid a race condition where a submit-triggered render picks up a mode change
+		// that was meant for a subsequent force render.
 		if (!this.document.isOwner) {
 			this._mode = this.constructor.MODES.PLAY;
-		} else {
-			const { mode } = options;
-			this._mode = mode ?? this._mode ?? this.constructor.MODES.PLAY;
+		} else if (options.mode !== undefined) {
+			this._mode = options.mode;
 		}
+		this._mode ??= this.constructor.MODES.PLAY;
 
 		super._configureRenderOptions(options);
+
+		// In edit mode, skip re-rendering editor/header parts on incremental renders
+		// to preserve unsaved prose-mirror content and input state.
+		const editorParts = this.constructor.EDITOR_PARTS;
+		if (
+			!hasExplicitParts
+			&& !options.force
+			&& !options.isFirstRender
+			&& this._isEditMode
+			&& editorParts?.size
+		) {
+			options.parts = options.parts.filter((p) => !editorParts.has(p));
+		}
+
 		return options;
 	}
 
 	/** @override */
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
+		context.type = this.document.type;
 		context.isGM = game.user.isGM;
+		context.isOwner = this.document.isOwner;
+		context.isEditMode = this._isEditMode;
 		context.hasCustomImage = this.document.img !== "icons/svg/mystery-man.svg";
 		return context;
 	}
@@ -145,26 +176,6 @@ export class LitmActorSheet extends LitmSheetMixin(
 		else {
 			this.element.querySelector(".window-header").appendChild(toggleButton);
 		}
-	}
-
-	/**
-	 * Get the edit mode template path
-	 * Override in subclasses
-	 * @returns {string|null}
-	 * @protected
-	 */
-	static _getEditModeTemplate() {
-		return null;
-	}
-
-	/**
-	 * Get the play mode template path
-	 * Override in subclasses
-	 * @returns {string|null}
-	 * @protected
-	 */
-	static _getPlayModeTemplate() {
-		return null;
 	}
 
 	/**
@@ -608,12 +619,14 @@ export class LitmActorSheet extends LitmSheetMixin(
 	 * @protected
 	 */
 	async _onChangeSheetMode(event, _target = event.currentTarget) {
-		// Submit with current mode, then toggle
+		// Submit with current mode, then toggle via render option.
+		// Mode is passed as a render option (not set directly) to avoid a race
+		// where the submit-triggered re-render picks up the new mode too early.
 		await this.submit();
-		this._mode = this._isEditMode
+		const newMode = this._isEditMode
 			? LitmActorSheet.MODES.PLAY
 			: LitmActorSheet.MODES.EDIT;
-		return this.render(true);
+		return this.render({ force: true, mode: newMode });
 	}
 
 	/**

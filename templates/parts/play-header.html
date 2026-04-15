@@ -1,0 +1,43 @@
+<div class="flexrow gap-md {{type}}-play-header">
+	{{> systems/litmv2/templates/partials/play-profile-img.html}}
+
+	<div class="flex1 flexcol gap-sm">
+		<h1 {{#if (eq type "hero")}}class="litm--hero-name"{{/if}}>{{document.name}}</h1>
+		{{#if (eq type "hero")}}
+		<div class="flexrow gap-xs">
+			<h2 class="flex0" style="font-size: var(--font-size-24); margin: 0">{{localize "LITM.Hero.promise"}}</h2>
+			<div class="promise-display" data-tour="promise-track" data-id="system.promise" role="group"
+				aria-label="{{localize 'LITM.Hero.promise'}}">
+				{{#progress-buttons source.system.promise 5}}
+				<button type="button" class="progress-box {{#if @checked}}checked{{/if}}" data-action="adjustProgress"
+					data-index="{{@index}}" aria-pressed="{{#if @checked}}true{{else}}false{{/if}}">
+					<img src="systems/litmv2/assets/media/checkbox{{ifThen @checked '-c' ''}}.svg" alt="" aria-hidden="true" />
+				</button>
+				{{/progress-buttons}}
+			</div>
+		</div>
+		{{else if (eq type "challenge")}}
+		<div class="challenge-meta">
+			<div class="flexrow rating-stars gap-xs">
+				{{#progress-buttons rating 5}}
+				{{> systems/litmv2/templates/partials/rating-star.html cssClass=(ifThen @checked "filled" "empty")}}
+				{{/progress-buttons}}
+			</div>
+			{{#if derivedCategories.length}}
+			<span class="category">{{join derivedCategories ", "}}</span>
+			{{/if}}
+		</div>
+		{{else if (eq type "journey")}}
+		{{#if source.system.category}}
+		<span class="category">{{source.system.category}}</span>
+		{{/if}}
+		{{/if}}
+	</div>
+
+	{{#if (eq type "hero")}}
+	<button type="button" class="noflex" style="margin-left:auto;" data-action="openRollDialog" data-tour="roll-button"
+		data-tooltip="{{localize 'LITM.Ui.roll'}}" aria-label="{{localize 'LITM.Ui.roll'}}">
+		<i class="fa-solid fa-dice" aria-hidden="true"></i>
+	</button>
+	{{/if}}
+</div>

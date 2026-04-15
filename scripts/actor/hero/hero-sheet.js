@@ -60,21 +60,13 @@ export class HeroSheet extends LitmActorSheet {
 
 	/** @override */
 	static PARTS = {
-		form: {
-			template: "systems/litmv2/templates/actor/hero.html",
-			scrollable: [""],
-		},
+		header: { template: "systems/litmv2/templates/parts/header.html" },
+		description: { template: "systems/litmv2/templates/parts/description.html" },
+		content: { template: "systems/litmv2/templates/actor/hero-content.html" },
 	};
 
-	/** @override */
-	static _getEditModeTemplate() {
-		return "systems/litmv2/templates/actor/hero.html";
-	}
+	static PLAY_CONTENT_TEMPLATE = "systems/litmv2/templates/actor/hero-play-content.html";
 
-	/** @override */
-	static _getPlayModeTemplate() {
-		return "systems/litmv2/templates/actor/hero-play.html";
-	}
 
 	/** @override */
 	async _onRender(context, options) {
@@ -278,8 +270,20 @@ export class HeroSheet extends LitmActorSheet {
 		return {
 			...context,
 			system: this.system,
-			isOwner: this.document.isOwner,
-			isEditMode: this._isEditMode,
+			namePlaceholder: game.i18n.localize("LITM.Ui.hero_name"),
+			legendClass: "litm-banner theme-card__book",
+			headerFields: [
+				{
+					id: `${this.document._id}-system-promise`,
+					label: "LITM.Hero.promise",
+					name: "system.promise",
+					type: "number",
+					value: this.document._source.system.promise,
+					min: "0",
+					max: "5",
+					step: "1",
+				},
+			],
 			enriched: {
 				description: enrichedDescription,
 			},

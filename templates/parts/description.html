@@ -1,0 +1,7 @@
+<fieldset>
+	<legend {{#if legendClass}}class="{{legendClass}}"{{/if}}>{{localize "LITM.Terms.description"}}</legend>
+	<prose-mirror class="journal-entry-content" name="system.description" data-document-uuid="{{document.uuid}}"
+		value="{{source.system.description}}" compact>
+		{{{ enriched.description }}}
+	</prose-mirror>
+</fieldset>

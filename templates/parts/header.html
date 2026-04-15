@@ -1,0 +1,21 @@
+<header class="img-name">
+	<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" role="button" tabindex="0"
+		data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}"
+		style="width: 100px; height: 100px; border-radius: 4px; object-fit: cover;" />
+	<div class="flexcol flex1">
+		<input type="text" name="name" value="{{document.name}}" required
+			placeholder="{{namePlaceholder}}" />
+		{{#if headerFields.length}}
+		<div class="form-fields">
+			{{#each headerFields}}
+			<label for="{{this.id}}">{{localize this.label}}</label>
+			<input id="{{this.id}}" type="{{this.type}}" name="{{this.name}}" value="{{this.value}}"
+				{{#if this.placeholder}}placeholder="{{localize this.placeholder}}"{{/if}}
+				{{#if this.min}}min="{{this.min}}"{{/if}}
+				{{#if this.max}}max="{{this.max}}"{{/if}}
+				{{#if this.step}}step="{{this.step}}"{{/if}} />
+			{{/each}}
+		</div>
+		{{/if}}
+	</div>
+</header>

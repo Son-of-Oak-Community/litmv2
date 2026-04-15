@@ -1,38 +1,4 @@
-<section class="standard-form scrollable">
-	<!-- Header -->
-	<div class="flexrow gap-md" style="align-items: stretch;">
-		<img class="profile-img draggable noflex" data-edit="img" src="{{document.img}}" data-action="editImage"
-			role="button" tabindex="0" alt="{{document.name}}" data-tooltip="{{localize 'LITM.Ui.edit_image'}}"
-			aria-label="{{localize 'LITM.Ui.edit_image'}}"
-			style="width: 100px; height: 100px; border-radius: 4px; object-fit: cover;" />
-
-		<div class="flex1 flexcol gap-sm">
-			<input type="text" name="name" value="{{document.name}}" placeholder="{{localize 'LITM.Ui.hero_name'}}"
-				style="font-size: var(--font-size-20); font-weight: bold;" />
-
-			<div class="flexrow gap-sm" style="align-items: center;">
-				<label for="{{document._id}}-system-promise" class="flex3"
-					style="font-weight: bold; text-align: right;">{{localize
-					"LITM.Hero.promise"}}</label>
-				<div class="noflex">
-					<input type="number" id="{{document._id}}-system-promise" name="system.promise"
-						value="{{source.system.promise}}" min="0" max="5" step="1" data-dtype="Number" />
-				</div>
-			</div>
-		</div>
-
-
-	</div>
-
-	<!-- Description Section -->
-	<fieldset>
-		<legend class="litm-banner theme-card__book">{{localize "LITM.Terms.description"}}</legend>
-		<prose-mirror class="journal-entry-content" name="system.description" data-document-uuid="{{document.uuid}}"
-			value="{{source.system.description}}" compact>
-			{{{ enriched.description }}}
-		</prose-mirror>
-	</fieldset>
-
+<section class="flexcol gap-lg">
 	<div class="grid-2col">
 		<!-- Moment of Fulfillment -->
 		<fieldset>
