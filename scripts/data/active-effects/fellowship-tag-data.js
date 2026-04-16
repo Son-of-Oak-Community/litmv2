@@ -1,16 +1,6 @@
-import { ScratchableMixin } from "./scratchable-mixin.js";
+import { PowerTagData } from "./power-tag-data.js";
 
-export class FellowshipTagData extends ScratchableMixin(foundry.data.ActiveEffectTypeDataModel) {
-	static defineSchema() {
-		const fields = foundry.data.fields;
-		return {
-			...super.defineSchema(),
-			question: new fields.StringField({ initial: null, nullable: true, blank: true }),
-			isScratched: new fields.BooleanField({ initial: false }),
-			isTitleTag: new fields.BooleanField({ initial: false }),
-		};
-	}
-
+export class FellowshipTagData extends PowerTagData {
 	get isSingleUse() {
 		return true;
 	}
@@ -23,7 +13,7 @@ export class FellowshipTagData extends ScratchableMixin(foundry.data.ActiveEffec
 		return ",positive";
 	}
 
-	get defaultPolarity() {
-		return 1;
+	toTagString(name) {
+		return `[${name}]`;
 	}
 }

@@ -1,6 +1,6 @@
 import { createLegacyRelationshipEffects } from "../../actor/hero/hero-data.js";
 import { LitmItem } from "../../item/litm-item.js";
-import { levelIcon } from "../../utils.js";
+import { getDefaultItemIcon, levelIcon, parseTagStringMatch } from "../../utils.js";
 
 export function registerItemHooks() {
 	_prepareThemeOnCreate();
@@ -8,6 +8,7 @@ export function registerItemHooks() {
 	_syncTitleTagOnRename();
 	_syncThemeImageOnLevelChange();
 	_syncAddonEffectsOnUpdate();
+	_cleanupAddonEffectsOnDelete();
 	_hideStoryThemeFromCreateDialog();
 	_syncStoryThemeItemToActor();
 }
@@ -37,36 +38,7 @@ function _prepareThemeOnCreate() {
 	Hooks.on("preCreateItem", (item, data) => {
 		if (item.img !== "icons/svg/item-bag.svg") return;
 
-		const { icons } = CONFIG.litmv2.assets;
-		const { base } = icons;
-		let img = base;
-		switch (data.type) {
-			case "theme": {
-				const level =
-					data.system?.level ?? Object.keys(CONFIG.litmv2.theme_levels)[0];
-				img = levelIcon(level);
-				break;
-			}
-			case "themebook": {
-				const tbLevel = data.system?.theme_level ?? "origin";
-				img = levelIcon(tbLevel);
-				break;
-			}
-			case "addon":
-				img += icons.vignette;
-				break;
-			case "vignette":
-				img += icons.vignette;
-				break;
-			case "backpack":
-				img += icons.backpack;
-				break;
-			case "trope":
-				img = "icons/svg/target.svg";
-				break;
-			default:
-				img = icons.default;
-		}
+		const img = getDefaultItemIcon(data.type, data.system) ?? CONFIG.litmv2.assets.icons.default;
 		item.updateSource({ img });
 	});
 }
@@ -84,18 +56,15 @@ function _syncTitleTagOnRename() {
 	});
 }
 
+const LEVEL_FIELD = { theme: "level", themebook: "theme_level" };
+
 function _syncThemeImageOnLevelChange() {
 	Hooks.on("preUpdateItem", (item, data) => {
-		if (item.type === "theme") {
-			const newLevel = data.system?.level ?? data["system.level"];
-			if (newLevel) {
-				data.img = levelIcon(newLevel);
-			}
-		} else if (item.type === "themebook") {
-			const newLevel = data.system?.theme_level ?? data["system.theme_level"];
-			if (newLevel) {
-				data.img = levelIcon(newLevel);
-			}
+		const field = LEVEL_FIELD[item.type];
+		if (!field) return;
+		const newLevel = data.system?.[field] ?? data[`system.${field}`];
+		if (newLevel) {
+			data.img = levelIcon(newLevel);
 		}
 	});
 }
@@ -138,6 +107,20 @@ function _syncAddonEffectsOnUpdate() {
 	});
 }
 
+function _cleanupAddonEffectsOnDelete() {
+	Hooks.on("deleteItem", async (item) => {
+		if (item.type !== "addon") return;
+		const actor = item.parent;
+		if (!actor || actor.documentName !== "Actor") return;
+		const addonEffects = actor.effects
+			.filter((e) => e.getFlag("litmv2", "addonId") === item.id)
+			.map((e) => e.id);
+		if (addonEffects.length) {
+			await actor.deleteEmbeddedDocuments("ActiveEffect", addonEffects);
+		}
+	});
+}
+
 /**
  * Parse an addon item's tag string and create matching ActiveEffects on the parent actor.
  * Each effect is flagged with the addon's ID for later cleanup.
@@ -151,21 +134,10 @@ export async function syncAddonEffects(actor, addonItem) {
 	const matches = Array.from(tags.matchAll(CONFIG.litmv2.tagStringRe));
 	if (!matches.length) return;
 
-	const effects = matches.map(([_, name, separator, value]) => {
-		const isStatus = separator === "-";
-		return {
-			name,
-			type: isStatus ? "status_tag" : "story_tag",
-			system: isStatus
-				? {
-					tiers: Array(6)
-						.fill(false)
-						.map((_, i) => i + 1 === Number(value)),
-				}
-				: { isScratched: false, isSingleUse: false },
-			flags: { litmv2: { addonId: addonItem.id } },
-		};
-	});
+	const effects = matches.map((match) => ({
+		...parseTagStringMatch(match),
+		flags: { litmv2: { addonId: addonItem.id } },
+	}));
 
 	await actor.createEmbeddedDocuments("ActiveEffect", effects);
 }

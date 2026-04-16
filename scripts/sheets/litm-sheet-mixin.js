@@ -1,3 +1,5 @@
+import { enrichHTML } from "../utils.js";
+
 /**
  * Mixin that adds shared sheet infrastructure to both LitmActorSheet and LitmItemSheet.
  * These extend different Foundry base classes (ActorSheetV2 vs ItemSheetV2) but share
@@ -136,6 +138,20 @@ export function LitmSheetMixin(Base) {
 		 */
 		get system() {
 			return this.document.system;
+		}
+
+		/**
+		 * Enrich multiple system fields for template rendering.
+		 * @param {...string} fields - Dot-path field names on `this.document.system`
+		 * @returns {Promise<Record<string, string>>} Map of field name → enriched HTML
+		 */
+		async _enrichFields(...fields) {
+			const enriched = {};
+			for (const field of fields) {
+				const value = foundry.utils.getProperty(this.document.system, field);
+				enriched[field] = value ? await enrichHTML(value, this.document) : "";
+			}
+			return enriched;
 		}
 	};
 }

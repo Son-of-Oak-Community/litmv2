@@ -1,5 +1,5 @@
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
-import { enrichHTML, powerTagEffect, weaknessTagEffect } from "../../utils.js";
+import { localize as t, powerTagEffect, weaknessTagEffect } from "../../utils.js";
 
 export class StoryThemeSheet extends LitmItemSheet {
 	static DEFAULT_OPTIONS = {
@@ -35,18 +35,15 @@ export class StoryThemeSheet extends LitmItemSheet {
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 
-		const enrichedDescription = await enrichHTML(
-			this.system.description,
-			this.document,
-		);
+		const enriched = await this._enrichFields("description");
 		return {
 			...context,
-			enriched: {
-				description: enrichedDescription,
-			},
+			enriched,
 			system: this.system,
 			item: this.document,
-			levels: this.system.levels,
+			levels: Object.fromEntries(
+				Object.keys(CONFIG.litmv2.theme_levels || {}).map((k) => [k, t(`LITM.Terms.${k}`)]),
+			),
 			powerTags: this.system.powerTags,
 			weaknessTags: this.system.weaknessTags,
 		};

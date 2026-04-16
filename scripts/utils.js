@@ -1,4 +1,5 @@
 import { ContentSources } from "./system/content-sources.js";
+import { ITEM_DEFAULT_ICONS, getDefaultThemeLevel } from "./system/config.js";
 
 /**
  * Extract and remove keys matching a prefix from form data, returning a
@@ -22,8 +23,29 @@ export function parseEmbeddedFormKeys(submitData, prefix) {
 	return map;
 }
 
+const KNOWN_LEVEL_ICONS = new Set(["origin", "adventure", "greatness", "variable"]);
+
 export function levelIcon(level) {
-	return `systems/litmv2/assets/media/icons/${level}.svg`;
+	const safe = KNOWN_LEVEL_ICONS.has(level) ? level : "origin";
+	return `systems/litmv2/assets/media/icons/${safe}.svg`;
+}
+
+/**
+ * Returns the default icon for an item type.
+ * @param {string} type - Item document type
+ * @param {object} [system] - Item's system data (for level-dependent icons)
+ * @returns {string|null} Icon path, or null if no default
+ */
+export function getDefaultItemIcon(type, system = {}) {
+	if (type === "theme") {
+		const level = system.level ?? getDefaultThemeLevel();
+		return levelIcon(level);
+	}
+	if (type === "themebook") {
+		const level = system.theme_level ?? "origin";
+		return levelIcon(level);
+	}
+	return ITEM_DEFAULT_ICONS[type] ?? null;
 }
 
 export function sleep(ms) {
@@ -112,6 +134,57 @@ export function effectToPlain(e) {
 	};
 }
 
+/**
+ * Partition an actor's applicable effects into buckets by type.
+ * @param {Actor} actor - The actor document
+ * @param {...string} types - Effect types to collect (e.g., "story_tag", "status_tag")
+ * @returns {Record<string, ActiveEffect[]>} Map of type → effects array
+ */
+export function partitionEffects(actor, ...types) {
+	const buckets = Object.fromEntries(types.map((t) => [t, []]));
+	for (const e of actor.allApplicableEffects()) {
+		if (e.type in buckets) buckets[e.type].push(e);
+	}
+	return buckets;
+}
+
+/**
+ * Find the first applicable effect matching a predicate.
+ * @param {Actor} actor - The actor document
+ * @param {Function} predicate - Test function receiving each effect
+ * @returns {ActiveEffect|undefined}
+ */
+export function findApplicableEffect(actor, predicate) {
+	for (const e of actor.allApplicableEffects()) {
+		if (predicate(e)) return e;
+	}
+	return undefined;
+}
+
+/**
+ * Convert a tag-string regex match into ActiveEffect creation data.
+ * Shared by syncAddonEffects and StoryTagSidebar._onDrop.
+ * @param {RegExpMatchArray} match  A match from CONFIG.litmv2.tagStringRe
+ * @returns {{ name: string, type: string, system: object }}
+ */
+export function parseTagStringMatch(match) {
+	const [, name, separator, value] = match;
+	const isStatus = separator === "-";
+	if (isStatus) {
+		const tier = Number.parseInt(value, 10) || 0;
+		return {
+			name,
+			type: "status_tag",
+			system: { tiers: Array.from({ length: 6 }, (_, i) => i + 1 === tier) },
+		};
+	}
+	return {
+		name,
+		type: "story_tag",
+		system: { isScratched: false, isSingleUse: false },
+	};
+}
+
 export function powerTagEffect({
 	name,
 	isActive = false,
@@ -186,6 +259,25 @@ export function storyTagEffect({
 		type: "story_tag",
 		system: { isScratched, isSingleUse, isHidden, limitId },
 	};
+}
+
+/**
+ * Add a story tag to an actor, routing through the backpack for heroes.
+ * @param {Actor} actor     The target actor
+ * @param {object} effectData  Story tag effect creation data
+ * @returns {Promise<ActiveEffect[]|void>} The created effect documents, or void if blocked
+ */
+export async function addStoryTagToActor(actor, effectData) {
+	if (actor.type === "hero") {
+		const backpack = actor.system.backpackItem;
+		if (!backpack) {
+			ui.notifications.warn(game.i18n.localize("LITM.Ui.warn_no_backpack"));
+			return;
+		}
+		return backpack.createEmbeddedDocuments("ActiveEffect", [effectData]);
+	} else {
+		return actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
+	}
 }
 
 /**
@@ -295,6 +387,45 @@ export async function confirmDelete(string = "Item") {
 }
 
 /**
+ * Transfer story tag effects between two backpack items.
+ * Copies the chosen effects from `sourceItem` to `targetItem`, then deletes
+ * the originals from `sourceItem`.
+ * @param {Item} sourceItem   The item to transfer effects from
+ * @param {Item} targetItem   The item to transfer effects to
+ * @param {string[]} tagIds   IDs of the effects to transfer
+ * @returns {Promise<void>}
+ */
+export async function transferBackpackTags(sourceItem, targetItem, tagIds) {
+	const sourceEffects = sourceItem.effects.filter(
+		(e) => e.type === "story_tag" && tagIds.includes(e.id),
+	);
+	if (!sourceEffects.length) return;
+
+	const effectData = sourceEffects.map((e) => ({
+		name: e.name,
+		type: "story_tag",
+		disabled: e.disabled,
+		system: e.system.toObject(),
+	}));
+	await targetItem.createEmbeddedDocuments("ActiveEffect", effectData);
+	await sourceItem.deleteEmbeddedDocuments(
+		"ActiveEffect",
+		sourceEffects.map((e) => e.id),
+	);
+}
+
+/**
+ * Remove an element at the given index from an array field and update the document.
+ * @param {Document} doc   The Foundry document to update
+ * @param {string} path    The dot-notation path to the array field (e.g. "system.limits")
+ * @param {number} index   The index to remove
+ */
+export async function removeAtIndex(doc, path, index) {
+	const arr = foundry.utils.getProperty(doc, path) ?? [];
+	await doc.update({ [path]: arr.filter((_, i) => i !== index) });
+}
+
+/**
  * Find an ActiveEffect by ID, searching the actor's applicable effects
  * (own + transferred from items), then optionally the fellowship actor.
  * @param {string} effectId
@@ -302,7 +433,7 @@ export async function confirmDelete(string = "Item") {
  * @param {{ fellowship?: boolean }} [options]
  * @returns {ActiveEffect|null}
  */
-export function resolveEffect(effectId, actor, { fellowship = true } = {}) {
+export function resolveEffect(effectId, actor, { fellowship = false } = {}) {
 	for (const e of actor.allApplicableEffects()) {
 		if (e.id === effectId) return e;
 	}
@@ -316,3 +447,13 @@ export function resolveEffect(effectId, actor, { fellowship = true } = {}) {
 	}
 	return null;
 }
+
+/**
+ * Get the story tag sidebar application instance.
+ * Encapsulates the game.litmv2.storyTags ?? ui.combat fallback.
+ * @returns {StoryTagSidebar|null}
+ */
+export function getStoryTagSidebar() {
+	return game.litmv2?.storyTags ?? ui.combat ?? null;
+}
+

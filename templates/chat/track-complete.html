@@ -1,0 +1,15 @@
+<div class="litmv2 litm-track-complete litm-track-complete--{{type}}">
+	<header class="litm-track-complete__header">
+		<i class="fas {{icon}}"></i>
+		<span>{{label}}</span>
+	</header>
+	<p class="litm-track-complete__body"><strong>{{text}}</strong></p>
+	{{#if hasFooter}}
+	<footer class="litm-track-complete__footer">
+		<button type="button" data-click="open-theme-advancement"
+		        data-actor-id="{{actorId}}" data-theme-id="{{themeId}}">
+			<i class="fas fa-wand-magic-sparkles"></i> {{chooseLabel}}
+		</button>
+	</footer>
+	{{/if}}
+</div>

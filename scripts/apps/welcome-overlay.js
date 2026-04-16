@@ -2,6 +2,7 @@ import { error, warn } from "../logger.js";
 import { HeroCreationData } from "./hero-creation-data.js";
 import { createSampleHero } from "../system/sample-hero.js";
 import { LitmSettings } from "../system/settings.js";
+import { getThemeLevels, getDefaultThemeLevel } from "../system/config.js";
 import { sleep, localize as t, toQuestionOptions } from "../utils.js";
 
 const THEME_SLOTS = 4;
@@ -312,6 +313,20 @@ export class WelcomeOverlay {
 		"(prefers-reduced-motion: reduce)",
 	).matches;
 
+	#slideContextBuilders = {
+		welcome: () => this.#prepareWelcomeContext(),
+		modeSelect: () => this.#prepareModeSelectContext(),
+		tropeSelect: () => this.#prepareTropeSelectContext(),
+		tropeThemes: () => this.#prepareTropeThemesContext(),
+		customTheme0: () => this.#prepareCustomThemeContext(0),
+		customTheme1: () => this.#prepareCustomThemeContext(1),
+		customTheme2: () => this.#prepareCustomThemeContext(2),
+		customTheme3: () => this.#prepareCustomThemeContext(3),
+		customBackpack: () => this.#prepareCustomBackpackContext(),
+		review: () => this.#prepareReviewContext(),
+		heroCreated: () => this.#prepareHeroCreatedContext(),
+	};
+
 	/** @type {string|null} */
 	#assignToUser = null;
 
@@ -616,32 +631,8 @@ export class WelcomeOverlay {
 	 * @returns {Promise<object>}
 	 */
 	async #prepareSlideContext(slideKey) {
-		switch (slideKey) {
-			case "welcome":
-				return this.#prepareWelcomeContext();
-			case "modeSelect":
-				return this.#prepareModeSelectContext();
-			case "tropeSelect":
-				return this.#prepareTropeSelectContext();
-			case "tropeThemes":
-				return this.#prepareTropeThemesContext();
-			case "customTheme0":
-				return this.#prepareCustomThemeContext(0);
-			case "customTheme1":
-				return this.#prepareCustomThemeContext(1);
-			case "customTheme2":
-				return this.#prepareCustomThemeContext(2);
-			case "customTheme3":
-				return this.#prepareCustomThemeContext(3);
-			case "customBackpack":
-				return this.#prepareCustomBackpackContext();
-			case "review":
-				return this.#prepareReviewContext();
-			case "heroCreated":
-				return this.#prepareHeroCreatedContext();
-			default:
-				return {};
-		}
+		const builder = this.#slideContextBuilders[slideKey];
+		return builder ? builder() : {};
 	}
 
 	/**
@@ -692,15 +683,15 @@ export class WelcomeOverlay {
 	 * @returns {Promise<object>}
 	 */
 	async #prepareTropeSelectContext() {
-		await this.ensureIndexes();
+		await this._data.ensureIndexes();
 
-		const themeKitLookup = this.buildLookup(this._cache.themekits);
-		const tropes = this.filterBySearch(
+		const themeKitLookup = this._data.buildLookup(this._cache.themekits);
+		const tropes = this._data.filterBySearch(
 			this._cache.tropes,
 			this._appState.search.tropes,
 		);
-		const tropesByCategory = this.groupByCategory(tropes);
-		const selectedTrope = await this.getTropeDetails(
+		const tropesByCategory = this._data.groupByCategory(tropes);
+		const selectedTrope = await this._data.getTropeDetails(
 			this._appState.trope.selectedUuid,
 			themeKitLookup,
 		);
@@ -740,15 +731,15 @@ export class WelcomeOverlay {
 	 * @returns {Promise<object>}
 	 */
 	async #prepareTropeThemesContext() {
-		await this.ensureIndexes();
+		await this._data.ensureIndexes();
 
-		const themeKitLookup = this.buildLookup(this._cache.themekits);
-		const selectedTrope = await this.getTropeDetails(
+		const themeKitLookup = this._data.buildLookup(this._cache.themekits);
+		const selectedTrope = await this._data.getTropeDetails(
 			this._appState.trope.selectedUuid,
 			themeKitLookup,
 		);
 
-		await this.syncTropeThemes(selectedTrope);
+		await this._data.syncTropeThemes(this._appState, selectedTrope);
 
 		const choices = this._appState.trope.themes.choices;
 		for (const choice of choices) {
@@ -815,22 +806,22 @@ export class WelcomeOverlay {
 	 * @returns {Promise<object>}
 	 */
 	async #prepareCustomThemeContext(index) {
-		await this.ensureIndexes();
+		await this._data.ensureIndexes();
 		this._appState.custom.themeIndex = index;
 
 		const currentTheme = this._appState.custom.themes[index];
 
-		const selectedThemebook = await this.getThemebookDoc(
+		const selectedThemebook = await this._data.getThemebookDoc(
 			currentTheme.themebookUuid,
 		);
 
 		const isVariableLevel =
 			selectedThemebook?.system?.theme_level === "variable";
 		if (isVariableLevel && !currentTheme.level) {
-			currentTheme.level = Object.keys(CONFIG.litmv2.theme_levels)[0];
+			currentTheme.level = getDefaultThemeLevel();
 		}
 		const levelOptions = isVariableLevel
-			? Object.keys(CONFIG.litmv2.theme_levels).map((key) => ({
+			? getThemeLevels().map((key) => ({
 					value: key,
 					label: t(`LITM.Terms.${key}`),
 					selected: currentTheme.level === key,
@@ -871,11 +862,11 @@ export class WelcomeOverlay {
 			themeNumber: index + 1,
 			currentTheme,
 			hasThemekits: this._cache.themekits.length > 0,
-			themekits: this.filterBySearch(
+			themekits: this._data.filterBySearch(
 				this._cache.themekits,
 				this._appState.search.themekits,
 			),
-			themebooks: this.filterBySearch(
+			themebooks: this._data.filterBySearch(
 				this._cache.themebooks,
 				this._appState.search.themebooks,
 			),
@@ -940,10 +931,9 @@ export class WelcomeOverlay {
 
 			// For checkboxes, the click fires after the checked state changes,
 			// so we can read target.checked directly in the handler.
-			const action = target.dataset.action;
-			if (action) {
+			if (target.dataset.action) {
 				try {
-					await this.#handleAction(action, target, event);
+					await this.#handleAction(event, target);
 				} catch (err) {
 					error("Welcome overlay action failed:", err);
 					ui.notifications.error(
@@ -983,341 +973,370 @@ export class WelcomeOverlay {
 	// Action handling
 	// ---------------------------------------------------------------------------
 
+	/** @type {Record<string, (event: Event, target: HTMLElement) => Promise<void>>} */
+	#ACTION_HANDLERS = {
+		// Welcome slide actions
+		"createHero": this.#handleCreateHero,
+		"dismiss": this.#handleDismiss,
+		"dismissHeroCreated": this.#handleDismissHeroCreated,
+		"enablePlayerCreation": this.#handleEnablePlayerCreation,
+		"toggleCustomDice": this.#handleToggleCustomDice,
+		"togglePopoutTags": this.#handleTogglePopoutTags,
+		"startTour": this.#handleStartTour,
+		// Mode select
+		"selectMode": this.#handleSelectMode,
+		// Trope selection
+		"selectTrope": this.#handleSelectTrope,
+		"selectTropeOptional": this.#handleSelectTropeOptional,
+		"selectTropeBackpack": this.#handleSelectTropeBackpack,
+		// Trope theme tag toggling
+		"toggleTropePowerTag": this.#handleToggleTropePowerTag,
+		"toggleTropeWeaknessTag": this.#handleToggleTropeWeaknessTag,
+		// Custom theme actions
+		"jumpToCustomStep": this.#handleJumpToCustomStep,
+		"selectActiveBackpack": this.#handleSelectActiveBackpack,
+		"selectThemeMethod": this.#handleSelectThemeMethod,
+		"selectThemeKit": this.#handleSelectThemeKit,
+		"selectThemebook": this.#handleSelectThemebook,
+		// Custom themekit tag toggling
+		"toggleCustomPowerTag": this.#handleToggleCustomPowerTag,
+		"toggleCustomWeaknessTag": this.#handleToggleCustomWeaknessTag,
+		// Backpack suggestions
+		"selectStoreCategory": this.#handleSelectStoreCategory,
+		"fillBackpackFromStore": this.#handleFillBackpackFromStore,
+		// Navigation
+		"back": this.#handleBack,
+		"next": this.#handleNext,
+		"create": this.#handleCreate,
+		// Review slide
+		"suggestHeroName": this.#handleSuggestHeroName,
+		"cancel": this.#handleCancel,
+	};
+
 	/**
 	 * Dispatch an action by name.
-	 * @param {string} action
-	 * @param {HTMLElement} target
 	 * @param {Event} event
+	 * @param {HTMLElement} target
 	 */
-	async #handleAction(action, target, _event) {
+	async #handleAction(event, target) {
 		if (this.#isAnimating) return;
-		switch (action) {
-			// Welcome slide actions
-			case "createHero":
-				this.#slideFlow = this.#buildSlideFlow("modeSelect");
-				this.#currentSlideIndex = 0;
-				await this.next();
-				break;
-			case "dismiss":
-				LitmSettings.setWelcomed(true);
-				await this.dismiss();
-				break;
-			case "dismissHeroCreated":
-				LitmSettings.setWelcomed(true);
-				await this.dismiss({ skipSampleHero: true });
-				break;
-			case "enablePlayerCreation":
-				await this.#enablePlayerCreation();
-				break;
-			case "toggleCustomDice":
-				await game.settings.set(
-					"litmv2",
-					"custom_dice",
-					!LitmSettings.customDice,
-				);
-				target
-					.querySelector(".litm--welcome-overlay__switch")
-					?.classList.toggle("active", LitmSettings.customDice);
-				break;
-			case "togglePopoutTags":
-				await game.settings.set(
-					"litmv2",
-					"popout_tags_sidebar",
-					!LitmSettings.popoutTagsSidebar,
-				);
-				target
-					.querySelector(".litm--welcome-overlay__switch")
-					?.classList.toggle("active", LitmSettings.popoutTagsSidebar);
-				break;
-			case "startTour":
-				await this.#startTour(target.dataset.tourId);
-				break;
+		const action = target.dataset.action;
+		if (!action) return;
+		const handler = this.#ACTION_HANDLERS[action];
+		if (handler) return handler.call(this, event, target);
+		warn(`WelcomeOverlay: Unknown action "${action}"`);
+	}
 
-			// Mode select
-			case "selectMode": {
-				const mode = target.dataset.mode || "";
-				if (!mode) break;
-				this._appState.mode = mode;
-				if (mode === "trope") {
-					this.#slideFlow = [
-						"welcome",
-						"modeSelect",
-						"tropeSelect",
-						"tropeThemes",
-						"review",
-					];
-				} else if (mode === "custom") {
-					this.#slideFlow = [
-						"welcome",
-						"modeSelect",
-						"customTheme0",
-						"customTheme1",
-						"customTheme2",
-						"customTheme3",
-						"customBackpack",
-						"review",
-					];
-				}
-				await this.next();
-				break;
-			}
+	// Welcome slide action handlers
 
-			// Trope selection
-			case "selectTrope": {
-				this._appState.trope.selectedUuid = target.dataset.uuid || "";
-				this._appState.trope.optionalUuid = "";
-				this._appState.trope.backpackChoice = "";
-				this._appState.trope.themes.index = 0;
-				await this.#renderCurrentSlide();
-				break;
-			}
+	async #handleCreateHero(_event, _target) {
+		this.#slideFlow = this.#buildSlideFlow("modeSelect");
+		this.#currentSlideIndex = 0;
+		await this.next();
+	}
 
-			case "selectTropeOptional":
-				this._appState.trope.optionalUuid = target.dataset.uuid || "";
-				this._appState.trope.themes.index = 0;
-				await this.#renderCurrentSlide();
-				break;
+	async #handleDismiss(_event, _target) {
+		LitmSettings.setWelcomed(true);
+		await this.dismiss();
+	}
 
-			case "selectTropeBackpack":
-				this._appState.trope.backpackChoice = target.dataset.value || "";
-				await this.#renderCurrentSlide();
-				break;
+	async #handleDismissHeroCreated(_event, _target) {
+		LitmSettings.setWelcomed(true);
+		await this.dismiss({ skipSampleHero: true });
+	}
 
-			// Trope theme tag toggling
-			case "toggleTropePowerTag": {
-				const index = Number(target.dataset.index || 0);
-				const choice = this._appState.trope.themes.choices[index];
-				if (!choice) break;
-				const value = target.value;
-				const selected = new Set(choice.powerTags.filter(Boolean));
-				if (target.checked) {
-					if (selected.has(value)) break;
-					if (selected.size >= 2) {
-						target.checked = false;
-						ui.notifications.warn("LITM.Ui.hero_creation_max_power_tags", {
-							localize: true,
-						});
-						break;
-					}
-					selected.add(value);
-				} else {
-					selected.delete(value);
-				}
-				choice.powerTags = Array.from(selected);
-				choice.powerTagsMap = this.toLookupMap(choice.powerTags);
-				choice.powerTagOptions.forEach((tagOpt) => {
-					tagOpt.checked = selected.has(tagOpt.name);
+	async #handleEnablePlayerCreation(_event, _target) {
+		await this.#enablePlayerCreation();
+	}
+
+	async #handleToggleCustomDice(_event, target) {
+		await game.settings.set(
+			"litmv2",
+			"custom_dice",
+			!LitmSettings.customDice,
+		);
+		target
+			.querySelector(".litm--welcome-overlay__switch")
+			?.classList.toggle("active", LitmSettings.customDice);
+	}
+
+	async #handleTogglePopoutTags(_event, target) {
+		await game.settings.set(
+			"litmv2",
+			"popout_tags_sidebar",
+			!LitmSettings.popoutTagsSidebar,
+		);
+		target
+			.querySelector(".litm--welcome-overlay__switch")
+			?.classList.toggle("active", LitmSettings.popoutTagsSidebar);
+	}
+
+	async #handleStartTour(_event, target) {
+		await this.#startTour(target.dataset.tourId);
+	}
+
+	// Mode select action handler
+
+	async #handleSelectMode(_event, target) {
+		const mode = target.dataset.mode || "";
+		if (!mode) return;
+		this._appState.mode = mode;
+		this.#slideFlow = this.#buildSlideFlow("heroCreated");
+		await this.next();
+	}
+
+	// Trope selection action handlers
+
+	async #handleSelectTrope(_event, target) {
+		this._appState.trope.selectedUuid = target.dataset.uuid || "";
+		this._appState.trope.optionalUuid = "";
+		this._appState.trope.backpackChoice = "";
+		this._appState.trope.themes.index = 0;
+		await this.#renderCurrentSlide();
+	}
+
+	async #handleSelectTropeOptional(_event, target) {
+		this._appState.trope.optionalUuid = target.dataset.uuid || "";
+		this._appState.trope.themes.index = 0;
+		await this.#renderCurrentSlide();
+	}
+
+	async #handleSelectTropeBackpack(_event, target) {
+		this._appState.trope.backpackChoice = target.dataset.value || "";
+		await this.#renderCurrentSlide();
+	}
+
+	// Trope theme tag toggling action handlers
+
+	async #handleToggleTropePowerTag(_event, target) {
+		const index = Number(target.dataset.index || 0);
+		const choice = this._appState.trope.themes.choices[index];
+		if (!choice) return;
+		const value = target.value;
+		const selected = new Set(choice.powerTags.filter(Boolean));
+		if (target.checked) {
+			if (selected.has(value)) return;
+			if (selected.size >= 2) {
+				target.checked = false;
+				ui.notifications.warn("LITM.Ui.hero_creation_max_power_tags", {
+					localize: true,
 				});
-				await this.#renderCurrentSlide();
-				break;
+				return;
 			}
-
-			case "toggleTropeWeaknessTag": {
-				const index = Number(target.dataset.index || 0);
-				const choice = this._appState.trope.themes.choices[index];
-				if (!choice) break;
-				const value = target.value;
-				if (target.checked) {
-					choice.weaknessTag = value;
-				} else if (choice.weaknessTag === value) {
-					choice.weaknessTag = "";
-				}
-				choice.weaknessTagOptions.forEach((tagOpt) => {
-					tagOpt.checked = tagOpt.name === choice.weaknessTag;
-				});
-				await this.#renderCurrentSlide();
-				break;
-			}
-
-			// Custom theme actions
-			case "jumpToCustomStep":
-				await this.goToSlide(target.dataset.slide);
-				break;
-
-			case "selectActiveBackpack": {
-				const idx = Number(target.dataset.index);
-				if (idx >= 0 && idx < 3) {
-					this._appState.custom.activeBackpackIndex = idx;
-				}
-				await this.#renderCurrentSlide();
-				break;
-			}
-
-			case "selectThemeMethod": {
-				const method = target.dataset.method || "";
-				const idx = Number(
-					target.dataset.index ?? this._appState.custom.themeIndex,
-				);
-				const theme = this._appState.custom.themes[idx];
-				if (!theme) break;
-				theme.method = method;
-				theme.themekitUuid = "";
-				theme.themebookUuid = "";
-				theme.powerTagOptions = [];
-				theme.weaknessTagOptions = [];
-				theme.selectedPowerTags = [];
-				theme.selectedWeaknessTag = "";
-				await this.#renderCurrentSlide();
-				break;
-			}
-			case "selectThemeKit": {
-				const idx = Number(
-					target.dataset.index ?? this._appState.custom.themeIndex,
-				);
-				const theme = this._appState.custom.themes[idx];
-				if (!theme) break;
-				const uuid =
-					target.tagName === "SELECT"
-						? target.value
-						: target.dataset.uuid || "";
-				theme.method = "themekit";
-				theme.themekitUuid = uuid;
-				// Populate tag options from the themekit
-				if (uuid) {
-					const themeDoc = await this.getThemeDoc(uuid);
-					const tagOptions = this.getThemeTagOptions(themeDoc);
-					theme.powerTagOptions = tagOptions.powerTags.map((name) => ({
-						name,
-						checked: false,
-					}));
-					theme.weaknessTagOptions = tagOptions.weaknessTags.map((name) => ({
-						name,
-						checked: false,
-					}));
-					theme.selectedPowerTags = [];
-					theme.selectedWeaknessTag = "";
-					// Resolve parent themebook questions
-					const themebookName = themeDoc?.system?.themebook || "";
-					const parentBook = await this.getThemebookByName(themebookName);
-					const allPQs = (parentBook?.system?.powerTagQuestions || [])
-						.map((q) => `${q ?? ""}`.trim())
-						.filter(Boolean);
-					theme.powerTagQuestions = allPQs.slice(1);
-					theme.weaknessTagQuestions = (
-						parentBook?.system?.weaknessTagQuestions || []
-					)
-						.map((q) => `${q ?? ""}`.trim())
-						.filter(Boolean);
-				} else {
-					theme.powerTagOptions = [];
-					theme.weaknessTagOptions = [];
-					theme.selectedPowerTags = [];
-					theme.selectedWeaknessTag = "";
-					theme.powerTagQuestions = [];
-					theme.weaknessTagQuestions = [];
-				}
-				await this.#renderCurrentSlide();
-				break;
-			}
-			case "selectThemebook": {
-				const idx = Number(
-					target.dataset.index ?? this._appState.custom.themeIndex,
-				);
-				const theme = this._appState.custom.themes[idx];
-				if (!theme) break;
-				const uuid =
-					target.tagName === "SELECT"
-						? target.value
-						: target.dataset.uuid || "";
-				theme.method = "themebook";
-				theme.themebookUuid = uuid;
-				await this.#renderCurrentSlide();
-				break;
-			}
-
-			// Custom themekit tag toggling
-			case "toggleCustomPowerTag": {
-				const idx = Number(
-					target.dataset.index ?? this._appState.custom.themeIndex,
-				);
-				const theme = this._appState.custom.themes[idx];
-				if (!theme) break;
-				const value = target.value;
-				const selected = new Set(theme.selectedPowerTags.filter(Boolean));
-				if (target.checked) {
-					if (selected.has(value)) break;
-					if (selected.size >= 2) {
-						target.checked = false;
-						ui.notifications.warn("LITM.Ui.hero_creation_max_power_tags", {
-							localize: true,
-						});
-						break;
-					}
-					selected.add(value);
-				} else {
-					selected.delete(value);
-				}
-				theme.selectedPowerTags = Array.from(selected);
-				theme.powerTagOptions.forEach((tagOpt) => {
-					tagOpt.checked = selected.has(tagOpt.name);
-				});
-				await this.#renderCurrentSlide();
-				break;
-			}
-
-			case "toggleCustomWeaknessTag": {
-				const idx = Number(
-					target.dataset.index ?? this._appState.custom.themeIndex,
-				);
-				const theme = this._appState.custom.themes[idx];
-				if (!theme) break;
-				const value = target.value;
-				if (target.checked) {
-					theme.selectedWeaknessTag = value;
-				} else if (theme.selectedWeaknessTag === value) {
-					theme.selectedWeaknessTag = "";
-				}
-				theme.weaknessTagOptions.forEach((tagOpt) => {
-					tagOpt.checked = tagOpt.name === theme.selectedWeaknessTag;
-				});
-				await this.#renderCurrentSlide();
-				break;
-			}
-
-			// Backpack suggestions (Feature C)
-			case "selectStoreCategory": {
-				const cat = target.dataset.value || "";
-				this._appState.custom.activeStoreCategory = cat;
-				await this.#renderCurrentSlide();
-				break;
-			}
-			case "fillBackpackFromStore": {
-				const tag = target.dataset.value || "";
-				const tags = this._appState.custom.backpackTags;
-				const emptyIdx = tags.findIndex((t) => !t);
-				if (emptyIdx !== -1) {
-					tags[emptyIdx] = tag;
-				}
-				await this.#renderCurrentSlide();
-				break;
-			}
-
-			// Navigation
-			case "back":
-				await this.back();
-				break;
-			case "next":
-				await this.#onWizardNext();
-				break;
-
-			case "create":
-				await this.#createHero();
-				break;
-
-			// Review slide
-			case "suggestHeroName": {
-				const name = HERO_NAMES[Math.floor(Math.random() * HERO_NAMES.length)];
-				this._appState.actorName = name;
-				await this.#renderCurrentSlide();
-				break;
-			}
-
-			case "cancel":
-				await this.goToSlide("welcome");
-				break;
-			default:
-				warn(`WelcomeOverlay: Unknown action "${action}"`);
+			selected.add(value);
+		} else {
+			selected.delete(value);
 		}
+		choice.powerTags = Array.from(selected);
+		choice.powerTagsMap = this._data.toLookupMap(choice.powerTags);
+		choice.powerTagOptions.forEach((tagOpt) => {
+			tagOpt.checked = selected.has(tagOpt.name);
+		});
+		await this.#renderCurrentSlide();
+	}
+
+	async #handleToggleTropeWeaknessTag(_event, target) {
+		const index = Number(target.dataset.index || 0);
+		const choice = this._appState.trope.themes.choices[index];
+		if (!choice) return;
+		const value = target.value;
+		if (target.checked) {
+			choice.weaknessTag = value;
+		} else if (choice.weaknessTag === value) {
+			choice.weaknessTag = "";
+		}
+		choice.weaknessTagOptions.forEach((tagOpt) => {
+			tagOpt.checked = tagOpt.name === choice.weaknessTag;
+		});
+		await this.#renderCurrentSlide();
+	}
+
+	// Custom theme action handlers
+
+	async #handleJumpToCustomStep(_event, target) {
+		await this.goToSlide(target.dataset.slide);
+	}
+
+	async #handleSelectActiveBackpack(_event, target) {
+		const idx = Number(target.dataset.index);
+		if (idx >= 0 && idx < 3) {
+			this._appState.custom.activeBackpackIndex = idx;
+		}
+		await this.#renderCurrentSlide();
+	}
+
+	async #handleSelectThemeMethod(_event, target) {
+		const method = target.dataset.method || "";
+		const idx = Number(
+			target.dataset.index ?? this._appState.custom.themeIndex,
+		);
+		const theme = this._appState.custom.themes[idx];
+		if (!theme) return;
+		theme.method = method;
+		theme.themekitUuid = "";
+		theme.themebookUuid = "";
+		theme.powerTagOptions = [];
+		theme.weaknessTagOptions = [];
+		theme.selectedPowerTags = [];
+		theme.selectedWeaknessTag = "";
+		await this.#renderCurrentSlide();
+	}
+
+	async #handleSelectThemeKit(_event, target) {
+		const idx = Number(
+			target.dataset.index ?? this._appState.custom.themeIndex,
+		);
+		const theme = this._appState.custom.themes[idx];
+		if (!theme) return;
+		const uuid =
+			target.tagName === "SELECT"
+				? target.value
+				: target.dataset.uuid || "";
+		theme.method = "themekit";
+		theme.themekitUuid = uuid;
+		// Populate tag options from the themekit
+		if (uuid) {
+			const themeDoc = await this._data.getThemeDoc(uuid);
+			const tagOptions = this._data.getThemeTagOptions(themeDoc);
+			theme.powerTagOptions = tagOptions.powerTags.map((name) => ({
+				name,
+				checked: false,
+			}));
+			theme.weaknessTagOptions = tagOptions.weaknessTags.map((name) => ({
+				name,
+				checked: false,
+			}));
+			theme.selectedPowerTags = [];
+			theme.selectedWeaknessTag = "";
+			// Resolve parent themebook questions
+			const themebookName = themeDoc?.system?.themebook || "";
+			const parentBook = await this._data.getThemebookByName(themebookName);
+			const allPQs = (parentBook?.system?.powerTagQuestions || [])
+				.map((q) => `${q ?? ""}`.trim())
+				.filter(Boolean);
+			theme.powerTagQuestions = allPQs.slice(1);
+			theme.weaknessTagQuestions = (
+				parentBook?.system?.weaknessTagQuestions || []
+			)
+				.map((q) => `${q ?? ""}`.trim())
+				.filter(Boolean);
+		} else {
+			theme.powerTagOptions = [];
+			theme.weaknessTagOptions = [];
+			theme.selectedPowerTags = [];
+			theme.selectedWeaknessTag = "";
+			theme.powerTagQuestions = [];
+			theme.weaknessTagQuestions = [];
+		}
+		await this.#renderCurrentSlide();
+	}
+
+	async #handleSelectThemebook(_event, target) {
+		const idx = Number(
+			target.dataset.index ?? this._appState.custom.themeIndex,
+		);
+		const theme = this._appState.custom.themes[idx];
+		if (!theme) return;
+		const uuid =
+			target.tagName === "SELECT"
+				? target.value
+				: target.dataset.uuid || "";
+		theme.method = "themebook";
+		theme.themebookUuid = uuid;
+		await this.#renderCurrentSlide();
+	}
+
+	// Custom themekit tag toggling action handlers
+
+	async #handleToggleCustomPowerTag(_event, target) {
+		const idx = Number(
+			target.dataset.index ?? this._appState.custom.themeIndex,
+		);
+		const theme = this._appState.custom.themes[idx];
+		if (!theme) return;
+		const value = target.value;
+		const selected = new Set(theme.selectedPowerTags.filter(Boolean));
+		if (target.checked) {
+			if (selected.has(value)) return;
+			if (selected.size >= 2) {
+				target.checked = false;
+				ui.notifications.warn("LITM.Ui.hero_creation_max_power_tags", {
+					localize: true,
+				});
+				return;
+			}
+			selected.add(value);
+		} else {
+			selected.delete(value);
+		}
+		theme.selectedPowerTags = Array.from(selected);
+		theme.powerTagOptions.forEach((tagOpt) => {
+			tagOpt.checked = selected.has(tagOpt.name);
+		});
+		await this.#renderCurrentSlide();
+	}
+
+	async #handleToggleCustomWeaknessTag(_event, target) {
+		const idx = Number(
+			target.dataset.index ?? this._appState.custom.themeIndex,
+		);
+		const theme = this._appState.custom.themes[idx];
+		if (!theme) return;
+		const value = target.value;
+		if (target.checked) {
+			theme.selectedWeaknessTag = value;
+		} else if (theme.selectedWeaknessTag === value) {
+			theme.selectedWeaknessTag = "";
+		}
+		theme.weaknessTagOptions.forEach((tagOpt) => {
+			tagOpt.checked = tagOpt.name === theme.selectedWeaknessTag;
+		});
+		await this.#renderCurrentSlide();
+	}
+
+	// Backpack suggestion action handlers
+
+	async #handleSelectStoreCategory(_event, target) {
+		const cat = target.dataset.value || "";
+		this._appState.custom.activeStoreCategory = cat;
+		await this.#renderCurrentSlide();
+	}
+
+	async #handleFillBackpackFromStore(_event, target) {
+		const tag = target.dataset.value || "";
+		const tags = this._appState.custom.backpackTags;
+		const emptyIdx = tags.findIndex((t) => !t);
+		if (emptyIdx !== -1) {
+			tags[emptyIdx] = tag;
+		}
+		await this.#renderCurrentSlide();
+	}
+
+	// Navigation action handlers
+
+	async #handleBack(_event, _target) {
+		await this.back();
+	}
+
+	async #handleNext(_event, _target) {
+		await this.#onWizardNext();
+	}
+
+	async #handleCreate(_event, _target) {
+		await this.#createHero();
+	}
+
+	// Review slide action handler
+
+	async #handleSuggestHeroName(_event, _target) {
+		const name = HERO_NAMES[Math.floor(Math.random() * HERO_NAMES.length)];
+		this._appState.actorName = name;
+		await this.#renderCurrentSlide();
+	}
+
+	async #handleCancel(_event, _target) {
+		LitmSettings.setWelcomed(true);
+		await this.dismiss();
 	}
 
 	/**
@@ -1325,54 +1344,59 @@ export class WelcomeOverlay {
 	 */
 	async #onWizardNext() {
 		const slideKey = this.currentSlideKey;
+		const validator = this.#SLIDE_VALIDATORS[slideKey];
+		if (validator) return validator.call(this);
+		await this.next();
+	}
 
-		switch (slideKey) {
-			case "modeSelect":
-				if (!this._appState.mode) {
-					ui.notifications.warn("LITM.Ui.hero_creation_select_mode", {
-						localize: true,
-					});
-					return;
-				}
-				await this.next();
-				break;
+	/** @type {Record<string, () => Promise<void>>} */
+	#SLIDE_VALIDATORS = {
+		"modeSelect": this.#validateModeSelect,
+		"tropeSelect": this.#validateTropeSelect,
+		"tropeThemes": this.#validateTropeThemes,
+		"customTheme0": this.#validateCustomTheme,
+		"customTheme1": this.#validateCustomTheme,
+		"customTheme2": this.#validateCustomTheme,
+		"customTheme3": this.#validateCustomTheme,
+		"customBackpack": this.#validateCustomBackpack,
+	};
 
-			case "tropeSelect":
-				if (!this._appState.trope.selectedUuid) {
-					ui.notifications.warn("LITM.Ui.hero_creation_select_trope", {
-						localize: true,
-					});
-					return;
-				}
-				await this.next();
-				break;
-
-			case "tropeThemes":
-				// Trope themes validation is lenient — always allow advancing
-				await this.next();
-				break;
-
-			case "customTheme0":
-			case "customTheme1":
-			case "customTheme2":
-			case "customTheme3":
-				await this.next();
-				break;
-
-			case "customBackpack": {
-				const invalidIdx = await this.validateAllCustomThemes();
-				if (invalidIdx !== -1) {
-					await this.goToSlide(`customTheme${invalidIdx}`);
-					return;
-				}
-				await this.next();
-				break;
-			}
-
-			default:
-				await this.next();
-				break;
+	async #validateModeSelect() {
+		if (!this._appState.mode) {
+			ui.notifications.warn("LITM.Ui.hero_creation_select_mode", {
+				localize: true,
+			});
+			return;
 		}
+		await this.next();
+	}
+
+	async #validateTropeSelect() {
+		if (!this._appState.trope.selectedUuid) {
+			ui.notifications.warn("LITM.Ui.hero_creation_select_trope", {
+				localize: true,
+			});
+			return;
+		}
+		await this.next();
+	}
+
+	async #validateTropeThemes() {
+		// Trope themes validation is lenient — always allow advancing
+		await this.next();
+	}
+
+	async #validateCustomTheme() {
+		await this.next();
+	}
+
+	async #validateCustomBackpack() {
+		const invalidIdx = await this.validateAllCustomThemes();
+		if (invalidIdx !== -1) {
+			await this.goToSlide(`customTheme${invalidIdx}`);
+			return;
+		}
+		await this.next();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -1431,11 +1455,11 @@ export class WelcomeOverlay {
 	 * @returns {Promise<object>}
 	 */
 	async #prepareReviewContext() {
-		await this.ensureIndexes();
+		await this._data.ensureIndexes();
 
-		const themeKitLookup = this.buildLookup(this._cache.themekits);
-		const themebookLookup = this.buildLookup(this._cache.themebooks);
-		const selectedTrope = await this.getTropeDetails(
+		const themeKitLookup = this._data.buildLookup(this._cache.themekits);
+		const themebookLookup = this._data.buildLookup(this._cache.themebooks);
+		const selectedTrope = await this._data.getTropeDetails(
 			this._appState.trope.selectedUuid,
 			themeKitLookup,
 		);
@@ -1525,31 +1549,6 @@ export class WelcomeOverlay {
 			this.#slideFlow.push("heroCreated");
 		}
 		await this.goToSlide("heroCreated");
-	}
-
-	// ---------------------------------------------------------------------------
-	// Data method delegates (forwarded to HeroCreationData)
-	// ---------------------------------------------------------------------------
-
-	ensureIndexes() { return this._data.ensureIndexes(); }
-	buildLookup(entries) { return this._data.buildLookup(entries); }
-	groupByCategory(entries) { return this._data.groupByCategory(entries); }
-	filterBySearch(entries, term) { return this._data.filterBySearch(entries, term); }
-	resolveKitLabels(uuids, lookup) { return this._data.resolveKitLabels(uuids, lookup); }
-	toLookupMap(values) { return this._data.toLookupMap(values); }
-	getTropeDetails(uuid, lookup) { return this._data.getTropeDetails(uuid, lookup); }
-	getThemeTagOptions(doc) { return this._data.getThemeTagOptions(doc); }
-	getTropeDoc(uuid) { return this._data.getTropeDoc(uuid); }
-	getThemeDoc(uuid) { return this._data.getThemeDoc(uuid); }
-	getThemebookDoc(uuid) { return this._data.getThemebookDoc(uuid); }
-	getThemebookByName(name) { return this._data.getThemebookByName(name); }
-
-	syncTropeThemes(selectedTrope) {
-		return this._data.syncTropeThemes(this._appState, selectedTrope);
-	}
-
-	isCustomReady() {
-		return this._data.isCustomReady(this._appState);
 	}
 
 	async validateAllCustomThemes() {

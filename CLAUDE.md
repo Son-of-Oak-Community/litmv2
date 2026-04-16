@@ -11,9 +11,6 @@ Legend in the Mist is a Foundry Virtual Tabletop (v14 minimum) system for a rust
 - `node check-keys.js` -- find missing localization keys across language files
 - `node diff.js` -- diff localization keys between language files
 - `node scripts/system/build-packs.js` -- generate status card source files in `packs/status-effects/_source/`, then compile with `fvtt package pack status-effects`
-- E2E tests: `cd tests/e2e && npx playwright test`
-- Single test: `cd tests/e2e && npx playwright test specs/hero-sheet/gm.spec.ts`
-- Test profiles: `--project=gm`, `--project=player-owner`, `--project=player-observer`
 
 ## Architecture
 
@@ -43,7 +40,6 @@ templates/                  # Handlebars templates (actor/, item/, chat/, apps/,
 lang/                       # Localization files (en, de, es, cn, fr, no)
 assets/                     # Fonts (.woff2), images (.webp), icons (.svg)
 packs/                      # Compendium packs (status-effects)
-tests/e2e/                  # Playwright E2E tests
 ```
 
 ### Document Type Map
@@ -292,7 +288,7 @@ Mixin for actor data models providing: `storyTags` (all `story_tag` effects), `s
 
 ### Prefer Native Foundry Behaviour
 
-Always use Foundry's built-in APIs instead of hand-rolling solutions. A symlink to the current Foundry source is at `./foundry/` (client code under `public/`, CSS at `public/css/foundry2.css`). API docs: https://foundryvtt.com/api/v14/
+Always use Foundry's built-in APIs instead of hand-rolling solutions. A symlink to the current Foundry source is at `./foundry/` (client code under `public/`, CSS at `public/css/foundry2.css`). API docs: <https://foundryvtt.com/api/v14/>
 
 - **Dialogs:** `foundry.applications.api.DialogV2` (not legacy `Dialog`)
 - **Template rendering:** `foundry.applications.handlebars.renderTemplate()`
@@ -304,6 +300,7 @@ Always use Foundry's built-in APIs instead of hand-rolling solutions. A symlink 
 ### Tag Access Model
 
 **Access rules:**
+
 1. **Actor-level queries** (all tags on a character) -> use `allApplicableEffects()`, never `actor.effects`
 2. **Item-level queries** (tags on a specific theme) -> use `item.effects` directly
 3. **Finding an effect by ID** -> search `allApplicableEffects()` or use `resolveEffect()` from `utils.js`
@@ -337,6 +334,7 @@ When adding new keys, add them to all language files (`node diff.js` or `node ch
 System-specific classes use `litm--` prefix (BEM-inspired). Use Foundry's built-in utility classes for layout. Prefer Foundry CSS variables (`--color-text-primary`, `--color-border`) over hardcoded values for theme compatibility.
 
 **CSS anti-patterns -- do not use:**
+
 - `border-left` as a selection/active indicator -- use background color changes instead
 - `dashed` or `dotted` border styles -- use `solid` borders, or `groove`/`ridge` for decorative separators
 

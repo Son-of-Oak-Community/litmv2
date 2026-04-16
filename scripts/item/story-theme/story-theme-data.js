@@ -1,5 +1,4 @@
-import { THEME_TAG_TYPES, POWER_TAG_TYPES } from "../../system/config.js";
-import { levelIcon, localize as t } from "../../utils.js";
+import { THEME_TAG_TYPES, POWER_TAG_TYPES, getThemeLevels, getDefaultThemeLevel } from "../../system/config.js";
 
 export class StoryThemeData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
@@ -11,9 +10,8 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 			}),
 			level: new fields.StringField({
 				trim: true,
-				initial: () => Object.keys(CONFIG.litmv2.theme_levels)[0],
-				validate: (level) =>
-					Object.keys(CONFIG.litmv2.theme_levels).includes(level),
+				initial: () => getDefaultThemeLevel(),
+				validate: (level) => getThemeLevels().includes(level),
 			}),
 		};
 	}
@@ -25,9 +23,9 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 			delete source.theme.level;
 		}
 		// Migrate invalid "story" level to first valid level
-		const validLevels = Object.keys(CONFIG.litmv2?.theme_levels ?? {});
+		const validLevels = getThemeLevels();
 		if (validLevels.length && !validLevels.includes(source.level)) {
-			source.level = validLevels[0];
+			source.level = getDefaultThemeLevel();
 		}
 		// Strip legacy tag arrays — tags are now ActiveEffects.
 		delete source.theme;
@@ -46,18 +44,6 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 	get weaknessTags() {
 		return this.parent.effects
 			.filter((e) => e.type === "weakness_tag");
-	}
-
-	get levelIcon() {
-		return levelIcon(this.level);
-	}
-
-	get levels() {
-		const levels = CONFIG.litmv2.theme_levels || {};
-		return Object.keys(levels).reduce((acc, level) => {
-			acc[level] = t(`LITM.Terms.${level}`);
-			return acc;
-		}, {});
 	}
 
 	get themeTag() {

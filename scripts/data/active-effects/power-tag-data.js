@@ -22,4 +22,8 @@ export class PowerTagData extends ScratchableMixin(foundry.data.ActiveEffectType
 	get defaultPolarity() {
 		return 1;
 	}
+
+	toTagString(name) {
+		return `[${name}]`;
+	}
 }

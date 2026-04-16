@@ -1,17 +1,4 @@
-/**
- * Creates a tag span matching the hero play sheet pattern.
- * @param {string} name - Tag name
- * @param {string} type - Tag CSS class (litm-power_tag, litm-weakness_tag, etc.)
- * @returns {HTMLElement}
- */
-function tagSpan(name, type) {
-	const span = document.createElement("span");
-	span.classList.add(type);
-	span.dataset.text = name;
-	span.draggable = true;
-	span.textContent = name;
-	return span;
-}
+import { tagSpan } from "./renderer-utils.js";
 
 /**
  * Renders a Theme item (theme kit) as an embed card,

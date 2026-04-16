@@ -1,10 +1,4 @@
-import { levelIcon } from "../../utils.js";
-
 export class ThemebookData extends foundry.abstract.TypeDataModel {
-	get levelIcon() {
-		return levelIcon(this.theme_level);
-	}
-
 	static defineSchema() {
 		const fields = foundry.data.fields;
 		return {

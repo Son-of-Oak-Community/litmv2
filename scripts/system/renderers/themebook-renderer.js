@@ -1,16 +1,5 @@
 import { enrichHTML, localize as t } from "../../utils.js";
-
-/**
- * Creates a section divider with a centered label and decorative lines.
- * @param {string} label
- * @returns {HTMLElement}
- */
-function sectionHeader(label) {
-	const el = document.createElement("div");
-	el.classList.add("litm-render__section-header");
-	el.textContent = label;
-	return el;
-}
+import { sectionHeader } from "./renderer-utils.js";
 
 /**
  * Renders a lettered question list (A, B, C…).
@@ -46,7 +35,7 @@ export async function renderThemebook(item) {
 	const sys = item.system;
 
 	const container = document.createElement("div");
-	container.classList.add("litm", "litm-render", "litm-render--themebook");
+	container.classList.add("litm", "litm-render", "litm-render--card", "litm-render--themebook");
 
 	// Level label + Title
 	if (sys.theme_level) {

@@ -77,25 +77,18 @@ export function detectTrackCompletion(attrib, newValue, doc, actor) {
 	return null;
 }
 
-export function buildTrackCompleteContent({ text, type, actorId, themeId }) {
-	const esc = foundry.utils.escapeHTML;
-	const icon = TRACK_ICONS[type];
-	const label = game.i18n.localize(TRACK_LABEL_KEYS[type]);
-	const footer =
-		type === "improve" && actorId && themeId
-			? `<footer class="litm-track-complete__footer">
-				<button type="button" data-click="open-theme-advancement"
-				        data-actor-id="${esc(actorId)}" data-theme-id="${esc(themeId)}">
-					<i class="fas fa-wand-magic-sparkles"></i> ${game.i18n.localize("LITM.Ui.choose_improvement")}
-				</button>
-			</footer>`
-			: "";
-	return `<div class="litmv2 litm-track-complete litm-track-complete--${esc(type)}">
-		<header class="litm-track-complete__header">
-			<i class="fas ${icon}"></i>
-			<span>${label}</span>
-		</header>
-		<p class="litm-track-complete__body"><strong>${esc(text)}</strong></p>
-		${footer}
-	</div>`;
+export async function buildTrackCompleteContent({ text, type, actorId, themeId }) {
+	return foundry.applications.handlebars.renderTemplate(
+		"systems/litmv2/templates/chat/track-complete.html",
+		{
+			text,
+			type,
+			icon: TRACK_ICONS[type],
+			label: game.i18n.localize(TRACK_LABEL_KEYS[type]),
+			hasFooter: type === "improve" && actorId && themeId,
+			actorId,
+			themeId,
+			chooseLabel: game.i18n.localize("LITM.Ui.choose_improvement"),
+		},
+	);
 }

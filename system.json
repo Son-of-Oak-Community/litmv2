@@ -14,7 +14,7 @@
 		}
 	],
 	"esmodules": ["litmv2.js"],
-	"styles": ["litmv2.css"],
+	"styles": ["litmv2.css", "litmv2-welcome.css"],
 	"documentTypes": {
 		"Actor": {
 			"hero": {
@@ -101,7 +101,7 @@
 	"flags": {
 		"hotReload": {
 			"extensions": ["css", "html", "js", "json"],
-			"paths": ["styles", "templates", "lang", "litmv2.css", "litmv2.js"]
+			"paths": ["styles", "templates", "lang", "litmv2.css", "litmv2-welcome.css", "litmv2.js"]
 		}
 	},
 	"relationships": {

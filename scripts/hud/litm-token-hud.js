@@ -1,6 +1,6 @@
 // scripts/hud/litm-token-hud.js
 import { ContentSources } from "../system/content-sources.js";
-import { localize as t, resolveEffect } from "../utils.js";
+import { getStoryTagSidebar, localize as t, resolveEffect } from "../utils.js";
 
 const { TokenHUD } = foundry.applications.hud;
 
@@ -73,7 +73,7 @@ export class LitmTokenHUD extends TokenHUD {
 		const context = await super._prepareContext(options);
 		const isLocked = !this.#canToggleSidebarVisibility();
 		const isInSidebar = this.#isInSidebar();
-		context.canToggleSidebar = ui.combat !== null;
+		context.canToggleSidebar = getStoryTagSidebar() !== null;
 		context.sidebarClass = isInSidebar ? "active" : "";
 		context.sidebarLocked = isLocked;
 		context.sidebarTooltip = isLocked
@@ -84,7 +84,7 @@ export class LitmTokenHUD extends TokenHUD {
 
 	#isInSidebar() {
 		if (!this.actor) return false;
-		return ui.combat?.actors?.some((a) => a.id === this.actor.uuid) ?? false;
+		return getStoryTagSidebar()?.actors?.some((a) => a.id === this.actor.uuid) ?? false;
 	}
 
 	#canToggleSidebarVisibility() {
@@ -179,10 +179,10 @@ export class LitmTokenHUD extends TokenHUD {
 	 * @this {LitmTokenHUD}
 	 */
 	static async #onToggleSidebar(_event, target) {
-		if (!this.actor || !ui.combat) return;
+		if (!this.actor || !getStoryTagSidebar()) return;
 		if (!this.#canToggleSidebarVisibility()) return;
 
-		const sidebar = ui.combat;
+		const sidebar = getStoryTagSidebar();
 		const isInSidebar = this.#isInSidebar();
 
 		if (isInSidebar) {
@@ -202,7 +202,7 @@ export class LitmTokenHUD extends TokenHUD {
 	 * falls back to default token hidden toggle for user characters.
 	 * @this {LitmTokenHUD}
 	 */
-	static async #onToggleVisibility(_event, target) {
+	static async #onToggleVisibility(_event, _target) {
 		if (!this.actor) return;
 		const isHidden = !!this.document?.hidden;
 		const updates = this.layer.controlled.map((o) => ({
@@ -215,14 +215,15 @@ export class LitmTokenHUD extends TokenHUD {
 		);
 
 		// Sync sidebar visibility
-		if (this.#canToggleSidebarVisibility() && ui.combat) {
+		const sidebar = getStoryTagSidebar();
+		if (this.#canToggleSidebarVisibility() && sidebar) {
 			const uuid = this.actor.uuid;
 			const shouldBeHidden = !isHidden;
-			const isHiddenInSidebar = (ui.combat.config.hiddenActors ?? []).includes(
+			const isHiddenInSidebar = (sidebar.config.hiddenActors ?? []).includes(
 				uuid,
 			);
 			if (shouldBeHidden !== isHiddenInSidebar) {
-				await ui.combat._toggleActorVisibility(uuid);
+				await sidebar._toggleActorVisibility(uuid);
 			}
 		}
 	}
@@ -238,7 +239,7 @@ export class LitmTokenHUD extends TokenHUD {
 		const tier = Number(target.dataset.tier);
 		if (!effectId || !tier) return;
 
-		const effect = resolveEffect(effectId, this.actor, { fellowship: false });
+		const effect = resolveEffect(effectId, this.actor);
 		if (!effect) return;
 
 		// Right-click: reduce by 1

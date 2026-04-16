@@ -51,7 +51,6 @@ export function buildBackpackTagEffects(contents) {
 	return contents.map((t) => ({
 		name: t.name || "",
 		type: "story_tag",
-		transfer: true,
 		disabled: !(t.isActive ?? true),
 		system: {
 			isScratched: t.isScratched ?? false,
@@ -69,14 +68,14 @@ export function buildBackpackTagEffects(contents) {
  * and create proper ActiveEffect documents.
  */
 export class LitmItem extends foundry.documents.Item {
+	static #LEGACY_STASHERS = {
+		theme: LitmItem.#stashLegacyThemeTags,
+		story_theme: LitmItem.#stashLegacyThemeTags,
+		backpack: LitmItem.#stashLegacyBackpackContents,
+	};
+
 	static migrateData(source) {
-		if (source.type === "theme" || source.type === "story_theme") {
-			LitmItem.#stashLegacyThemeTags(source);
-		}
-		if (source.type === "backpack") {
-			LitmItem.#stashLegacyBackpackContents(source);
-		}
-		// Reshape existing effects (flag→system for isTitleTag)
+		LitmItem.#LEGACY_STASHERS[source.type]?.(source);
 		for (const e of (source.effects ?? [])) {
 			if (e.flags?.litmv2?.isTitleTag && !e.system?.isTitleTag) {
 				e.system ??= {};
@@ -123,12 +122,26 @@ export class LitmItem extends foundry.documents.Item {
 		source.flags.litmv2.legacyContents = contents;
 	}
 
+	// Per-item promise cache so concurrent calls (e.g. createItem + createActor
+	// hooks firing back-to-back on wizard-created heroes) share one result and
+	// don't race to create duplicate title tags.
+	static #titleTagInFlight = new WeakMap();
+
 	/**
 	 * Ensure a theme or story_theme item has exactly one title tag effect.
 	 * Creates one from the item name if missing, removes duplicates if present.
 	 */
 	static async ensureTitleTag(item) {
 		if (item.type !== "theme" && item.type !== "story_theme") return;
+		const existing = LitmItem.#titleTagInFlight.get(item);
+		if (existing) return existing;
+		const promise = LitmItem.#doEnsureTitleTag(item);
+		LitmItem.#titleTagInFlight.set(item, promise);
+		promise.finally(() => LitmItem.#titleTagInFlight.delete(item));
+		return promise;
+	}
+
+	static async #doEnsureTitleTag(item) {
 		const titleTags = [...item.effects].filter((e) => e.system?.isTitleTag);
 		if (titleTags.length > 1) {
 			const toDelete = titleTags.slice(1).map((e) => e.id);
@@ -150,13 +163,14 @@ export class LitmItem extends foundry.documents.Item {
 	 * Handles compendium imports and any other path where items are
 	 * created without the world migration running.
 	 */
+	static #LEGACY_CREATORS = {
+		theme: LitmItem.#createLegacyThemeEffects,
+		story_theme: LitmItem.#createLegacyThemeEffects,
+		backpack: LitmItem.#createLegacyBackpackEffects,
+	};
+
 	static async createLegacyEffects(item) {
-		if (item.type === "theme" || item.type === "story_theme") {
-			await LitmItem.#createLegacyThemeEffects(item);
-		}
-		if (item.type === "backpack") {
-			await LitmItem.#createLegacyBackpackEffects(item);
-		}
+		await LitmItem.#LEGACY_CREATORS[item.type]?.(item);
 	}
 
 	static async #createLegacyThemeEffects(item) {

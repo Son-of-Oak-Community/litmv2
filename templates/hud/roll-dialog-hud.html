@@ -1,0 +1,13 @@
+{{#each entries}}
+<button type="button" class="litm-roll-dialog-hud__item" data-actor-id="{{actorId}}">
+    <img class="litm-roll-dialog-hud__img" src="{{img}}" alt="" />
+    <span class="litm-roll-dialog-hud__text">
+        <span class="litm-roll-dialog-hud__title">{{actorName}}</span>
+        <span class="litm-roll-dialog-hud__meta">{{openedBy}}</span>
+    </span>
+    <span class="litm-roll-dialog-hud__action">
+        <i class="fa-solid fa-dice" aria-hidden="true"></i>
+        {{clickLabel}}
+    </span>
+</button>
+{{/each}}

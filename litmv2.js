@@ -80,11 +80,12 @@ Hooks.once("init", () => {
 			StatusTagData,
 		},
 		methods: {
+			// Kept for backward compat with external modules; prefer importing LitmRoll.calculatePower directly.
 			calculatePower: LitmRoll.calculatePower,
 		},
 		get fellowship() {
-			if (!game.settings?.get("litmv2", "use_fellowship")) return null;
-			const id = game.settings?.get("litmv2", "fellowshipId");
+			if (!LitmSettings.useFellowship) return null;
+			const id = LitmSettings.fellowshipId;
 			return id ? (game.actors?.get(id) ?? null) : null;
 		},
 		LitmRollDialog,
@@ -105,9 +106,7 @@ Hooks.once("init", () => {
 	CONFIG.Actor.dataModels.story_theme = StoryThemeActorData;
 	CONFIG.Actor.trackableAttributes.hero = HeroData.getTrackableAttributes();
 	LitmSettings.register();
-	if (LitmSettings.customDice) {
-		CONFIG.Dice.terms[DoubleSix.DENOMINATION] = DoubleSix;
-	}
+	DoubleSix.register();
 	CONFIG.Dice.rolls.push(LitmRoll);
 	CONFIG.Item.documentClass = LitmItem;
 	CONFIG.ActiveEffect.documentClass = LitmActiveEffect;
@@ -132,15 +131,10 @@ Hooks.once("init", () => {
 		story_tag: "TYPES.ActiveEffect.story_tag",
 		status_tag: "TYPES.ActiveEffect.status_tag",
 	};
-	CONFIG.litmv2 = new LitmConfig();
+	CONFIG.litmv2 = LitmConfig;
 	CONFIG.Token.hudClass = LitmTokenHUD;
 
-	// Replace the combat tracker sidebar tab with Story Tags
-	CONFIG.ui.combat = StoryTagSidebar;
-	foundry.applications.sidebar.Sidebar.TABS.combat = {
-		tooltip: "LITM.Ui.manage_tags",
-		icon: "fa-solid fa-tags",
-	};
+	StoryTagSidebar.registerSidebarTab();
 
 	info("Registering Sheets...");
 	// Unregister the default sheets

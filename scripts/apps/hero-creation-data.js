@@ -1,5 +1,5 @@
 import { THEME_TAG_TYPES, POWER_TAG_TYPES } from "../system/config.js";
-import { localize as t, powerTagEffect, weaknessTagEffect } from "../utils.js";
+import { levelIcon, localize as t, powerTagEffect, weaknessTagEffect, fellowshipTagEffect } from "../utils.js";
 import { ContentSources } from "../system/content-sources.js";
 const THEME_SLOTS = 4;
 
@@ -25,10 +25,11 @@ export function ensureLegacyEffects(data) {
 
 	const { powerTags = [], weaknessTags = [], isFellowship = false } = legacy;
 	const powerType = isFellowship ? "fellowship_tag" : "power_tag";
+	const makePowerEffect = isFellowship ? fellowshipTagEffect : powerTagEffect;
 
 	data.effects = [
 		...effects,
-		...powerTags.map((t) => powerTagEffect({
+		...powerTags.map((t) => makePowerEffect({
 			name: t.name || "",
 			isActive: t.isActive ?? false,
 			question: t.question ?? null,
@@ -626,6 +627,7 @@ export class HeroCreationData {
 				const data = themeDoc.toObject();
 				delete data._id;
 				delete data._stats;
+				if (data.flags) delete data.flags.exportSource;
 				ensureLegacyEffects(data);
 				const choice = selections[index];
 				const hasPowerSelection = choice?.powerTags?.some(Boolean);
@@ -656,6 +658,7 @@ export class HeroCreationData {
 					const data = themeDoc.toObject();
 					delete data._id;
 					delete data._stats;
+					if (data.flags) delete data.flags.exportSource;
 					ensureLegacyEffects(data);
 					const hasPowerSelection = themeState.selectedPowerTags?.some(Boolean);
 					const hasWeaknessSelection = Boolean(themeState.selectedWeaknessTag);
@@ -681,6 +684,7 @@ export class HeroCreationData {
 					items.push(tagsToEffects({
 						name: themeState.name || t("LITM.Ui.theme_title"),
 						type: "theme",
+						img: levelIcon("origin"),
 						system: {
 							themebook: "",
 							level: "origin",
@@ -760,6 +764,7 @@ export class HeroCreationData {
 				items.push(tagsToEffects({
 					name: nameValue,
 					type: "theme",
+					img: levelIcon(level),
 					system: {
 						themebook: themebookName,
 						level,

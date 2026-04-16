@@ -85,4 +85,9 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 		}
 		return newTiers;
 	}
+
+	toTagString(name) {
+		const tier = this.currentTier ?? 0;
+		return `[${name}-${tier}]`;
+	}
 }

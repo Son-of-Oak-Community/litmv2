@@ -1,4 +1,5 @@
 import { enrichHTML, localize as t } from "../../utils.js";
+import { tagSpan } from "./renderer-utils.js";
 
 /**
  * Builds a tag tooltip HTML string from a theme's power/weakness tags,
@@ -86,7 +87,7 @@ export async function renderTrope(item) {
 	const sys = item.system;
 
 	const container = document.createElement("div");
-	container.classList.add("litm", "litm-render", "litm-render--trope");
+	container.classList.add("litm", "litm-render", "litm-render--card", "litm-render--trope");
 
 	// Title
 	const title = document.createElement("h3");
@@ -163,12 +164,7 @@ export async function renderTrope(item) {
 		bp.appendChild(label);
 
 		backpack.forEach((tag, i) => {
-			const span = document.createElement("span");
-			span.classList.add("litm-tag");
-			span.dataset.text = tag;
-			span.draggable = true;
-			span.textContent = tag;
-			bp.appendChild(span);
+			bp.appendChild(tagSpan(tag, "litm-tag"));
 			if (i < backpack.length - 1) {
 				bp.appendChild(document.createTextNode(", "));
 			}

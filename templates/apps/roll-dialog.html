@@ -22,7 +22,7 @@
 		{{#if isOwner}}
 		<div class="litm--roll-type-bar">
 			{{#each rollTypes as |label key|}}
-			<label class="litm--roll-type-option {{#if (eq key ../type)}}is-active{{/if}}">
+			<label class="litm--segmented-option litm--roll-type-option {{#if (eq key ../type)}}is-active{{/if}}">
 				<input type="radio" name="type" value="{{key}}" {{checked (eq key ../type)}} />
 				<span>{{localize label}}</span>
 			</label>
@@ -78,7 +78,7 @@
 				</div>
 				<div class="litm--might-radio-row">
 					{{#each mightRange}}
-					<label class="litm--might-option {{#if (eq ../might this)}}is-active{{/if}}"
+					<label class="litm--segmented-option litm--might-option {{#if (eq ../might this)}}is-active{{/if}}"
 						{{#if (eq this -6)}}data-tooltip="{{localize 'LITM.Ui.might_extremely_imperiled_short'}}"
 						{{else if (eq this -3)}}data-tooltip="{{localize 'LITM.Ui.might_imperiled_short'}}"
 						{{else if (eq this 0)}}data-tooltip="{{localize 'LITM.Ui.might_equal_short'}}"
@@ -172,15 +172,15 @@
 			</template>
 			<div class="litm--trade-power-fieldset hidden">
 				<div class="litm--roll-type-bar litm--trade-power-bar">
-					<label class="litm--roll-type-option {{#if (eq tradePower -1)}}is-active{{/if}}" data-tooltip="{{localize 'LITM.Ui.trade_caution_hint'}}">
+					<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower -1)}}is-active{{/if}}" data-tooltip="{{localize 'LITM.Ui.trade_caution_hint'}}">
 						<input type="radio" name="tradePower" value="-1" {{checked (eq tradePower -1)}} />
 						<span>{{localize "LITM.Ui.trade_caution"}}</span>
 					</label>
-					<label class="litm--roll-type-option {{#if (eq tradePower 0)}}is-active{{/if}}">
+					<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower 0)}}is-active{{/if}}">
 						<input type="radio" name="tradePower" value="0" {{checked (eq tradePower 0)}} />
 						<span>{{localize "LITM.Ui.trade_none"}}</span>
 					</label>
-					<label class="litm--roll-type-option {{#if (eq tradePower 1)}}is-active{{/if}} {{#unless canHedge}}is-disabled{{/unless}}" data-tooltip="{{localize 'LITM.Ui.trade_hedge_hint'}}">
+					<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower 1)}}is-active{{/if}} {{#unless canHedge}}is-disabled{{/unless}}" data-tooltip="{{localize 'LITM.Ui.trade_hedge_hint'}}">
 						<input type="radio" name="tradePower" value="1" {{checked (eq tradePower 1)}} {{#unless canHedge}}disabled{{/unless}} />
 						<span>{{localize "LITM.Ui.trade_hedge"}}</span>
 					</label>

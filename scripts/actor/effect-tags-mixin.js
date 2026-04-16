@@ -1,4 +1,4 @@
-import { statusTagEffect } from "../utils.js";
+import { statusTagEffect, partitionEffects } from "../utils.js";
 
 /**
  * Mixin that adds universal tag/status getters to actor data models.
@@ -8,13 +8,23 @@ import { statusTagEffect } from "../utils.js";
  */
 export function EffectTagsMixin(Base) {
 	return class extends Base {
+		/** @internal */ _cachedStoryTags = null;
+		/** @internal */ _cachedStatusEffects = null;
+
+		/** @override */
+		prepareDerivedData() {
+			super.prepareDerivedData();
+			this._cachedStoryTags = null;
+			this._cachedStatusEffects = null;
+		}
+
 		/**
 		 * All story_tag effects on this actor.
 		 * @returns {ActiveEffect[]}
 		 */
 		get storyTags() {
-			const { storyTags } = this.#partitionEffects();
-			return storyTags;
+			if (!this._cachedStoryTags) this.#partitionEffects();
+			return this._cachedStoryTags;
 		}
 
 		/**
@@ -22,8 +32,8 @@ export function EffectTagsMixin(Base) {
 		 * @returns {ActiveEffect[]}
 		 */
 		get statusEffects() {
-			const { statusEffects } = this.#partitionEffects();
-			return statusEffects;
+			if (!this._cachedStatusEffects) this.#partitionEffects();
+			return this._cachedStatusEffects;
 		}
 
 		/**
@@ -56,13 +66,9 @@ export function EffectTagsMixin(Base) {
 		}
 
 		#partitionEffects() {
-			const storyTags = [];
-			const statusEffects = [];
-			for (const e of this.parent.allApplicableEffects()) {
-				if (e.type === "story_tag") storyTags.push(e);
-				else if (e.type === "status_tag") statusEffects.push(e);
-			}
-			return { storyTags, statusEffects };
+			const { story_tag, status_tag } = partitionEffects(this.parent, "story_tag", "status_tag");
+			this._cachedStoryTags = story_tag;
+			this._cachedStatusEffects = status_tag;
 		}
 	};
 }

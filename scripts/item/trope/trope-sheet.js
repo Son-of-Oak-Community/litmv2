@@ -1,5 +1,5 @@
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
-import { enrichHTML, queryItemsFromPacks } from "../../utils.js";
+import { queryItemsFromPacks } from "../../utils.js";
 
 export class TropeSheet extends LitmItemSheet {
 	static DEFAULT_OPTIONS = {
@@ -33,10 +33,7 @@ export class TropeSheet extends LitmItemSheet {
 
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
-		const enrichedDescription = await enrichHTML(
-			this.system.description,
-			this.document,
-		);
+		const enriched = await this._enrichFields("description");
 		const themeKitLookup = await this.#getThemeKitLookup();
 		const fixedKits = this.#resolveKits(
 			this.system.themeKits.fixed,
@@ -49,9 +46,7 @@ export class TropeSheet extends LitmItemSheet {
 
 		return {
 			...context,
-			enriched: {
-				description: enrichedDescription,
-			},
+			enriched,
 			system: this.system,
 			item: this.document,
 			fixedKits,

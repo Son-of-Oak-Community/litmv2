@@ -13,3 +13,17 @@ export function ScratchableMixin(Base) {
 		}
 	};
 }
+
+/**
+ * Scratch/unscratch an effect with proper hook guards.
+ * Centralizes the pre/post hook pattern used across sheets.
+ * @param {Actor} actor   The owning actor
+ * @param {ActiveEffect} effect  The effect to toggle
+ * @returns {Promise<boolean>} false if blocked by preTagScratched hook
+ */
+export async function scratchTag(actor, effect) {
+	if (Hooks.call("litm.preTagScratched", actor, effect) === false) return false;
+	await effect.system.toggleScratch();
+	Hooks.callAll("litm.tagScratched", actor, effect);
+	return true;
+}

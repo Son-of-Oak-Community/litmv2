@@ -22,12 +22,8 @@ export class StoryThemeActorSheet extends LitmActorSheet {
 		},
 	};
 
-	/**
-	 * The single embedded story_theme item this actor wraps.
-	 * @returns {Item|null}
-	 */
 	get storyTheme() {
-		return this.document.items.find((i) => i.type === "story_theme") ?? null;
+		return this.document.system.storyTheme;
 	}
 
 	async _prepareContext(options) {
@@ -61,6 +57,32 @@ export class StoryThemeActorSheet extends LitmActorSheet {
 
 	/** @override */
 	_renderModeToggle() {}
+
+	/** @override */
+	async _onDropItem(event, item) {
+		if (item.type !== "story_theme") return super._onDropItem(event, item);
+
+		if (this.document.uuid === item.parent?.uuid) {
+			return this._onSortItem(event, item);
+		}
+
+		const existing = this.storyTheme;
+		if (existing) {
+			const shouldReplace = await foundry.applications.api.DialogV2.confirm({
+				window: {
+					title: game.i18n.localize("LITM.Ui.replace_story_theme_title"),
+				},
+				content: game.i18n.localize("LITM.Ui.replace_story_theme_content"),
+				no: { default: true },
+				classes: ["litm"],
+			});
+			if (!shouldReplace) return;
+			await existing.delete();
+		}
+
+		await this.document.createEmbeddedDocuments("Item", [item.toObject()]);
+		await this.document.update({ name: item.name, img: item.img });
+	}
 
 	/**
 	 * Open the embedded story theme item sheet for editing.

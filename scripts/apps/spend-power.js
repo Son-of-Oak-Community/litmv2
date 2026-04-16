@@ -1,5 +1,48 @@
 import { localize as t, resolveEffect } from "../utils.js";
 
+/** Cost calculators by option type. Each receives (li, cost, entriesSection, hasTier). */
+const COST_CALCULATORS = {
+	statusPicker(_li, cost, entriesSection) {
+		let total = 0;
+		entriesSection
+			.querySelectorAll(".litm-spend-power__status-item")
+			.forEach((item) => {
+				const count = Number(
+					item.querySelector(".litm-spend-power__counter-value")?.textContent ?? 0,
+				);
+				total += cost * count;
+			});
+		return total;
+	},
+	counter(_li, cost, entriesSection) {
+		const count = Number(
+			entriesSection.querySelector(".litm-spend-power__counter-value")?.textContent ?? 1,
+		);
+		return cost * count;
+	},
+	picker(_li, cost, entriesSection) {
+		const selected = entriesSection.querySelectorAll(
+			".litm-spend-power__tag-chip.is-selected",
+		);
+		return cost * selected.length;
+	},
+};
+
+function defaultCostCalculator(li, cost, _entriesSection, hasTier) {
+	const entries = li.querySelectorAll(".litm-spend-power__entry");
+	if (entries.length === 0) return cost;
+	if (!hasTier) return cost * entries.length;
+	let total = 0;
+	entries.forEach((entry) => {
+		const tier = Math.max(
+			Number(entry.querySelector(".litm-spend-power__entry-tier")?.value ?? 1),
+			1,
+		);
+		total += cost * tier;
+	});
+	return total;
+}
+
 export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
 ) {
@@ -270,35 +313,9 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	}
 
 	#makeEntryRow(hasTier) {
-		const li = document.createElement("li");
-		li.classList.add("litm-spend-power__entry");
-
-		const nameInput = document.createElement("input");
-		nameInput.type = "text";
-		nameInput.classList.add("litm-spend-power__entry-name");
-		nameInput.placeholder = hasTier
-			? t("LITM.Ui.status_name")
-			: t("LITM.Ui.tag_name");
-		li.appendChild(nameInput);
-
-		if (hasTier) {
-			const tierInput = document.createElement("input");
-			tierInput.type = "number";
-			tierInput.classList.add("litm-spend-power__entry-tier");
-			tierInput.value = "1";
-			tierInput.min = "1";
-			tierInput.max = "6";
-			li.appendChild(tierInput);
-		}
-
-		const removeBtn = document.createElement("button");
-		removeBtn.type = "button";
-		removeBtn.classList.add("litm-spend-power__remove-entry");
-		removeBtn.setAttribute("aria-label", t("LITM.Ui.remove_tag"));
-		removeBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i>';
-		li.appendChild(removeBtn);
-
-		return li;
+		const templateId = hasTier ? "entry-row-tier-template" : "entry-row-template";
+		const template = this.element.querySelector(`#${templateId}`);
+		return template.content.firstElementChild.cloneNode(true);
 	}
 
 	#updatePower(form) {
@@ -349,67 +366,23 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	 * @returns {number}
 	 */
 	#calculateOptionCost(li, cost) {
-		const { type, entriesSection, hasTier } = SpendPowerApp.#getOptionType(li);
-		switch (type) {
-			case "statusPicker": {
-				let total = 0;
-				entriesSection
-					.querySelectorAll(".litm-spend-power__status-item")
-					.forEach((item) => {
-						const count = Number(
-							item.querySelector(".litm-spend-power__counter-value")
-								?.textContent ?? 0,
-						);
-						total += cost * count;
-					});
-				return total;
-			}
-			case "counter": {
-				const count = Number(
-					entriesSection.querySelector(".litm-spend-power__counter-value")
-						?.textContent ?? 1,
-				);
-				return cost * count;
-			}
-			case "picker": {
-				const selected = entriesSection.querySelectorAll(
-					".litm-spend-power__tag-chip.is-selected",
-				);
-				return cost * selected.length;
-			}
-			default: {
-				const entries = li.querySelectorAll(".litm-spend-power__entry");
-				if (entries.length === 0) return cost;
-				if (!hasTier) return cost * entries.length;
-				let total = 0;
-				entries.forEach((entry) => {
-					const tier = Math.max(
-						Number(
-							entry.querySelector(".litm-spend-power__entry-tier")?.value ?? 1,
-						),
-						1,
-					);
-					total += cost * tier;
-				});
-				return total;
-			}
-		}
+		const { type, hasTier } = SpendPowerApp.#getOptionType(li);
+		const entriesSection = li.querySelector(".litm-spend-power__entries");
+		const calculator = COST_CALCULATORS[type] ?? defaultCostCalculator;
+		return calculator(li, cost, entriesSection, hasTier);
 	}
 
 	static #chatCard({ actor, action, body, power }) {
-		const esc = foundry.utils.escapeHTML;
-		const costLine = `${power} ${t("LITM.Tags.power")}`;
-		return `<div class="litmv2 litm-spend-chat">
-			<header class="litm-spend-chat__header">
-				<img src="${esc(actor.img)}" alt="${esc(actor.name)}" />
-				<div>
-					<span class="litm-spend-chat__name">${esc(actor.name)}</span>
-					<span class="litm-spend-chat__action">${esc(action)}</span>
-				</div>
-			</header>
-			${body ? `<div class="litm-spend-chat__body">${body}</div>` : ""}
-			<footer class="litm-spend-chat__cost">${costLine}</footer>
-		</div>`;
+		return foundry.applications.handlebars.renderTemplate(
+			"systems/litmv2/templates/chat/spend-power.html",
+			{
+				actorImg: actor.img,
+				actorName: actor.name,
+				action,
+				body,
+				costLine: `${power} ${t("LITM.Tags.power")}`,
+			},
+		);
 	}
 
 	static async #onSubmit(_event, form, _formData) {
@@ -454,7 +427,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				// Apply the reductions to the actual effects
 				const bodyLines = [];
 				for (const { effectId, name, tiers } of reductions) {
-					const effect = [...actor.allApplicableEffects()].find((e) => e.id === effectId);
+					const effect = resolveEffect(effectId, actor);
 					if (!effect) continue;
 					const oldTier = effect.system.currentTier;
 					const newTiers = effect.system.calculateReduction(tiers);
@@ -472,7 +445,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				}
 
 				await foundry.documents.ChatMessage.create({
-					content: SpendPowerApp.#chatCard({
+					content: await SpendPowerApp.#chatCard({
 						actor,
 						action: t(option.label),
 						body: bodyLines.join(""),
@@ -493,7 +466,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				totalSpent += power;
 
 				await foundry.documents.ChatMessage.create({
-					content: SpendPowerApp.#chatCard({
+					content: await SpendPowerApp.#chatCard({
 						actor,
 						action: t(option.label),
 						body:
@@ -523,12 +496,12 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				for (const chip of selectedChips) {
 					const { tagId, tagName } = chip.dataset;
 					names.push(tagName);
-					const effect = resolveEffect(tagId, actor, { fellowship: false });
+					const effect = resolveEffect(tagId, actor);
 					if (effect) await effect.update({ "system.isScratched": false });
 				}
 
 				await foundry.documents.ChatMessage.create({
-					content: SpendPowerApp.#chatCard({
+					content: await SpendPowerApp.#chatCard({
 						actor,
 						action: t(option.label),
 						body: names
@@ -580,7 +553,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			totalSpent += power;
 
 			await foundry.documents.ChatMessage.create({
-				content: SpendPowerApp.#chatCard({
+				content: await SpendPowerApp.#chatCard({
 					actor,
 					action: t(option.label),
 					body,
