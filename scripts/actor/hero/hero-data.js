@@ -159,13 +159,11 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 
 	get fellowshipActor() {
 		if (!LitmSettings.useFellowship) return null;
-		const actors = this.parent.collection;
 		if (this.fellowshipId) {
-			const actor = actors.get(this.fellowshipId);
+			const actor = game.actors.get(this.fellowshipId);
 			if (actor) return actor;
 		}
-		// Fallback to the global singleton
-		return actors.find(a => a.type === "fellowship") ?? null;
+		return game.litmv2?.fellowship ?? null;
 	}
 
 	/**

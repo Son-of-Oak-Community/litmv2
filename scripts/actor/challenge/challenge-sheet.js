@@ -72,10 +72,21 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 		enriched.tags = enrichedTags;
 
 		const { vignettes, vignettesByType } = await this._prepareVignettes();
-		const { addons } = await this.#prepareAddonContext();
+		const { addonThreats, addons } = await this.#prepareAddonContext();
 		const { limits, might } = await this.#prepareLimitsAndMight(isPlay);
 
-		const displayVignettes = this.document.system.allDisplayThreats;
+		const displayVignettes = [
+			...vignettes,
+			...addonThreats.map((t) => ({
+				_id: null,
+				name: t.name,
+				system: {
+					threat: t.threat,
+					consequences: t.consequences,
+					isConsequenceOnly: t.isConsequenceOnly,
+				},
+			})),
+		];
 
 		return {
 			...context,

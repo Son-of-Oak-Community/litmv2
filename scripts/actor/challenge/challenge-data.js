@@ -1,5 +1,5 @@
 import { EffectTagsMixin } from "../effect-tags-mixin.js";
-import { EFFECT_TYPES, ITEM_TYPES } from "../../system/config.js";
+import { EFFECT_TYPES } from "../../system/config.js";
 
 export class ChallengeData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 	static defineSchema() {
@@ -158,27 +158,6 @@ export class ChallengeData extends EffectTagsMixin(foundry.abstract.TypeDataMode
 		}
 
 		return merged;
-	}
-
-	/**
-	 * Merged list of vignette items and addon threats for display purposes.
-	 * Addon threats are shaped to match the vignette item interface.
-	 * @returns {object[]}
-	 */
-	get allDisplayThreats() {
-		const vignettes = this.parent.items
-			.filter((i) => i.type === ITEM_TYPES.vignette)
-			.map((v) => v);
-		const addonThreats = (this.addonThreats || []).map((t) => ({
-			_id: null,
-			name: t.name,
-			system: {
-				threat: t.threat,
-				consequences: t.consequences,
-				isConsequenceOnly: t.isConsequenceOnly,
-			},
-		}));
-		return [...vignettes, ...addonThreats];
 	}
 
 	/**

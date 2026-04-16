@@ -42,9 +42,8 @@ export class FellowshipData extends EffectTagsMixin(foundry.abstract.TypeDataMod
 	 * @returns {object[]}
 	 */
 	get partyOverview() {
-		const actors = this.parent.collection;
 		const fellowshipId = this.parent.id;
-		const heroes = actors.filter(
+		const heroes = game.actors.filter(
 			(a) =>
 				a.type === ACTOR_TYPES.hero &&
 				a.system.fellowshipId === fellowshipId,
