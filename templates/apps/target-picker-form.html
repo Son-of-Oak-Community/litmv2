@@ -1,0 +1,11 @@
+<form class="standard-form">
+	<fieldset>
+		{{#each entries as |entry|}}
+		<label class="flexrow gap-sm litm--picker-row">
+			<input type="radio" name="picked" value="{{@index}}" {{#if (eq @index 0)}}checked{{/if}} />
+			{{#if entry.img}}<img class="litm--picker-img" src="{{entry.img}}" alt="" />{{/if}}
+			<span>{{entry.label}}</span>
+		</label>
+		{{/each}}
+	</fieldset>
+</form>

@@ -1,4 +1,5 @@
 import { EffectTagsMixin } from "../effect-tags-mixin.js";
+import { advanceFlagLimit } from "../actor-limits.js";
 import { ACTOR_TYPES, ITEM_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
 
 export class FellowshipData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
@@ -86,4 +87,13 @@ export class FellowshipData extends EffectTagsMixin(foundry.abstract.TypeDataMod
 		});
 	}
 
+	/**
+	 * Advance (or set back) a flag-stored limit by `delta`.
+	 * @param {string} limitId
+	 * @param {number} delta
+	 * @returns {Promise<import("../actor-limits.js").LimitChangeResult|null>}
+	 */
+	async advanceLimit(limitId, delta) {
+		return advanceFlagLimit(this.parent, limitId, delta);
+	}
 }

@@ -14,3 +14,7 @@ tests/
 CSS_GUIDE.md
 check-keys.js
 .superpowers/
+
+# Dev screenshots and scratch artifacts at repo root
+/*.png
+/*.yaml

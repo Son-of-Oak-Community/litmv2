@@ -1,0 +1,266 @@
+<section class="standard-form scrollable litm-action-sheet">
+	<!-- Header -->
+	<header class="img-name">
+		<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage"
+			role="button" tabindex="0"
+			data-tooltip="{{localize 'LITM.Ui.edit_image'}}"
+			aria-label="{{localize 'LITM.Ui.edit_image'}}" />
+		<input class="flex1" type="text" name="name" value="{{document.name}}" required
+			placeholder="{{localize 'LITM.Actions.name_placeholder'}}" />
+		{{#if @root.isGM}}
+		<button class="noflex" type="button" data-action="sendRollRequest"
+			data-tooltip="{{localize 'LITM.Actions.request_dialog_title'}}"
+			aria-label="{{localize 'LITM.Actions.request_dialog_title'}}">
+			<i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+		</button>
+		{{/if}}
+	</header>
+
+	<fieldset class="form-group flexrow gap-sm">
+		<div class="form-field flex1">
+			<label for="category">{{localize "LITM.Actions.category"}}</label>
+			<select id="category" name="system.category">
+				{{selectOptions categoryOptions selected=system.category}}
+			</select>
+		</div>
+		{{#if isRote}}
+		<div class="form-field flex1">
+			<label for="practitioners">{{localize "LITM.Actions.practitioners"}}</label>
+			<input id="practitioners" type="text" name="system.practitioners" value="{{system.practitioners}}"
+				placeholder="{{localize 'LITM.Actions.practitioners_placeholder'}}" />
+			<p class="hint">{{localize "LITM.Actions.practitioners_hint"}}</p>
+		</div>
+		{{/if}}
+		{{#if (eq system.category "custom")}}
+		<div class="form-field flex1">
+			<label for="customCategory">{{localize "LITM.Actions.custom_category"}}</label>
+			<input id="customCategory" type="text" name="system.customCategory" value="{{system.customCategory}}"
+				placeholder="{{localize 'LITM.Actions.custom_category_placeholder'}}" />
+			<p class="hint">{{localize "LITM.Actions.custom_category_hint"}}</p>
+		</div>
+		{{/if}}
+	</fieldset>
+
+	<!-- Description -->
+	<fieldset>
+		<legend>{{localize "LITM.Terms.description"}}</legend>
+		<prose-mirror class="journal-entry-content" name="system.description"
+			data-document-uuid="{{document.uuid}}" value="{{source.system.description}}" compact>
+			{{{ enriched.description }}}
+		</prose-mirror>
+	</fieldset>
+
+	<!-- Action Examples -->
+	<fieldset>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Actions.examples" action="addExample" tooltip="LITM.Actions.add_example"}}
+		{{#if system.actionExamples.length}}
+		<ul class="plain">
+			{{#each system.actionExamples as |example|}}
+			<li class="form-group gap-sm">
+				<input type="text" name="system.actionExamples.{{@index}}" value="{{example}}"
+					placeholder="{{localize 'LITM.Actions.example_placeholder'}}" />
+				<button type="button" class="noflex" data-action="removeExample" data-index="{{@index}}"
+					data-tooltip="{{localize 'LITM.Actions.remove_example'}}"
+					aria-label="{{localize 'LITM.Actions.remove_example'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
+				</button>
+			</li>
+			{{/each}}
+		</ul>
+		{{else}}
+		<p class="hint">{{localize "LITM.Actions.no_examples"}}</p>
+		{{/if}}
+	</fieldset>
+
+	<!-- Power Suggestions -->
+	<fieldset class="litm--action-power">
+		<legend>{{localize "LITM.Actions.power"}}</legend>
+		<p class="hint">{{localize "LITM.Actions.power_hint"}}</p>
+
+		<div class="grid-2col gap-md">
+			<div class="litm--action-power-helpful">
+				{{> systems/litmv2/templates/partials/control-legend.html
+					label="LITM.Actions.power_helpful"
+					action="addPositiveTag"
+					tooltip="LITM.Actions.add_helpful_tag"}}
+				{{#if system.power.positiveTags.length}}
+				<ul class="plain">
+					{{#each system.power.positiveTags as |tag|}}
+					<li class="form-group gap-sm litm--power-tag-row" data-power-tag-target data-list="positive" data-tag-index="{{@index}}">
+						<input type="text" name="system.power.positiveTags.{{@index}}.label" value="{{tag.label}}"
+							placeholder="{{localize 'LITM.Actions.tag_label_placeholder'}}"
+							{{#if tag.tagId}}readonly{{/if}} />
+						<input type="hidden" name="system.power.positiveTags.{{@index}}.tagId" value="{{tag.tagId}}" />
+						{{#if tag.tagId}}
+						<button type="button" class="noflex litm--power-tag-link is-linked" data-action="clearPowerTagId"
+							data-tooltip="{{localize 'LITM.Actions.unlink_tag'}}"
+							aria-label="{{localize 'LITM.Actions.unlink_tag'}}">
+							<i class="fa-solid fa-link" aria-hidden="true"></i>
+						</button>
+						{{else}}
+						<button type="button" class="noflex litm--power-tag-link" data-action="pickPowerTagId"
+							data-tooltip="{{localize 'LITM.Actions.power_pick_tooltip'}}"
+							aria-label="{{localize 'LITM.Actions.power_pick_tooltip'}}">
+							<i class="fa-solid fa-link-slash" aria-hidden="true"></i>
+						</button>
+						{{/if}}
+						<button type="button" class="noflex" data-action="removePositiveTag" data-index="{{@index}}"
+							data-tooltip="{{localize 'LITM.Actions.remove_tag'}}"
+							aria-label="{{localize 'LITM.Actions.remove_tag'}}">
+							<i class="fa-solid fa-trash" aria-hidden="true"></i>
+						</button>
+					</li>
+					{{/each}}
+				</ul>
+				{{else}}
+				<p class="hint">{{localize "LITM.Actions.no_helpful_tags"}}</p>
+				{{/if}}
+			</div>
+			<div class="litm--action-power-hindering">
+				{{> systems/litmv2/templates/partials/control-legend.html
+					label="LITM.Actions.power_hindering"
+					action="addNegativeTag"
+					tooltip="LITM.Actions.add_hindering_tag"}}
+				{{#if system.power.negativeTags.length}}
+				<ul class="plain">
+					{{#each system.power.negativeTags as |tag|}}
+					<li class="form-group gap-sm litm--power-tag-row" data-power-tag-target data-list="negative" data-tag-index="{{@index}}">
+						<input type="text" name="system.power.negativeTags.{{@index}}.label" value="{{tag.label}}"
+							placeholder="{{localize 'LITM.Actions.tag_label_placeholder'}}"
+							{{#if tag.tagId}}readonly{{/if}} />
+						<input type="hidden" name="system.power.negativeTags.{{@index}}.tagId" value="{{tag.tagId}}" />
+						{{#if tag.tagId}}
+						<button type="button" class="noflex litm--power-tag-link is-linked" data-action="clearPowerTagId"
+							data-tooltip="{{localize 'LITM.Actions.unlink_tag'}}"
+							aria-label="{{localize 'LITM.Actions.unlink_tag'}}">
+							<i class="fa-solid fa-link" aria-hidden="true"></i>
+						</button>
+						{{else}}
+						<button type="button" class="noflex litm--power-tag-link" data-action="pickPowerTagId"
+							data-tooltip="{{localize 'LITM.Actions.power_pick_tooltip'}}"
+							aria-label="{{localize 'LITM.Actions.power_pick_tooltip'}}">
+							<i class="fa-solid fa-link-slash" aria-hidden="true"></i>
+						</button>
+						{{/if}}
+						<button type="button" class="noflex" data-action="removeNegativeTag" data-index="{{@index}}"
+							data-tooltip="{{localize 'LITM.Actions.remove_tag'}}"
+							aria-label="{{localize 'LITM.Actions.remove_tag'}}">
+							<i class="fa-solid fa-trash" aria-hidden="true"></i>
+						</button>
+					</li>
+					{{/each}}
+				</ul>
+				{{else}}
+				<p class="hint">{{localize "LITM.Actions.no_hindering_tags"}}</p>
+				{{/if}}
+			</div>
+		</div>
+	</fieldset>
+
+	<!-- Successes -->
+	<fieldset class="litm--action-successes">
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Actions.successes" action="addSuccess" tooltip="LITM.Actions.add_success"}}
+		{{#if system.successes.length}}
+		<ul class="plain litm--success-list">
+			{{#each system.successes as |success|}}
+			<li class="litm--success-card">
+				<header class="flexrow gap-sm">
+					<select name="system.successes.{{@index}}.verb" aria-label="{{localize 'LITM.Actions.verb'}}"
+						class="litm--success-verb">
+						{{selectOptions ../verbOptions selected=success.verb}}
+					</select>
+					<select name="system.successes.{{@index}}.quality" aria-label="{{localize 'LITM.Actions.quality'}}"
+						class="litm--success-quality">
+						{{selectOptions ../qualityOptions selected=success.quality}}
+					</select>
+					<input class="flex1" type="text" name="system.successes.{{@index}}.label" value="{{success.label}}"
+						placeholder="{{localize 'LITM.Actions.success_label_placeholder'}}" />
+					<button type="button" class="noflex" data-action="removeSuccess" data-index="{{@index}}"
+						data-tooltip="{{localize 'LITM.Actions.remove_success'}}"
+						aria-label="{{localize 'LITM.Actions.remove_success'}}">
+						<i class="fa-solid fa-trash" aria-hidden="true"></i>
+					</button>
+				</header>
+
+				<textarea name="system.successes.{{@index}}.description" rows="2"
+					class="litm--success-description"
+					aria-label="{{localize 'LITM.Actions.success_description'}}"
+					placeholder="{{localize 'LITM.Actions.success_description_placeholder'}}">{{success.description}}</textarea>
+
+				<details class="litm--success-payload">
+					<summary>{{localize "LITM.Actions.payload"}}</summary>
+					<div class="litm--success-payload-grid">
+						<div class="form-field">
+							<label>{{localize "LITM.Actions.payload_tag"}}</label>
+							<input type="text" name="system.successes.{{@index}}.payload.tagName"
+								value="{{success.payload.tagName}}"
+								placeholder="{{localize 'LITM.Actions.payload_tag_placeholder'}}" />
+						</div>
+						<div class="form-field">
+							<label>{{localize "LITM.Actions.payload_status"}}</label>
+							<input type="text" name="system.successes.{{@index}}.payload.statusName"
+								value="{{success.payload.statusName}}"
+								placeholder="{{localize 'LITM.Actions.payload_status_placeholder'}}" />
+						</div>
+						<div class="form-field litm--success-payload-tier">
+							<label>{{localize "LITM.Actions.payload_tier"}}</label>
+							<input type="number" min="1" max="6" step="1"
+								name="system.successes.{{@index}}.payload.tier"
+								value="{{success.payload.tier}}" />
+						</div>
+						<div class="form-field">
+							<label>{{localize "LITM.Actions.payload_target"}}</label>
+							<select name="system.successes.{{@index}}.payload.target">
+								<option value="self" {{#if (eq success.payload.target "self")}}selected{{/if}}>{{localize "LITM.Actions.targets.self"}}</option>
+								<option value="ally" {{#if (eq success.payload.target "ally")}}selected{{/if}}>{{localize "LITM.Actions.targets.ally"}}</option>
+								<option value="opponent" {{#if (eq success.payload.target "opponent")}}selected{{/if}}>{{localize "LITM.Actions.targets.opponent"}}</option>
+								<option value="process" {{#if (eq success.payload.target "process")}}selected{{/if}}>{{localize "LITM.Actions.targets.process"}}</option>
+								<option value="prompt" {{#if (eq success.payload.target "prompt")}}selected{{/if}}>{{localize "LITM.Actions.targets.prompt"}}</option>
+							</select>
+						</div>
+					</div>
+					<div class="flexrow gap-md litm--success-payload-toggles">
+						<label class="flexrow gap-sm">
+							<input type="checkbox" name="system.successes.{{@index}}.payload.isSingleUse"
+								{{checked success.payload.isSingleUse}} data-dtype="Boolean" />
+							<span>{{localize "LITM.Actions.payload_single_use"}}</span>
+						</label>
+						<label class="flexrow gap-sm">
+							<input type="checkbox" name="system.successes.{{@index}}.payload.scratchTag"
+								{{checked success.payload.scratchTag}} data-dtype="Boolean" />
+							<span>{{localize "LITM.Actions.payload_scratch"}}</span>
+						</label>
+					</div>
+				</details>
+			</li>
+			{{/each}}
+		</ul>
+		{{else}}
+		<p class="hint">{{localize "LITM.Actions.no_successes"}}</p>
+		{{/if}}
+	</fieldset>
+
+	<!-- Consequences -->
+	<fieldset>
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Terms.consequences" action="addConsequence" tooltip="LITM.Ui.add_consequence"}}
+		<p class="hint">{{localize "LITM.Actions.consequences_hint"}}</p>
+		{{#if system.consequences.length}}
+		<ul class="plain">
+			{{#each system.consequences as |consequence|}}
+			<li class="form-group gap-sm litm--consequence-row">
+				<textarea name="system.consequences.{{@index}}" rows="2"
+					aria-label="{{localize 'LITM.Ui.name_consequence'}}"
+					placeholder="{{localize 'LITM.Actions.consequence_placeholder'}}">{{consequence}}</textarea>
+				<button type="button" class="noflex" data-action="removeConsequence" data-index="{{@index}}"
+					data-tooltip="{{localize 'LITM.Ui.remove_consequence'}}"
+					aria-label="{{localize 'LITM.Ui.remove_consequence'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
+				</button>
+			</li>
+			{{/each}}
+		</ul>
+		{{else}}
+		<p class="hint">{{localize "LITM.Ui.no_consequences"}}</p>
+		{{/if}}
+	</fieldset>
+</section>

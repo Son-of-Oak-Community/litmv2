@@ -1,0 +1,113 @@
+<section class="standard-form litm-actions-app">
+	<header class="flexrow gap-sm litm--actions-app-header">
+		<p class="hint flex1">{{localize "LITM.Actions.app_drop_hint"}}</p>
+		{{#if isOwner}}
+		<button type="button" class="noflex" data-action="createBlankAction"
+			data-tooltip="{{localize 'LITM.Actions.create_blank'}}"
+			aria-label="{{localize 'LITM.Actions.create_blank'}}">
+			<i class="fa-solid fa-plus" aria-hidden="true"></i>
+			<span>{{localize "LITM.Actions.new_action"}}</span>
+		</button>
+		{{/if}}
+	</header>
+
+	{{#if totalCount}}
+	<div class="litm--actions-filter flexrow gap-sm">
+		<input type="search" data-filter="text" class="flex1"
+			placeholder="{{localize 'LITM.Actions.filter_search_placeholder'}}"
+			value="{{filterText}}"
+			aria-label="{{localize 'LITM.Actions.filter_search_placeholder'}}" />
+		<select data-filter="category" class="noflex"
+			aria-label="{{localize 'LITM.Actions.category'}}">
+			{{#each categoryOptions as |opt|}}
+			<option value="{{opt.value}}" {{#if (eq opt.value @root.filterCategory)}}selected{{/if}}>{{opt.label}}</option>
+			{{/each}}
+		</select>
+	</div>
+	{{/if}}
+
+	<div class="litm--actions-list scrollable">
+		{{#if actions.length}}
+		<ul class="plain">
+			{{#each actions as |action|}}
+			<li class="litm--action-card" data-action-id="{{action.id}}" data-rote="{{action.isRote}}">
+				<header class="flexrow gap-sm litm--action-card-header">
+					<img class="noflex litm--action-card-img" src="{{action.img}}" alt="" aria-hidden="true" />
+					<div class="flexcol flex1 litm--action-card-meta">
+						<strong class="litm--action-card-name">{{action.name}}</strong>
+						{{#if action.isRote}}
+						<span class="litm-banner litm--action-card-practitioner"><i class="fa-solid fa-wand-sparkles" aria-hidden="true"></i>{{action.practitioners}}</span>
+						{{else if action.categoryLabel}}
+						<span class="hint">{{action.categoryLabel}}</span>
+						{{/if}}
+					</div>
+					{{#if @root.isOwner}}
+					<button type="button" class="litm--action-card-roll" data-action="rollAction"
+						data-tooltip="{{localize 'LITM.Actions.roll_action'}}"
+						aria-label="{{localize 'LITM.Actions.roll_action'}}">
+						<i class="fa-solid fa-dice-d20" aria-hidden="true"></i>
+						<span>{{localize "LITM.Terms.roll"}}</span>
+					</button>
+					<div class="flexrow gap-xs noflex litm--action-card-admin">
+						{{#if @root.isGM}}
+						<button type="button" data-action="sendActionRequest"
+							data-tooltip="{{localize 'LITM.Actions.request_dialog_title'}}"
+							aria-label="{{localize 'LITM.Actions.request_dialog_title'}}">
+							<i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+						</button>
+						{{/if}}
+						<button type="button" data-action="editAction"
+							data-tooltip="{{localize 'LITM.Actions.edit_action'}}"
+							aria-label="{{localize 'LITM.Actions.edit_action'}}">
+							<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+						</button>
+						{{#if action.linkedRefUuid}}
+						<button type="button" data-action="viewLinkedRef"
+							data-linked-ref-uuid="{{action.linkedRefUuid}}"
+							data-tooltip="{{localize 'LITM.Actions.view_linked_ref'}}"
+							aria-label="{{localize 'LITM.Actions.view_linked_ref'}}">
+							<i class="fa-solid fa-scroll" aria-hidden="true"></i>
+						</button>
+						{{/if}}
+						<button type="button" data-action="deleteAction"
+							data-tooltip="{{localize 'LITM.Actions.delete_action'}}"
+							aria-label="{{localize 'LITM.Actions.delete_action'}}">
+							<i class="fa-solid fa-trash" aria-hidden="true"></i>
+						</button>
+					</div>
+					{{else if action.linkedRefUuid}}
+					<button type="button" class="noflex" data-action="viewLinkedRef"
+						data-linked-ref-uuid="{{action.linkedRefUuid}}"
+						data-tooltip="{{localize 'LITM.Actions.view_linked_ref'}}"
+						aria-label="{{localize 'LITM.Actions.view_linked_ref'}}">
+						<i class="fa-solid fa-scroll" aria-hidden="true"></i>
+					</button>
+					{{/if}}
+				</header>
+
+				{{#if action.examples.length}}
+				<p class="litm--action-examples">
+					{{#each action.examples as |example|}}
+					<span class="litm--action-example-chip">{{example}}</span>
+					{{/each}}
+				</p>
+				{{/if}}
+
+				<div class="hint flexrow gap-sm litm--action-card-footer">
+					<span><img class="litm--inline-icon" src="systems/litmv2/assets/media/icons/success.svg" alt="" aria-hidden="true" /> {{action.successCount}} {{localize "LITM.Actions.successes"}}</span>
+					<span><img class="litm--inline-icon" src="systems/litmv2/assets/media/icons/consequences.svg" alt="" aria-hidden="true" /> {{action.consequenceCount}} {{localize "LITM.Terms.consequences"}}</span>
+				</div>
+			</li>
+			{{/each}}
+		</ul>
+		{{else}}
+		<div class="litm--actions-empty">
+			<i class="fa-solid fa-scroll" aria-hidden="true"></i>
+			<p class="hint">
+				{{#if totalCount}}{{localize "LITM.Actions.empty_state_filtered"}}
+				{{else}}{{localize "LITM.Actions.empty_state"}}{{/if}}
+			</p>
+		</div>
+		{{/if}}
+	</div>
+</section>

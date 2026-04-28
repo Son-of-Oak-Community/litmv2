@@ -1,6 +1,8 @@
 import { WelcomeOverlay } from "../../apps/welcome-overlay.js";
+import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { applyThemeSacrifice } from "../../actor/hero/hero-data.js";
-import { localize as t } from "../../utils.js";
+import { getAllowedQualities } from "../../item/action/action-rules.js";
+import { enrichHTML, localize as t, viewLinkedRefAction } from "../../utils.js";
 import { Sockets } from "../sockets.js";
 
 export function registerChatHooks() {
@@ -110,6 +112,40 @@ async function _handleOpenThemeAdvancement(target) {
 	);
 }
 
+function _handleViewActionRef(target) {
+	return viewLinkedRefAction(null, target);
+}
+
+function _handleOpenApplyConsequences(_target, app) {
+	if (!game.user.isGM) {
+		ui.notifications.info(t("LITM.Actions.gm_only"));
+		return;
+	}
+	new ApplyActionMenuApp({ messageId: app.id, mode: "consequences" }).render(true);
+}
+
+async function _handleTakeRollRequest(_target, app) {
+	const req = app.getFlag("litmv2", "rollRequest");
+	if (!req?.actionUuid || !req?.requestedActorId) return;
+
+	const actor = game.actors.get(req.requestedActorId);
+	if (!actor) {
+		ui.notifications.warn(t("LITM.Actions.apply_no_actor"));
+		return;
+	}
+	if (!actor.isOwner && !game.user.isGM) {
+		ui.notifications.warn(t("LITM.Actions.request_not_owner"));
+		return;
+	}
+
+	const sheet = actor.sheet;
+	const dialog = sheet?.rollDialogInstance;
+	if (!dialog) return;
+	dialog.setAction(req.actionUuid);
+	if (typeof sheet.renderRollDialog === "function") sheet.renderRollDialog();
+	else if (!dialog.rendered) dialog.render(true);
+}
+
 const CLICK_HANDLERS = {
 	"spend-power": _handleSpendPower,
 	"push-roll": _handlePushRoll,
@@ -117,13 +153,112 @@ const CLICK_HANDLERS = {
 	"complete-sacrifice": _handleCompleteSacrifice,
 	"reject-moderation": _handleRejectModeration,
 	"open-theme-advancement": _handleOpenThemeAdvancement,
+	"action-view-ref": _handleViewActionRef,
+	"action-open-consequences": _handleOpenApplyConsequences,
+	"take-roll-request": _handleTakeRollRequest,
 };
+
+async function _renderActionQuickSuccesses(app, element) {
+	const actionUuid = app.getFlag("litmv2", "actionUuid");
+	if (!actionUuid) return;
+
+	const roll = app.rolls?.[0];
+	if (!roll) return;
+
+	const allowedQualities = getAllowedQualities(roll);
+	if (!allowedQualities.has("quick")) return;
+
+	const action = await foundry.utils.fromUuid(actionUuid);
+	if (!action || action.type !== "action") return;
+
+	const quickSuccesses = (action.system.successes ?? [])
+		.filter((s) => s.quality === "quick");
+	if (!quickSuccesses.length) return;
+
+	const successes = await Promise.all(
+		quickSuccesses.map(async (s) => ({
+			verbLabel: t(`LITM.Actions.verbs.${s.verb}`),
+			label: s.label,
+			description: s.description ? await enrichHTML(s.description, action) : "",
+		})),
+	);
+
+	const html = await foundry.applications.handlebars.renderTemplate(
+		"systems/litmv2/templates/partials/action-quick-successes.html",
+		{ successes },
+	);
+
+	const wrapper = document.createElement("div");
+	wrapper.innerHTML = html.trim();
+	const node = wrapper.firstElementChild;
+	if (!node) return;
+
+	const details = element.querySelector(".litm.dice-roll .dice-result-details");
+	const effect = details?.querySelector(".dice-effect");
+	if (effect) {
+		effect.insertAdjacentElement("afterend", node);
+	} else if (details) {
+		details.appendChild(node);
+	}
+}
+
+async function _renderActionPanel(app, element) {
+	if (!game.user.isGM) return;
+	const actionUuid = app.getFlag("litmv2", "actionUuid");
+	if (!actionUuid) return;
+
+	const action = await foundry.utils.fromUuid(actionUuid);
+	if (!action || action.type !== "action") return;
+
+	const sys = action.system;
+	const totalConsequences = sys.consequences?.length ?? 0;
+	if (totalConsequences === 0) return;
+
+	const appliedConsequences = new Set(app.getFlag("litmv2", "appliedConsequences") ?? []);
+	const unappliedConsequences = totalConsequences
+		- [...appliedConsequences].filter((i) => i < totalConsequences).length;
+
+	const html = await foundry.applications.handlebars.renderTemplate(
+		"systems/litmv2/templates/partials/action-success-buttons.html",
+		{
+			actionContext: {
+				showApplyConsequences: true,
+				unappliedConsequences,
+			},
+		},
+	);
+
+	const wrapper = document.createElement("div");
+	wrapper.innerHTML = html.trim();
+	const node = wrapper.firstElementChild;
+	if (!node) return;
+
+	// Inject alongside Spend Power inside the existing .dice-footer so all
+	// post-roll actions live in one row.
+	const diceFooter = element.querySelector(".litm.dice-roll .dice-footer");
+	if (diceFooter) {
+		diceFooter.appendChild(node);
+	} else {
+		// Fallback: dice-roll exists but footer wasn't rendered (eg. when
+		// canSpendPower was false and Push Your Luck didn't apply either).
+		// Build a footer ourselves.
+		const diceRoll = element.querySelector(".litm.dice-roll");
+		if (!diceRoll) return;
+		const footer = document.createElement("footer");
+		footer.className = "dice-footer flexrow";
+		footer.appendChild(node);
+		diceRoll.appendChild(footer);
+	}
+}
 
 function onRenderChatMessage(app, html, _data) {
 	const element = html;
 
 	// Attach GM indicator
 	element.setAttribute("data-user", game.user.isGM ? "gm" : "player");
+
+	_renderActionQuickSuccesses(app, element).catch((e) => console.error("LITM quick successes render failed:", e));
+	_renderActionPanel(app, element).catch((e) => console.error("LITM action panel render failed:", e));
 
 	// Add class if it's a litm dice roll
 	if (element.querySelector(".litm.dice-roll")) {
@@ -174,18 +309,16 @@ function onRenderChatMessage(app, html, _data) {
 		footer.remove();
 	}
 
-	// Chat message listeners
-	const clickables = element.querySelectorAll("[data-click]");
-	for (const target of clickables) {
-		target.addEventListener("click", async (event) => {
-			event.stopPropagation();
-			event.preventDefault();
-
-			const { click } = target.dataset;
-			const handler = CLICK_HANDLERS[click];
-			if (handler) await handler(target, app);
-		});
-	}
+	// Delegated click handler — survives async DOM appends (e.g. _renderActionPanel).
+	element.addEventListener("click", async (event) => {
+		const target = event.target.closest?.("[data-click]");
+		if (!target || !element.contains(target)) return;
+		const handler = CLICK_HANDLERS[target.dataset.click];
+		if (!handler) return;
+		event.stopPropagation();
+		event.preventDefault();
+		await handler(target, app);
+	});
 }
 
 function _registerChatCommands() {

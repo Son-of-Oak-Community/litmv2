@@ -1,4 +1,12 @@
 import { localize as t, resolveEffect } from "../utils.js";
+import { error } from "../logger.js";
+import { applySuccess } from "../system/chat-actions.js";
+import { getVerbDef } from "../item/action/verb-definitions.js";
+import {
+	computePowerBudget,
+	getAllowedQualities,
+	getSuccessCost,
+} from "../item/action/action-rules.js";
 
 /** Cost calculators by option type. Each receives (li, cost, entriesSection, hasTier). */
 const COST_CALCULATORS = {
@@ -56,7 +64,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		},
 		position: {
 			width: 600,
-			height: 480,
+			height: 640,
 		},
 		form: {
 			handler: SpendPowerApp.#onSubmit,
@@ -139,11 +147,85 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				return o;
 			});
 
+		const actionSuccesses = await this.#getActionSuccesses();
+
+		// Power displayed at the top must account for BOTH the generic options
+		// already spent (spentPower flag) and the action successes already
+		// applied (appliedSuccesses flag). Two flags, one budget.
+		const message = this.messageId ? game.messages.get(this.messageId) : null;
+		const action = await this.#getAction();
+		const appliedKeys = message?.getFlag("litmv2", "appliedSuccesses") ?? [];
+		const appliedSuccessesCost = action
+			? appliedKeys.reduce((sum, key) => {
+					const s = (action.system.successes ?? []).find((o) => o.id === key);
+					return sum + (s ? getSuccessCost(s) : 0);
+				}, 0)
+			: 0;
+		this.power = this.totalPower - this.alreadySpent - appliedSuccessesCost;
+
 		return {
 			actorId: this.actorId,
 			power: this.power,
 			options,
+			actionSuccesses,
 		};
+	}
+
+	async #getAction() {
+		const message = this.messageId ? game.messages.get(this.messageId) : null;
+		const uuid = message?.getFlag("litmv2", "actionUuid");
+		if (!uuid) return null;
+		const a = await foundry.utils.fromUuid(uuid);
+		return a?.type === "action" ? a : null;
+	}
+
+	/**
+	 * Build the action-success rows shown above the generic spend options.
+	 * Empty array if the message wasn't bound to an action (eg. plain Tracked
+	 * roll without an Action Grimoire entry).
+	 */
+	async #getActionSuccesses() {
+		const message = this.messageId ? game.messages.get(this.messageId) : null;
+		const action = await this.#getAction();
+		if (!message || !action) return [];
+
+		const sys = action.system;
+		const applied = new Set(message.getFlag("litmv2", "appliedSuccesses") ?? []);
+		const roll = message.rolls?.[0];
+		const allowedQualities = getAllowedQualities(roll);
+		// Affordability uses the combined remaining (action-aware budget minus
+		// generic power already spent on Create/Inflict/etc.).
+		const { remaining: actionRemaining } = computePowerBudget(roll, sys, [...applied]);
+		const remaining = actionRemaining - this.alreadySpent;
+
+		// Hide already-applied successes — their cost is baked into `this.power`,
+		// so showing them as checked-and-disabled would double-count in
+		// #updatePower. The chat history of action-applied messages is the
+		// canonical record of what's been used.
+		return (sys.successes ?? [])
+			.filter((s) => allowedQualities.has(s.quality))
+			.filter((s) => !applied.has(s.id))
+			.map((s) => {
+				const def = getVerbDef(s.verb);
+				const cost = getSuccessCost(s);
+				const isUnsupported = def?.kind === "unsupported";
+				const cantAfford = cost > remaining;
+				return {
+					key: s.id,
+					verbLabel: t(`LITM.Actions.verbs.${s.verb}`),
+					verbKind: def?.displayKind ?? "self",
+					qualityLabel: t(`LITM.Actions.qualities.${s.quality}`),
+					label: s.label,
+					description: s.description,
+					cost,
+					disabled: isUnsupported || cantAfford,
+					reasonKey: isUnsupported
+						? def.unsupportedMessageKey
+						: cantAfford
+							? "LITM.Actions.cant_afford_short"
+							: null,
+				};
+			});
 	}
 
 	#getScratchedTags(actor) {
@@ -395,7 +477,18 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 
 		let totalSpent = 0;
 
+		// Apply action-success rows first — they sit above the generic options
+		// in the dialog and represent the action's authored outcomes. Routed
+		// through the standard applySuccess pipeline so target pickers, status
+		// stacking, etc. all work the same as before.
 		for (const li of checkedOptions) {
+			if (li.dataset.source !== "action") continue;
+			const spent = await this._applyActionSuccess(li, actor);
+			totalSpent += spent;
+		}
+
+		for (const li of checkedOptions) {
+			if (li.dataset.source === "action") continue;
 			const optionId = li.dataset.optionId;
 			const option = this.spendingOptions.find((o) => o.id === optionId);
 			if (!option) continue;
@@ -573,4 +666,74 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			);
 		}
 	}
+
+	/**
+	 * Apply a single action-success option, routing through the standard
+	 * applySuccess pipeline. Updates the originating message's
+	 * `appliedSuccesses` flag and posts an action-applied chat card.
+	 *
+	 * @param {HTMLElement} li     The checked option list item
+	 * @param {Actor} actor        The acting character
+	 * @returns {Promise<number>}  Power spent on this option
+	 */
+	async _applyActionSuccess(li, actor) {
+		const message = this.messageId ? game.messages.get(this.messageId) : null;
+		const actionUuid = message?.getFlag("litmv2", "actionUuid");
+		if (!actionUuid) return 0;
+		const action = await foundry.utils.fromUuid(actionUuid);
+		if (!action || action.type !== "action") return 0;
+
+		const key = li.dataset.successKey;
+		const success = (action.system.successes ?? []).find((o) => o.id === key);
+		if (!success) return 0;
+
+		// Skip if already applied since the dialog last opened (race-safe)
+		const appliedNow = message.getFlag("litmv2", "appliedSuccesses") ?? [];
+		if (appliedNow.includes(key)) return 0;
+
+		let result;
+		try {
+			result = await applySuccess({ success, actor });
+		} catch (err) {
+			error("Failed to apply action success:", err);
+			ui.notifications.error(t("LITM.Actions.apply_failed"));
+			return 0;
+		}
+		if (!result) return 0;
+
+		await message.setFlag("litmv2", "appliedSuccesses", [...appliedNow, key]);
+		await foundry.documents.ChatMessage.create({
+			speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
+			content: await foundry.applications.handlebars.renderTemplate(
+				"systems/litmv2/templates/chat/action-applied.html",
+				{
+					actorImg: actor.img,
+					actorName: actor.name,
+					label: t(`LITM.Actions.verbs.${success.verb}`),
+					summary: stripActorPrefix(result.appliedSummary, actor.name),
+					footer: action.name,
+				},
+			),
+		});
+
+		return getSuccessCost(success);
+	}
 }
+
+/**
+ * Strip a leading "ActorName: " or "ActorName → / ← " prefix from an applied
+ * summary. The chat header shows the actor already, so the prefix is just
+ * noise when the summary is rendered as a body. Leaves prefixes intact when
+ * the actor in the summary differs (eg. opponent-targeted weakens), since
+ * those convey a target distinct from the speaker.
+ */
+function stripActorPrefix(summary, actorName) {
+	if (!summary || !actorName) return summary;
+	const prefixes = [`${actorName}: `, `${actorName} → `, `${actorName} ← `];
+	for (const p of prefixes) {
+		if (summary.startsWith(p)) return summary.slice(p.length);
+	}
+	return summary;
+}
+
+export { stripActorPrefix };

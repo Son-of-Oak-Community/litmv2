@@ -10,7 +10,16 @@ Tooltips and pointer cursor are suppressed for non-owners (uses @root.isOwner). 
 	{{#if @root.isOwner}}data-tooltip="{{#if tooltip}}{{tooltip}}{{else}}{{#if (or (eq type 'weakness_tag') (eq type 'status_tag'))}}{{localize 'LITM.Ui.click_to_add_tag_only'}}{{else if (or (eq type 'power_tag') (eq type 'fellowship_tag'))}}{{#if noBurn}}{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}{{else}}{{localize 'LITM.Ui.click_to_add_tag'}}{{/if}}{{else}}{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}{{/if}}{{/if}}"{{/if}}
 	data-text="{{name}}"
 	{{#if @root.isOwner}}style="cursor: pointer"{{/if}}
-	>{{name}} {{#if (eq type "weakness_tag")}}
+	>{{name}} {{#if system.linkedRefUuid}}
+	<a class="litm--ref-link"
+		data-action="viewLinkedRef"
+		data-linked-ref-uuid="{{system.linkedRefUuid}}"
+		data-tooltip="{{#if system.linkedRefName}}{{localize 'LITM.Actions.view_linked_ref_named' name=system.linkedRefName}}{{else}}{{localize 'LITM.Actions.view_linked_ref'}}{{/if}}"
+		aria-label="{{#if system.linkedRefName}}{{localize 'LITM.Actions.view_linked_ref_named' name=system.linkedRefName}}{{else}}{{localize 'LITM.Actions.view_linked_ref'}}{{/if}}"
+		role="button"
+		tabindex="0"
+		><i class="fa-solid fa-scroll" aria-hidden="true"></i></a>
+	{{/if}} {{#if (eq type "weakness_tag")}}
 	<svg width="14" height="14" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
 		<g fill="var(--color-text-primary)" stroke="var(--tag-color)" stroke-width="10">
 			<path

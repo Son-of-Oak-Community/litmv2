@@ -1,0 +1,29 @@
+<section class="litm--roll-request">
+	<header class="flexrow gap-sm litm--roll-request-header">
+		<i class="fa-solid fa-dice-d20" aria-hidden="true"></i>
+		<strong class="flex1">{{localize "LITM.Actions.request_title"}}</strong>
+	</header>
+
+	<p class="litm--roll-request-action">
+		<i class="fa-solid fa-scroll" aria-hidden="true"></i>
+		<strong>{{actionName}}</strong>
+		{{#if practitioners}}<span class="hint">— {{practitioners}}</span>{{/if}}
+	</p>
+
+	{{#if requestedActorName}}
+	<p class="hint">{{localize "LITM.Actions.request_for"}} <strong>{{requestedActorName}}</strong></p>
+	{{/if}}
+
+	{{#if note}}
+	<blockquote class="litm--roll-request-note">{{note}}</blockquote>
+	{{/if}}
+
+	<footer class="dice-footer flexrow">
+		<button type="button" class="litm--roll-request-take noflex"
+			data-click="take-roll-request"
+			data-tooltip="{{localize 'LITM.Actions.request_take_tooltip'}}">
+			<i class="fa-solid fa-dice-d20" aria-hidden="true"></i>
+			{{localize "LITM.Actions.request_take"}}
+		</button>
+	</footer>
+</section>

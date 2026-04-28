@@ -106,7 +106,9 @@ function _prepareCharacterOnCreate() {
 		(async () => {
 			if (!game.user.isGM) return;
 			await ACTOR_SETUP[actor.type]?.(actor, options);
-			if (actor.isOwner) actor.sheet.render(true, { mode: 1 });
+			if (options?.renderSheet && actor.isOwner) {
+				actor.sheet.render(true, { mode: 1 });
+			}
 		})().catch((err) => error("Failed to setup actor", err));
 	});
 }

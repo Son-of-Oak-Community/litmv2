@@ -1,4 +1,5 @@
 import { ScratchableMixin } from "./scratchable-mixin.js";
+import { getLinkedRefName } from "../../utils.js";
 
 export class StoryTagData extends ScratchableMixin(foundry.data.ActiveEffectTypeDataModel) {
 	static defineSchema() {
@@ -9,11 +10,16 @@ export class StoryTagData extends ScratchableMixin(foundry.data.ActiveEffectType
 			isSingleUse: new fields.BooleanField({ initial: false }),
 			isHidden: new fields.BooleanField({ initial: false }),
 			limitId: new fields.StringField({ initial: null, nullable: true }),
+			linkedRefUuid: new fields.StringField({ initial: null, nullable: true, blank: true }),
 		};
 	}
 
 	get canBurn() {
 		return !this.isSingleUse && !this.isScratched;
+	}
+
+	get linkedRefName() {
+		return getLinkedRefName(this.linkedRefUuid);
 	}
 
 	get allowedStates() {

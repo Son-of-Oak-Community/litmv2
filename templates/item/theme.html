@@ -50,7 +50,7 @@
 				{{#with (lookup ../powerQuestionTexts tag.system.question)}}
 				<p class="hint" style="margin: 0;">{{this}}</p>
 				{{/with}}
-				<div class="form-group {{#if tag.disabled}}inactive{{/if}}">
+				<div class="form-group {{#if tag.disabled}}inactive{{/if}}" data-linked-ref-target data-effect-id="{{tag._id}}">
 					<input type="checkbox" name="effects.{{tag._id}}.isActive" {{checked (not tag.disabled)}}
 						data-dtype="Boolean" />
 					<div class="flexrow gap-sm" style="flex: 1;">
@@ -59,6 +59,7 @@
 						</select>
 						<input type="text" name="effects.{{tag._id}}.name" value="{{tag.name}}" />
 					</div>
+					{{> systems/litmv2/templates/partials/edit-linked-ref-controls.html tag=tag}}
 					<button style="flex:none;" type="button" data-action="removeTag" data-type="power_tag" data-effect-id="{{tag._id}}"
 						data-tooltip="{{localize 'LITM.Ui.remove_tag'}}" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
 						<i class="fa-solid fa-trash" aria-hidden="true"></i>

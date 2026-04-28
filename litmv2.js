@@ -11,6 +11,7 @@ import { StoryThemeActorSheet } from "./scripts/actor/story-theme/story-theme-ac
 import { DoubleSix } from "./scripts/apps/dice.js";
 import { LitmRoll } from "./scripts/apps/roll.js";
 import { LitmRollDialog } from "./scripts/apps/roll-dialog.js";
+import { ApplyActionMenuApp } from "./scripts/apps/apply-action-menu.js";
 import { SpendPowerApp } from "./scripts/apps/spend-power.js";
 import { StoryTagSidebar } from "./scripts/apps/story-tag-sidebar.js";
 import { ThemeAdvancementApp } from "./scripts/apps/theme-advancement.js";
@@ -42,6 +43,8 @@ import { VignetteData } from "./scripts/item/vignette/vignette-data.js";
 import { VignetteSheet } from "./scripts/item/vignette/vignette-sheet.js";
 import { AddonData } from "./scripts/item/addon/addon-data.js";
 import { AddonSheet } from "./scripts/item/addon/addon-sheet.js";
+import { ActionData } from "./scripts/item/action/action-data.js";
+import { ActionSheet } from "./scripts/item/action/action-sheet.js";
 import { info, success } from "./scripts/logger.js";
 import {
 	ChallengeSheetLandscape,
@@ -93,6 +96,7 @@ Hooks.once("init", () => {
 		WelcomeOverlay,
 		StoryTagApp: StoryTagSidebar,
 		SpendPowerApp,
+		ApplyActionMenuApp,
 		ThemeAdvancementApp,
 		rollDialogHud: null,
 		ContentSources,
@@ -117,6 +121,7 @@ Hooks.once("init", () => {
 	CONFIG.Item.dataModels.addon = AddonData;
 	CONFIG.Item.dataModels.story_theme = StoryThemeData;
 	CONFIG.Item.dataModels.trope = TropeData;
+	CONFIG.Item.dataModels.action = ActionData;
 	CONFIG.ActiveEffect.dataModels.power_tag = PowerTagData;
 	CONFIG.ActiveEffect.dataModels.weakness_tag = WeaknessTagData;
 	CONFIG.ActiveEffect.dataModels.fellowship_tag = FellowshipTagData;
@@ -245,6 +250,11 @@ Hooks.once("init", () => {
 	foundry.documents.collections.Items.registerSheet("litmv2", TropeSheet, {
 		types: ["trope"],
 		makeDefault: true,
+	});
+	foundry.documents.collections.Items.registerSheet("litmv2", ActionSheet, {
+		types: ["action"],
+		makeDefault: true,
+		label: "LITM.Sheets.action",
 	});
 	LitmActiveEffectSheet.register();
 

@@ -496,16 +496,79 @@ Foundry V14 uses a warm earth-tone palette. Variables are theme-aware (light/dar
 
 **Headings:** `--font-h1` (Modesto Condensed), `--font-h2` (Amiri), `--font-h3` (Signika)
 
-## Design Context
+## Design System
 
-### Brand Personality
+The system has a fully-implemented visual identity -- this is **not aspirational**. New UI must match the existing language; do not reach for Foundry defaults when system tokens already exist. When you find yourself writing inline `style="..."` or `border-radius: 999px` or `var(--spacer-8)`, stop -- there is almost certainly a litm token or class for what you want.
 
-**Rustic, warm, storied.** The interface should feel like a well-loved book of legends -- aged but inviting, with warmth of candlelight and parchment. Typography: blackletter headings (Ysgarth), decorative serifs (Luminari, PowellAntique), readable body serifs (Labrada, Fraunces). Color palette: earth-toned golden mustard tags, sage green statuses, muted rose limits, warm beige banners.
+### What the system actually looks like
 
-### Design Principles
+- **Sheets and chat sit on a parchment texture** (`assets/media/sheet-background.webp`) wired into `--background`, `--sidebar-background`, and `--chat-message-background`. New card surfaces should let this show through; don't paint them with `var(--color-header-background)` (Foundry default) -- that creates the flat-grey "admin tool" look that breaks identity.
+- **Actor names render in blackletter Ysgarth** at large size (e.g. "Gerrin Deerstalker"). Theme card titles render in serif italic with a `text-stroke` outline in the tag color and a skewed background bar (`transform: skewX(-3deg)`) -- this is the signature **tag chrome**, applied via the `:where(.litm-tag, .litm-power_tag, ...)` rule in `litmv2.css` section 4. Don't reimplement this with plain `<input>` fields or pill `<span>`s; reuse the class.
+- **Section headers extend horizontal lines** out from the label (`::before`/`::after` `flex: 1 border-top`) in small-caps, letter-spaced, uppercase, secondary text color. See `.litm-render__section-header` -- the established "manuscript chapter break" treatment. Use this anywhere you want a section label, not a plain `<legend>`.
+- **Decorative bullet `✦`** separates power tags in play-mode display.
+- **Italic blockquote flavor text** sits inside theme/vignette cards, between header and body.
+- **Tracks use `○ ○ ○` empty-circle progress** with custom checkbox SVGs for filled state. See `.progress-box` and `assets/media/checkbox.svg`.
 
-1. **Atmosphere through restraint** -- Decoration creates mood but never at the cost of clarity
-2. **Newcomer-friendly** -- Discoverable interactions, tooltips, consistent patterns
-3. **Foundry-native first** -- Built-in UI patterns, utility classes, CSS variables before custom solutions
-4. **Warm, not heavy** -- Aged parchment and candlelight, but light and responsive
-5. **Both modes matter** -- Light and dark themes are first-class citizens
+### Design tokens (use these, not Foundry's)
+
+```
+Spacing       --space-xs/sm/md/lg/xl    (0.25 / 0.35 / 0.5 / 0.75 / 1 rem)
+Radius        --border-radius           (4px, default)
+              --radius-sm/md/lg/xl      (3 / 6 / 8 / 10 px)
+              --radius-pill             (100px)   ← use this, not "999px"
+              --radius-circle           (50%)
+Shadows       --shadow-sm/md            (drop)
+              --shadow-glow/glow-strong (focus/secret reveal)
+Transitions   --transition-fast/normal/slow/slower  (0.12 / 0.15 / 0.2 / 0.25 s)
+Line height   --line-height-tight/snug/normal/relaxed/loose
+Game colors   --color-litm-tag          (#efd693 golden mustard, power/story/fellowship/relationship/theme tags)
+              --color-litm-status       (#bcceb1 sage green)
+              --color-litm-limit        (#d9b2a9 muted rose)
+              --color-litm-weakness     (#edbb89 warm apricot)
+              --color-litm-banner       (#c4b5a8 beige plaque)
+              --color-litm-track-*      (promise/improve/milestone/abandon/limit accents)
+              --color-litm-might-*      (origin/adventure/greatness tier accents)
+Alpha tints   --color-warm-1-10/25/50, --color-text-primary-10/15/40, --color-overlay-white-3/5/7/8/10
+Fonts         --font-blackletter        (Ysgarth) -- character/sheet titles only
+              --font-h2                 (Luminari) -- decorative serif for section/card titles
+              --font-h4                 (PowellAntique) -- pause overlay etc.
+              --font-luminari/powell/packard/trattatello -- direct refs when needed
+              --font-serif              (Labrada → Fraunces fallback) -- body
+              --font-blockquote         (Labrada) -- italic flavor text
+```
+
+**Foundry tokens that are still fine:** `--color-text-primary/secondary/subtle/emphatic`, `--color-form-*`, `--color-border`, `--color-fieldset-border`, `--font-size-11..24`, `--font-monospace`. Foundry layout utilities (`.flexrow`, `.flexcol`, `.flex0/1/2/3`, `.noflex`, `.scrollable`, `.standard-form`, `.form-group`, `.hint`) are imported and expected.
+
+**Foundry tokens to NOT use in new code:** `--spacer-4/8/12/16` (use `--space-xs/sm/md/lg`), `--color-header-background` for card surfaces (let the parchment show through), Foundry's `gap-xs/sm/md/lg` *values* are aliased to `--spacer-*` in this codebase -- those gap utility classes are still fine to use as classes, but don't reach for the underlying `--spacer-*` variable in your own CSS.
+
+### Established UI patterns -- reuse, don't reinvent
+
+| Pattern | Where to find it | When to use |
+|---------|-----------------|-------------|
+| **Tag chrome** (gold/sage/rose serif italic with skewed underline) | `:where(.litm-tag, .litm-power_tag, .litm-status, ...)` in CSS section 4 | Any text that represents an in-game tag, even read-only display. Apply the class, set `--tag-color` if needed. |
+| **Section header with extending lines** | `.litm-render__section-header` | Section dividers inside cards, sheets, dialogs. Replaces plain `<legend>`. |
+| **Manuscript title** (centered Ysgarth uppercase) | `.litm-render__title` | Embed cards, large titles within content. |
+| **Embed card base** (2px border, radius-lg, padded, parchment showing through) | `.litm-render--card` | New card-shaped containers in chat or sheets. |
+| **Banner plaque** (notched-corner uppercase tablet) | `.litm-banner` | Small status/category labels with weight. |
+| **Ingress paragraph** (LuxuriousRoman, subtle color) | `.litm--ingress` | Lead paragraph in long-form description. |
+| **Decorative bullet** | `.litm-render` examples | Use ` ✦ ` (U+2726) between inline tag labels in display mode. |
+
+### New-UI checklist
+
+Before adding new CSS or templates, work through this:
+
+1. Is there an established `litm--*` class for this concept? (Check section 4 for tags, sections 5--8 for cards/sheets, section 11 for chat, section 16 for embed cards.)
+2. Are spacing values pulled from `--space-*`, not `--spacer-*` or raw rems?
+3. Are radii pulled from `--radius-*`, not raw `4px` or `999px`?
+4. Are colors pulled from `--color-litm-*` (game) or `--color-text-*` (Foundry text), not `--color-header-background`?
+5. Is body text serif italic where it represents flavor, voice, or in-fiction language? Plain sans is for chrome (buttons, form labels, hints) only.
+6. Are inline `style="..."` attributes absent from the template? Use Foundry utilities (`flexrow`, `gap-sm`, `flex0`, `noflex`) and named `litm--*` classes instead.
+7. For an icon-button row, does one button stand out as primary? (Larger, labeled, or warmer color -- not just a wall of identical 32px icons.)
+
+### Design principles
+
+1. **Atmosphere through restraint** -- The parchment, gold tags, and serif italic carry the mood. Don't pile on more decoration; trust the existing chrome.
+2. **Newcomer-friendly** -- Discoverable interactions, tooltips, consistent patterns. New users need to recognize features by visual analogy to other features.
+3. **Reuse before reinvention** -- The system has its own design language; if a new feature doesn't look like the rest, the new feature is wrong, not the system.
+4. **Both modes matter** -- Light and dark themes are first-class. Test both. Most game-color tokens are theme-aware; check the `body` and `.themed.theme-light:not(.chat-log)` blocks if adding new ones.
+5. **Avoid `color-mix()` workarounds** -- If an alpha tint is needed repeatedly, add it as a `--color-*-NN` token alongside the existing alpha-variant block; don't sprinkle `color-mix()` calls.

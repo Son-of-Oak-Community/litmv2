@@ -27,6 +27,11 @@ export function sectionHeader(label) {
 
 /**
  * Bootstrap an actor render card container with optional portrait.
+ *
+ * Click handling is wired via a delegated body-level listener registered in
+ * `Enrichers.register()` — the enriched card lives inside a string returned
+ * from `TextEditor.enrichHTML`, so DOM event listeners attached at enrich
+ * time would be lost on serialization.
  * @param {Actor} actor
  * @param {string} typeClass - CSS modifier class (e.g. "litm-render--hero")
  * @returns {{ container: HTMLElement, headerText: HTMLElement }}
@@ -37,7 +42,10 @@ export function makeActorCard(actor, typeClass) {
 	const container = document.createElement("div");
 	container.classList.add("litm", "litm-render", "litm-render--card", typeClass);
 	container.dataset.uuid = actor.uuid;
-	container.addEventListener("click", () => actor.sheet.render(true));
+	container.dataset.renderAction = "open-sheet";
+	container.dataset.tooltip = game.i18n.localize("LITM.Ui.click_to_view_actor");
+	container.setAttribute("role", "button");
+	container.setAttribute("tabindex", "0");
 
 	const header = document.createElement("div");
 	header.classList.add(`${typeClass}__header`);

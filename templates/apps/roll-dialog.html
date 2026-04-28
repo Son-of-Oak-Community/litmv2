@@ -1,8 +1,9 @@
 {{#*inline 'tag' tag }}
 <li>
 	<label
-		class="litm--roll-dialog-tag litm--{{tag.type}} {{#if tag.locked}}is-locked{{/if}} {{#if tag.state}}is-selected{{/if}}"
-		for="rd-{{tag.key}}" data-tag-type="{{tag.type}}">
+		class="litm--roll-dialog-tag litm--{{tag.type}} {{#if tag.locked}}is-locked{{/if}} {{#if tag.state}}is-selected{{/if}} {{#if tag.isPositiveSuggestion}}is-suggested-positive{{/if}} {{#if tag.isNegativeSuggestion}}is-suggested-negative{{/if}}"
+		for="rd-{{tag.key}}" data-tag-type="{{tag.type}}"
+		{{#if tag.isPositiveSuggestion}}data-tooltip="{{localize 'LITM.Actions.suggestion_helpful'}}"{{else if tag.isNegativeSuggestion}}data-tooltip="{{localize 'LITM.Actions.suggestion_hindering'}}"{{/if}}>
 		<span class="litm--sro">{{localize "LITM.Ui.select"}}</span>
 		<litm-super-checkbox name="{{tag.key}}" id="rd-{{tag.key}}" value="{{tag.state}}" data-type="{{tag.type}}"
 			states="{{tag.states}}" aria-label="{{tag.displayName}}" {{#if tag.locked}}disabled aria-disabled="true" data-locked="true"
@@ -16,6 +17,25 @@
 
 <div class="standard-form litm--roll-dialog-body">
 	<input type="hidden" name="actorId" value="{{actorId}}">
+
+	{{#if actionContext}}
+	<header class="flexrow gap-sm litm--roll-action-strip">
+		{{#if actionContext.img}}
+		<img class="noflex litm--roll-action-strip-img" src="{{actionContext.img}}" alt="" />
+		{{/if}}
+		<div class="flexcol flex1 litm--roll-action-strip-meta">
+			<strong>{{actionContext.name}}</strong>
+			{{#if actionContext.isRote}}
+			<span class="hint">{{actionContext.practitioners}}</span>
+			{{/if}}
+		</div>
+		<button type="button" class="noflex" data-action="viewActionCard"
+			data-tooltip="{{localize 'LITM.Actions.view_action'}}"
+			aria-label="{{localize 'LITM.Actions.view_action'}}">
+			<i class="fa-solid fa-book-open" aria-hidden="true"></i>
+		</button>
+	</header>
+	{{/if}}
 
 	<div class="litm--roll-dialog-content">
 		<!-- Roll Type (primary selection) -->

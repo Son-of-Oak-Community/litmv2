@@ -1,4 +1,4 @@
-import { enrichHTML } from "../utils.js";
+import { enrichHTML, localize } from "../utils.js";
 
 /**
  * Mixin that adds shared sheet infrastructure to both LitmActorSheet and LitmItemSheet.
@@ -47,6 +47,9 @@ export function LitmSheetMixin(Base) {
 				(event) => {
 					const actionBtn = event.target.closest("[data-action]");
 					if (!actionBtn) return;
+					// ProseMirror's toolbar buttons also use [data-action]; let the
+					// editor handle its own controls.
+					if (actionBtn.closest("prose-mirror")) return;
 
 					const form = this.form;
 					if (!form) return;
@@ -82,6 +85,18 @@ export function LitmSheetMixin(Base) {
 			);
 
 			this.element.addEventListener("drop", (event) => {
+				const tagSlot = event.target.closest("[data-power-tag-target]");
+				if (tagSlot) {
+					tagSlot.classList.remove("is-drop-hover");
+					return this._onDropPowerTagRef?.(event, tagSlot);
+				}
+
+				const refTarget = event.target.closest("[data-linked-ref-target]");
+				if (refTarget) {
+					refTarget.classList.remove("is-drop-hover");
+					return this._onDropLinkedRef(event, refTarget);
+				}
+
 				const textarea = event.target.closest("textarea");
 				if (!textarea) return;
 				const data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
@@ -93,6 +108,23 @@ export function LitmSheetMixin(Base) {
 				const { selectionStart, selectionEnd } = textarea;
 				textarea.setRangeText(link, selectionStart, selectionEnd, "end");
 				textarea.dispatchEvent(new Event("change", { bubbles: true }));
+			});
+
+			this.element.addEventListener("dragenter", (event) => {
+				const refTarget = event.target.closest("[data-linked-ref-target]");
+				if (refTarget) refTarget.classList.add("is-drop-hover");
+				const tagSlot = event.target.closest("[data-power-tag-target]");
+				if (tagSlot) tagSlot.classList.add("is-drop-hover");
+			});
+			this.element.addEventListener("dragleave", (event) => {
+				const refTarget = event.target.closest("[data-linked-ref-target]");
+				if (refTarget && !refTarget.contains(event.relatedTarget)) {
+					refTarget.classList.remove("is-drop-hover");
+				}
+				const tagSlot = event.target.closest("[data-power-tag-target]");
+				if (tagSlot && !tagSlot.contains(event.relatedTarget)) {
+					tagSlot.classList.remove("is-drop-hover");
+				}
 			});
 
 			this.element.addEventListener("keydown", (event) => {
@@ -142,6 +174,39 @@ export function LitmSheetMixin(Base) {
 		 */
 		get system() {
 			return this.document.system;
+		}
+
+		/**
+		 * Handle a JournalEntry, JournalEntryPage, or action Item drop on a
+		 * tag row to link it as a reference. The drop target carries
+		 * `data-effect-id`; the effect's `system.linkedRefUuid` is updated
+		 * on the sheet's document.
+		 * @param {DragEvent} event
+		 * @param {HTMLElement} target  The element matching `[data-linked-ref-target]`
+		 * @protected
+		 */
+		async _onDropLinkedRef(event, target) {
+			const data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
+			if (!data?.uuid) return;
+			const accepted = ["JournalEntry", "JournalEntryPage", "Item"];
+			if (!accepted.includes(data.type)) return;
+
+			if (data.type === "Item") {
+				const doc = await foundry.utils.fromUuid(data.uuid);
+				if (doc?.type !== "action") {
+					ui.notifications.warn(localize("LITM.Actions.linked_ref_invalid_item"));
+					return;
+				}
+			}
+
+			event.preventDefault();
+			event.stopPropagation();
+
+			const effectId = target.dataset.effectId;
+			const effect = effectId ? this.document.effects?.get(effectId) : null;
+			if (!effect) return;
+
+			await effect.update({ "system.linkedRefUuid": data.uuid });
 		}
 
 		/**

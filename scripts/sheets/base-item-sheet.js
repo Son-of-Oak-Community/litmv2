@@ -1,4 +1,4 @@
-import { parseEmbeddedFormKeys } from "../utils.js";
+import { parseEmbeddedFormKeys, viewLinkedRefAction } from "../utils.js";
 import { LitmSheetMixin } from "./litm-sheet-mixin.js";
 
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -11,6 +11,26 @@ const { HandlebarsApplicationMixin } = foundry.applications.api;
 export class LitmItemSheet extends LitmSheetMixin(
 	HandlebarsApplicationMixin(ItemSheetV2),
 ) {
+	static DEFAULT_OPTIONS = {
+		actions: {
+			viewLinkedRef: viewLinkedRefAction,
+			clearLinkedRef: LitmItemSheet._onClearLinkedRef,
+		},
+	};
+
+	/**
+	 * Clear the linked reference on an embedded effect.
+	 * @param {Event} _event
+	 * @param {HTMLElement} target
+	 * @protected
+	 */
+	static async _onClearLinkedRef(_event, target) {
+		const effectId = target.dataset.effectId;
+		const effect = effectId ? this.document.effects.get(effectId) : null;
+		if (!effect) return;
+		await effect.update({ "system.linkedRefUuid": null });
+	}
+
 	/**
 	 * Handle form submission, routing `effects.*` fields to embedded
 	 * document updates. Subclasses that use effect-bound form fields

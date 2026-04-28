@@ -1,0 +1,27 @@
+{{!-- Linked-reference controls for an effect tag in edit mode.
+Context: { tag } where `tag` is the ActiveEffect.
+Renders a view button + clear button when linked, otherwise a drop-target hint.
+The parent element must carry [data-linked-ref-target][data-effect-id="{{tag._id}}"] for the drop handler. --}}
+{{#if tag.system.linkedRefUuid}}
+<span class="litm--ref-controls">
+	<button type="button"
+		data-action="viewLinkedRef"
+		data-linked-ref-uuid="{{tag.system.linkedRefUuid}}"
+		data-tooltip="{{#if tag.system.linkedRefName}}{{localize 'LITM.Actions.view_linked_ref_named' name=tag.system.linkedRefName}}{{else}}{{localize 'LITM.Actions.view_linked_ref'}}{{/if}}"
+		aria-label="{{#if tag.system.linkedRefName}}{{localize 'LITM.Actions.view_linked_ref_named' name=tag.system.linkedRefName}}{{else}}{{localize 'LITM.Actions.view_linked_ref'}}{{/if}}">
+		<i class="fa-solid fa-scroll" aria-hidden="true"></i>
+	</button>
+	<button type="button"
+		data-action="clearLinkedRef"
+		data-effect-id="{{tag._id}}"
+		data-tooltip="{{localize 'LITM.Actions.clear_link'}}"
+		aria-label="{{localize 'LITM.Actions.clear_link'}}">
+		<i class="fa-solid fa-link-slash" aria-hidden="true"></i>
+	</button>
+</span>
+{{else}}
+<span class="litm--ref-drop hint"
+	data-tooltip="{{localize 'LITM.Actions.drop_to_link'}}">
+	<i class="fa-regular fa-scroll" aria-hidden="true"></i>
+</span>
+{{/if}}
