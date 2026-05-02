@@ -41,7 +41,12 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 	get sceneData() {
 		const data = this.scene?.getFlag("litmv2", "sceneTags");
 		if (!data || foundry.utils.isEmpty(data)) return { tags: [], limits: [] };
-		return data;
+		const tags = (data.tags ?? []).map((tag) =>
+			tag.type === "status" ? { ...tag, type: "status_tag" }
+			: tag.type === "tag" ? { ...tag, type: "story_tag" }
+			: tag,
+		);
+		return { ...data, tags };
 	}
 
 	async _prepareContext(_options) {
@@ -112,7 +117,7 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 					limitId: tagData.limitId || null,
 					isSingleUse: tagData.isSingleUse ?? existing.isSingleUse,
 					values:
-						existing.type === "status"
+						existing.type === "status_tag"
 							? toTiers(
 									Array.isArray(tagData.values)
 										? tagData.values
@@ -173,12 +178,12 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 
 		if (statusMatch) {
 			name = statusMatch[1].trim();
-			type = "status";
+			type = "status_tag";
 			const tier = Number.parseInt(statusMatch[2], 10);
 			values = Array.from({ length: 6 }, (_, i) => i === tier - 1);
 		} else {
 			name = raw;
-			type = "tag";
+			type = "story_tag";
 			values = Array(6).fill(null);
 		}
 

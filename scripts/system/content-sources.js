@@ -246,12 +246,15 @@ export class ContentSources {
 	}
 
 	/**
-	 * Convert a legacy JSON scene tag to ActiveEffect creation data.
-	 * @param {object} tag - Legacy tag from settings `{ id, name, type, values, isScratched, isSingleUse, hidden, limitId }`
+	 * Convert a JSON scene tag to ActiveEffect creation data.
+	 * Accepts both the canonical AE document types (`status_tag`, `story_tag`)
+	 * and the pre-normalization short forms (`status`, `tag`) so this remains
+	 * a safe boundary for legacy persisted data and external drag payloads.
+	 * @param {object} tag - Tag descriptor `{ id, name, type, values, isScratched, isSingleUse, hidden, limitId }`
 	 * @returns {object} ActiveEffect creation data
 	 */
 	static legacyTagToEffectData(tag) {
-		const isStatus = tag.type === "status";
+		const isStatus = tag.type === "status_tag" || tag.type === "status";
 		return {
 			name: tag.name,
 			type: isStatus ? "status_tag" : "story_tag",
@@ -260,7 +263,9 @@ export class ContentSources {
 			system: isStatus
 				? {
 					isHidden: tag.hidden ?? false,
-					tiers: (tag.values ?? []).map((v) => v === true),
+					tiers: (tag.values ?? []).map((v) =>
+						typeof v === "boolean" ? v : v != null,
+					),
 					limitId: tag.limitId ?? null,
 				}
 				: {

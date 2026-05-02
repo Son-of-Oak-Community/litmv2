@@ -95,11 +95,11 @@
 	<fieldset>
 		<legend class="control flexrow gap-sm">
 			<span class="flex1">{{localize "LITM.Terms.story_tags_statuses"}}</span>
-			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="tag"
+			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="story_tag"
 				data-tooltip="{{localize 'LITM.Ui.add_tag'}}" aria-label="{{localize 'LITM.Ui.add_tag'}}">
 				<i class="fa-solid fa-scroll" aria-hidden="true"></i>
 			</button>
-			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="status"
+			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="status_tag"
 				data-tooltip="{{localize 'LITM.Ui.add_status'}}" aria-label="{{localize 'LITM.Ui.add_status'}}">
 				<i class="fa-solid fa-droplet" aria-hidden="true"></i>
 			</button>
@@ -114,7 +114,7 @@
 					<input class="litm--tag-item-name" type="text" name="effects.{{tag.id}}.name" value="{{tag.name}}"
 						placeholder="{{localize 'LITM.Ui.tag_name'}}" />
 				</span>
-				{{#if (eq tag.type "status")}}
+				{{#if (eq tag.type "status_tag")}}
 				<div class="progress-display" style="flex: 0 0 auto;" data-id="system.tiers">
 					{{#each tag.system.tiers as |checked|}}
 					<button type="button" class="progress-box {{#if checked}}checked{{/if}}"
@@ -139,8 +139,8 @@
 				</button>
 				{{/if}}
 				<button type="button" style="flex: none;" data-action="removeEffect" data-id="{{tag.id}}"
-					data-tooltip="{{localize 'LITM.Ui.remove'}} {{tag.type}}"
-					aria-label="{{localize 'LITM.Ui.remove'}} {{tag.type}}">
+					data-tooltip="{{localize (ifThen (eq tag.type 'status_tag') 'LITM.Ui.remove_status' 'LITM.Ui.remove_tag')}}"
+					aria-label="{{localize (ifThen (eq tag.type 'status_tag') 'LITM.Ui.remove_status' 'LITM.Ui.remove_tag')}}">
 					<i class="fa-solid fa-trash" aria-hidden="true"></i>
 				</button>
 			</li>

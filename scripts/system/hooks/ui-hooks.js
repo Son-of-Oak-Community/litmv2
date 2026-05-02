@@ -132,7 +132,7 @@ function _refreshOnPlayerChange() {
 }
 
 function _handleTagDropInEditor() {
-	const TAG_TYPES = new Set(["tag", "status", "limit"]);
+	const TAG_TYPES = new Set(["story_tag", "status_tag", "limit"]);
 
 	Hooks.on("createProseMirrorEditor", (_uuid, plugins) => {
 		const { Plugin, TextSelection, keymap } = foundry.prosemirror;
@@ -149,7 +149,7 @@ function _handleTagDropInEditor() {
 					if (!pos) return;
 
 					let markup;
-					if (data.type === "status") markup = `[${data.name}-${data.value ?? ""}]`;
+					if (data.type === "status_tag") markup = `[${data.name}-${data.value ?? ""}]`;
 					else if (data.type === "limit") markup = data.value ? `[${data.name}:${data.value}]` : `[${data.name}:]`;
 					else markup = `[${data.name}]`;
 

@@ -65,7 +65,7 @@ function _listenToTagDragTransfer() {
 			const data = {
 				id: foundry.utils.randomID(),
 				name: isLimit ? cleanName : name,
-				type: isStatus ? "status" : isLimit ? "limit" : "tag",
+				type: isStatus ? "status_tag" : isLimit ? "limit" : "story_tag",
 				values: Array(6)
 					.fill(null)
 					.map((_, i) => (Number.parseInt(value, 10) === i + 1 ? value : null)),

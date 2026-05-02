@@ -42,24 +42,50 @@ export function TagStringSyncMixin(Base) {
 				tier: Number.parseInt(value, 10) || 0,
 			}));
 
-			const toDelete = this.document.effects
-				.filter(
-					(e) =>
-						ACTOR_TAG_TYPES.has(e.type) &&
-						!e.getFlag("litmv2", "addonId"),
-				)
-				.map((e) => e.id);
+			const existing = this.document.effects.filter(
+				(e) =>
+					ACTOR_TAG_TYPES.has(e.type) &&
+					!e.getFlag("litmv2", "addonId"),
+			);
+			// Key by name + type so a tag and a status of the same name can coexist.
+			const keyOf = (name, type) => `${name.trim().toLowerCase()} ${type}`;
+			const existingByKey = new Map(
+				existing.map((e) => [keyOf(e.name, e.type), e]),
+			);
 
-			if (toDelete.length) {
-				await this.document.deleteEmbeddedDocuments("ActiveEffect", toDelete);
-			}
+			const matchedIds = new Set();
+			const seenKeys = new Set();
+			const toCreate = [];
+			const toUpdate = [];
 
-			if (parsed.length) {
-				await this.document.createEmbeddedDocuments(
-					"ActiveEffect",
-					parsed.map((t) => ({
+			for (const t of parsed) {
+				const expectedType = t.isStatus ? "status_tag" : "story_tag";
+				const key = keyOf(t.name, expectedType);
+				// Skip duplicate parsed entries so toUpdate/toCreate stay unique.
+				if (seenKeys.has(key)) continue;
+				seenKeys.add(key);
+
+				const match = existingByKey.get(key);
+				if (match) {
+					matchedIds.add(match.id);
+					const update = { _id: match.id };
+					const newName = t.name.trim();
+					if (match.name !== newName) update.name = newName;
+					if (t.isStatus) {
+						const newTiers = Array(6)
+							.fill(false)
+							.map((_, i) => i + 1 === t.tier);
+						const currentTiers = match.system.tiers ?? [];
+						const tiersDiffer = newTiers.some(
+							(v, i) => v !== !!currentTiers[i],
+						);
+						if (tiersDiffer) update["system.tiers"] = newTiers;
+					}
+					if (Object.keys(update).length > 1) toUpdate.push(update);
+				} else {
+					toCreate.push({
 						name: t.name,
-						type: t.isStatus ? "status_tag" : "story_tag",
+						type: expectedType,
 						system: t.isStatus
 							? {
 								tiers: Array(6)
@@ -67,8 +93,22 @@ export function TagStringSyncMixin(Base) {
 									.map((_, i) => i + 1 === t.tier),
 							}
 							: { isScratched: false, isSingleUse: false },
-					})),
-				);
+					});
+				}
+			}
+
+			const toDelete = existing
+				.filter((e) => !matchedIds.has(e.id))
+				.map((e) => e.id);
+
+			if (toDelete.length) {
+				await this.document.deleteEmbeddedDocuments("ActiveEffect", toDelete);
+			}
+			if (toUpdate.length) {
+				await this.document.updateEmbeddedDocuments("ActiveEffect", toUpdate);
+			}
+			if (toCreate.length) {
+				await this.document.createEmbeddedDocuments("ActiveEffect", toCreate);
 			}
 
 			this._notifyStoryTags();
