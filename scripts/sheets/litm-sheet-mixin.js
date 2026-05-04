@@ -53,8 +53,12 @@ export function LitmSheetMixin(Base) {
 
 					const focused = document.activeElement;
 					if (!focused || !form.contains(focused)) return;
-					if (!["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName))
-						return;
+					const isFormInput = ["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName);
+					// ProseMirror focuses a contenteditable inside the <prose-mirror>
+					// custom element, which is form-associated and exposes live editor
+					// state via its value getter — so submit() will pick it up.
+					const isProseMirror = !!focused.closest("prose-mirror");
+					if (!isFormInput && !isProseMirror) return;
 
 					event.preventDefault();
 
