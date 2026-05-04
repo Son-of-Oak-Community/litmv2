@@ -1,4 +1,5 @@
 import { ScratchableMixin } from "./scratchable-mixin.js";
+import { getLinkedRefName } from "../../utils.js";
 
 export class PowerTagData extends ScratchableMixin(foundry.data.ActiveEffectTypeDataModel) {
 	static defineSchema() {
@@ -8,11 +9,16 @@ export class PowerTagData extends ScratchableMixin(foundry.data.ActiveEffectType
 			question: new fields.StringField({ initial: null, nullable: true, blank: true }),
 			isScratched: new fields.BooleanField({ initial: false }),
 			isTitleTag: new fields.BooleanField({ initial: false }),
+			linkedRefUuid: new fields.StringField({ initial: null, nullable: true, blank: true }),
 		};
 	}
 
 	get canBurn() {
 		return !this.isScratched;
+	}
+
+	get linkedRefName() {
+		return getLinkedRefName(this.linkedRefUuid);
 	}
 
 	get allowedStates() {

@@ -1,0 +1,10 @@
+{{!-- GM-only Apply Consequences button injected into the existing .dice-footer
+alongside Push Your Luck / Spend Power. Successes for actions are now part of
+the Spend Power dialog (see SpendPowerApp). --}}
+{{#if actionContext.showApplyConsequences}}
+<button type="button" class="litm--roll-spend-power-button" data-click="action-open-consequences">
+	<i class="fa-solid fa-skull" aria-hidden="true"></i>
+	<span>{{localize "LITM.Actions.apply_consequences"}}</span>
+	{{#if actionContext.unappliedConsequences}}<span class="litm--chat-action-count">{{actionContext.unappliedConsequences}}</span>{{/if}}
+</button>
+{{/if}}

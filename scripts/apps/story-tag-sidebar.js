@@ -19,6 +19,7 @@ import {
 	statusTagEffect,
 	storyTagEffect,
 	updateEffectsByParent,
+	viewLinkedRefAction,
 } from "../utils.js";
 import {
 	disambiguateNames,
@@ -102,6 +103,7 @@ export class StoryTagSidebar
 			"quick-add": StoryTagSidebar.#onQuickAdd,
 			"load-scene-tags": StoryTagSidebar.#onLoadSceneTags,
 			"load-scene-tokens": StoryTagSidebar.#onLoadSceneTokens,
+			viewLinkedRef: viewLinkedRefAction,
 		},
 	};
 

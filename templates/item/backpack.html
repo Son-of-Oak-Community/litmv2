@@ -26,7 +26,7 @@
 		{{#if tags.length}}
 		<ul class="plain">
 			{{#each tags as |tag|}}
-			<li class="form-group {{#if tag.disabled}}inactive{{/if}}">
+			<li class="form-group {{#if tag.disabled}}inactive{{/if}}" data-linked-ref-target data-effect-id="{{tag._id}}">
 				<input
 					type="checkbox"
 					name="effects.{{tag._id}}.isActive"
@@ -47,6 +47,8 @@
 						{{checked tag.system.isSingleUse}} data-dtype="Boolean" />
 					<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
 				</label>
+
+				{{> systems/litmv2/templates/partials/edit-linked-ref-controls.html tag=tag}}
 
 				<button
 					style="flex: none"

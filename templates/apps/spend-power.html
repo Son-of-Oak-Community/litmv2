@@ -7,6 +7,36 @@
 		</span>
 	</div>
 
+	<div class="litm-spend-power__body">
+	{{#if actionSuccesses.length}}
+	<!-- Action-specific successes — populated when this Spend Power dialog is
+	     opened on a chat message that originated from an Action item. They sit
+	     above the generic options because they're the suggested first move. -->
+	<fieldset class="litm-spend-power__action-successes">
+		<legend>{{localize "LITM.Actions.apply_successes"}}</legend>
+		<ul class="litm-spend-power__options">
+			{{#each actionSuccesses as |item|}}
+			<li class="litm-spend-power__option {{#if item.disabled}}is-disabled{{/if}}"
+				data-source="action"
+				data-success-key="{{item.key}}"
+				data-cost="{{item.cost}}"
+				data-verb-kind="{{item.verbKind}}">
+				<div class="litm-spend-power__option-row">
+					<label class="litm-spend-power__option-label">
+						<input type="checkbox" data-option-check
+							{{#if item.disabled}}disabled{{/if}} />
+						<span><span class="litm--chat-action-verb">{{item.verbLabel}}</span>{{#if item.label}} <span class="litm--chat-action-label">{{item.label}}</span>{{/if}}</span>
+					</label>
+					{{#if item.cost}}<span class="litm-spend-power__cost">{{item.cost}} {{localize "LITM.Tags.power"}}</span>{{/if}}
+				</div>
+				{{#if item.description}}<p class="hint">{{item.description}}</p>{{/if}}
+				{{#if item.reasonKey}}<p class="hint">{{localize item.reasonKey}}</p>{{/if}}
+			</li>
+			{{/each}}
+		</ul>
+	</fieldset>
+	{{/if}}
+
 	<!-- Options -->
 	<fieldset>
 		<legend>{{localize "LITM.Ui.options"}}</legend>
@@ -80,6 +110,7 @@
 			{{/each}}
 		</ul>
 	</fieldset>
+	</div>
 
 	<!-- Footer -->
 	<div class="form-footer">

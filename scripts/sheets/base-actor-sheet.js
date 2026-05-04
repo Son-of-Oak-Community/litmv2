@@ -1,7 +1,7 @@
 import { buildTrackCompleteContent, detectTrackCompletion } from "../system/chat.js";
 import { THEME_TAG_TYPES } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
-import { addStoryTagToActor, confirmDelete, enrichHTML, getStoryTagSidebar, levelIcon, parseEmbeddedFormKeys, resolveEffect, statusTagEffect, storyTagEffect, updateEffectsByParent } from "../utils.js";
+import { addStoryTagToActor, confirmDelete, enrichHTML, getStoryTagSidebar, levelIcon, parseEmbeddedFormKeys, resolveEffect, statusTagEffect, storyTagEffect, updateEffectsByParent, viewLinkedRefAction } from "../utils.js";
 import { mapEffectForUI, toTiers } from "../apps/story-tag-helpers.js";
 import { LitmSheetMixin } from "./litm-sheet-mixin.js";
 
@@ -47,6 +47,9 @@ export class LitmActorSheet extends LitmSheetMixin(
 		position: {
 			width: 450,
 			height: "auto",
+		},
+		actions: {
+			viewLinkedRef: viewLinkedRefAction,
 		},
 		window: {
 			contentClasses: ["standard-form"],

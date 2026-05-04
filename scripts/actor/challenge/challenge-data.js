@@ -1,4 +1,5 @@
 import { EffectTagsMixin } from "../effect-tags-mixin.js";
+import { advanceSystemLimit } from "../actor-limits.js";
 import { EFFECT_TYPES } from "../../system/config.js";
 
 export class ChallengeData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
@@ -181,5 +182,17 @@ export class ChallengeData extends EffectTagsMixin(foundry.abstract.TypeDataMode
 	 */
 	get challenges() {
 		return CONFIG.litmv2.challenge_types;
+	}
+
+	/**
+	 * Advance (or set back) a limit by `delta`. Only operates on canonical
+	 * `system.limits` entries; addon-derived limits resolve to `null` so
+	 * callers can warn the user.
+	 * @param {string} limitId
+	 * @param {number} delta
+	 * @returns {Promise<import("../actor-limits.js").LimitChangeResult|null>}
+	 */
+	async advanceLimit(limitId, delta) {
+		return advanceSystemLimit(this.parent, limitId, delta);
 	}
 }

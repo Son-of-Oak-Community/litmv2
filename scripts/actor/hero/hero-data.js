@@ -3,6 +3,7 @@ import { LitmSettings } from "../../system/settings.js";
 import { ACTOR_TAG_TYPES, ACTOR_TYPES, EFFECT_TYPES, ITEM_TYPES, POWER_TAG_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
 import { partitionEffects } from "../../utils.js";
 import { EffectTagsMixin } from "../effect-tags-mixin.js";
+import { advanceFlagLimit } from "../actor-limits.js";
 
 /**
  * Build ActiveEffect creation data from legacy relationship arrays.
@@ -297,5 +298,15 @@ export class HeroData extends EffectTagsMixin(foundry.abstract.TypeDataModel) {
 			.reduce((max, e) => Math.max(max, e.system.currentTier), 0);
 		this.limit.value = baseLimit - highestStatus;
 		this.limit.max = baseLimit;
+	}
+
+	/**
+	 * Advance (or set back) a flag-stored limit by `delta`.
+	 * @param {string} limitId
+	 * @param {number} delta
+	 * @returns {Promise<import("../actor-limits.js").LimitChangeResult|null>}
+	 */
+	async advanceLimit(limitId, delta) {
+		return advanceFlagLimit(this.parent, limitId, delta);
 	}
 }

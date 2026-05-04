@@ -1,0 +1,37 @@
+{{!-- Grouped tag picker — used by the action sheet to link a power/weakness/
+fellowship/story tag from the owning hero (or their fellowship). When a
+group has a title tag (the theme's signature tag), it doubles as the
+group header. Other tags render as inline chips that wrap. --}}
+<form class="standard-form litm--tag-picker">
+	<div class="litm--tag-picker__scroll scrollable">
+		{{#each groups as |group|}}
+		<section class="litm--tag-picker__group">
+			{{#if group.titleEntry}}
+			<label class="litm--tag-picker__header litm--tag-picker__header--selectable">
+				<input type="radio" name="picked" value="{{group.titleEntry.index}}" />
+				{{#if group.img}}<img class="litm--tag-picker__group-img" src="{{group.img}}" alt="" />{{/if}}
+				<span class="litm--tag-picker__title litm-{{group.titleEntry.type}}"
+					data-text="{{group.titleEntry.name}}">{{group.titleEntry.name}}</span>
+			</label>
+			{{else}}
+			<header class="litm--tag-picker__header">
+				{{#if group.img}}<img class="litm--tag-picker__group-img" src="{{group.img}}" alt="" />{{/if}}
+				<span class="litm--tag-picker__group-label">{{group.fallbackLabel}}</span>
+			</header>
+			{{/if}}
+			{{#if group.entries.length}}
+			<ul class="plain litm--tag-picker__chips">
+				{{#each group.entries as |entry|}}
+				<li>
+					<label class="litm--tag-picker__chip">
+						<input type="radio" name="picked" value="{{entry.index}}" />
+						<span class="litm--tag-picker__name litm-{{entry.type}}" data-text="{{entry.name}}">{{entry.name}}</span>
+					</label>
+				</li>
+				{{/each}}
+			</ul>
+			{{/if}}
+		</section>
+		{{/each}}
+	</div>
+</form>

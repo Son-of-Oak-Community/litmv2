@@ -1,0 +1,11 @@
+{{!-- Quick successes for an action — narrative-only outcomes with no Power
+cost. Injected onto the dice-roll chat card by chat-hooks when the roll
+unlocks Quick. Shown to everyone so the table sees what auto-resolves. --}}
+<div class="litm--action-quick-successes">
+	{{#each successes}}
+	<p class="litm-render--action__success">
+		<strong class="litm-render--action__verb">{{verbLabel}}</strong>{{#if label}}
+		{{label}}{{/if}}{{#if description}}{{#if label}}.{{/if}} {{{description}}}{{/if}}
+	</p>
+	{{/each}}
+</div>

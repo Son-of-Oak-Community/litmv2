@@ -1,3 +1,5 @@
+import { sendRollRequest } from "../apps/roll-request.js";
+import { renderAction } from "./renderers/action-renderer.js";
 import { renderChallenge } from "./renderers/challenge-renderer.js";
 import { renderHero } from "./renderers/hero-renderer.js";
 import { renderJourney } from "./renderers/journey-renderer.js";
@@ -7,6 +9,7 @@ import { renderTrope } from "./renderers/trope-renderer.js";
 import { renderVignette } from "./renderers/vignette-renderer.js";
 
 const RENDERERS = {
+	action: renderAction,
 	vignette: renderVignette,
 	challenge: renderChallenge,
 	hero: renderHero,
@@ -16,6 +19,78 @@ const RENDERERS = {
 	trope: renderTrope,
 };
 
+function _actionAnchor(uuid, display, esc) {
+	const t = document.createElement("template");
+	t.innerHTML = `<a class="content-link litm--action-link" draggable="true" data-uuid="${uuid}" data-type="Item" data-tooltip="LITM.Actions.open_action"><i class="fa-solid fa-scroll"></i> ${esc(display)}</a>`;
+	return t.content.firstChild;
+}
+
+let _actionLookup = null;
+
+function _invalidateActionLookup(doc) {
+	if (doc && doc.documentName === "Item" && doc.type !== "action") return;
+	_actionLookup = null;
+}
+
+async function _buildActionLookup() {
+	const map = new Map();
+	for (const it of game.items?.contents ?? []) {
+		if (it.type !== "action") continue;
+		const k = it.name?.toLowerCase();
+		if (k && !map.has(k)) map.set(k, it.uuid);
+	}
+	const packs = game.packs?.filter((p) => p.documentName === "Item") ?? [];
+	for (const pack of packs) {
+		try {
+			const index = await pack.getIndex({ fields: ["type", "name"] });
+			for (const e of index) {
+				if (e.type !== "action") continue;
+				const k = e.name?.toLowerCase();
+				if (!k || map.has(k)) continue;
+				map.set(k, `Compendium.${pack.collection}.Item.${e._id}`);
+			}
+		} catch { /* skip pack on error */ }
+	}
+	return map;
+}
+
+async function _resolveActionUuid(name) {
+	if (!_actionLookup) _actionLookup = await _buildActionLookup();
+	return _actionLookup.get(name.toLowerCase()) ?? null;
+}
+
+// Body-level delegated handlers for @render embed cards. The enriched card is
+// inserted into chat/journal/sheet HTML as a serialized string, so any DOM
+// listener attached at enrich time would be discarded — delegation is the
+// only path that survives.
+const RENDER_ACTIONS = {
+	"open-sheet": async (target) => {
+		const doc = await foundry.utils.fromUuid(target.dataset.uuid);
+		doc?.sheet?.render(true);
+	},
+	"send-roll-request": async (target) => {
+		if (!game.user.isGM) return;
+		const action = await foundry.utils.fromUuid(target.dataset.uuid);
+		if (action?.type === "action") await sendRollRequest({ action });
+	},
+};
+
+async function _onRenderCardActivate(event) {
+	const target = event.target.closest("[data-render-action]");
+	if (!target) return;
+	const handler = RENDER_ACTIONS[target.dataset.renderAction];
+	if (!handler) return;
+	event.preventDefault();
+	event.stopPropagation();
+	await handler(target);
+}
+
+function _onRenderCardKeydown(event) {
+	if (event.key !== "Enter" && event.key !== " ") return;
+	if (!event.target.closest?.("[data-render-action]")) return;
+	_onRenderCardActivate(event);
+}
+
 export class Enrichers {
 	static register() {
 		Enrichers.#enrichRender();
@@ -23,9 +98,21 @@ export class Enrichers {
 		Enrichers.#enrichMight();
 		Enrichers.#enrichBanner();
 		Enrichers.#enrichSceneLinks();
+		Enrichers.#enrichAction();
 		// Note that this one has to go last for now
 		Enrichers.#enrichTags();
 		Enrichers.#registerInserts();
+
+		document.body.addEventListener("click", _onRenderCardActivate);
+		document.body.addEventListener("keydown", _onRenderCardKeydown);
+
+		// Invalidate the @action[] lookup cache when world or pack contents
+		// change. Compendium edits to existing packs fire createItem/deleteItem/
+		// updateItem on the embedded document. (No equivalent hook exists for
+		// whole-pack add/remove; those are rare mid-session and a reload is fine.)
+		Hooks.on("createItem", _invalidateActionLookup);
+		Hooks.on("deleteItem", _invalidateActionLookup);
+		Hooks.on("updateItem", _invalidateActionLookup);
 	}
 
 	static #esc(str) {
@@ -121,6 +208,22 @@ export class Enrichers {
 			id: "litm.sceneLink",
 			pattern: CONFIG.litmv2.sceneLinkRe,
 			enricher: enrichSceneLinks,
+		});
+	}
+
+	static #enrichAction() {
+		const esc = Enrichers.#esc;
+		// Pattern: @action[Name] or @action[Name|alt label]
+		CONFIG.TextEditor.enrichers.push({
+			id: "litm.action",
+			pattern: /@action\[([^\]|]+)(?:\|([^\]]+))?\]/gi,
+			enricher: async ([text, name, label]) => {
+				const trimmed = name.trim();
+				const display = (label || trimmed).trim();
+				const uuid = await _resolveActionUuid(trimmed);
+				if (uuid) return _actionAnchor(uuid, display, esc);
+				return document.createTextNode(text);
+			},
 		});
 	}
 

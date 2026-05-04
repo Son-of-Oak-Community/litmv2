@@ -10,6 +10,21 @@ export const ACTOR_TAG_TYPES = new Set(["story_tag", "status_tag"]);
 /** Effect types that support the ScratchableMixin. */
 export const SCRATCHABLE_TAG_TYPES = new Set(["power_tag", "fellowship_tag", "story_tag", "relationship_tag"]);
 
+/** Every tag-effect type — character tags + statuses. */
+export const ALL_TAG_TYPES = new Set([
+	"power_tag", "weakness_tag", "fellowship_tag",
+	"relationship_tag", "story_tag", "status_tag",
+]);
+
+/**
+ * Tag types valid as targets of an Action's power-tag-reference drop.
+ * Excludes relationship_tag (per-pair, not generally useful as a
+ * suggestion) and status_tag (statuses aren't named tags).
+ */
+export const POWER_REF_TAG_TYPES = new Set([
+	"power_tag", "weakness_tag", "fellowship_tag", "story_tag",
+]);
+
 /** All effect type string identifiers. */
 export const EFFECT_TYPES = Object.freeze({
 	power_tag: "power_tag",
@@ -56,6 +71,7 @@ export const ACTOR_TYPES = {
 export const ITEM_TYPES = {
 	theme: "theme",
 	themebook: "themebook",
+	action: "action",
 	trope: "trope",
 	backpack: "backpack",
 	story_theme: "story_theme",
@@ -73,6 +89,7 @@ export const ITEM_DEFAULT_ICONS = {
 	vignette: "systems/litmv2/assets/media/icons/consequences.svg",
 	backpack: "systems/litmv2/assets/media/icons/backpack.svg",
 	trope: "icons/svg/target.svg",
+	action: "icons/svg/book.svg",
 };
 
 /** Localization keys for might level options (shared by challenge + addon sheets). */

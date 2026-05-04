@@ -149,6 +149,32 @@ export class KeyBindings {
 			precedence: foundry.CONST.KEYBINDING_PRECEDENCE.NORMAL,
 		});
 
+		game.keybindings.register("litmv2", "openActionsApp", {
+			name: t("LITM.Actions.open_actions_app"),
+			hint: t("LITM.Actions.open_actions_app_hint"),
+			editable: [
+				{
+					key: "KeyA",
+					modifiers: ["Alt"],
+				},
+			],
+			onDown: () => {
+				const character = game.user.character;
+				if (!character) {
+					return ui.notifications.warn("LITM.Actions.warn_no_character", {
+						localize: true,
+					});
+				}
+				const app = character.sheet?.actionsApp;
+				if (!app) return;
+				if (app.rendered) app.close();
+				else app.render(true);
+			},
+			onUp: () => {},
+			restricted: false,
+			precedence: foundry.CONST.KEYBINDING_PRECEDENCE.NORMAL,
+		});
+
 		game.keybindings.register("litmv2", "openDiceRoller", {
 			name: t("LITM.Ui.dice_roller"),
 			hint: t("LITM.Ui.dice_roller_hint"),

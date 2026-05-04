@@ -94,6 +94,8 @@ body,
 	--color-warm-1-10: color-mix(in srgb, var(--color-warm-1) 10%, transparent);
 	--color-warm-1-25: color-mix(in srgb, var(--color-warm-1) 25%, transparent);
 	--color-warm-1-50: color-mix(in srgb, var(--color-warm-1) 50%, transparent);
+	--color-litm-limit-15: color-mix(in srgb, var(--color-litm-limit) 15%, transparent);
+	--color-litm-limit-30: color-mix(in srgb, var(--color-litm-limit) 30%, transparent);
 	--color-text-primary-10: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
 	--color-text-primary-15: color-mix(in srgb, var(--color-text-primary) 15%, transparent);
 	--color-text-primary-40: color-mix(in srgb, var(--color-text-primary) 40%, transparent);
@@ -322,6 +324,19 @@ body,
 	filter: var(--litm-icon-filter);
 }
 
+/* Inline icon — drop-in replacement for an <i> font-icon. Used wherever a
+   system SVG should appear instead of a Font Awesome glyph (success,
+   consequences, etc.). Sized larger than 1em so the artwork reads at glance
+   alongside body text. No theme filter — these SVGs ship with their own
+   brand colors and inverting them produces wrong hues in light mode. */
+.litm--inline-icon {
+	display: inline-block;
+	width: 1.5em;
+	height: 1.5em;
+	vertical-align: -0.4em;
+	border: none;
+}
+
 :is(.litm .progress-box) {
 	--button-size: 24px;
 	min-width: 20px;
@@ -416,6 +431,593 @@ body,
 /* Status tag badge */
 :is(.litm-status, .litm-status_tag) {
 	--tag-color: var(--color-litm-status);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Shared section header — small-caps label with extending decorative
+   lines. Aliases the legacy `.litm-render__section-header` so the
+   pattern is callable outside of @render embed cards.
+   ────────────────────────────────────────────────────────────────── */
+.litm--section-header,
+.litm--section-header > legend,
+.litm--section-header > summary {
+	display: flex;
+	align-items: center;
+	gap: var(--space-xs);
+	font-family: var(--font-serif);
+	font-size: var(--font-size-11);
+	font-weight: 600;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+	color: var(--color-text-secondary);
+	margin: var(--space-xs) 0;
+	width: 100%;
+}
+.litm--section-header::before,
+.litm--section-header::after,
+.litm--section-header > legend::before,
+.litm--section-header > legend::after,
+.litm--section-header > summary::before,
+.litm--section-header > summary::after {
+	content: "";
+	flex: 1;
+	border-top: 1px solid var(--color-border);
+}
+
+/* Action — shared card pattern (action card in browser, success card,
+   chat action panel). Lets the parchment show through; chrome carries
+   the contour. */
+.litm--action-card,
+.litm--success-card,
+.litm--chat-action {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-xs);
+	padding: var(--space-md) var(--space-lg);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+}
+
+/* Chat — Apply Consequences button injected into the existing .dice-footer
+   (alongside Push Your Luck / Spend Power). Inherits the .litm.dice-roll
+   button cascade. We only style the small unapplied-count badge here. */
+.litm--chat-action-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.5em;
+	height: 1.5em;
+	margin-left: 0.25em;
+	padding: 0 0.4em;
+	border-radius: var(--radius-pill);
+	background: var(--color-warm-1-25);
+	color: var(--color-text-primary);
+	font-size: var(--font-size-11);
+	font-weight: 700;
+}
+
+/* Action-applied chat cards reuse the .litm-spend-chat chrome (avatar +
+   actor name + action label + body + footer line) — see Spend Power Chat
+   Cards section below. No bespoke styling needed here. */
+
+/* Apply-Action menu — re-show the checkboxes hidden by spend-power's row-click
+   pattern. Spend Power has a JS handler that toggles options on whole-row
+   click; this menu uses native checkbox semantics instead, so visible boxes
+   are the entire affordance. */
+#litm-apply-action .litm-spend-power__option-label input[type="checkbox"] {
+	display: inline-block;
+}
+
+/* Apply-Action menu — verb label inside option rows. Verb leads, free-form
+   label follows in italic; verb-kind tinting tells you whether the option
+   targets self / opponent / process / is meta at a glance. */
+.litm-spend-power__option .litm--chat-action-verb {
+	font-weight: 700;
+	font-size: var(--font-size-11);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--color-litm-tag-text);
+	margin-right: 0.35em;
+}
+.litm-spend-power__option[data-verb-kind="opponent"] .litm--chat-action-verb {
+	color: var(--color-litm-weakness-text);
+}
+.litm-spend-power__option[data-verb-kind="process"] .litm--chat-action-verb {
+	color: var(--color-litm-status-text);
+}
+.litm-spend-power__option[data-verb-kind="meta"] .litm--chat-action-verb {
+	color: var(--color-text-secondary);
+}
+.litm-spend-power__option .litm--chat-action-label {
+	font-style: italic;
+}
+.litm-spend-power__option.is-applied {
+	opacity: 0.6;
+}
+.litm--chat-action-consequence-row {
+	align-items: flex-start;
+}
+/* Consequence button — rose at rest (adversity, always); fills on apply. */
+.chat-message .litm--chat-action-consequence-btn {
+	padding: 0.1rem 0.4rem;
+	width: 1.75em;
+	height: 1.75em;
+	background: transparent;
+	border: 1px solid var(--color-litm-limit);
+	color: var(--color-litm-limit-accent);
+}
+.chat-message .litm--chat-action-consequence-btn:hover:not(:disabled):not(.is-applied) {
+	background: var(--color-litm-limit-15);
+}
+.chat-message .litm--chat-action-consequence-btn.is-applied {
+	background: var(--color-litm-limit-30);
+	border-color: var(--color-litm-limit);
+	color: var(--color-litm-limit-accent, var(--color-text-primary));
+}
+
+/* Roll dialog — compact action header strip. Identifies which action is
+   being rolled; description / examples / Success / Consequences live in
+   the action sheet (one click via the view button) and the post-roll
+   chat panel. Tag suggestions decorate the picker rows directly. */
+.litm--roll-action-strip {
+	align-items: center;
+	padding: var(--space-sm) var(--space-md);
+	margin-bottom: var(--space-sm);
+	border-bottom: 1px solid var(--color-border);
+}
+.litm--roll-action-strip-img {
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: var(--radius-sm);
+}
+.litm--roll-action-strip-meta {
+	gap: 0;
+}
+.litm--roll-action-strip-meta > strong {
+	font-family: var(--font-h2);
+	font-size: var(--font-size-14);
+}
+.litm--roll-action-strip-meta > .hint {
+	font-size: var(--font-size-12);
+}
+
+/* Tags suggested by the active action — soft warm halo so the tag chrome
+   stays the primary read and the suggestion is a hint, not a verdict.
+   Helpful = gold (matches power-tag accent), Hindering = apricot. */
+.litm--roll-dialog-tag.is-suggested-positive,
+.litm--roll-dialog-tag.is-suggested-negative {
+	border-radius: var(--border-radius);
+	transition: box-shadow var(--transition-fast);
+}
+.litm--roll-dialog-tag.is-suggested-positive {
+	box-shadow: 0 0 0 1px var(--color-litm-tag), 0 0 8px 1px var(--color-warm-1-25);
+}
+.litm--roll-dialog-tag.is-suggested-negative {
+	box-shadow: 0 0 0 1px var(--color-litm-weakness), 0 0 8px 1px var(--color-warm-1-25);
+}
+
+/* Actions browser app — list of action cards on a hero */
+/* The part's root section sits inside .window-content (flex column, bounded
+   height). Without flex: 1 + min-height: 0 it sizes to content and overflows,
+   so the scrollable list below has no constrained height to scroll within. */
+section.standard-form.litm-actions-app {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+.litm-actions-app .litm--actions-list {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin-top: var(--space-md);
+}
+.litm-actions-app .litm--action-card {
+	margin-bottom: var(--space-md);
+}
+/* Rote variant — gold-tinted border so magical actions read at silhouette
+   level, not only by reading the practitioner string. */
+.litm-actions-app .litm--action-card[data-rote="true"] {
+	border-color: var(--color-litm-tag);
+}
+.litm--action-card-img {
+	width: 36px;
+	height: 36px;
+	border: none;
+}
+.litm--action-card-meta {
+	gap: 0;
+}
+.litm--action-card-practitioner {
+	align-self: flex-start;
+	margin-top: var(--space-xs);
+}
+.litm--action-card-practitioner > i.fa-wand-sparkles {
+	margin-right: var(--space-xs);
+	color: var(--color-litm-tag-text);
+}
+.litm--action-card-name {
+	font-family: var(--font-h2);
+	font-size: var(--font-size-16);
+	font-weight: 500;
+}
+.litm--action-card-meta > .hint {
+	font-size: var(--font-size-12);
+}
+.litm--action-card-footer {
+	font-size: var(--font-size-12);
+}
+/* Roll-from-action: the verb of the card. Labeled, gold accent. */
+.litm-actions-app .litm--action-card-roll {
+	flex: 0 0 auto;
+	gap: var(--space-sm);
+	padding-inline: var(--space-lg);
+	border-color: var(--color-litm-tag);
+	color: var(--color-litm-tag-text);
+	font-weight: 600;
+}
+.litm-actions-app .litm--action-card-roll:hover {
+	background: var(--color-warm-1-10);
+}
+/* Admin actions cluster — secondary visual weight, only this group reveals on hover */
+.litm--action-card-admin > button {
+	opacity: 0.7;
+	transition: opacity var(--transition-fast);
+}
+.litm--action-card:hover .litm--action-card-admin > button,
+.litm--action-card-admin > button:focus-visible {
+	opacity: 1;
+}
+/* Empty state — manuscript ornament */
+.litm--actions-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-md);
+	padding: var(--space-xl) var(--space-lg);
+	text-align: center;
+}
+.litm--actions-empty > i {
+	font-size: 2rem;
+	color: var(--color-text-subtle);
+}
+
+/* Action examples — book-style example panel. Inline serif phrases
+   separated by middle-dots, framed by faint top/bottom rules. Matches how
+   action examples are typeset in the rulebook. */
+.litm--action-examples {
+	margin: var(--space-sm) 0 0;
+	padding: var(--space-sm) var(--space-md);
+	border-top: 1px solid var(--color-border);
+	border-bottom: 1px solid var(--color-border);
+	font-family: var(--font-serif);
+	font-size: var(--font-size-13);
+	line-height: var(--line-height-relaxed);
+	color: var(--color-text-primary);
+}
+.litm--action-example-chip + .litm--action-example-chip::before {
+	content: "·";
+	margin: 0 0.5em;
+	color: var(--color-text-subtle);
+}
+
+/* Action sheet — title input gets a Luminari treatment matching theme/vignette */
+.litm-action-sheet > header.img-name input[name="name"] {
+	font-family: var(--font-h2);
+	font-size: var(--font-size-20);
+	font-weight: 500;
+}
+
+/* Power-suggestion column headers in the action sheet — color-coded */
+.litm--action-power-helpful {
+	color: var(--color-litm-tag-text);
+}
+.litm--action-power-hindering {
+	color: var(--color-litm-weakness-text);
+}
+/* Foundry's .noflex utility only fires inside .flexrow/.flexcol; the
+   action sheet's list-row form-groups (no label) need explicit sizing
+   so trash/link icon buttons don't wrap below the input. The form-group's
+   default flex-wrap: wrap pushes icon buttons to a second line when the
+   input claims its natural width — disable wrap and let the input shrink. */
+.litm-action-sheet .form-group {
+	flex-wrap: nowrap;
+}
+.litm-action-sheet .form-group > input[type="text"],
+.litm-action-sheet .form-group > textarea {
+	flex: 1 1 0;
+	min-width: 0;
+}
+.litm-action-sheet .form-group > button {
+	flex: 0 0 auto;
+}
+
+/* Outcome verb dropdown styled to echo the chat-panel verb chip */
+.litm--success-verb {
+	font-family: var(--font-serif);
+	font-variant: small-caps;
+	letter-spacing: 0.05em;
+	font-weight: 600;
+}
+
+/* Outcome description and consequence textareas — vertical resize like prose */
+.litm--success-description,
+.litm--consequence-row > textarea {
+	resize: vertical;
+}
+.litm--consequence-row {
+	align-items: flex-start;
+}
+
+/* Outcome payload — grouped grid; tier sits compactly next to status */
+.litm--success-payload-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr 4rem 1fr;
+	gap: var(--space-md);
+	align-items: end;
+}
+.litm--success-payload-tier {
+	max-width: 4rem;
+}
+.litm--success-payload-toggles {
+	margin-top: var(--space-md);
+	align-items: center;
+}
+.litm--success-payload-toggles > label {
+	flex: 0 0 auto;
+	align-items: center;
+	flex-wrap: nowrap;
+	white-space: nowrap;
+}
+.litm--success-payload-toggles > label > * {
+	flex: 0 0 auto;
+}
+
+/* Inline action link from @action[Name] enricher */
+.litm--action-link {
+	font-style: italic;
+	color: var(--color-text-primary);
+}
+.litm--action-link > i {
+	margin-right: 0.25em;
+	color: var(--color-text-secondary);
+}
+
+/* Actions browser app — filter row */
+.litm--actions-filter input[type="search"] {
+	min-height: 1.75rem;
+}
+
+/* Action sheet — give every list under a control-legend room to breathe.
+   The default .litm fieldset ul.plain { gap: 0.25rem } is tight; bump it
+   here so the rows don't crowd the [+] button or each other. */
+.litm-action-sheet legend.control {
+	margin-bottom: var(--space-md);
+}
+.litm-action-sheet fieldset ul.plain {
+	gap: var(--space-md);
+}
+
+/* Power-tag rows — link affordance.
+   Always show a link / link-slash glyph so the drop target is discoverable.
+   Brighten + outline the row while a tag is being dragged over it. */
+.litm--power-tag-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: var(--button-size, 2rem);
+	color: var(--color-text-subtle);
+	transition: color var(--transition-fast);
+}
+.litm--power-tag-link.is-linked {
+	color: var(--color-litm-tag-text);
+}
+.litm--power-tag-row {
+	border-radius: var(--radius-sm);
+	transition:
+		background-color var(--transition-fast),
+		outline-color var(--transition-fast);
+	outline: 1px solid transparent;
+	outline-offset: 2px;
+}
+.litm--power-tag-row.is-drop-hover {
+	background: var(--color-warm-1-10);
+	outline-color: var(--color-litm-tag);
+}
+.litm--power-tag-row.is-drop-hover .litm--power-tag-link {
+	color: var(--color-litm-tag-text);
+}
+
+/* Tag picker dialog — grouped by source item (themes, backpack, fellowship).
+   When a group has a title tag (theme signature tag), it doubles as the
+   header — selecting it links to the title tag. Remaining tags render as
+   inline chips that wrap to fit the dialog width. */
+.litm--tag-picker__scroll {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-md);
+	max-height: 60vh;
+}
+.litm--tag-picker__group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-sm);
+}
+.litm--tag-picker__header {
+	display: flex;
+	align-items: center;
+	gap: var(--space-sm);
+	padding: var(--space-xs) var(--space-sm);
+	border-bottom: 1px solid var(--color-fieldset-border);
+}
+.litm--tag-picker__header--selectable {
+	cursor: pointer;
+	border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+	transition: background-color var(--transition-fast);
+}
+.litm--tag-picker__header--selectable:hover,
+.litm--tag-picker__header--selectable:has(input:checked) {
+	background: var(--color-warm-1-10);
+}
+.litm--tag-picker__group-img {
+	width: 32px;
+	height: 32px;
+	border: none;
+	border-radius: var(--radius-sm);
+	flex: 0 0 auto;
+}
+.litm--tag-picker__group-label {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-family: var(--font-h2);
+	font-size: var(--font-size-14);
+	color: var(--color-text-secondary);
+}
+.litm--tag-picker__title {
+	flex: 0 1 auto;
+	font-size: var(--font-size-16);
+	text-transform: uppercase;
+}
+
+/* Chip-row of selectable tags within a group — radios hidden, the tag
+   chrome itself is the affordance. */
+.litm--tag-picker__chips {
+	display: flex;
+	flex-flow: row wrap;
+	gap: var(--space-sm);
+	padding: 0 var(--space-sm);
+}
+.litm--tag-picker__chip {
+	display: inline-flex;
+	align-items: center;
+	cursor: pointer;
+	padding: var(--space-xs) var(--space-sm);
+	border-radius: var(--radius-sm);
+	transition: background-color var(--transition-fast);
+}
+.litm--tag-picker__chip > input[type="radio"],
+.litm--tag-picker__header--selectable > input[type="radio"] {
+	display: none;
+}
+.litm--tag-picker__chip:hover,
+.litm--tag-picker__chip:has(input:checked) {
+	background: var(--color-warm-1-10);
+}
+.litm--tag-picker__chip:has(input:checked),
+.litm--tag-picker__header--selectable:has(input:checked) {
+	outline: 1px solid var(--color-litm-tag);
+	outline-offset: 1px;
+}
+
+/* Action sheet — outcome cards, kept card-shaped not spreadsheet-shaped */
+.litm--success-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-md);
+}
+.litm--success-card > header {
+	align-items: center;
+}
+.litm--success-verb,
+.litm--success-quality {
+	flex: 0 0 auto;
+	width: fit-content;
+}
+.litm--success-payload {
+	font-size: var(--font-size-12);
+}
+.litm--success-payload > summary {
+	cursor: pointer;
+	color: var(--color-text-secondary);
+	padding: var(--space-xs) 0;
+}
+.litm--success-payload > summary:hover {
+	color: var(--color-text-primary);
+}
+
+/* Linked-reference icon inside a tag chip (rote, action, journal page) */
+.litm--ref-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.85em;
+	color: var(--color-text-secondary);
+	text-decoration: none;
+	cursor: pointer;
+	line-height: 1;
+}
+.litm--ref-link:hover {
+	color: var(--color-text-primary);
+	text-decoration: none;
+}
+
+/* Roll request — chat card the GM sends to a player to prompt a roll.
+   Sits on the chat parchment; chrome echoes the embed-card pattern. */
+.litm--roll-request {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-xs);
+}
+.litm--roll-request-header {
+	align-items: center;
+	font-family: var(--font-h2);
+	color: var(--color-text-emphatic);
+}
+.litm--roll-request-action {
+	margin: 0;
+	font-family: var(--font-serif);
+	font-size: var(--font-size-14);
+}
+.litm--roll-request-action > strong {
+	font-style: italic;
+	color: var(--color-litm-tag-text);
+}
+.litm--roll-request-note {
+	margin: var(--space-xs) 0;
+}
+.litm--roll-request-take {
+	gap: var(--space-sm);
+	padding-inline: var(--space-lg);
+	border-color: var(--color-litm-tag);
+	color: var(--color-litm-tag-text);
+	font-weight: 600;
+}
+.litm--roll-request-take:hover {
+	background: var(--color-warm-1-10);
+}
+
+/* Linked-ref drop hint — empty drop target on a tag chip in edit mode.
+   Subtle by default, glows when a draggable hovers the parent. */
+.litm--ref-drop {
+	display: inline-flex;
+	align-items: center;
+	padding: 0 var(--space-md);
+	color: var(--color-text-subtle);
+	transition: color var(--transition-fast);
+}
+[data-linked-ref-target].is-drop-hover .litm--ref-drop {
+	color: var(--color-litm-tag);
+}
+.litm--ref-controls {
+	display: inline-flex;
+	gap: var(--space-xs);
+	align-items: center;
+	flex: none;
+}
+
+/* Tag edit rows — keep checkbox + inputs + ref-controls + trash on one line.
+   Foundry's .standard-form .form-group defaults to flex-wrap: wrap and gives
+   every child flex: 2, which (a) wraps the trailing buttons to a second line
+   and (b) lets the ref-controls span fight the name input for width. Pin
+   non-input children to their natural size so only the inputs grow. */
+.standard-form .form-group[data-linked-ref-target] {
+	flex-wrap: nowrap;
+}
+.standard-form .form-group[data-linked-ref-target] > * {
+	flex: 0 0 auto;
+}
+.standard-form .form-group[data-linked-ref-target] > .flexrow,
+.standard-form .form-group[data-linked-ref-target] > input[type="text"] {
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 /* Might icon (inline enricher) */
@@ -517,6 +1119,18 @@ body,
 	flex-direction: column;
 	padding: 1.25rem 1.5rem;
 	gap: 0.75rem;
+}
+
+/* Cards wired with [data-render-action] are activated via a body-level
+   delegated handler. Surface that with a clear hover and focus affordance. */
+.litm-render--card[data-render-action] {
+	transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.litm-render--card[data-render-action]:focus-visible {
+	outline: none;
+	border-color: var(--color-litm-tag);
+	box-shadow: var(--shadow-glow);
 }
 
 /* ── Challenge embed card ── */
@@ -710,6 +1324,139 @@ body,
 	font-family: var(--font-serif);
 	font-style: italic;
 	font-size: var(--font-size-13);
+}
+
+/* ── Action embed card — rulebook typesetting ───────────────────────
+   Title (gold mixed-case serif) → examples → description → ribbon-banner
+   sections (POWER / SUCCESS / CONSEQUENCES). Section banners and the
+   helpful/hindering glyphs are the distinctive book chrome. */
+.litm-render--action {
+	gap: var(--space-sm);
+	position: relative;
+}
+
+/* GM send-roll-request button — absolute-positioned in the top-right
+   corner of the card so the centered title isn't pulled off-axis. */
+
+.litm-render--action__send {
+	position: absolute;
+	top: var(--space-sm);
+	right: var(--space-sm);
+	width: 2rem;
+	height: 2rem;
+	padding: 0;
+	background: transparent;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.litm-render--action__send:hover {
+	color: var(--color-litm-tag-text);
+	border-color: var(--color-litm-tag);
+	background: var(--color-warm-1-10);
+}
+
+.litm-render--action__send:focus-visible {
+	outline: none;
+	border-color: var(--color-litm-tag);
+	box-shadow: var(--shadow-glow);
+}
+
+.litm-render--action__practitioners {
+	margin: 0;
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+	color: var(--color-text-secondary);
+}
+.litm-render--action__description {
+	font-family: var(--font-serif);
+	color: var(--color-text-primary);
+	line-height: var(--line-height-relaxed);
+}
+.litm-render--action__description > p {
+	margin: 0 0 var(--space-sm);
+}
+.litm-render--action__description > p:last-child {
+	margin-bottom: 0;
+}
+
+/* Suggested-tag rows — flex container of proper tag chrome, mirroring
+   the theme-card pattern (helpful = power_tag chrome, hindering =
+   weakness_tag chrome). */
+.litm-render--action__tags {
+	display: flex;
+	flex-flow: row wrap;
+	gap: var(--space-sm) var(--space-md);
+	margin: 0 0 var(--space-xs);
+}
+
+/* Success entries — short paragraph with the verb in small caps. */
+.litm-render--action__success {
+	margin: 0 0 var(--space-sm);
+	font-family: var(--font-serif);
+	line-height: var(--line-height-relaxed);
+}
+.litm-render--action__verb {
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.05em;
+	color: var(--color-litm-tag-text);
+	margin-right: 0.25em;
+}
+
+/* Subhead inside a section ("EXTRA FEATS"). */
+.litm-render--action__subhead {
+	margin: var(--space-sm) 0 var(--space-xs);
+	font-family: var(--font-serif);
+	font-size: var(--font-size-12);
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--color-text-secondary);
+}
+.litm-render--action__feats {
+	list-style: disc;
+	margin: 0;
+	padding-left: 1.4em;
+	font-family: var(--font-serif);
+	line-height: var(--line-height-relaxed);
+}
+.litm-render--action__feats > li {
+	margin-bottom: var(--space-xs);
+}
+
+/* Consequences — » arrows in gold to match the book's bullet style. */
+.litm-render--action__consequences {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	font-family: var(--font-serif);
+	line-height: var(--line-height-relaxed);
+}
+.litm-render--action__consequences > li {
+	padding-left: 1.4em;
+	text-indent: -1.4em;
+	margin-bottom: var(--space-xs);
+}
+.litm-render--action__consequences > li::before {
+	content: "»";
+	display: inline-block;
+	width: 1em;
+	margin-right: 0.4em;
+	color: var(--color-litm-tag-text);
+	font-weight: 700;
+	text-indent: 0;
+}
+
+/* Read popout — minimal window that hosts a renderer's card. The card
+   carries its own chrome (border + padding); the popout just provides a
+   draggable, scrollable frame and lets the parchment show through. */
+.litm-embed-popout .window-content {
+	padding: var(--space-md);
+	overflow-y: auto;
 }
 
 /* ── Themebook embed card ── */
@@ -1648,7 +2395,6 @@ body,
 	flex-direction: column;
 	gap: 0.5rem;
 	padding: 0.5rem 0.5rem 0;
-	container-type: inline-size;
 	contain: style;
 }
 
@@ -2617,10 +3363,6 @@ body,
 	color: var(--color-text-primary);
 }
 
-.litm--story-tags h3 {
-	font-size: var(--font-size-24);
-}
-
 /* Sidebar tab: fill the sidebar content area when active */
 .litm--story-tags.combat-sidebar.active {
 	display: flex;
@@ -3406,9 +4148,20 @@ input[type="text"].litm--quick-add-input,
 	min-height: 0;
 }
 
-.litm-spend-power .standard-form>fieldset {
+/* Single scrollable body wraps all fieldsets so the header + footer stay
+   pinned and the option lists share one scroll area, instead of fighting
+   over flex space when both action successes and generic options render. */
+.litm-spend-power .litm-spend-power__body {
 	flex: 1;
 	overflow-y: auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-md);
+}
+.litm-spend-power .litm-spend-power__body > fieldset {
+	flex: none;
+	overflow: visible;
 	min-height: 0;
 }
 
@@ -3957,7 +4710,7 @@ body.theme-dark .application:not(.theme-light),
 	--color-litm-secret-glow: #e8a832;
 	--color-litm-secret-glow-soft: rgba(232, 168, 50, 0.33);
 
-	& .hint img,
+	& .hint img:not(.litm--inline-icon),
 	& .empty-state>img {
 		filter: invert(1) sepia(0.3) hue-rotate(305deg);
 	}
@@ -4316,4 +5069,24 @@ body.theme-dark .application:not(.theme-light),
 	filter: var(--litm-icon-filter);
 	width: 18px;
 	height: 18px;
+}
+
+/* ========================================
+   21. Target Picker
+   Picker dialog rows for selecting actors/tokens.
+======================================== */
+
+.litm--picker .litm--picker-row {
+	align-items: center;
+	padding: var(--space-xs) 0;
+	cursor: pointer;
+}
+
+.litm--picker .litm--picker-img {
+	flex: 0 0 32px;
+	width: 32px;
+	height: 32px;
+	border: none;
+	border-radius: var(--radius-sm);
+	object-fit: cover;
 }

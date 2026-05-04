@@ -457,3 +457,47 @@ export function getStoryTagSidebar() {
 	return game.litmv2?.storyTags ?? ui.combat ?? null;
 }
 
+/**
+ * Resolve a linked-reference UUID and render the appropriate sheet.
+ * Accepts JournalEntry, JournalEntryPage, or Item (action) UUIDs;
+ * journal pages render their parent entry focused on the page.
+ * @param {string} uuid
+ * @returns {Promise<void>}
+ */
+export async function openLinkedRef(uuid) {
+	if (!uuid) return;
+	const doc = await foundry.utils.fromUuid(uuid);
+	if (!doc) {
+		ui.notifications.warn(localize("LITM.Actions.ref_not_found"));
+		return;
+	}
+	if (doc.documentName === "JournalEntryPage") {
+		doc.parent.sheet.render(true, { pageId: doc.id });
+		return;
+	}
+	doc.sheet?.render(true);
+}
+
+/**
+ * Shared `viewLinkedRef` action handler. Suitable for use directly in any
+ * ApplicationV2 `actions:` map. Reads the UUID from the closest ancestor
+ * with `data-linked-ref-uuid` (or the target itself).
+ * @param {Event} _event
+ * @param {HTMLElement} target
+ */
+export async function viewLinkedRefAction(_event, target) {
+	const trigger = target.closest("[data-linked-ref-uuid]") ?? target;
+	await openLinkedRef(trigger.dataset.linkedRefUuid);
+}
+
+/**
+ * Resolve the display name for a linkedRefUuid, or null if none / unresolvable.
+ * Used by data-model getters that expose a derived label for templates.
+ * @param {string|null|undefined} uuid
+ * @returns {string|null}
+ */
+export function getLinkedRefName(uuid) {
+	if (!uuid) return null;
+	return foundry.utils.fromUuidSync(uuid)?.name ?? null;
+}
+

@@ -1,0 +1,14 @@
+<form class="standard-form">
+	<div class="form-group">
+		<label>{{localize "LITM.Actions.request_pick_actor"}}</label>
+		<select name="actorId">
+			{{#each heroes as |hero|}}
+			<option value="{{hero.id}}">{{hero.name}}</option>
+			{{/each}}
+		</select>
+	</div>
+	<div class="form-group">
+		<label>{{localize "LITM.Actions.request_note"}}</label>
+		<textarea name="note" rows="2" placeholder="{{localize 'LITM.Actions.request_note_placeholder'}}"></textarea>
+	</div>
+</form>

@@ -1,0 +1,29 @@
+<div class="standard-form">
+	{{#if empty}}
+	<p class="hint">{{localize "LITM.Actions.no_consequences_to_apply"}}</p>
+	{{else}}
+	<fieldset>
+		<legend>{{localize "LITM.Terms.consequences"}}</legend>
+		<ul class="litm-spend-power__options">
+			{{#each items as |item|}}
+			<li class="litm-spend-power__option {{#if item.applied}}is-applied{{/if}} {{#if item.disabled}}is-disabled{{/if}}">
+				<div class="litm-spend-power__option-row">
+					<label class="litm-spend-power__option-label">
+						<input type="checkbox" name="option" value="{{item.key}}"
+							{{#if item.applied}}checked{{/if}}
+							{{#if item.disabled}}disabled{{/if}} />
+						<span>{{{item.text}}}</span>
+					</label>
+				</div>
+			</li>
+			{{/each}}
+		</ul>
+	</fieldset>
+	<div class="form-footer">
+		<button type="submit" class="bright">
+			<i class="fa-solid fa-skull" aria-hidden="true"></i>
+			{{localize "LITM.Actions.apply"}}
+		</button>
+	</div>
+	{{/if}}
+</div>

@@ -4,6 +4,7 @@ import { Sockets } from "../../system/sockets.js";
 import { effectToPlain, enrichHTML, relationshipTagEffect, resolveEffect, transferBackpackTags } from "../../utils.js";
 import { scratchTag } from "../../data/active-effects/scratchable-mixin.js";
 import { resolveRollDialogOwnership } from "../../apps/roll-dialog.js";
+import { ActionsApp } from "../../apps/actions-app.js";
 
 /**
  * Extract and remove `newRelationship.<actorId>` keys from submit data,
@@ -33,6 +34,7 @@ export class HeroSheet extends LitmActorSheet {
 		tag: "form",
 		actions: {
 			openRollDialog: HeroSheet.#onOpenRollDialog,
+			openActionsApp: HeroSheet.#onOpenActionsApp,
 			addStoryTag: LitmActorSheet._onAddStoryTag,
 			addMomentOfFulfillment: HeroSheet.#onAddMomentOfFulfillment,
 			removeMomentOfFulfillment: HeroSheet.#onRemoveMomentOfFulfillment,
@@ -78,11 +80,64 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	/**
+	 * Inline Actions browser button alongside the edit/play mode toggle. V14's
+	 * `window.controls` array is dropdown-only, so frame extension is the
+	 * supported way to add an inline header button. Appended to match the
+	 * mode toggle's placement (also injected into `.window-header`); the
+	 * frame's click delegation routes `data-action` to the actions map.
+	 * @override
+	 */
+	async _renderFrame(options) {
+		const frame = await super._renderFrame(options);
+		if (!this.document.isOwner) return frame;
+
+		const label = game.i18n.localize("LITM.Actions.app_title");
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = "header-control icon fa-solid fa-scroll";
+		button.dataset.action = "openActionsApp";
+		button.dataset.tooltip = label;
+		button.setAttribute("aria-label", label);
+
+		// Sit alongside the copyUuid/mode-toggle slot (DocumentSheetV2 inserts
+		// copyUuid before close; _renderModeToggle later replaces it). Inserting
+		// before close keeps the actions button adjacent to the mode toggle and
+		// close as the rightmost control.
+		const close = frame.querySelector(".window-header [data-action='close']");
+		close.insertAdjacentElement("beforebegin", button);
+		return frame;
+	}
+
+	/**
 	 * Roll dialog instance
 	 * @type {LitmRollDialog}
 	 * @private
 	 */
 	#rollDialog = null;
+
+	/**
+	 * Actions browser app instance
+	 * @type {ActionsApp}
+	 * @private
+	 */
+	#actionsApp = null;
+
+	/**
+	 * Get or create the Actions browser app instance.
+	 * @returns {ActionsApp}
+	 */
+	get actionsApp() {
+		if (!this.#actionsApp) {
+			this.#actionsApp = new ActionsApp({ actor: this.document });
+		}
+		return this.#actionsApp;
+	}
+
+	static async #onOpenActionsApp() {
+		const app = this.actionsApp;
+		if (app.rendered) app.close();
+		else app.render(true);
+	}
 
 	/**
 	 * Whether a roll dialog instance exists (without creating one)
