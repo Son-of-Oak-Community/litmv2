@@ -330,8 +330,8 @@ export class StoryTagSidebar
 		return this.#broadcastRender();
 	}
 
-	async addTag(target, type = "tag") {
-		const isStatus = type === "status";
+	async addTag(target, type = "story_tag") {
+		const isStatus = type === "status_tag";
 		const effectData = isStatus
 			? {
 				...statusTagEffect({
@@ -363,7 +363,7 @@ export class StoryTagSidebar
 		// Actor tags still use the legacy shape for #addTagToActor
 		const tag = {
 			name: effectData.name,
-			type: isStatus ? "status" : "tag",
+			type: isStatus ? "status_tag" : "story_tag",
 			values: isStatus
 				? [true, false, false, false, false, false]
 				: Array(6).fill().map(() => null),
@@ -802,7 +802,7 @@ export class StoryTagSidebar
 		const data = {
 			id: foundry.utils.randomID(),
 			name,
-			type: isStatus ? "status" : "tag",
+			type: isStatus ? "status_tag" : "story_tag",
 			values: Array(6)
 				.fill(null)
 				.map((_, i) => (Number.parseInt(value, 10) === i + 1 ? value : null)),
@@ -823,13 +823,13 @@ export class StoryTagSidebar
 			return;
 		}
 
-		if (!["Actor", "tag", "status"].includes(data.type)) return;
+		if (!["Actor", "story_tag", "status_tag"].includes(data.type)) return;
 		const id = data.type === "Actor"
 			? (data.uuid || `Actor.${data.id}`)
 			: data.id;
 
 		// Add tags and statuses to the story / Actor
-		if (data.type === "tag" || data.type === "status") {
+		if (data.type === "story_tag" || data.type === "status_tag") {
 			const dropTarget = dragEvent.target.closest("[data-tag-item]");
 			// Resolve the target container: use data-type on the tag item (actor ID
 			// or "story"), or fall back to the nearest [data-id] ancestor (actor header).
@@ -1019,7 +1019,7 @@ export class StoryTagSidebar
 			if (!actor?.isOwner) continue;
 
 			const updates = Object.entries(tags).map(([effectId, data]) => {
-				const isStatus = data.tagType === "status";
+				const isStatus = data.tagType === "status_tag";
 				return {
 					_id: effectId,
 					name: data.name,
@@ -1047,7 +1047,7 @@ export class StoryTagSidebar
 	#buildStoryTagUpdates(story) {
 		const updates = [];
 		for (const [tagId, data] of Object.entries(story || {})) {
-			const isStatus = data.tagType === "status";
+			const isStatus = data.tagType === "status_tag";
 			const update = { _id: tagId, name: data.name };
 			if (isStatus) {
 				const rawValues = Array.isArray(data.values)
@@ -1121,12 +1121,12 @@ export class StoryTagSidebar
 
 	static #onAddTag(_event, target) {
 		const id = target.dataset.id;
-		this.addTag(id, "tag");
+		this.addTag(id, "story_tag");
 	}
 
 	static #onAddStatus(_event, target) {
 		const id = target.dataset.id;
-		this.addTag(id, "status");
+		this.addTag(id, "status_tag");
 	}
 
 	static #onQuickAdd(_event, target) {
@@ -1203,7 +1203,7 @@ export class StoryTagSidebar
 			}
 		}
 
-		const isStatus = parsed.type === "status";
+		const isStatus = parsed.type === "status_tag";
 		const values = isStatus
 			? Array.from({ length: 6 }, (_, i) => i === parsed.tier - 1)
 			: Array(6).fill().map(() => null);
@@ -1211,7 +1211,7 @@ export class StoryTagSidebar
 		const tag = {
 			name: parsed.name,
 			values,
-			type: isStatus ? "status" : "tag",
+			type: isStatus ? "status_tag" : "story_tag",
 			isScratched: false,
 			isSingleUse: false,
 			hidden: game.user.isGM,
@@ -1254,7 +1254,7 @@ export class StoryTagSidebar
 	static async #onToggleVisibility(_event, target) {
 		const { id, type } = target.dataset;
 		if (type === "actor") return this._toggleActorVisibility(id);
-		if (type === "tag") return this._toggleTagVisibility(id);
+		if (type === "story_tag") return this._toggleTagVisibility(id);
 	}
 
 	static async #onToggleEffectVisibility(_event, target) {
@@ -1745,7 +1745,7 @@ export class StoryTagSidebar
 		const hasValues = Array.isArray(tag.values)
 			? tag.values.some((v) => v !== null && v !== false && v !== "")
 			: false;
-		const isStatus = tag.type === "status" || hasValues;
+		const isStatus = tag.type === "status_tag" || hasValues;
 
 		const tiers = toTiers(tag.values);
 

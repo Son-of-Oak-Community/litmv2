@@ -1,15 +1,15 @@
 {{#*inline 'tagItem' tag source formKey editable isGM}}
 <li class="litm--tag-row{{#if tag.hidden}} litm--tag-hidden{{/if}}{{#if tag.isScratched}} litm--tag-scratched{{/if}}" data-tag-item data-id="{{tag.id}}" data-type="{{source}}"
-	data-text="{{tag.name}}{{#if (eq tag.type 'status')}}-{{tag.value}}{{/if}}">
+	data-text="{{tag.name}}{{#if (eq tag.type 'status_tag')}}-{{tag.value}}{{/if}}">
 	<span
-		class="litm--tag-item litm--{{ifThen (eq tag.type 'status') 'status' 'tag'}} litm-{{tag.type}}"
+		class="litm--tag-item litm--{{ifThen (eq tag.type 'status_tag') 'status' 'tag'}} litm-{{tag.type}}"
 		draggable="true" tabindex="0"
-		data-tooltip="{{localize (concat 'LITM.Terms.' tag.type)}}: {{tag.name}}{{#if (and (eq tag.type 'status') tag.value)}}{{concat '-' tag.value}}{{/if}}">
+		data-tooltip="{{localize (ifThen (eq tag.type 'status_tag') 'LITM.Terms.status' 'LITM.Terms.tag')}}: {{tag.name}}{{#if (and (eq tag.type 'status_tag') tag.value)}}{{concat '-' tag.value}}{{/if}}">
 		<input type="hidden" name="{{formKey}}.{{tag.id}}.tagType" value="{{tag.type}}" />
 		<input type="hidden" name="{{formKey}}.{{tag.id}}.limitId" value="{{tag.limitId}}" />
 		<input class="litm--tag-item-name {{ifThen editable 'litm--locked' ''}}" data-focus="select"
 			name="{{formKey}}.{{tag.id}}.name" value="{{tag.name}}" {{ifThen editable "" "readonly"}} />
-		{{#if (eq tag.type "tag")}}
+		{{#if (eq tag.type "story_tag")}}
 		<label class="litm--toggle-label litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
 			<input class="litm--single-use" type="checkbox" name="{{formKey}}.{{tag.id}}.isSingleUse" {{disabled (not editable)}}
 				{{checked tag.isSingleUse}} />
@@ -21,7 +21,7 @@
 			<img class="litm--scratch-indicator" src="systems/litmv2/assets/media/icons/scratch.svg" alt="" aria-hidden="true" />
 		</label>
 		{{/if}}
-		{{#if (eq tag.type "status")}}
+		{{#if (eq tag.type "status_tag")}}
 		<div class="litm--tag-item-status" {{#if editable}}data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}"{{/if}}>
 			{{#each tag.values as |status|}}
 			<label class="litm--tier-label">
@@ -37,7 +37,7 @@
 	{{#if editable}}
 	{{#if (eq source "story")}}
 	<button type="button" class="litm--visibility-toggle" data-action="toggle-visibility" data-id="{{tag.id}}"
-		data-type="tag" data-tooltip="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}" aria-label="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}">
+		data-type="story_tag" data-tooltip="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}" aria-label="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}">
 		<i class="fa-solid {{ifThen tag.hidden 'fa-eye-slash' 'fa-eye'}}" aria-hidden="true"></i>
 	</button>
 	{{else}}

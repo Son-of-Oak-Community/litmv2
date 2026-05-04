@@ -159,11 +159,11 @@ export class LitmTour extends Tour {
 
 		await sidebar.activate();
 		const tags = sidebar.tags ?? [];
-		const hasTag = tags.some((t) => t.type === "tag");
-		const hasStatus = tags.some((t) => t.type === "status");
+		const hasTag = tags.some((t) => t.type === "story_tag");
+		const hasStatus = tags.some((t) => t.type === "status_tag");
 
-		if (!hasTag) await sidebar.addTag("story", "tag");
-		if (!hasStatus) await sidebar.addTag("story", "status");
+		if (!hasTag) await sidebar.addTag("story", "story_tag");
+		if (!hasStatus) await sidebar.addTag("story", "status_tag");
 	}
 }
 

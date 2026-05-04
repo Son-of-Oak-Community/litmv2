@@ -2,6 +2,23 @@ import { LitmActorSheet } from "../sheets/base-actor-sheet.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
 import { LitmSettings } from "./settings.js";
 
+/**
+ * Toggle an ApplicationV2 window with bring-to-front semantics:
+ * - If not rendered → render.
+ * - If rendered but minimized → maximize.
+ * - If rendered but not the active (top) window → bring to front.
+ * - Otherwise (rendered and on top) → close.
+ *
+ * @param {foundry.applications.api.ApplicationV2|null|undefined} app
+ * @param {() => void} renderFn  Called when the app needs to be rendered/created.
+ */
+function smartToggle(app, renderFn) {
+	if (!app?.rendered) return renderFn();
+	if (app.minimized) return app.maximize();
+	if (ui.activeWindow !== app) return app.bringToFront();
+	return app.close();
+}
+
 export class KeyBindings {
 	static register() {
 		game.keybindings.register("litmv2", "toggleEditMode", {
@@ -72,8 +89,31 @@ export class KeyBindings {
 				},
 			],
 			onDown: () => {
-				if (getStoryTagSidebar()?.popout?.rendered) getStoryTagSidebar().popout.close();
-				else getStoryTagSidebar()?.renderPopout();
+				const sidebar = getStoryTagSidebar();
+				if (!sidebar) return;
+				smartToggle(sidebar.popout, () => sidebar.renderPopout());
+			},
+			onUp: () => {},
+			restricted: false,
+			precedence: foundry.CONST.KEYBINDING_PRECEDENCE.NORMAL,
+		});
+
+		game.keybindings.register("litmv2", "toggleCharacterSheet", {
+			name: t("LITM.Ui.toggle_character_sheet"),
+			hint: t("LITM.Ui.toggle_character_sheet_hint"),
+			editable: [
+				{
+					key: "KeyC",
+				},
+			],
+			onDown: () => {
+				const token = canvas?.ready && canvas.tokens.controlled.length === 1
+					? canvas.tokens.controlled[0]
+					: null;
+				const actor = token ? token.actor : game.user.character;
+				if (!actor) return false;
+				smartToggle(actor.sheet, () => actor.sheet.render(true));
+				return true;
 			},
 			onUp: () => {},
 			restricted: false,

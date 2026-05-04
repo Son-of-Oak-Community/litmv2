@@ -2973,8 +2973,10 @@ body,
 }
 
 /* Compact button style — shared by visibility toggles, add-tag, and any tag-row buttons */
-.litm--story-tags button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn):not(.litm--load-scene-btn),
-.litm--story-tags .litm--visibility-toggle {
+.litm--story-tags .window-content button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn):not(.litm--load-scene-btn),
+.litm--story-tags.sidebar-tab button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn):not(.litm--load-scene-btn),
+.litm--story-tags .window-content .litm--visibility-toggle,
+.litm--story-tags.sidebar-tab .litm--visibility-toggle {
 	padding: 0.2em 0.35em;
 	min-height: 24px;
 	height: auto;

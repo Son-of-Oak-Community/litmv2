@@ -23,16 +23,16 @@
 		<legend>{{localize "LITM.Ui.scene_tags"}}</legend>
 		{{#each tags as |tag|}}
 		<div class="litm--scene-tag-row flexrow gap-sm" data-id="{{tag.id}}">
-			<span class="litm--{{ifThen (eq tag.type 'status') 'status' 'tag'}} litm-{{tag.type}}">
+			<span class="litm--{{ifThen (eq tag.type 'status_tag') 'status' 'tag'}} litm-{{tag.type}}">
 				<input type="text" name="tags.{{tag.id}}.name" value="{{tag.name}}" />
-				{{#if (eq tag.type "tag")}}
+				{{#if (eq tag.type "story_tag")}}
 				<label class="litm--toggle-label litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
 					<input class="litm--single-use" type="checkbox" name="tags.{{tag.id}}.isSingleUse"
 						{{checked tag.isSingleUse}} />
 					<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
 				</label>
 				{{/if}}
-				{{#if (eq tag.type "status")}}
+				{{#if (eq tag.type "status_tag")}}
 				<div class="litm--tag-item-status">
 					{{#each tag.values as |status|}}
 					<label class="litm--tier-label">

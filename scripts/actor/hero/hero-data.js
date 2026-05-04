@@ -68,7 +68,7 @@ export async function gainImprovement(actor, tag) {
 	const effect = await foundry.utils.fromUuid(tag.uuid);
 	if (!effect) return null;
 	const parentTheme = effect.parent;
-	if (!parentTheme || ![ITEM_TYPES.theme, ITEM_TYPES.story_theme].includes(parentTheme.type)) return null;
+	if (!parentTheme || parentTheme.type !== ITEM_TYPES.theme) return null;
 	const owner = parentTheme.parent;
 	if (!owner) return null;
 	const newValue = parentTheme.system.improve.value + 1;

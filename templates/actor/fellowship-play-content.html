@@ -75,7 +75,7 @@
 			<legend>{{localize "LITM.Terms.story_tags_statuses"}}</legend>
 			<div class="litm--play-tags">
 				{{#each storyTags as |tag|}}
-				{{#if (eq tag.type "status")}}
+				{{#if (eq tag.type "status_tag")}}
 				<span class="litm-status{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}"
 					data-tag-id="{{tag.id}}" draggable="true" tabindex="0"
 					data-text="{{tag.name}}-{{tag.value}}">{{tag.name}}-{{tag.value}}</span>

@@ -382,7 +382,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 	async _onDrop(event) {
 		const data =
 			foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
-		if (data.type === "tag" || data.type === "status") {
+		if (data.type === "story_tag" || data.type === "status_tag") {
 			return this._onDropTagOrStatus(event, data);
 		}
 		return super._onDrop(event);
@@ -402,7 +402,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 		// Ignore drops from the same actor (intra-sheet drag is for sorting, not adding)
 		if (data.sourceActorId && data.sourceActorId === this.document.id) return;
 
-		const isStatus = data.type === "status";
+		const isStatus = data.type === "status_tag";
 		const droppedName = data.name;
 
 		// For statuses, check if one with the same name already exists and stack
@@ -467,8 +467,8 @@ export class LitmActorSheet extends LitmSheetMixin(
 	 * @protected
 	 */
 	static async _onAddStoryTag(_event, target) {
-		const tagType = target.dataset.tagType || "tag";
-		const isStatus = tagType === "status";
+		const tagType = target.dataset.tagType || "story_tag";
+		const isStatus = tagType === "status_tag";
 
 		if (isStatus) {
 			await this.document.createEmbeddedDocuments("ActiveEffect", [

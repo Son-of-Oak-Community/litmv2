@@ -90,10 +90,10 @@ export function toTiers(values = []) {
 /**
  * Parse a quick-add input string into a structured descriptor.
  * - "name:N" or "name:" -> limit with optional max
- * - "name-N" (1-6) -> status with tier
- * - plain text -> tag
+ * - "name-N" (1-6) -> status_tag with tier
+ * - plain text -> story_tag
  * @param {string} raw  The raw input string (already trimmed)
- * @returns {{ type: "limit"|"status"|"tag", name: string, tier?: number, limitMax?: number|null }|null}
+ * @returns {{ type: "limit"|"status_tag"|"story_tag", name: string, tier?: number, limitMax?: number|null }|null}
  *   null if the input is empty
  */
 export function parseQuickAddInput(raw) {
@@ -109,13 +109,13 @@ export function parseQuickAddInput(raw) {
 	const statusMatch = raw.match(/^(.+)-([1-6])$/);
 	if (statusMatch) {
 		return {
-			type: "status",
+			type: "status_tag",
 			name: statusMatch[1].trim(),
 			tier: Number.parseInt(statusMatch[2], 10),
 		};
 	}
 
-	return { type: "tag", name: raw };
+	return { type: "story_tag", name: raw };
 }
 
 /**
@@ -130,7 +130,7 @@ export function mapEffectForUI(e) {
 		id: e._id ?? e.id,
 		uuid: e.uuid,
 		name: e.name,
-		type: isStatus ? "status" : "tag",
+		type: e.type,
 		system: e.system,
 		isScratched: e.system?.isScratched ?? false,
 		isSingleUse: e.system?.isSingleUse ?? false,
@@ -154,7 +154,7 @@ export function partitionTagsByLimit(tags, limits) {
 	const groupedLimits = limits.map((limit) => {
 		const groupedTags = tags.filter((t) => t.limitId === limit.id);
 		const statusTierArrays = groupedTags
-			.filter((t) => t.type === "status")
+			.filter((t) => t.type === "status_tag")
 			.map((t) => t.values);
 		const computedValue = StatusTagData.stackTiers(statusTierArrays);
 		return { ...limit, tags: groupedTags, computedValue };
