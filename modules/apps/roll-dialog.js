@@ -584,6 +584,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			mightRange: Array.from({ length: 13 }, (_, i) => i - 6),
 			tradePower: this.#tradePower,
 			canHedge: this.totalPower >= 2,
+			canCaution: this.totalPower <= 2,
 			sacrificeLevel: this.#sacrificeLevel,
 			sacrificeLevelOptions: {
 				painful: "LITM.Ui.sacrifice_painful",
