@@ -1269,6 +1269,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#totalPowerEl = null;
 	/** @type {HTMLInputElement|null} Cached by _onRender. */
 	#hedgeRadioEl = null;
+	/** @type {HTMLInputElement|null} Cached by _onRender. */
+	#cautionRadioEl = null;
 
 	#updateTotalPower() {
 		if (!this.element) return;
@@ -1279,6 +1281,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#hedgeRadioEl ??= this.element.querySelector(
 			"input[name='tradePower'][value='1']",
 		);
+		this.#cautionRadioEl ??= this.element.querySelector(
+			"input[name='tradePower'][value='-1']",
+		);
 
 		if (this.#totalPowerEl) {
 			const trade = this.#tradePower;
@@ -1288,6 +1293,28 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				this.#totalPowerEl.innerHTML = `${totalPower} <span class="litm--trade-annotation">(${t("LITM.Terms.roll")}: ${rollPower >= 0 ? "+" : ""}${rollPower}, ${t("LITM.Ui.spend_power")}: ${spendPower})</span>`;
 			} else {
 				this.#totalPowerEl.textContent = totalPower;
+			}
+		}
+
+		if (this.#cautionRadioEl) {
+			const canCaution = totalPower <= 2;
+			this.#cautionRadioEl.disabled = !canCaution;
+			this.#cautionRadioEl
+				.closest(".litm--roll-type-option")
+				?.classList.toggle("is-disabled", !canCaution);
+			if (!canCaution && this.#tradePower === -1) {
+				this.#cachedTotalPower = null;
+				this.#tradePower = 0;
+				const noneRadio = this.element.querySelector(
+					"input[name='tradePower'][value='0']",
+				);
+				if (noneRadio) noneRadio.checked = true;
+				this.element
+					.querySelectorAll(".litm--trade-power-bar .litm--roll-type-option")
+					.forEach((label) => {
+						const radio = label.querySelector("input[type='radio']");
+						label.classList.toggle("is-active", radio?.value === "0");
+					});
 			}
 		}
 
