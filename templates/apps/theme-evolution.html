@@ -1,0 +1,193 @@
+<section class="standard-form theme-evolution scrollable">
+	{{#unless canRender}}
+	<p class="hint">{{localize "LITM.Ui.evolution_target_missing"}}</p>
+	{{else}}
+	<input type="hidden" name="actorId" value="{{actorId}}" />
+	<input type="hidden" name="themeId" value="{{themeId}}" />
+
+	<header class="img-name">
+		<img src="{{theme.img}}" alt="{{theme.name}}" data-tooltip="{{theme.name}}" />
+		<div class="flexcol gap-xs">
+			<h2>{{theme.name}}</h2>
+			{{#if themebookName}}
+			<p class="hint">{{localize "LITM.Terms.themebook"}}: {{themebookName}}</p>
+			{{else}}
+			<p class="hint">{{localize "LITM.Ui.no_themebook"}}</p>
+			{{/if}}
+		</div>
+	</header>
+
+	{{#if showPathPicker}}
+	<fieldset class="litm-theme-evolution__path">
+		<legend>{{localize "LITM.Ui.evolution_path"}}</legend>
+		<div class="litm-theme-evolution__path-choices" role="radiogroup" aria-label="{{localize 'LITM.Ui.evolution_path'}}">
+			{{#each modeOptions as |opt|}}
+			<label class="litm-theme-evolution__path-choice" data-mode="{{opt.value}}">
+				<input type="radio" name="mode" value="{{opt.value}}"
+					{{#if (eq opt.value ../defaultMode)}}checked{{/if}} />
+				<span class="litm-theme-evolution__path-icon" aria-hidden="true">
+					{{#if (eq opt.value "evolve")}}
+					<i class="fa-solid fa-feather"></i>
+					{{else if (eq opt.value "expand")}}
+					<i class="fa-solid fa-arrow-up-right-from-square"></i>
+					{{else}}
+					<i class="fa-solid fa-arrows-rotate"></i>
+					{{/if}}
+				</span>
+				<span class="litm-theme-evolution__path-label">{{opt.label}}</span>
+				<span class="litm-theme-evolution__path-consequence">
+					{{#if (eq opt.value "evolve")}}{{localize "LITM.Ui.evolution_consequence_evolve"}}{{else if (eq opt.value "expand")}}{{localize "LITM.Ui.evolution_consequence_expand"}}{{else}}{{localize "LITM.Ui.evolution_consequence_replace"}}{{/if}}
+				</span>
+			</label>
+			{{/each}}
+		</div>
+		<p class="hint">{{localize "LITM.Ui.evolution_path_hint"}}</p>
+	</fieldset>
+	{{else}}
+	<input type="hidden" name="mode" value="{{defaultMode}}" />
+	{{/if}}
+
+	{{#if expandAvailable}}
+	<fieldset class="litm-theme-evolution__expand" data-show-when="expand" hidden>
+		<legend>{{localize "LITM.Ui.evolution_expand_legend"}}</legend>
+		<p class="hint">{{localize "LITM.Ui.evolution_expand_hint"}}</p>
+		<div class="form-group">
+			<label>{{localize "LITM.Ui.evolution_expand_target"}}</label>
+			<select name="expandTarget">
+				<option value="">—</option>
+				{{#each otherThemes as |ot|}}
+				<option value="{{ot.id}}">{{ot.name}}</option>
+				{{/each}}
+			</select>
+		</div>
+		<div class="form-group stacked">
+			<label>
+				{{localize "LITM.Ui.evolution_expand_this_quest"}}
+				<em>{{theme.name}}</em>
+			</label>
+			<textarea name="thisQuest" rows="2" placeholder="{{localize 'LITM.Ui.quest_placeholder'}}"></textarea>
+			{{#if theme.system.quest.description}}
+			<p class="hint litm-theme-evolution__prev-quest">
+				{{localize "LITM.Ui.evolution_previous_quest"}}
+				<s>{{theme.system.quest.description}}</s>
+			</p>
+			{{/if}}
+		</div>
+	</fieldset>
+	{{/if}}
+
+	<fieldset>
+		<legend>{{localize "LITM.Ui.evolution_new_theme"}}</legend>
+
+		<div class="form-group stacked">
+			<label>{{localize "LITM.Ui.evolution_new_title_tag"}}</label>
+			<input type="text" name="name" placeholder="{{localize 'LITM.Ui.evolution_new_title_placeholder'}}" />
+			<p class="hint">{{localize "LITM.Ui.evolution_new_title_hint"}}</p>
+			{{#if showModeSelect}}
+			<label class="litm-theme-evolution__keep-old">
+				<input type="checkbox" name="keepOldTitleAsPower" />
+				<span>{{localize "LITM.Ui.evolution_keep_old_title"}} <em>{{theme.name}}</em></span>
+			</label>
+			<p class="hint">{{localize "LITM.Ui.evolution_keep_old_title_hint"}}</p>
+			{{/if}}
+		</div>
+
+		<div class="form-group">
+			<label>{{localize "LITM.Ui.themebook_type"}}</label>
+			<select name="themebook">
+				<option value="">—</option>
+				{{#each themebookGroups as |group|}}
+				<optgroup label="{{group.label}}">
+					{{#each group.options as |opt|}}
+					<option value="{{opt.value}}" {{#if (eq opt.value ../../themebookName)}}selected{{/if}}>{{opt.label}}</option>
+					{{/each}}
+				</optgroup>
+				{{/each}}
+			</select>
+		</div>
+
+		<div class="form-group">
+			<label>{{localize "LITM.Ui.theme_level"}}</label>
+			<select name="level">
+				{{#each levels as |opt|}}
+				<option value="{{opt.value}}" {{#if (eq opt.value ../currentLevel)}}selected{{/if}}>{{opt.label}}</option>
+				{{/each}}
+			</select>
+		</div>
+
+		<p class="hint" data-hide-when="expand">{{localize "LITM.Ui.evolution_type_or_might_hint"}}</p>
+
+		<div class="form-group stacked">
+			<label>{{localize "LITM.Ui.evolution_new_quest"}}</label>
+			<textarea name="quest" rows="3" placeholder="{{localize 'LITM.Ui.quest_placeholder'}}"></textarea>
+			{{#if theme.system.quest.description}}
+			<p class="hint litm-theme-evolution__prev-quest">
+				{{localize "LITM.Ui.evolution_previous_quest"}}
+				<s>{{theme.system.quest.description}}</s>
+			</p>
+			{{/if}}
+		</div>
+	</fieldset>
+
+	{{#if (or hasRevisable (not isFellowship))}}
+	<fieldset data-role="trade-fieldset" class="litm-theme-evolution__promise">
+		<legend>{{#if isFellowship}}{{localize "LITM.Ui.evolution_cleanup_legend"}}{{else}}{{localize "LITM.Hero.promise"}}{{/if}}</legend>
+		{{#if hasRevisable}}
+		<p class="hint" data-role="trade-hint" data-hide-when="expand"></p>
+		<div class="litm-theme-evolution__trade-list" data-hide-when="expand">
+			{{#each revisable as |part|}}
+			<div class="litm-theme-evolution__trade-row" data-kind="{{part.kind}}">
+				{{#if (eq part.kind "special")}}
+				<span class="litm-theme-evolution__trade-special-icon" aria-hidden="true">
+					<i class="fa-solid fa-medal"></i>
+				</span>
+				{{else}}
+				<span class="litm-theme-evolution__trade-kind-dot litm-theme-evolution__trade-kind-dot--{{part.kind}}" aria-hidden="true"></span>
+				{{/if}}
+				<input type="text"
+					name="rename-{{part.kind}}-{{part.id}}"
+					class="litm-theme-evolution__trade-input"
+					value="{{part.name}}"
+					aria-label="{{part.name}}" />
+				<label class="litm-theme-evolution__trade-toggle"
+					data-hide-when="replace"
+					data-tooltip="{{localize 'LITM.Ui.evolution_trade_tooltip'}}">
+					<input type="checkbox" name="trade-{{part.kind}}-{{part.id}}" />
+					<span>+1</span>
+				</label>
+			</div>
+			{{/each}}
+		</div>
+		{{/if}}
+
+		{{#unless isFellowship}}
+		<div class="litm-theme-evolution__promise-summary">
+			<span class="litm-theme-evolution__promise-cell">
+				<span class="litm-theme-evolution__promise-cell-label">{{localize "LITM.Ui.evolution_promise_gained"}}</span>
+				<strong class="litm-theme-evolution__promise-cell-value" data-bind="promise-gained">1</strong>
+			</span>
+			<i class="fa-solid fa-arrow-right-long litm-theme-evolution__promise-arrow" aria-hidden="true"></i>
+			<span class="litm-theme-evolution__promise-cell">
+				<span class="litm-theme-evolution__promise-cell-label">{{localize "LITM.Ui.evolution_promise_after"}}</span>
+				<strong class="litm-theme-evolution__promise-cell-value" data-bind="promise-after">{{currentPromise}} / 5</strong>
+			</span>
+		</div>
+
+		<p class="litm-theme-evolution__mof" data-bind="promise-mof" hidden>
+			<i class="fa-solid fa-sun" aria-hidden="true"></i>
+			{{localize "LITM.Ui.evolution_promise_reaches_mof"}}
+			<span class="litm-theme-evolution__mof-overflow" data-bind="promise-overflow" hidden></span>
+		</p>
+		{{/unless}}
+	</fieldset>
+	{{/if}}
+
+	<footer class="form-footer">
+		<button type="button" data-action="cancel">{{localize "LITM.Ui.cancel"}}</button>
+		<button type="button" data-action="confirm" class="bright">
+			<i class="fa-solid fa-check"></i>
+			{{localize "LITM.Ui.confirm"}}
+		</button>
+	</footer>
+	{{/unless}}
+</section>

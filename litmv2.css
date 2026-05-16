@@ -516,7 +516,6 @@ body,
 	font-weight: 400;
 }
 
-
 /* ──────────────────────────────────────────────────────────────────────
    Shared section header — small-caps label with extending decorative
    lines. Aliases the legacy `.litm-render__section-header` so the
@@ -2339,6 +2338,19 @@ section.standard-form.litm-actions-app {
 	.litm-fellowship-sheet .progress-display
 ) {
 	display: flex;
+}
+
+.litm--promise-pending {
+	display: inline-flex;
+	align-items: center;
+	padding: 0 var(--spacer-8);
+	border-radius: var(--radius-pill);
+	background: var(--color-litm-track-promise);
+	color: var(--color-text-emphatic);
+	font-family: var(--font-h2);
+	font-size: var(--font-size-14);
+	line-height: 1.4;
+	cursor: help;
 }
 
 .litm-challenge-sheet .limit-outcome {
@@ -4700,6 +4712,339 @@ input[type="text"].litm--quick-add-input,
 .litm-theme-advancement .form-group button {
 	flex: 0 0 auto;
 	width: auto;
+}
+
+/* ========================================
+  15b. Theme Evolution Wizard
+   Path picker as a segmented choice: hero-weight buttons with icon,
+   label, and one-line consequence, replacing the timid radio pair.
+======================================== */
+
+.litm-theme-evolution .img-name {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-16);
+}
+
+.litm-theme-evolution .img-name img {
+	width: 64px;
+	height: 64px;
+	object-fit: cover;
+	border-radius: var(--border-radius);
+}
+
+.litm-theme-evolution .img-name h2 {
+	margin: 0;
+}
+
+.litm-theme-evolution__path-choices {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: var(--spacer-8);
+}
+
+.litm-theme-evolution__path-choice {
+	position: relative;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	grid-template-areas:
+		"icon label"
+		"icon consequence";
+	align-items: center;
+	column-gap: var(--spacer-12);
+	row-gap: var(--spacer-2);
+	padding: var(--spacer-12);
+	border: 2px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background: transparent;
+	color: var(--color-text-primary);
+	cursor: pointer;
+	transition:
+		background var(--transition-normal) ease,
+		border-color var(--transition-normal) ease,
+		color var(--transition-normal) ease,
+		transform var(--transition-fast) ease;
+}
+
+.litm-theme-evolution__path-choice > input[type="radio"] {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	margin: 0;
+	cursor: pointer;
+}
+
+.litm-theme-evolution__path-choice:hover {
+	background: var(--color-overlay-white-5);
+	border-color: var(--color-litm-tag);
+}
+
+.litm-theme-evolution__path-choice[data-mode="replace"]:hover {
+	border-color: var(--color-litm-weakness);
+}
+
+.litm-theme-evolution__path-choice[data-mode="expand"]:hover {
+	border-color: var(--color-litm-status);
+}
+
+.litm-theme-evolution__path-choice:has(input:focus-visible) {
+	outline: 2px solid var(--color-text-emphatic);
+	outline-offset: 2px;
+}
+
+.litm-theme-evolution__path-choice:has(input:checked) {
+	background: var(--color-litm-tag);
+	border-color: var(--color-litm-tag);
+	color: var(--color-litm-tag-text);
+}
+
+.litm-theme-evolution__path-choice[data-mode="replace"]:has(input:checked) {
+	background: var(--color-litm-weakness);
+	border-color: var(--color-litm-weakness);
+	color: var(--color-litm-weakness-text);
+}
+
+.litm-theme-evolution__path-choice[data-mode="expand"]:has(input:checked) {
+	background: var(--color-litm-status);
+	border-color: var(--color-litm-status);
+	color: var(--color-litm-status-text);
+}
+
+.litm-theme-evolution__path-icon {
+	grid-area: icon;
+	align-self: center;
+	width: 2.25rem;
+	font-size: var(--font-size-24);
+	text-align: center;
+	color: var(--color-text-secondary);
+	transition: color var(--transition-normal) ease;
+}
+
+.litm-theme-evolution__path-choice:has(input:checked)
+	.litm-theme-evolution__path-icon {
+	color: inherit;
+}
+
+.litm-theme-evolution__path-label {
+	grid-area: label;
+	font-family: var(--font-h2);
+	font-size: var(--font-size-18);
+	line-height: var(--line-height-tight);
+}
+
+.litm-theme-evolution__path-consequence {
+	grid-area: consequence;
+	font-size: var(--font-size-12);
+	line-height: var(--line-height-snug);
+	color: var(--color-text-secondary);
+}
+
+.litm-theme-evolution__path-choice:has(input:checked)
+	.litm-theme-evolution__path-consequence {
+	color: inherit;
+	opacity: 0.85;
+}
+
+.litm-theme-evolution__prev-quest {
+	font-style: italic;
+	opacity: 0.75;
+}
+
+.litm-theme-evolution__prev-quest s {
+	text-decoration-thickness: 1px;
+	text-decoration-color: var(--color-text-subtle);
+}
+
+/* --- Trade list: power/weakness tags wear real tag chrome; specials get a
+   small medal marker so they read as a different class of thing. --- */
+
+.litm-theme-evolution__trade-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-8);
+}
+
+.litm-theme-evolution__trade-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+}
+
+.litm-theme-evolution__trade-kind-dot {
+	flex: none;
+	width: 0.6rem;
+	height: 0.6rem;
+	border-radius: var(--radius-circle);
+	background: var(--color-text-subtle);
+}
+
+.litm-theme-evolution__trade-kind-dot--power {
+	background: var(--color-litm-tag);
+}
+
+.litm-theme-evolution__trade-kind-dot--weakness {
+	background: var(--color-litm-weakness);
+}
+
+.litm-theme-evolution__trade-special-icon {
+	flex: none;
+	display: inline-flex;
+	justify-content: center;
+	width: 0.6rem;
+	color: var(--color-litm-track-promise);
+}
+
+.litm-theme-evolution__trade-input {
+	flex: 1;
+	min-width: 0;
+	font-family: var(--font-serif);
+	font-style: italic;
+}
+
+.litm-theme-evolution__trade-input:disabled {
+	text-decoration: line-through;
+	opacity: 0.65;
+}
+
+.litm-theme-evolution__trade-toggle {
+	/* position: relative contains the absolutely-positioned (hidden)
+	   checkbox below. Without it, the input falls through to the next
+	   positioned ancestor and intermittently affects layout on
+	   re-render — the wizard would grow tall with phantom whitespace. */
+	position: relative;
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacer-4);
+	min-width: 3rem;
+	padding: var(--spacer-4) var(--spacer-12);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-pill);
+	font-family: var(--font-h2);
+	font-size: var(--font-size-16);
+	line-height: 1;
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	transition:
+		background var(--transition-normal) ease,
+		border-color var(--transition-normal) ease,
+		color var(--transition-normal) ease;
+}
+
+.litm-theme-evolution__trade-toggle:hover {
+	border-color: var(--color-litm-track-promise);
+	color: var(--color-text-primary);
+}
+
+/* Visually hide the native checkbox — the pill's filled / outlined state
+   and its "+1" label communicate selection. Use the standard sr-only
+   pattern (1px clipped) instead of an unconstrained position: absolute,
+   which on re-render could push the form layout around. */
+.litm-theme-evolution__trade-toggle > input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	border: 0;
+	white-space: nowrap;
+}
+
+.litm-theme-evolution__trade-toggle:has(input:checked) {
+	background: var(--color-litm-track-promise);
+	border-color: var(--color-litm-track-promise);
+	color: var(--color-text-emphatic);
+}
+
+.litm-theme-evolution__trade-toggle:has(input:disabled) {
+	cursor: default;
+}
+
+.litm-theme-evolution__trade-toggle:has(input:focus-visible) {
+	outline: 2px solid var(--color-text-emphatic);
+	outline-offset: 2px;
+}
+
+/* Trade cap reached for this row's kind: pill is unselected and locked
+   until the player frees a slot by unchecking another. */
+.litm-theme-evolution__trade-row.is-trade-cap
+.litm-theme-evolution__trade-toggle {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.litm-theme-evolution__keep-old {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	margin-top: var(--spacer-4);
+	cursor: pointer;
+}
+
+.litm-theme-evolution__keep-old > input {
+	margin: 0;
+}
+
+.litm-theme-evolution__keep-old > span em {
+	font-style: italic;
+	color: var(--color-litm-tag-text);
+}
+
+/* --- Promise summary: sits inside the same fieldset as the trade list so
+   cause (trades above) → effect (Promise below) is one continuous read. --- */
+
+.litm-theme-evolution__promise-summary {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacer-16);
+	margin-top: var(--spacer-12);
+	padding: var(--spacer-8) var(--spacer-12);
+	border-top: 1px solid var(--color-fieldset-border);
+}
+
+.litm-theme-evolution__promise-cell {
+	display: inline-flex;
+	align-items: baseline;
+	gap: var(--spacer-8);
+}
+
+.litm-theme-evolution__promise-cell-label {
+	font-size: var(--font-size-13);
+	color: var(--color-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.litm-theme-evolution__promise-cell-value {
+	font-family: var(--font-h2);
+	font-size: var(--font-size-20);
+	color: var(--color-litm-track-promise);
+}
+
+.litm-theme-evolution__promise-arrow {
+	color: var(--color-text-subtle);
+	font-size: var(--font-size-16);
+}
+
+.litm-theme-evolution__mof:not([hidden]) {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	margin: var(--spacer-8) 0 0;
+	padding: var(--spacer-8) var(--spacer-12);
+	border-radius: var(--radius-md);
+	background: var(--color-litm-tag);
+	color: var(--color-litm-tag-text);
+	font-style: italic;
+	font-size: var(--font-size-14);
+}
+
+.litm-theme-evolution__mof > i {
+	flex: none;
 }
 
 /* ========================================

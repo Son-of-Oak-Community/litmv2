@@ -26,10 +26,7 @@ function substituteVariableTiers(text, chosenTiers) {
 	let varIdx = 0;
 	return text.replace(re, (match, name, _exclamation, separator, value) => {
 		if (separator !== "-" || value) return match;
-		const tier = Math.max(
-			1,
-			Math.min(6, Number(chosenTiers?.[varIdx]) || 1),
-		);
+		const tier = Math.max(1, Math.min(6, Number(chosenTiers?.[varIdx]) || 1));
 		varIdx++;
 		return `[${name}-${tier}]`;
 	});
@@ -434,7 +431,9 @@ async function _applyExtraFeat({ success, actor, chosenTiers }) {
 
 /** Narrative-only verbs (Quick): no mechanical change, just emit the prose. */
 function _applyNarrative({ success, chosenTiers }) {
-	return { appliedSummary: substituteVariableTiers(success.text || "", chosenTiers) };
+	return {
+		appliedSummary: substituteVariableTiers(success.text || "", chosenTiers),
+	};
 }
 
 /** Dispatch table keyed by verb-definition `kind`. */

@@ -7,6 +7,7 @@ import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ActionsApp } from "../../apps/actions-app.js";
 import { resolveRollDialogOwnership } from "../../apps/roll/roll-dialog.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
+import { detectTrackCompletion } from "../../system/chat.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import { enrichHTML, transferBackpackTags } from "../../utils.js";
@@ -458,7 +459,39 @@ export class HeroSheet extends LitmActorSheet {
 	static async #onAddMomentOfFulfillment() {
 		const moments = foundry.utils.deepClone(this.system.mof ?? []);
 		moments.push({ name: "", description: "" });
-		await this.document.update({ "system.mof": moments });
+
+		// Per Core Book p.193: a Moment of Fulfillment, once resolved, resets
+		// the Promise track to 0 and applies any remaining Promise. Adding
+		// an MoF entry is the act of recording resolution, so it doubles
+		// as the trigger to reset + apply pending. (When promise < 5, this
+		// is just a free narrative record — no math runs.)
+		const update = { "system.mof": moments };
+		const currentPromise = this.system.promise ?? 0;
+		const pending = this.system.pendingPromise ?? 0;
+		if (currentPromise >= 5) {
+			const applied = Math.min(pending, 5);
+			update["system.promise"] = applied;
+			update["system.pendingPromise"] = pending - applied;
+		}
+
+		await this.document.update(update);
+
+		// Cascading MoF: if the applied pending fills another track, fire
+		// trackCompleted so the chat card surfaces the next MoF.
+		if (update["system.promise"] === 5) {
+			const trackInfo = detectTrackCompletion(
+				"system.promise",
+				5,
+				this.document,
+				this.document,
+			);
+			if (trackInfo) {
+				Hooks.callAll("litm.trackCompleted", {
+					actor: this.document,
+					trackInfo,
+				});
+			}
+		}
 	}
 
 	/**
