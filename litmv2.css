@@ -104,6 +104,21 @@ body,
 		var(--color-litm-limit) 30%,
 		transparent
 	);
+	--color-litm-weakness-8: color-mix(
+		in srgb,
+		var(--color-litm-weakness) 8%,
+		transparent
+	);
+	--color-litm-weakness-10: color-mix(
+		in srgb,
+		var(--color-litm-weakness) 10%,
+		transparent
+	);
+	--color-litm-weakness-40: color-mix(
+		in srgb,
+		var(--color-litm-weakness) 40%,
+		transparent
+	);
 	--color-text-primary-10: color-mix(
 		in srgb,
 		var(--color-text-primary) 10%,
@@ -3151,13 +3166,13 @@ section.standard-form.litm-actions-app {
 ======================================== */
 
 .chat-message:has(
-	:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)
+	:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
 ) {
 	padding: 0;
 	contain: layout style;
 }
 
-.chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat))
+.chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap))
 	.message-header {
 	padding: 4px 10px;
 	border-bottom: var(--hr-border);
@@ -5137,10 +5152,59 @@ fieldset.litm-party-overview {
 	gap: 12px;
 }
 
+fieldset.litm-party-overview > legend {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+}
+
+.litm-party-overview__toggle {
+	width: 1.5em;
+	height: 1.5em;
+	flex: 0 0 auto;
+	font-size: var(--font-size-12);
+	color: var(--color-text-subtle);
+	opacity: 0.7;
+	transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.litm-party-overview__toggle:hover {
+	opacity: 1;
+	color: var(--color-text-primary);
+}
+
+.litm-party-overview__toggle[aria-pressed="true"] {
+	color: var(--color-text-emphatic);
+	opacity: 1;
+}
+
+.litm-party-overview__empty {
+	margin: 0;
+	padding: var(--spacer-8) 0;
+	text-align: center;
+	font-style: italic;
+}
+
 .litm-party-overview__hero {
 	border-radius: var(--radius-md);
 	padding: 12px;
 	background: var(--color-data-background);
+}
+
+.litm-party-overview__hero--offline {
+	opacity: 0.55;
+}
+
+.litm-party-overview__hero--offline:hover,
+.litm-party-overview__hero--offline:focus-within {
+	opacity: 0.85;
+}
+
+.litm-party-overview__offline-icon {
+	font-size: var(--font-size-12);
+	color: var(--color-text-subtle);
+	margin-left: var(--spacer-4);
+	vertical-align: middle;
 }
 
 .litm-party-overview__hero-header {
@@ -5309,14 +5373,22 @@ body.theme-dark .application:not(.theme-light),
 		filter: sepia(0.3) hue-rotate(305deg);
 	}
 
-	/* Chat message container overrides — shared across all chat card types */
+	/* Chat message container overrides — shared across all chat card types.
+	   `.chat-log` resets Foundry's text-emphatic/-secondary/-subtle and -border
+	   tokens to dark values, so we have to redeclare them at the card scope
+	   or h1/h2/h3 (default `color: --color-text-emphatic`) and any class that
+	   reads -secondary/-subtle render as near-black on the dark chat bg. */
 	&
 		.chat-message:has(
-			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)
+			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
 		) {
 		--color-scheme: dark;
 		--chat-message-border-color: var(--color-litm-chat-border);
 		--color-text-primary: var(--color-light-2);
+		--color-text-emphatic: var(--color-light-1);
+		--color-text-secondary: var(--color-light-3);
+		--color-text-subtle: var(--color-light-5);
+		--color-border: var(--color-litm-chat-border);
 		background: var(--color-litm-chat-bg);
 		color: var(--color-light-2);
 		color-scheme: var(--color-scheme);
@@ -5324,7 +5396,7 @@ body.theme-dark .application:not(.theme-light),
 
 	&
 		.chat-message:has(
-			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat)
+			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
 		)
 		.message-header {
 		border-bottom: 1px solid var(--color-litm-chat-border);
@@ -5689,4 +5761,720 @@ body.theme-dark .application:not(.theme-light),
 	border: none;
 	border-radius: var(--radius-sm);
 	object-fit: cover;
+}
+
+/* ========================================
+   22. Camping Scene
+   Manuscript-style page for camp/sojourn activities.
+======================================== */
+
+.litm-camping-scene {
+	position: fixed;
+	inset: 0;
+	/* Sit just below Foundry's window layer (z-index-window = 100) so vignette
+	   sheets, roll dialogs, hero sheets and the like open ABOVE the camping
+	   overlay when triggered from inside it — while still covering the canvas
+	   (0) and the app/ui chrome (30/60). */
+	z-index: calc(var(--z-index-window) - 1);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	max-height: 100vh;
+}
+
+.litm-camping-scene::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.55);
+	pointer-events: none;
+}
+
+.litm-camping-scene__root {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-12);
+	width: min(1200px, 92vw);
+	max-height: 88vh;
+	padding: var(--spacer-16);
+	background: var(--background);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-glow-strong);
+	overflow: hidden;
+}
+
+.litm-camping-scene__root--setup {
+	width: min(600px, 92vw);
+}
+
+.litm-camping-scene__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacer-16);
+	padding-bottom: var(--spacer-8);
+	border-bottom: 1px solid var(--color-fieldset-border);
+}
+
+/* Active-phase banner: centered title + optional subtitle + campsite tag row.
+   Read-only — type/duration were locked in at Begin Camp. */
+.litm-camping-scene__active-banner {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacer-4);
+	text-align: center;
+}
+
+.litm-camping-scene__active-title {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	margin: 0;
+	font-family: var(--font-h2);
+	font-style: italic;
+	font-size: var(--font-size-24);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__active-subtitle {
+	margin: 0;
+	font-family: var(--font-serif);
+	font-style: italic;
+	color: var(--color-text-secondary);
+}
+
+.litm-camping-scene__active-tags {
+	margin: 0;
+	padding: 0;
+	text-align: center;
+	font-family: var(--font-serif);
+	color: var(--color-text-secondary);
+}
+
+/* Camp/Sojourn type cards — the one ceremonial choice on this page, so they
+   keep the display font. Everything else is body chrome (Labrada serif). */
+.litm-camping-scene__type-cards {
+	display: flex;
+	gap: var(--spacer-8);
+}
+
+.litm-camping-scene__duration-field {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+	color: var(--color-text-secondary);
+}
+
+.litm-camping-scene__type-card {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacer-4);
+	min-width: 140px;
+	height: auto;
+	min-height: 0;
+	padding: var(--spacer-12) var(--spacer-16);
+	background: var(--color-overlay-white-3);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	cursor: pointer;
+	transition:
+		background var(--transition-slow),
+		border-color var(--transition-slow),
+		box-shadow var(--transition-slow);
+}
+
+.litm-camping-scene__type-card:hover {
+	background: var(--color-overlay-white-5);
+	border-color: var(--color-text-subtle);
+}
+
+.litm-camping-scene__type-card.active {
+	background: var(--color-warm-1-10);
+	border-color: var(--color-warm-1);
+	box-shadow: var(--shadow-glow);
+}
+
+.litm-camping-scene__type-card-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--radius-circle);
+	background: var(--color-overlay-white-5);
+	color: var(--color-text-subtle);
+	transition:
+		background var(--transition-slow),
+		color var(--transition-slow);
+}
+
+.litm-camping-scene__type-card.active .litm-camping-scene__type-card-icon {
+	background: var(--color-warm-1-25);
+	color: var(--color-litm-tag);
+}
+
+.litm-camping-scene__type-card-title {
+	font-family: var(--font-h2);
+	font-size: var(--font-size-16);
+	letter-spacing: 0.04em;
+	color: var(--color-text-primary);
+}
+
+.litm-camping-scene__type-card.active .litm-camping-scene__type-card-title {
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__duration {
+	font-size: var(--font-size-13);
+}
+
+.litm-camping-scene__body {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
+	padding-right: var(--spacer-4);
+}
+
+.litm-camping-scene__place-of-stay {
+	display: grid;
+	grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+	gap: var(--spacer-8) var(--spacer-16);
+	align-items: start;
+	margin-bottom: var(--spacer-12);
+	padding: var(--spacer-12);
+	border: 1px solid var(--color-fieldset-border);
+	border-radius: var(--radius-md);
+	background: var(--color-overlay-white-3);
+}
+
+.litm-camping-scene__place-of-stay > h3.litm-render__section-header {
+	grid-column: 1 / -1;
+}
+
+.litm-camping-scene__place-of-stay > .form-group {
+	margin: 0;
+}
+
+.litm-camping-scene__columns {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: var(--spacer-12);
+	align-items: start;
+}
+
+.litm-camping-scene__hero-col {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-12);
+	padding: var(--spacer-12);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background: var(--color-overlay-white-5);
+}
+
+.litm-camping-scene__hero-header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-12);
+	padding-bottom: var(--spacer-8);
+	border-bottom: 1px solid var(--color-fieldset-border);
+}
+
+.litm-camping-scene__hero-portrait {
+	width: 44px;
+	height: 44px;
+	border-radius: var(--radius-circle);
+	object-fit: cover;
+	flex: 0 0 auto;
+}
+
+/* Hero name — serif italic at heading scale matches how character names read
+   elsewhere (ingress, blockquote), and gets out of the way of the display
+   fonts that the Camp/Sojourn cards keep. */
+.litm-camping-scene__hero-name {
+	flex: 1 1 auto;
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-18);
+	line-height: var(--line-height-tight);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__hero-open {
+	flex: 0 0 auto;
+	width: 26px;
+	height: 26px;
+	min-height: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-circle);
+	color: var(--color-text-subtle);
+	cursor: pointer;
+	transition:
+		color var(--transition-fast),
+		background var(--transition-fast);
+}
+
+.litm-camping-scene__hero-open:hover {
+	background: var(--color-overlay-white-5);
+	color: var(--color-text-primary);
+}
+
+.litm-camping-scene__hero-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+}
+
+/* Sub-label — quieter than the main section header. Serif italic at small
+   size sits below the section header without competing with it. */
+.litm-camping-scene__sub-label {
+	margin: var(--spacer-4) 0 var(--spacer-2);
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-12);
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--color-text-secondary);
+}
+
+.litm-camping-scene__pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacer-4);
+	margin: 0;
+}
+
+.litm-camping-scene__pill {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	padding: 2px var(--spacer-4);
+	cursor: pointer;
+	border-radius: var(--radius-pill);
+	border: 1px solid transparent;
+	transition: var(--transition-fast) all;
+}
+
+/* "Marked" means "will be scratched / discarded" at pack-up. The line-through
+   on the inner tag carries the entire signal — no pill chrome needed. */
+.litm-camping-scene__pill.marked .litm-tag {
+	text-decoration: line-through;
+	opacity: 0.6;
+}
+
+.litm-camping-scene__activity {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+	padding: var(--spacer-8);
+	background: var(--color-overlay-white-3);
+	border-radius: var(--radius-sm);
+}
+
+.litm-camping-scene__activity-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+}
+
+/* Period label — small serif italic, no caps. Sits inline with the chip
+   when a period is decided, or above the picker when it isn't. */
+.litm-camping-scene__period-label {
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-12);
+	color: var(--color-text-subtle);
+	flex: 0 0 auto;
+}
+
+/* Chip — replaces the three-card picker once a period is decided so the
+   column stops growing. Tinted with the activity's accent color. */
+.litm-camping-scene__period-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	padding: 2px var(--spacer-8);
+	border-radius: var(--radius-pill);
+	border: 1px solid transparent;
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__period-chip--rest {
+	background: var(--color-litm-status-10, var(--color-overlay-white-5));
+	border-color: var(--color-litm-status);
+}
+
+.litm-camping-scene__period-chip--reflect {
+	background: var(--color-warm-1-10);
+	border-color: var(--color-warm-1);
+}
+
+.litm-camping-scene__period-chip--campAction {
+	background: var(--color-litm-weakness-10);
+	border-color: var(--color-litm-weakness);
+}
+
+.litm-camping-scene__period-clear {
+	flex: 0 0 auto;
+	margin-left: auto;
+	width: 22px;
+	height: 22px;
+	min-height: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-circle);
+	color: var(--color-text-subtle);
+	cursor: pointer;
+	transition:
+		color var(--transition-fast),
+		background var(--transition-fast);
+}
+
+.litm-camping-scene__period-clear:hover {
+	background: var(--color-overlay-white-5);
+	color: var(--color-text-primary);
+}
+
+/* Activity cards — three compact tiles (Rest/Reflect/Camp Action) shown only
+   when the period has no choice yet. Once chosen, the chip replaces them. */
+.litm-camping-scene__activity-cards {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: var(--spacer-4);
+}
+
+.litm-camping-scene__activity-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacer-4);
+	height: auto;
+	min-height: 0;
+	padding: var(--spacer-8) var(--spacer-4);
+	background: var(--color-overlay-white-3);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	transition:
+		background var(--transition-fast),
+		border-color var(--transition-fast),
+		color var(--transition-fast);
+}
+
+.litm-camping-scene__activity-card i {
+	font-size: var(--font-size-18);
+}
+
+.litm-camping-scene__activity-card span {
+	font-family: var(--font-serif);
+	font-size: var(--font-size-13);
+	font-style: italic;
+}
+
+.litm-camping-scene__activity-card:hover {
+	background: var(--color-overlay-white-5);
+	color: var(--color-text-primary);
+}
+
+.litm-camping-scene__activity-card--rest:hover {
+	border-color: var(--color-litm-status);
+}
+
+.litm-camping-scene__activity-card--reflect:hover {
+	border-color: var(--color-warm-1);
+}
+
+.litm-camping-scene__activity-card--action:hover {
+	border-color: var(--color-litm-weakness);
+}
+
+/* Stack the "what are you doing" input above the Launch roll button so they
+   don't collide. align-items: start keeps the button shrunk to its content. */
+.litm-camping-scene__camp-action {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacer-8);
+}
+
+.litm-camping-scene__reflect-sel,
+.litm-camping-scene__rest-action,
+.litm-camping-scene__duration {
+	flex: 1 1 auto;
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+}
+
+/* Three stacked picks inside the Reflect activity (Improve / Milestone /
+   Abandon). Each label is a small column with its hint above the select. */
+.litm-camping-scene__reflect-label {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-2);
+	margin-bottom: var(--spacer-4);
+}
+
+.litm-camping-scene__rest-statuses {
+	width: 100%;
+	border-collapse: collapse;
+	margin: var(--spacer-4) 0;
+}
+
+.litm-camping-scene__rest-statuses td {
+	padding: var(--spacer-2) var(--spacer-4);
+	vertical-align: middle;
+}
+
+.litm-camping-scene__rest-statuses td:last-child {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-4);
+}
+
+.litm-camping-scene__rest-amount {
+	width: 3em;
+}
+
+/* Third-period choice — a small inline link/banner, not a toggle. When armed
+   it turns weakness-colored to communicate "you've opted into Consequences." */
+.litm-camping-scene__third-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	align-self: flex-start;
+	height: auto;
+	min-height: 0;
+	margin-top: var(--spacer-4);
+	padding: var(--spacer-4) var(--spacer-12);
+	background: transparent;
+	border: 1px dashed var(--color-fieldset-border);
+	border-radius: var(--radius-pill);
+	color: var(--color-text-subtle);
+	cursor: pointer;
+	transition:
+		background var(--transition-fast),
+		border-color var(--transition-fast),
+		color var(--transition-fast);
+}
+
+.litm-camping-scene__third-toggle:hover {
+	color: var(--color-text-primary);
+	border-color: var(--color-text-subtle);
+}
+
+.litm-camping-scene__third-toggle.active {
+	border-style: solid;
+	border-color: var(--color-litm-weakness);
+	background: var(--color-litm-weakness-10);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__third-toggle-label {
+	display: inline-flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--spacer-8);
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+	text-align: left;
+}
+
+.litm-camping-scene__third-toggle-label .hint {
+	font-size: var(--font-size-11);
+}
+
+.litm-camping-scene__switch {
+	display: none;
+}
+
+.litm-camping-scene__rephrase-row {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-2);
+	margin-bottom: var(--spacer-4);
+}
+
+.litm-camping-scene__footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--spacer-8);
+	padding-top: var(--spacer-8);
+	border-top: 1px solid var(--color-fieldset-border);
+}
+
+/* Footer buttons. Cancel is quiet body chrome; only Pack Up & Go gets the
+   warm-1 primary treatment so the eye lands on the finish action. */
+.litm-camping-scene__btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	padding: var(--spacer-4) var(--spacer-12);
+	font-size: var(--font-size-13);
+	border-radius: var(--border-radius);
+	transition:
+		background var(--transition-slow),
+		border-color var(--transition-slow),
+		color var(--transition-slow);
+}
+
+.litm-camping-scene__btn--primary {
+	padding: var(--spacer-8) var(--spacer-16);
+	background: var(--color-warm-1);
+	border: 1px solid var(--color-cool-5);
+	color: var(--color-cool-5);
+	font-family: var(--font-h2);
+	font-size: var(--font-size-14);
+	letter-spacing: 0.04em;
+}
+
+.litm-camping-scene__btn--primary:hover {
+	background: var(--color-warm-3, var(--color-warm-1));
+	border-color: var(--color-warm-3, var(--color-cool-5));
+	color: var(--color-warm-1);
+}
+
+.litm-camping-scene__readonly-tag {
+	margin-left: auto;
+	padding: 0 var(--spacer-8);
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-11);
+	color: var(--color-text-subtle);
+}
+
+/* Threats — the GM-authored "promise of trouble" surface.
+   Each threat is a vignette: name + threat text the players see, plus
+   consequences only the GM sees. Drop zone accepts existing vignette
+   items; the Add button mints a fresh one in the world "Camping" folder. */
+.litm-camping-scene__threats-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-8);
+	margin-bottom: var(--spacer-12);
+	padding: var(--spacer-12);
+	border: 1px solid var(--color-fieldset-border);
+	border-radius: var(--radius-md);
+	background: var(--color-overlay-white-3);
+}
+
+.litm-camping-scene__threats-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-8);
+	margin: 0;
+	padding: 0;
+}
+
+.litm-camping-scene__threat {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+	padding: var(--spacer-8) var(--spacer-12);
+	background: var(--color-overlay-white-5);
+	border: 1px solid var(--color-fieldset-border);
+	border-radius: var(--radius-sm);
+}
+
+.litm-camping-scene__threat-header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+}
+
+.litm-camping-scene__threat-name {
+	flex: 1 1 auto;
+}
+
+.litm-camping-scene__threat-actions {
+	display: flex;
+	gap: var(--spacer-4);
+}
+
+.litm-camping-scene__icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border-radius: var(--border-radius);
+	background: transparent;
+	color: var(--color-text-subtle);
+	transition:
+		background var(--transition-fast),
+		color var(--transition-fast);
+}
+
+.litm-camping-scene__icon-btn:hover {
+	background: var(--color-overlay-white-7);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__threat-description {
+	margin: 0;
+	font-family: var(--font-serif);
+	font-style: italic;
+	color: var(--color-text-primary);
+}
+
+.litm-camping-scene__threat-consequences {
+	margin-top: var(--spacer-4);
+	padding-top: var(--spacer-4);
+	border-top: 1px solid var(--color-fieldset-border);
+}
+
+.litm-camping-scene__threat-consequences ul {
+	margin: 0;
+	padding-left: var(--spacer-16);
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-13);
+}
+
+.litm-camping-scene__threats-dropzone {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacer-4);
+	padding: var(--spacer-12);
+	border: 1px solid var(--color-fieldset-border);
+	border-radius: var(--radius-sm);
+	background: var(--color-overlay-white-3);
+	transition:
+		background var(--transition-fast),
+		border-color var(--transition-fast);
+}
+
+.litm-camping-scene__threats-dropzone.dragover {
+	background: var(--color-warm-1-10);
+	border-color: var(--color-warm-1);
+}
+
+.litm-camping-scene__threats-dropzone .hint {
+	margin: 0;
+	text-align: center;
 }

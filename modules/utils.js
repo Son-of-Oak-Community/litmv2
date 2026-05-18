@@ -258,6 +258,18 @@ export function getStoryTagSidebar() {
 }
 
 /**
+ * Resolve the Fellowship theme item on a fellowship actor.
+ * @param {Actor|null} actor
+ * @returns {Item|null}
+ */
+export function findFellowshipTheme(actor) {
+	return (
+		actor?.items?.find((i) => i.type === "theme" && i.system?.isFellowship) ??
+		null
+	);
+}
+
+/**
  * Resolve a linked-reference UUID and render the appropriate sheet.
  * Accepts JournalEntry, JournalEntryPage, or Item (action) UUIDs;
  * journal pages render their parent entry focused on the page.

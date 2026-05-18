@@ -132,7 +132,7 @@ Roll dialog `#selectionMap` is the source of truth for tag selections, not form 
 
 ### Multiplayer (Sockets)
 
-Eight socket events on `system.litmv2`:
+Eleven socket events on `system.litmv2`:
 
 | Event | Purpose |
 |-------|---------|
@@ -144,6 +144,9 @@ Eight socket events on `system.litmv2`:
 | `rejectRoll` | GM rejects roll, reopens dialog |
 | `storyTagsUpdate` | Sync story tag sidebar state |
 | `storyTagsRender` | Trigger sidebar re-render on all clients |
+| `campingOpen` | Broadcast that a camping scene was opened on one client |
+| `campingSaveOp` | Non-GM clients dispatch a named state mutation (`{ key, payload }`); GM applies it atomically against current flag |
+| `campingEnd` | Broadcast that camping was finalized + closed |
 
 ### Standalone Applications
 

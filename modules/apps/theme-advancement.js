@@ -319,7 +319,9 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		await theme.updateEmbeddedDocuments("ActiveEffect", [
 			{ _id: effectId, disabled: false },
 		]);
-		await ThemeAdvancementApp.#spendImprove(theme, {});
+		// Activating an inactive power tag counts as "adding a power tag"
+		// for nascent-theme progression (Core Book p.192).
+		await ThemeAdvancementApp.#spendImprove(theme, {}, { addedPowerTag: true });
 		this.close();
 	}
 

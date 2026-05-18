@@ -1,0 +1,107 @@
+<div class="litm-camping-scene__root{{#if isSetup}} litm-camping-scene__root--setup{{/if}}">
+	<header class="litm-camping-scene__header">
+		{{#if isSetup}}
+		<div class="litm-camping-scene__type-cards" role="radiogroup"
+			aria-label="{{localize 'LITM.Ui.camping_title'}}">
+			<button type="button"
+				class="litm-camping-scene__type-card{{#if isCamp}} active{{/if}}"
+				data-action="set-camp-type" data-type="camp"
+				role="radio" aria-checked="{{#if isCamp}}true{{else}}false{{/if}}">
+				<span class="litm-camping-scene__type-card-icon"><i class="fa-solid fa-campground" aria-hidden="true"></i></span>
+				<span class="litm-camping-scene__type-card-title">{{localize "LITM.Ui.camping_camp"}}</span>
+			</button>
+			<button type="button"
+				class="litm-camping-scene__type-card{{#unless isCamp}} active{{/unless}}"
+				data-action="set-camp-type" data-type="sojourn"
+				role="radio" aria-checked="{{#unless isCamp}}true{{else}}false{{/unless}}">
+				<span class="litm-camping-scene__type-card-icon"><i class="fa-solid fa-route" aria-hidden="true"></i></span>
+				<span class="litm-camping-scene__type-card-title">{{localize "LITM.Ui.camping_sojourn"}}</span>
+			</button>
+		</div>
+		{{#unless isCamp}}
+		<label class="litm-camping-scene__duration-field">
+			<span>{{localize "LITM.Ui.camping_duration_label"}}</span>
+			<select data-update="sojourn-duration" class="litm-camping-scene__duration">
+				<option value="days" {{#if (eq sojournDuration "days")}}selected{{/if}}>
+					{{localize "LITM.Ui.camping_duration_days"}}
+				</option>
+				<option value="weeks" {{#if (eq sojournDuration "weeks")}}selected{{/if}}>
+					{{localize "LITM.Ui.camping_duration_weeks"}}
+				</option>
+				<option value="months" {{#if (eq sojournDuration "months")}}selected{{/if}}>
+					{{localize "LITM.Ui.camping_duration_months"}}
+				</option>
+			</select>
+		</label>
+		{{/unless}}
+		{{else}}
+		{{!-- Active phase: read-only banner. Type, duration, and Power bonus
+		     were locked in at Begin Camp; the title centers them above the
+		     place-of-stay subtitle, campsite tags, and threats. --}}
+		<div class="litm-camping-scene__active-banner">
+			<h2 class="litm-camping-scene__active-title">
+				<i class="fa-solid {{#if isCamp}}fa-campground{{else}}fa-route{{/if}}" aria-hidden="true"></i>
+				{{activeTitle}}
+			</h2>
+			{{#if placeOfStay.placeOfStayName}}
+			<p class="litm-camping-scene__active-subtitle">{{placeOfStay.placeOfStayName}}</p>
+			{{/if}}
+			{{#if hasSceneStoryTags}}
+			<p class="litm-camping-scene__active-tags">
+				{{~#each sceneStoryTags~}}
+					{{~#unless @first}}, {{/unless~}}
+					<span class="litm-tag {{#if isStatus}}litm-status_tag{{/if}}">{{name}}{{#if isStatus}} {{currentTier}}{{/if}}{{#if isSingleUse}}!{{/if}}</span>
+				{{~/each~}}
+			</p>
+			{{/if}}
+		</div>
+		{{/if}}
+	</header>
+
+	<div class="litm-camping-scene__body">
+		{{#if isSetup}}
+		{{#if isGM}}
+		{{> "systems/litmv2/templates/apps/camping/camping-place-of-stay.html" placeOfStay=placeOfStay isSetup=isSetup}}
+		{{> "systems/litmv2/templates/apps/camping/camping-threats.html" threats=threats isGM=isGM}}
+		{{/if}}
+
+
+		{{#if isGM}}
+		<p class="hint litm-camping-scene__setup-hint">{{localize "LITM.Ui.camping_setup_hint"}}</p>
+		{{else}}
+		<p class="hint">{{localize "LITM.Ui.camping_setup_waiting"}}</p>
+		{{/if}}
+		{{else}}
+		{{#if hasThreats}}
+		{{> "systems/litmv2/templates/apps/camping/camping-threats.html" threats=threats isGM=isGM readOnly=true}}
+		{{/if}}
+		{{#if hasHeroes}}
+		<div class="litm-camping-scene__columns">
+			{{#each heroes}}
+			{{> "systems/litmv2/templates/apps/camping/camping-hero-column.html" .}}
+			{{/each}}
+		</div>
+		{{else}}
+		<p class="hint">{{localize "LITM.Ui.camping_no_heroes"}}</p>
+		{{/if}}
+		{{/if}}
+	</div>
+
+	<footer class="litm-camping-scene__footer">
+		<button type="button" class="litm-camping-scene__btn" data-action="cancel">{{localize "LITM.Ui.cancel"}}</button>
+		{{#if canBeginCamp}}
+		<button type="button" class="litm-camping-scene__btn litm-camping-scene__btn--primary"
+			data-action="begin-camp">
+			<i class="fa-solid {{#if isCamp}}fa-campground{{else}}fa-route{{/if}}" aria-hidden="true"></i>
+			{{localize "LITM.Ui.camping_begin"}}
+		</button>
+		{{/if}}
+		{{#if canPackUp}}
+		<button type="button" class="litm-camping-scene__btn litm-camping-scene__btn--primary"
+			data-action="pack-up">
+			<i class="fa-solid {{#if isCamp}}fa-campground{{else}}fa-route{{/if}}" aria-hidden="true"></i>
+			{{localize "LITM.Ui.camping_pack_up"}}
+		</button>
+		{{/if}}
+	</footer>
+</div>

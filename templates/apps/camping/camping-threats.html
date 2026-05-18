@@ -1,0 +1,52 @@
+<section class="litm-camping-scene__threats-section">
+	<h3 class="litm-render__section-header">{{localize "LITM.Ui.camping_threats"}}</h3>
+	{{#if threats.length}}
+	<ul class="litm-camping-scene__threats-list plain">
+		{{#each threats}}
+		<li class="litm-camping-scene__threat" data-item-id="{{id}}">
+			<header class="litm-camping-scene__threat-header">
+				<span class="litm-banner litm-camping-scene__threat-name">{{name}}</span>
+				{{#if ../isGM}}{{#unless ../readOnly}}
+				<div class="litm-camping-scene__threat-actions">
+					<button type="button" class="litm-camping-scene__icon-btn"
+						data-action="edit-threat" data-item-id="{{id}}"
+						data-tooltip="{{localize 'LITM.Ui.edit'}}">
+						<i class="fa-solid fa-pen" aria-hidden="true"></i>
+					</button>
+					<button type="button" class="litm-camping-scene__icon-btn"
+						data-action="remove-threat" data-item-id="{{id}}"
+						data-tooltip="{{localize 'LITM.Ui.remove'}}">
+						<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+					</button>
+				</div>
+				{{/unless}}{{/if}}
+			</header>
+			{{#if threat}}
+			<p class="litm-camping-scene__threat-description">{{threat}}</p>
+			{{/if}}
+			{{#if ../isGM}}
+			{{#if consequences.length}}
+			<div class="litm-camping-scene__threat-consequences">
+				<h4 class="litm-camping-scene__sub-label">{{localize "LITM.Ui.camping_threats_consequences"}}</h4>
+				<ul class="plain">
+					{{#each consequences}}
+					<li>{{this}}</li>
+					{{/each}}
+				</ul>
+			</div>
+			{{/if}}
+			{{/if}}
+		</li>
+		{{/each}}
+	</ul>
+	{{/if}}
+	{{#if isGM}}{{#unless readOnly}}
+	<div class="litm-camping-scene__threats-dropzone" data-drop-zone="threats">
+		<button type="button" class="litm-camping-scene__btn" data-action="add-threat">
+			<i class="fa-solid fa-plus" aria-hidden="true"></i>
+			{{localize "LITM.Ui.camping_threats_add"}}
+		</button>
+		<p class="hint">{{localize "LITM.Ui.camping_threats_drop_hint"}}</p>
+	</div>
+	{{/unless}}{{/if}}
+</section>

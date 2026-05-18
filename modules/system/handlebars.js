@@ -41,30 +41,21 @@ export class HandlebarsHelpers {
 }
 
 export class HandlebarsPartials {
+	// Templates referenced via `{{> "path"}}` from multiple sheets, or from
+	// chat/enricher contexts that have no ApplicationV2 lifecycle to hang a
+	// per-part `templates: []` off of. Sheet-local partials live on their
+	// owning sheet's `PARTS.<id>.templates` instead. Templates that are only
+	// invoked via top-level `renderTemplate(path, data)` are not listed --
+	// `getTemplate` lazy-loads and caches them on first call.
 	static partials = [
-		"systems/litmv2/templates/apps/loot-dialog.html",
-		"systems/litmv2/templates/chat/message.html",
-		"systems/litmv2/templates/chat/message-tooltip.html",
-		"systems/litmv2/templates/chat/moderation.html",
 		"systems/litmv2/templates/partials/play-tag.html",
 		"systems/litmv2/templates/partials/play-theme-tags.html",
 		"systems/litmv2/templates/partials/play-theme-tracks.html",
-		"systems/litmv2/templates/partials/edit-theme-tags-activatable.html",
-		"systems/litmv2/templates/partials/edit-linked-ref-controls.html",
-		"systems/litmv2/templates/partials/action-success-buttons.html",
-		"systems/litmv2/templates/chat/roll-request.html",
-		"systems/litmv2/templates/chat/action-applied.html",
-		"systems/litmv2/templates/apps/target-picker-form.html",
-		"systems/litmv2/templates/apps/roll-request-form.html",
 		"systems/litmv2/templates/partials/theme-special-improvements.html",
 		"systems/litmv2/templates/partials/theme-card-header.html",
 		"systems/litmv2/templates/partials/play-profile-img.html",
-		"systems/litmv2/templates/partials/vignette-card-edit.html",
-		"systems/litmv2/templates/partials/vignette-card-play.html",
 		"systems/litmv2/templates/partials/rating-star.html",
 		"systems/litmv2/templates/partials/control-legend.html",
-		"systems/litmv2/templates/partials/icon-fellowship-hint.html",
-		"systems/litmv2/templates/apps/welcome-overlay/wizard-footer.html",
 	];
 
 	static register() {

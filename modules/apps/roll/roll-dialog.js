@@ -44,6 +44,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		},
 		actions: {
 			sendToNarrator: LitmRollDialog.#onSendToNarrator,
+			"spend-half": LitmRollDialog.#onSpendHalf,
 			viewLinkedRef: viewLinkedRefAction,
 			viewActionCard: LitmRollDialog.#onViewActionCard,
 			toggleRollTag: LitmRollDialog.#onToggleRollTag,
@@ -81,6 +82,20 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const rollData = this.extractRollData(formData);
 		await this._createModerationRequest(rollData);
 		this.close();
+	}
+
+	static async #onSpendHalf(_event, _target) {
+		const power = this.totalPower;
+		if (power < 1) {
+			ui.notifications?.warn(t("LITM.Ui.camping_spend_half_no_power"));
+			return;
+		}
+		const half = Math.ceil(power / 2);
+		const actor = this.actor;
+		if (!actor) return;
+		await this.close();
+		const { SpendPowerApp } = await import("../spend-power.js");
+		new SpendPowerApp({ actorId: actor.id, power: half }).render(true);
 	}
 
 	/** Open the linked action's read-only embed card in a popout — the action
@@ -174,6 +189,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#cachedTotalPower = null;
 	#actionUuid = null;
 	#actionDoc = null;
+	#sojournBonus = 0;
 
 	constructor(options = {}) {
 		if (options.actorId) options.id = `litm-roll-dialog-${options.actorId}`;
@@ -229,6 +245,19 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	setType(type) {
 		if (!type) return;
 		this.type = type;
+		if (this.rendered) this.render();
+	}
+
+	/**
+	 * Configure this dialog for a camp action. Sets type="campAction" so the
+	 * template exposes the no-roll "Spend half" submit option, and adds a
+	 * sojourn bonus into the power computation (0 for camp; 1/2/3 for sojourn
+	 * by duration). Callers (the camping wizard) compute the bonus and pass it.
+	 */
+	setCampAction({ sojournBonus = 0 } = {}) {
+		this.#sojournBonus = Math.max(0, Number(sojournBonus) || 0);
+		this.#cachedTotalPower = null;
+		this.type = "campAction";
 		if (this.rendered) this.render();
 	}
 
@@ -381,7 +410,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const filtered = LitmRoll.filterTags(tags);
 		const { totalPower } = LitmRoll.calculatePower({
 			...filtered,
-			modifier: this.#modifier,
+			modifier: this.#modifier + this.#sojournBonus,
 			might: this.#might,
 		});
 		this.#cachedTotalPower = totalPower;
@@ -583,6 +612,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			isOwner,
 			title: this.rollName,
 			type: this.type,
+			isCampAction: this.type === "campAction",
+			sojournBonus: this.#sojournBonus,
 			totalPower: this.totalPower,
 			modifier: this.#modifier,
 			might: this.#might,
@@ -884,6 +915,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#sacrificeThemeId = null;
 		this.#actionUuid = null;
 		this.#actionDoc = null;
+		this.#sojournBonus = 0;
 		this.rollName = "";
 		this.type = "quick";
 		if (this.rendered) this.close();

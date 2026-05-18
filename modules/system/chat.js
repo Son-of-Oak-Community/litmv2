@@ -83,14 +83,17 @@ const FOOTER_BY_TYPE = {
 	improve: {
 		click: "open-theme-advancement",
 		labelKey: "LITM.Ui.choose_improvement",
+		icon: "fa-wand-magic-sparkles",
 	},
 	milestone: {
 		click: "open-theme-evolution",
 		labelKey: "LITM.Ui.evolve_theme",
+		icon: "fa-mountain-sun",
 	},
 	abandon: {
 		click: "open-theme-evolution",
 		labelKey: "LITM.Ui.replace_theme",
+		icon: "fa-wind",
 	},
 };
 
@@ -114,6 +117,7 @@ export async function buildTrackCompleteContent({
 			themeId,
 			footerClick: footer?.click,
 			footerLabel: hasFooter ? game.i18n.localize(footer.labelKey) : "",
+			footerIcon: footer?.icon,
 		},
 	);
 }

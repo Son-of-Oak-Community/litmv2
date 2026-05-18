@@ -15,11 +15,7 @@
 
 			{{> systems/litmv2/templates/partials/play-theme-tracks.html theme}}
 
-			<div class="flexcol gap-xs">
-				<blockquote style="margin: 0">
-					{{theme.system.quest.description}}
-				</blockquote>
-			</div>
+			<blockquote class="theme-card__quest">{{theme.system.quest.description}}</blockquote>
 
 			<div>
 				{{{ theme.system.description }}}
@@ -90,17 +86,34 @@
 	</div>
 
 	<!-- The Heroes (GM only) -->
-	{{#if party.length}}
+	{{#if isGM}}
 	<fieldset class="litm-party-overview">
-		<legend>{{localize "LITM.Ui.party_overview"}}</legend>
+		<legend>
+			<span>{{localize "LITM.Ui.party_overview"}}</span>
+			<button type="button" class="litm-party-overview__toggle plain icon"
+				data-action="togglePartyShowAll"
+				aria-pressed="{{partyShowAll}}"
+				data-tooltip="{{#if partyShowAll}}{{localize 'LITM.Ui.party_overview_show_active'}}{{else}}{{localize 'LITM.Ui.party_overview_show_all'}}{{/if}}"
+				aria-label="{{#if partyShowAll}}{{localize 'LITM.Ui.party_overview_show_active'}}{{else}}{{localize 'LITM.Ui.party_overview_show_all'}}{{/if}}">
+				<i class="fa-solid {{#if partyShowAll}}fa-users{{else}}fa-user-check{{/if}}"></i>
+			</button>
+		</legend>
+		{{#if party.length}}
 		<div class="grid-2col">
 		{{#each party as |hero|}}
-		<article class="litm-party-overview__hero">
+		<article class="litm-party-overview__hero{{#unless hero.isActive}} litm-party-overview__hero--offline{{/unless}}">
 			<header class="litm-party-overview__hero-header">
 				<img class="litm-party-overview__hero-img" src="{{hero.img}}" alt="{{hero.name}}"
 					data-action="open-hero-sheet" data-actor-id="{{hero.id}}" />
 				<div class="litm-party-overview__hero-info">
-					<h2 data-action="open-hero-sheet" data-actor-id="{{hero.id}}">{{hero.name}}</h2>
+					<h2 data-action="open-hero-sheet" data-actor-id="{{hero.id}}">
+						{{hero.name}}
+						{{#unless hero.isActive}}
+						<i class="fa-solid fa-moon litm-party-overview__offline-icon"
+							data-tooltip="{{localize 'LITM.Ui.party_overview_offline'}}"
+							aria-label="{{localize 'LITM.Ui.party_overview_offline'}}"></i>
+						{{/unless}}
+					</h2>
 					{{#if hero.description}}
 					<p class="litm-party-overview__hero-desc">{{hero.description}}</p>
 					{{/if}}
@@ -172,6 +185,11 @@
 		</article>
 		{{/each}}
 		</div>
+		{{else}}
+		<p class="litm-party-overview__empty hint">
+			{{#if partyShowAll}}{{localize "LITM.Ui.party_overview_none_linked"}}{{else}}{{localize "LITM.Ui.party_overview_none_active"}}{{/if}}
+		</p>
+		{{/if}}
 	</fieldset>
 	{{/if}}
 </section>
