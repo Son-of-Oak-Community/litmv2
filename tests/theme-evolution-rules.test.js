@@ -15,7 +15,21 @@ const effect = ({
 	name = "tag",
 	type = "power_tag",
 	isTitleTag = false,
-} = {}) => ({ id, name, type, system: { isTitleTag } });
+	disabled = false,
+	isScratched = false,
+} = {}) => ({
+	id,
+	name,
+	type,
+	disabled,
+	system: { isTitleTag, isScratched },
+});
+
+const special = ({ name = "special", isActive = true, ...rest } = {}) => ({
+	name,
+	isActive,
+	...rest,
+});
 
 const theme = ({
 	power = 0,
@@ -94,7 +108,11 @@ describe("getRevisableParts", () => {
 		const parts = getRevisableParts(
 			theme({
 				titleTag: false,
-				specials: [{ name: "Named" }, { description: "Described only" }, {}],
+				specials: [
+					special({ name: "Named" }),
+					special({ name: "", description: "Described only" }),
+					special({ name: "" }),
+				],
 			}),
 		);
 		expect(parts).toEqual([
@@ -102,6 +120,89 @@ describe("getRevisableParts", () => {
 			{ kind: "special", id: "1", name: "Described only" },
 			{ kind: "special", id: "2", name: "#3" },
 		]);
+	});
+
+	it("excludes locked (disabled) power and weakness tags", () => {
+		const theme = {
+			effects: [
+				effect({ id: "p0", name: "p0" }),
+				effect({ id: "p1", name: "p1", disabled: true }),
+				effect({ id: "w0", name: "w0", type: "weakness_tag" }),
+				effect({
+					id: "w1",
+					name: "w1",
+					type: "weakness_tag",
+					disabled: true,
+				}),
+			],
+			system: { specialImprovements: [] },
+		};
+		const parts = getRevisableParts(theme);
+		expect(parts.map((p) => p.id)).toEqual(["p0", "w0"]);
+	});
+
+	it("keeps scratched tags revisable (the tag still exists on the theme)", () => {
+		const theme = {
+			effects: [
+				effect({ id: "p0", name: "p0" }),
+				effect({ id: "p1", name: "p1", isScratched: true }),
+			],
+			system: { specialImprovements: [] },
+		};
+		const parts = getRevisableParts(theme);
+		expect(parts.map((p) => p.id)).toEqual(["p0", "p1"]);
+	});
+
+	it("excludes inactive special improvements", () => {
+		const parts = getRevisableParts(
+			theme({
+				titleTag: false,
+				specials: [
+					special({ name: "claimed" }),
+					special({ name: "unclaimed", isActive: false }),
+				],
+			}),
+		);
+		expect(parts.map((p) => p.name)).toEqual(["claimed"]);
+	});
+
+	it("preserves the unfiltered array index as the special id", () => {
+		// applyTransformation uses `Number(p.id)` to index into the *raw*
+		// theme.system.specialImprovements when renaming/trading. If an
+		// inactive entry sits earlier in the array, the surviving entries
+		// must still report their original index — otherwise renames and
+		// trades target the wrong row.
+		const parts = getRevisableParts(
+			theme({
+				titleTag: false,
+				specials: [
+					special({ name: "unclaimed-first", isActive: false }),
+					special({ name: "second" }),
+					special({ name: "third" }),
+				],
+			}),
+		);
+		expect(parts).toEqual([
+			{ kind: "special", id: "1", name: "second" },
+			{ kind: "special", id: "2", name: "third" },
+		]);
+	});
+
+	it("trade caps shrink when locked parts are excluded", () => {
+		// 5 power tags total but only 3 unlocked → 0 extras (baseline 3),
+		// even though the raw count of 5 would otherwise yield 2 extras.
+		const t = {
+			effects: [
+				effect({ id: "p0", name: "p0" }),
+				effect({ id: "p1", name: "p1" }),
+				effect({ id: "p2", name: "p2" }),
+				effect({ id: "p3", name: "p3", disabled: true }),
+				effect({ id: "p4", name: "p4", disabled: true }),
+			],
+			system: { specialImprovements: [] },
+		};
+		const caps = getTradeCaps(getRevisableParts(t));
+		expect(caps).toEqual({ power: 0, weakness: 0, special: 0 });
 	});
 });
 
@@ -121,7 +222,7 @@ describe("getTradeCaps", () => {
 				theme({
 					power: POWER_BASELINE + 2,
 					weakness: WEAKNESS_BASELINE + 1,
-					specials: [{ name: "a" }, { name: "b" }],
+					specials: [special({ name: "a" }), special({ name: "b" })],
 				}),
 			),
 		);
