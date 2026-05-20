@@ -35,6 +35,9 @@ export class BackpackSheet extends LitmItemSheet {
 		form: {
 			template: "systems/litmv2/templates/item/backpack.html",
 			scrollable: [""],
+			templates: [
+				"systems/litmv2/templates/partials/edit-linked-ref-controls.html",
+			],
 		},
 	};
 

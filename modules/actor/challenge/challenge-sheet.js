@@ -52,6 +52,10 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 		},
 		content: {
 			template: "systems/litmv2/templates/actor/challenge-content.html",
+			templates: [
+				"systems/litmv2/templates/partials/vignette-card-edit.html",
+				"systems/litmv2/templates/partials/vignette-card-play.html",
+			],
 		},
 	};
 

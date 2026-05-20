@@ -144,10 +144,11 @@ export class WelcomeOverlay {
 		}
 		WelcomeOverlay.#instance = this;
 
-		// Preload slide templates
-		await foundry.applications.handlebars.loadTemplates(
-			Object.values(SLIDE_TEMPLATES),
-		);
+		// Preload slide templates + the shared wizard-footer partial they reference.
+		await foundry.applications.handlebars.loadTemplates([
+			...Object.values(SLIDE_TEMPLATES),
+			"systems/litmv2/templates/apps/welcome-overlay/wizard-footer.html",
+		]);
 
 		this.#el = document.createElement("div");
 		this.#el.id = "litm-welcome-overlay";

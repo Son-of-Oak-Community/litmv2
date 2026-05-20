@@ -6,6 +6,7 @@ import {
 	getTradeCaps,
 	POWER_BASELINE,
 	PROMISE_MAX,
+	syntheticTradedFromCaps,
 	totalTradeCap,
 	WEAKNESS_BASELINE,
 } from "../modules/apps/theme-evolution-rules.js";
@@ -231,6 +232,23 @@ describe("getTradeCaps", () => {
 
 	it("totalTradeCap sums the kinds", () => {
 		expect(totalTradeCap({ power: 2, weakness: 1, special: 3 })).toBe(6);
+	});
+
+	it("syntheticTradedFromCaps yields one placeholder per total cap", () => {
+		const parts = syntheticTradedFromCaps({
+			power: 2,
+			weakness: 1,
+			special: 1,
+		});
+		expect(parts).toHaveLength(4);
+		for (const p of parts) expect(p.kind).toBe("synthetic");
+		expect(new Set(parts.map((p) => p.id)).size).toBe(parts.length);
+	});
+
+	it("syntheticTradedFromCaps yields an empty list for a baseline theme", () => {
+		expect(
+			syntheticTradedFromCaps({ power: 0, weakness: 0, special: 0 }),
+		).toEqual([]);
 	});
 });
 

@@ -180,9 +180,24 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		this.#cachedActors = null;
 	}
 
+	/** Re-render any open roll dialogs so scene-tag/status changes propagate. */
+	refreshRollDialogs() {
+		for (const actor of game.actors ?? []) {
+			if (!actor.sheet?.hasRollDialog) continue;
+			const dialog = actor.sheet.rollDialogInstance;
+			if (dialog?.rendered) dialog.render();
+		}
+	}
+
 	/** Synchronous pack documents — populated once `loadStoryTags()` has run. */
 	get #packStoryTags() {
 		return game.packs.get(WORLD_STORY_TAG_PACK_ID)?.contents ?? [];
+	}
+
+	/** Public read-only accessor over the scene story-tag pack effects.
+	 *  Used by the Camping app to list scene tags eligible for expiry. */
+	get sceneStoryEffects() {
+		return this.#packStoryTags;
 	}
 
 	/**

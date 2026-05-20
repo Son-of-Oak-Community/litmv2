@@ -91,6 +91,18 @@ export function totalTradeCap(caps) {
 }
 
 /**
+ * Build a placeholder traded-parts list sized to the rule cap. Used by
+ * Replace and Expand, where the SPECIFIC tags being traded don't matter
+ * (the whole theme is wiped) — only the count drives Promise math.
+ */
+export function syntheticTradedFromCaps(caps) {
+	return Array.from({ length: totalTradeCap(caps) }, (_, i) => ({
+		kind: "synthetic",
+		id: `_${i}`,
+	}));
+}
+
+/**
  * Apply Promise gain with overflow banking. The schema caps `promise`
  * at PROMISE_MAX; anything past that lives in `pendingPromise` until
  * the player resolves the Moment of Fulfillment (Core Book p.193).

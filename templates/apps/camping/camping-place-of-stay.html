@@ -1,0 +1,38 @@
+<section class="litm-camping-scene__place-of-stay">
+	<h3 class="litm-render__section-header">{{localize "LITM.Ui.camping_place_of_stay"}}</h3>
+	<div class="form-group">
+		<label>{{localize "LITM.Ui.camping_place_name"}}</label>
+		<input type="text" data-update="place-of-stay-name"
+			value="{{placeOfStay.placeOfStayName}}"
+			placeholder="{{localize 'LITM.Ui.camping_place_name_placeholder'}}">
+	</div>
+	{{#if placeOfStay.hasSceneTags}}
+	<div class="litm-camping-scene__expire">
+		<h4 class="litm-camping-scene__sub-label">{{localize "LITM.Ui.camping_scene_tags_to_expire"}}</h4>
+		<ul class="litm-camping-scene__pills plain">
+			{{#each placeOfStay.sceneTags}}
+			<li>
+				<label class="litm-camping-scene__pill{{#if markedForExpiry}} marked{{/if}}">
+					<input type="checkbox" data-update="scene-tag-expiry"
+						data-effect-id="{{id}}"
+						{{#if markedForExpiry}}checked{{/if}}>
+					<span class="litm-tag">{{name}}</span>
+				</label>
+			</li>
+			{{/each}}
+		</ul>
+	</div>
+	{{/if}}
+	<div class="form-group">
+		<label>{{localize "LITM.Ui.camping_campsite_tags"}}</label>
+		{{#if isSetup}}
+		<input type="text" data-update="campsite-tags"
+			value="{{placeOfStay.campsiteTags}}"
+			placeholder="{{localize 'LITM.Ui.camping_campsite_tags_placeholder'}}">
+		<p class="hint">{{localize "LITM.Ui.camping_campsite_tags_hint"}}</p>
+		{{else}}
+		<span class="hint">{{placeOfStay.campsiteTags}}</span>
+		<p class="hint">{{localize "LITM.Ui.camping_campsite_tags_locked_hint"}}</p>
+		{{/if}}
+	</div>
+</section>

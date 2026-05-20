@@ -5,6 +5,14 @@ export class LitmSettings {
 		return game.settings.get("litmv2", "popout_tags_sidebar");
 	}
 
+	static get partyOverviewShowAll() {
+		return game.settings.get("litmv2", "party_overview_show_all");
+	}
+
+	static setPartyOverviewShowAll(v) {
+		return game.settings.set("litmv2", "party_overview_show_all", v);
+	}
+
 	static get welcomed() {
 		return game.settings.get("litmv2", "welcomed");
 	}
@@ -180,6 +188,12 @@ export class LitmSettings {
 			hint: "LITM.Settings.popout_tags_sidebar_hint",
 			scope: "client",
 			config: true,
+			type: Boolean,
+			default: false,
+		});
+		game.settings.register("litmv2", "party_overview_show_all", {
+			scope: "client",
+			config: false,
 			type: Boolean,
 			default: false,
 		});

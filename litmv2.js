@@ -14,6 +14,7 @@ import { JourneyData } from "./modules/actor/journey/journey-data.js";
 import { LitmActor } from "./modules/actor/litm-actor.js";
 import { StoryThemeActorData } from "./modules/actor/story-theme/story-theme-actor-data.js";
 import { ApplyActionMenuApp } from "./modules/apps/apply-action-menu.js";
+import { LitmCampingScene } from "./modules/apps/camping/camping-scene.js";
 import { DoubleSix } from "./modules/apps/dice.js";
 import { LitmRoll } from "./modules/apps/roll/roll.js";
 import { LitmRollDialog } from "./modules/apps/roll/roll-dialog.js";
@@ -99,6 +100,7 @@ Hooks.once("init", () => {
 		ApplyActionMenuApp,
 		ThemeAdvancementApp,
 		ThemeEvolutionWizard,
+		LitmCampingScene,
 		ContentSources,
 		rollDialogHud: null,
 	};
@@ -164,6 +166,7 @@ Hooks.once("ready", async () => {
 	await ContentSources.loadStatusCompendium();
 
 	Sockets.registerListeners();
+	LitmCampingScene.registerSocketHooks();
 
 	// Alias game.litmv2.storyTags to the sidebar tab instance
 	game.litmv2.storyTags = ui.combat;

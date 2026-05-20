@@ -58,6 +58,9 @@ export class ThemeSheet extends LitmItemSheet {
 		form: {
 			template: "systems/litmv2/templates/item/theme.html",
 			scrollable: [""],
+			templates: [
+				"systems/litmv2/templates/partials/edit-linked-ref-controls.html",
+			],
 		},
 	};
 

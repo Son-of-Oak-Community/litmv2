@@ -36,6 +36,10 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 		},
 		content: {
 			template: "systems/litmv2/templates/actor/journey-content.html",
+			templates: [
+				"systems/litmv2/templates/partials/vignette-card-edit.html",
+				"systems/litmv2/templates/partials/vignette-card-play.html",
+			],
 		},
 	};
 

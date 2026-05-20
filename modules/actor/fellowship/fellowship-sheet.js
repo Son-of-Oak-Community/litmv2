@@ -11,6 +11,7 @@ import {
 	getThemeLevels,
 	ITEM_TYPES,
 } from "../../system/config.js";
+import { LitmSettings } from "../../system/settings.js";
 import { levelIcon, queryItemsFromPacks } from "../../utils.js";
 
 /**
@@ -90,6 +91,8 @@ export class FellowshipSheet extends LitmActorSheet {
 			browseThemes: FellowshipSheet.#onBrowseThemes,
 			"open-hero-sheet": FellowshipSheet.#onOpenHeroSheet,
 			scratchTag: FellowshipSheet.#onScratchTag,
+			openCamping: FellowshipSheet.#onOpenCamping,
+			togglePartyShowAll: FellowshipSheet.#onTogglePartyShowAll,
 		},
 		form: {
 			handler: LitmActorSheet._onSubmitActorForm,
@@ -111,11 +114,37 @@ export class FellowshipSheet extends LitmActorSheet {
 		},
 		content: {
 			template: "systems/litmv2/templates/actor/fellowship-content.html",
+			templates: [
+				"systems/litmv2/templates/partials/edit-theme-tags-activatable.html",
+			],
 		},
 	};
 
 	static PLAY_CONTENT_TEMPLATE =
 		"systems/litmv2/templates/actor/fellowship-play-content.html";
+
+	/**
+	 * Inline Make Camp button alongside the close control. Camping is GM-only,
+	 * and the fellowship is the campaign-level singleton the scene operates
+	 * against, so the header is its natural home.
+	 * @override
+	 */
+	async _renderFrame(options) {
+		const frame = await super._renderFrame(options);
+		if (!game.user.isGM) return frame;
+
+		const label = game.i18n.localize("LITM.Ui.camping_open");
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = "header-control icon fa-solid fa-campground";
+		button.dataset.action = "openCamping";
+		button.dataset.tooltip = label;
+		button.setAttribute("aria-label", label);
+
+		const close = frame.querySelector(".window-header [data-action='close']");
+		close.insertAdjacentElement("beforebegin", button);
+		return frame;
+	}
 
 	/**
 	 * Build a flat list of all roll-dialog-compatible tags for this fellowship.
@@ -150,7 +179,8 @@ export class FellowshipSheet extends LitmActorSheet {
 			.map((i) => this._prepareThemeData(i));
 
 		// Party overview data (GM only)
-		const party = game.user.isGM ? this.#buildPartyOverview() : [];
+		const showAll = LitmSettings.partyOverviewShowAll;
+		const party = game.user.isGM ? this.#buildPartyOverview(showAll) : [];
 
 		return {
 			...context,
@@ -160,25 +190,34 @@ export class FellowshipSheet extends LitmActorSheet {
 			storyThemes,
 			storyTags: this._prepareStoryTags(),
 			party,
+			partyShowAll: showAll,
+			isGM: game.user.isGM,
 		};
 	}
 
 	/**
-	 * Strip HTML from hero descriptions (presentation concern) and filter to active players.
+	 * Strip HTML from hero descriptions (presentation concern) and tag entries
+	 * with an active-player flag. When `showAll` is false, filter to active
+	 * players only; when true, return every linked hero with `isActive` set so
+	 * the template can dim offline/unassigned entries.
+	 * @param {boolean} showAll
 	 * @returns {object[]}
 	 */
-	#buildPartyOverview() {
+	#buildPartyOverview(showAll) {
 		const activePlayerCharacterIds = new Set(
 			game.users
 				.filter((u) => u.active && u.character?.type === ACTOR_TYPES.hero)
 				.map((u) => u.character.id),
 		);
-		return buildPartyOverview(this.document)
-			.filter((hero) => activePlayerCharacterIds.has(hero.id))
-			.map((hero) => ({
-				...hero,
-				description: (hero.description ?? "").replace(/<[^>]*>/g, "").trim(),
-			}));
+		const heroes = buildPartyOverview(this.document);
+		const filtered = showAll
+			? heroes
+			: heroes.filter((hero) => activePlayerCharacterIds.has(hero.id));
+		return filtered.map((hero) => ({
+			...hero,
+			description: (hero.description ?? "").replace(/<[^>]*>/g, "").trim(),
+			isActive: activePlayerCharacterIds.has(hero.id),
+		}));
 	}
 
 	/* -------------------------------------------- */
@@ -206,6 +245,23 @@ export class FellowshipSheet extends LitmActorSheet {
 	static #onOpenHeroSheet(_event, target) {
 		const actor = game.actors.get(target.dataset.actorId);
 		actor?.sheet?.render(true);
+	}
+
+	static #onOpenCamping() {
+		game.litmv2?.LitmCampingScene?.open();
+	}
+
+	/**
+	 * Toggle the GM "show offline/unassigned heroes" filter on the party overview.
+	 * Setting change triggers a re-render via the client setting onChange contract,
+	 * but we re-render explicitly so the toggle feels instant.
+	 * @private
+	 */
+	static async #onTogglePartyShowAll() {
+		await LitmSettings.setPartyOverviewShowAll(
+			!LitmSettings.partyOverviewShowAll,
+		);
+		this.render();
 	}
 
 	/**

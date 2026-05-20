@@ -37,6 +37,7 @@ import {
 	availableModes,
 	getRevisableParts,
 	getTradeCaps,
+	syntheticTradedFromCaps,
 	totalTradeCap,
 } from "./theme-evolution-rules.js";
 
@@ -229,10 +230,6 @@ async function applyExpansion({
 	// 2) Replace the target theme using the same path Replace mode takes,
 	//    so Promise math and nascent-theme setup stay rules-faithful.
 	const targetCaps = getTradeCaps(getRevisableParts(targetTheme));
-	const syntheticTraded = Array.from(
-		{ length: totalTradeCap(targetCaps) },
-		(_, i) => ({ kind: "synthetic", id: `_${i}` }),
-	);
 	await applyTransformation({
 		actor,
 		theme: targetTheme,
@@ -241,12 +238,153 @@ async function applyExpansion({
 		newThemebook,
 		newLevel,
 		newQuest,
-		traded: syntheticTraded,
+		traded: syntheticTradedFromCaps(targetCaps),
 		renames: [],
 		isFellowship: false,
 		keepOldTitleAsPower: false,
 		oldName: targetTheme.name,
 	});
+}
+
+/**
+ * Apply evolve-mode renames to surviving (non-traded) tags before any
+ * deletes, so the player's revised names land on the kept effects.
+ */
+async function applyEvolveRenames(theme, renames) {
+	const effectRenames = renames
+		.filter((r) => r.kind === "power" || r.kind === "weakness")
+		.map((r) => ({ _id: r.id, name: r.newName }));
+	if (effectRenames.length) {
+		await theme.updateEmbeddedDocuments("ActiveEffect", effectRenames);
+	}
+}
+
+/**
+ * Delete every non-title power tag and every weakness tag from the theme.
+ * Used in Replace mode where the whole theme is wiped.
+ */
+async function wipeNonTitleTagEffects(theme) {
+	const wipeIds = [...theme.effects]
+		.filter(
+			(e) =>
+				(POWER_TAG_TYPES.has(e.type) && !e.system.isTitleTag) ||
+				e.type === "weakness_tag",
+		)
+		.map((e) => e.id);
+	if (wipeIds.length) {
+		await theme.deleteEmbeddedDocuments("ActiveEffect", wipeIds);
+	}
+}
+
+/**
+ * Build the theme `update()` payload for the new shape — name, themebook,
+ * level, quest text, and reset tracks. On Evolve, preserved specials are
+ * carried forward with renames applied and traded entries dropped. On
+ * Replace, specials are cleared, the Improve track resets, and the
+ * nascent-theme counter starts at 2 (Core Book p.192).
+ */
+function buildThemeUpdate({
+	mode,
+	theme,
+	newName,
+	newThemebook,
+	newLevel,
+	newQuest,
+	traded,
+	renames,
+}) {
+	const update = {
+		name: newName,
+		"system.themebook": newThemebook,
+		"system.level": newLevel,
+		"system.quest.description": newQuest,
+		"system.quest.tracks.milestone.value": 0,
+		"system.quest.tracks.abandon.value": 0,
+	};
+
+	if (mode === "evolve") {
+		const tradedSpecialIdx = new Set(
+			traded.filter((p) => p.kind === "special").map((p) => Number(p.id)),
+		);
+		const specialRenames = new Map(
+			renames
+				.filter((r) => r.kind === "special")
+				.map((r) => [Number(r.id), r.newName]),
+		);
+		update["system.specialImprovements"] = (
+			theme.system?.specialImprovements ?? []
+		)
+			.map((si, idx) =>
+				specialRenames.has(idx) ? { ...si, name: specialRenames.get(idx) } : si,
+			)
+			.filter((_, idx) => !tradedSpecialIdx.has(idx));
+	} else {
+		update["system.specialImprovements"] = [];
+		update["system.nascentImprovements"] = 2;
+		// A replaced theme is a wholly new nascent theme, so its Improve
+		// track starts fresh. Evolution preserves the track since the
+		// theme is the same one continuing in a new direction.
+		update["system.improve.value"] = 0;
+	}
+	return update;
+}
+
+/**
+ * Seed a freshly-replaced (nascent) theme with the required starting
+ * effects: one weakness tag, and — under Inexorable Failure (Core Book
+ * p.190) — optionally the discarded theme's title preserved as a regular
+ * power tag.
+ */
+async function seedReplacementTheme(theme, { keepOldTitleAsPower, oldName }) {
+	const toCreate = [
+		weaknessTagEffect({
+			name: t("LITM.Ui.evolution_new_weakness_placeholder"),
+			isActive: true,
+		}),
+	];
+	if (keepOldTitleAsPower && oldName) {
+		toCreate.push(powerTagEffect({ name: oldName, isActive: true }));
+	}
+	await theme.createEmbeddedDocuments("ActiveEffect", toCreate);
+}
+
+/**
+ * Apply Promise gain to the hero, banking overflow in `pendingPromise`
+ * if the gain would exceed the schema cap. Fires `litm.trackCompleted`
+ * when the track crosses to 5; emits a chat card when overflow banks
+ * onto an already-full track (no crossing, but the player needs to know).
+ * Fellowship themes never reach this — the caller short-circuits.
+ */
+async function applyPromiseToActor(actor, promiseGained) {
+	const {
+		update: actorUpdate,
+		newPromise,
+		banked,
+		reachedFulfillment,
+	} = applyPromiseGain({
+		currentPromise: actor.system?.promise ?? 0,
+		currentPending: actor.system?.pendingPromise ?? 0,
+		gained: promiseGained,
+	});
+	await actor.update(actorUpdate);
+
+	if (reachedFulfillment) {
+		const trackInfo = detectTrackCompletion(
+			"system.promise",
+			newPromise,
+			actor,
+			actor,
+		);
+		if (trackInfo) {
+			Hooks.callAll("litm.trackCompleted", { actor, trackInfo });
+		}
+	} else if (banked > 0) {
+		// The track was already at the cap when this Promise arrived,
+		// so detectTrackCompletion correctly returns null (no crossing).
+		// Surface a lightweight chat card so the player isn't left to
+		// notice the +N indicator on their sheet on their own.
+		await emitPromiseBankedChat(actor, banked);
+	}
 }
 
 /**
@@ -268,139 +406,52 @@ async function applyTransformation({
 	keepOldTitleAsPower = false,
 	oldName = "",
 }) {
-	// 1) Compute Promise gain. Fellowship themes never mark Promise.
+	// Fellowship themes never mark Promise (Core Book p.193).
 	const promiseGained = isFellowship ? 0 : 1 + traded.length;
 
-	// 2) Apply evolve-mode renames to surviving tags before any deletes,
-	//    so the player's revised names land on the kept effects.
 	if (mode === "evolve" && renames.length) {
-		const effectRenames = renames
-			.filter((r) => r.kind === "power" || r.kind === "weakness")
-			.map((r) => ({ _id: r.id, name: r.newName }));
-		if (effectRenames.length) {
-			await theme.updateEmbeddedDocuments("ActiveEffect", effectRenames);
-		}
+		await applyEvolveRenames(theme, renames);
 	}
 
-	// 3) Delete traded effects (power + weakness).
-	const effectIds = traded
+	// Delete traded power/weakness effects; Replace then wipes the rest
+	// (everything but the title tag) so the new nascent theme starts clean.
+	const tradedEffectIds = traded
 		.filter((p) => p.kind === "power" || p.kind === "weakness")
 		.map((p) => p.id);
-	if (effectIds.length) {
-		await theme.deleteEmbeddedDocuments("ActiveEffect", effectIds);
+	if (tradedEffectIds.length) {
+		await theme.deleteEmbeddedDocuments("ActiveEffect", tradedEffectIds);
 	}
-
-	// 3) On replace: also delete remaining power and weakness effects
-	//    (everything except the title tag) and clear special improvements.
 	if (mode === "replace") {
-		const wipeIds = [...theme.effects]
-			.filter(
-				(e) =>
-					(POWER_TAG_TYPES.has(e.type) && !e.system.isTitleTag) ||
-					e.type === "weakness_tag",
-			)
-			.map((e) => e.id);
-		if (wipeIds.length) {
-			await theme.deleteEmbeddedDocuments("ActiveEffect", wipeIds);
-		}
+		await wipeNonTitleTagEffects(theme);
 	}
 
-	// 4) Build the theme update payload. Title-tag auto-sync runs off
-	//    the `name` change.
-	const update = {
-		name: newName,
-		"system.themebook": newThemebook,
-		"system.level": newLevel,
-		"system.quest.description": newQuest,
-		"system.quest.tracks.milestone.value": 0,
-		"system.quest.tracks.abandon.value": 0,
-	};
-
-	if (mode === "evolve") {
-		const tradedSpecialIdx = new Set(
-			traded.filter((p) => p.kind === "special").map((p) => Number(p.id)),
-		);
-		const specialRenames = new Map(
-			renames
-				.filter((r) => r.kind === "special")
-				.map((r) => [Number(r.id), r.newName]),
-		);
-		const nextSpecials = (theme.system?.specialImprovements ?? [])
-			.map((si, idx) =>
-				specialRenames.has(idx) ? { ...si, name: specialRenames.get(idx) } : si,
-			)
-			.filter((_, idx) => !tradedSpecialIdx.has(idx));
-		update["system.specialImprovements"] = nextSpecials;
-	} else {
-		update["system.specialImprovements"] = [];
-		update["system.nascentImprovements"] = 2;
-		// A replaced theme is a wholly new nascent theme, so its Improve
-		// track starts fresh. Evolution preserves the track since the
-		// theme is the same one continuing in a new direction.
-		update["system.improve.value"] = 0;
-	}
-
+	// Apply the theme shape update. Title-tag auto-sync (item-hooks.js)
+	// runs off the `name` change.
+	const update = buildThemeUpdate({
+		mode,
+		theme,
+		newName,
+		newThemebook,
+		newLevel,
+		newQuest,
+		traded,
+		renames,
+	});
 	await theme.update(update);
 
-	// 5) Replace mode: create a new weakness tag effect (one weakness is
-	//    required for a nascent theme).
 	if (mode === "replace") {
-		await theme.createEmbeddedDocuments("ActiveEffect", [
-			weaknessTagEffect({
-				name: t("LITM.Ui.evolution_new_weakness_placeholder"),
-				isActive: true,
-			}),
-		]);
+		await seedReplacementTheme(theme, { keepOldTitleAsPower, oldName });
 	}
 
-	// 5b) Inexorable Failure (Core Book p.190): when both Milestone and
-	//     Abandon tracks were full, the player may keep the old title tag
-	//     as a regular power tag on the new theme. Create it as an inactive
-	//     extra power tag tied to the new theme.
-	if (keepOldTitleAsPower && oldName) {
-		await theme.createEmbeddedDocuments("ActiveEffect", [
-			powerTagEffect({ name: oldName, isActive: true }),
-		]);
-	}
-
-	// 6) Mark Promise on the hero. Per Core Book p.193, reaching 5 triggers
-	//    a Moment of Fulfillment; once resolved, the track resets and "any
-	//    remaining promise" is marked as usual. The schema caps `promise`
-	//    at 5 — we bank the overflow in `pendingPromise`, and the hero
-	//    sheet's MoF-entry handler picks it up when the player resolves.
+	// Mark Promise on the hero. Per Core Book p.193, reaching 5 triggers
+	// a Moment of Fulfillment; once resolved, the track resets and "any
+	// remaining promise" is marked as usual. The schema caps `promise`
+	// at 5 — we bank overflow in `pendingPromise`, and the hero sheet's
+	// MoF-entry handler picks it up when the player resolves.
 	if (promiseGained > 0) {
-		const {
-			update: actorUpdate,
-			newPromise,
-			banked,
-			reachedFulfillment,
-		} = applyPromiseGain({
-			currentPromise: actor.system?.promise ?? 0,
-			currentPending: actor.system?.pendingPromise ?? 0,
-			gained: promiseGained,
-		});
-		await actor.update(actorUpdate);
-
-		if (reachedFulfillment) {
-			const trackInfo = detectTrackCompletion(
-				"system.promise",
-				newPromise,
-				actor,
-				actor,
-			);
-			if (trackInfo) {
-				Hooks.callAll("litm.trackCompleted", { actor, trackInfo });
-			}
-		} else if (banked > 0) {
-			// The track was already at the cap when this Promise arrived,
-			// so detectTrackCompletion correctly returns null (no crossing).
-			// Surface a lightweight chat card so the player isn't left to
-			// notice the +N indicator on their sheet on their own.
-			await emitPromiseBankedChat(actor, banked);
-		}
+		await applyPromiseToActor(actor, promiseGained);
 	}
 
-	// 7) Surface the standard advancement hook so module authors can react.
 	Hooks.callAll("litm.themeAdvanced", actor, theme, {
 		...update,
 		litmEvolution: { mode, promiseGained, tradedCount: traded.length },
@@ -413,6 +464,162 @@ async function applyTransformation({
 	ui.notifications?.info(
 		game.i18n.format(msgKey, { theme: newName, actor: actor.name }),
 	);
+}
+
+/**
+ * Group themebooks by Might tier (origin/adventure/greatness/variable)
+ * for the new-theme dropdown. Books with an unrecognized tier fall into
+ * an "Other" bucket at the end so they aren't silently dropped.
+ */
+function buildThemebookGroups(themebooks) {
+	const tierOrder = [...getThemeLevels(), "variable"];
+	const buckets = new Map(tierOrder.map((k) => [k, []]));
+	const ungrouped = [];
+	for (const tb of themebooks) {
+		const bucket = buckets.get(tb.themeLevel);
+		if (bucket) bucket.push(tb);
+		else ungrouped.push(tb);
+	}
+	const sortByLabel = (a, b) => a.label.localeCompare(b.label);
+	const groups = tierOrder
+		.map((tier) => ({
+			tier,
+			label: t(`LITM.Terms.${tier}`) || tier,
+			options: buckets
+				.get(tier)
+				.sort(sortByLabel)
+				.map((tb) => ({ value: tb.name, label: tb.label })),
+		}))
+		.filter((g) => g.options.length > 0);
+	if (ungrouped.length) {
+		groups.push({
+			tier: "",
+			label: t("LITM.Ui.evolution_themebook_other"),
+			options: ungrouped
+				.sort(sortByLabel)
+				.map((tb) => ({ value: tb.name, label: tb.label })),
+		});
+	}
+	return groups;
+}
+
+/**
+ * Build the Expand-mode context: the hero's other replaceable themes
+ * and, for each, the count of extras the rules would trade in. The
+ * recompute step reads `expandTargetExtras` keyed by target id so the
+ * live preview matches what `applyExpansion` will actually apply.
+ */
+function buildExpandContext(actor, currentThemeId) {
+	const otherThemes = actor.items
+		.filter(
+			(i) =>
+				i.type === "theme" &&
+				i.id !== currentThemeId &&
+				!i.system?.isFellowship,
+		)
+		.map((th) => ({ id: th.id, name: th.name }));
+	const expandTargetExtras = Object.fromEntries(
+		otherThemes.map((ot) => {
+			const target = actor.items.get(ot.id);
+			return [
+				ot.id,
+				target ? totalTradeCap(getTradeCaps(getRevisableParts(target))) : 0,
+			];
+		}),
+	);
+	return { otherThemes, expandTargetExtras };
+}
+
+/**
+ * Resolve the traded-parts and renames lists from form data for the
+ * non-expand modes. Replace synthesizes a placeholder list sized to the
+ * rule cap (specific tags don't matter — a separate wipe step handles
+ * deletion); Evolve reads explicit per-tag checkbox state.
+ */
+function resolveTradedAndRenames({ mode, fd, allRevisable }) {
+	let traded;
+	if (mode === "replace") {
+		traded = syntheticTradedFromCaps(getTradeCaps(allRevisable));
+	} else {
+		traded = allRevisable.filter(
+			(part) => !!fd[`trade-${part.kind}-${part.id}`],
+		);
+	}
+
+	const tradedKeys = new Set(traded.map((p) => `${p.kind}-${p.id}`));
+	const renames =
+		mode === "evolve"
+			? allRevisable
+					.filter((p) => !tradedKeys.has(`${p.kind}-${p.id}`))
+					.map((p) => {
+						const next = `${fd[`rename-${p.kind}-${p.id}`] ?? ""}`.trim();
+						return next && next !== p.name ? { ...p, newName: next } : null;
+					})
+					.filter(Boolean)
+			: [];
+
+	return { traded, renames };
+}
+
+/**
+ * Mark the originating chat message as resolved so its open-wizard
+ * footer button is hidden on the next render. No-op when the wizard
+ * was opened outside of a chat click, or when the current user is
+ * neither the author nor a GM (Foundry blocks setFlag in that case;
+ * the chat-hook hides the button for non-authors anyway).
+ */
+async function markSourceMessageResolved(messageId) {
+	if (!messageId) return;
+	const msg = game.messages?.get(messageId);
+	if (!msg) return;
+	if (!msg.isAuthor && !game.user.isGM) return;
+	await msg.setFlag("litmv2", "evolutionResolved", true);
+}
+
+/**
+ * Handle the Expand submit path: validate target theme + rewritten
+ * quest, then apply. Returns true if the submit was handled (success
+ * or validation failure), false to fall through to evolve/replace.
+ */
+async function submitExpand({
+	actor,
+	theme,
+	fd,
+	newName,
+	newThemebook,
+	newLevel,
+	newQuest,
+	messageId,
+	close,
+}) {
+	const targetThemeId = `${fd.expandTarget ?? ""}`.trim();
+	const targetTheme = actor.items.get(targetThemeId);
+	if (!targetTheme) {
+		ui.notifications?.warn(t("LITM.Ui.evolution_expand_target_required"));
+		return;
+	}
+	if (newName.toLowerCase() === targetTheme.name.toLowerCase()) {
+		ui.notifications?.warn(t("LITM.Ui.evolution_title_must_change"));
+		return;
+	}
+	const newCurrentQuest = `${fd.thisQuest ?? ""}`.trim();
+	if (!newCurrentQuest) {
+		ui.notifications?.warn(t("LITM.Ui.evolution_expand_quest_required"));
+		return;
+	}
+
+	await applyExpansion({
+		actor,
+		currentTheme: theme,
+		targetTheme,
+		newCurrentQuest,
+		newName,
+		newThemebook,
+		newLevel,
+		newQuest,
+	});
+	await markSourceMessageResolved(messageId);
+	close();
 }
 
 export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -493,40 +700,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			});
 		}
 
-		// Group themebooks by their Might tier (theme_level on ThemebookData:
-		// origin, adventure, greatness, or "variable") so the player sees at
-		// a glance which Might each option implies. "Variable" themebooks
-		// (Companion, etc.) are tier-agnostic and get their own group at the
-		// end; anything else falls into "Other".
-		const tierOrder = [...getThemeLevels(), "variable"];
-		const buckets = new Map(tierOrder.map((k) => [k, []]));
-		const ungrouped = [];
-		for (const tb of this._themebooks) {
-			const bucket = buckets.get(tb.themeLevel);
-			if (bucket) bucket.push(tb);
-			else ungrouped.push(tb);
-		}
-		const sortByLabel = (a, b) => a.label.localeCompare(b.label);
-		const themebookGroups = tierOrder
-			.map((tier) => ({
-				tier,
-				label: t(`LITM.Terms.${tier}`) || tier,
-				options: buckets
-					.get(tier)
-					.sort(sortByLabel)
-					.map((tb) => ({ value: tb.name, label: tb.label })),
-			}))
-			.filter((g) => g.options.length > 0);
-		if (ungrouped.length) {
-			themebookGroups.push({
-				tier: "",
-				label: t("LITM.Ui.evolution_themebook_other"),
-				options: ungrouped
-					.sort(sortByLabel)
-					.map((tb) => ({ value: tb.name, label: tb.label })),
-			});
-		}
-
+		const themebookGroups = buildThemebookGroups(this._themebooks);
 		const levels = getThemeLevels().map((key) => ({
 			value: key,
 			label: t(`LITM.Terms.${key}`) || key,
@@ -537,33 +711,15 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		const showModeSelect = milestoneFull && abandonFull;
 		const revisable = getRevisableParts(theme);
 		const tradeCaps = getTradeCaps(revisable);
-		const totalCap = tradeCaps.power + tradeCaps.weakness + tradeCaps.special;
+		const totalCap = totalTradeCap(tradeCaps);
 
 		// Expand (Core Book p.190) is an alternative to Evolve: keep this
 		// theme largely as-is and instead replace one of the hero's OTHER
 		// themes. Only offered when this theme is eligible to evolve
 		// (Milestone full) and the hero has another non-fellowship theme.
-		const otherThemes = actor.items
-			.filter(
-				(i) =>
-					i.type === "theme" &&
-					i.id !== this.themeId &&
-					!i.system?.isFellowship,
-			)
-			.map((t) => ({ id: t.id, name: t.name }));
-		// For each potential expand target, precompute the number of
-		// "extras" the rules will trade in (the same value applyExpansion
-		// passes to applyTransformation). The recompute step on the live
-		// form reads this map keyed by target id so the preview matches
-		// what actually applies on confirm.
-		const expandTargetExtras = Object.fromEntries(
-			otherThemes.map((ot) => {
-				const target = actor.items.get(ot.id);
-				return [
-					ot.id,
-					target ? totalTradeCap(getTradeCaps(getRevisableParts(target))) : 0,
-				];
-			}),
+		const { otherThemes, expandTargetExtras } = buildExpandContext(
+			actor,
+			this.themeId,
 		);
 		const expandAvailable =
 			!isFellowship && milestoneFull && otherThemes.length > 0;
@@ -664,42 +820,18 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			return;
 		}
 
-		// Expand mode targets a different theme; validation pivots on that.
 		if (mode === "expand") {
-			const targetThemeId = `${fd.expandTarget ?? ""}`.trim();
-			const targetTheme = actor.items.get(targetThemeId);
-			if (!targetTheme) {
-				ui.notifications?.warn(t("LITM.Ui.evolution_expand_target_required"));
-				return;
-			}
-			if (newName.toLowerCase() === targetTheme.name.toLowerCase()) {
-				ui.notifications?.warn(t("LITM.Ui.evolution_title_must_change"));
-				return;
-			}
-			const newCurrentQuest = `${fd.thisQuest ?? ""}`.trim();
-			if (!newCurrentQuest) {
-				ui.notifications?.warn(t("LITM.Ui.evolution_expand_quest_required"));
-				return;
-			}
-
-			await applyExpansion({
+			return submitExpand({
 				actor,
-				currentTheme: theme,
-				targetTheme,
-				newCurrentQuest,
+				theme,
+				fd,
 				newName,
 				newThemebook,
 				newLevel,
 				newQuest,
+				messageId: this.messageId,
+				close: () => this.close(),
 			});
-
-			if (this.messageId) {
-				const msg = game.messages?.get(this.messageId);
-				await msg?.setFlag("litmv2", "evolutionResolved", true);
-			}
-
-			this.close();
-			return;
 		}
 
 		// The new title tag must differ from the current one (Core Book p.189
@@ -721,35 +853,11 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		const keepOldTitleAsPower = !!fd.keepOldTitleAsPower;
 
 		const allRevisable = getRevisableParts(theme);
-		let traded;
-		if (mode === "replace") {
-			// Replace wipes the whole theme — the SPECIFIC tags don't matter
-			// for deletion (a separate wipe step handles that). Synthesize a
-			// traded-list sized to the rule cap so Promise math is correct.
-			const caps = getTradeCaps(allRevisable);
-			traded = Array.from(
-				{ length: caps.power + caps.weakness + caps.special },
-				(_, i) => ({ kind: "synthetic", id: `_${i}` }),
-			);
-		} else {
-			traded = allRevisable.filter(
-				(part) => !!fd[`trade-${part.kind}-${part.id}`],
-			);
-		}
-
-		// Renames only apply on evolve. Skip parts being traded (they're
-		// about to be deleted anyway) and only collect actual changes.
-		const tradedKeys = new Set(traded.map((p) => `${p.kind}-${p.id}`));
-		const renames =
-			mode === "evolve"
-				? allRevisable
-						.filter((p) => !tradedKeys.has(`${p.kind}-${p.id}`))
-						.map((p) => {
-							const next = `${fd[`rename-${p.kind}-${p.id}`] ?? ""}`.trim();
-							return next && next !== p.name ? { ...p, newName: next } : null;
-						})
-						.filter(Boolean)
-				: [];
+		const { traded, renames } = resolveTradedAndRenames({
+			mode,
+			fd,
+			allRevisable,
+		});
 
 		await applyTransformation({
 			actor,
@@ -765,14 +873,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			keepOldTitleAsPower,
 			oldName: theme.name,
 		});
-
-		// Mark the source chat card resolved so its button is hidden on the
-		// next render. No-op when opened outside of a chat-card click.
-		if (this.messageId) {
-			const msg = game.messages?.get(this.messageId);
-			await msg?.setFlag("litmv2", "evolutionResolved", true);
-		}
-
+		await markSourceMessageResolved(this.messageId);
 		this.close();
 	}
 }

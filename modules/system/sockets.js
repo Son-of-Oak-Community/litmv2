@@ -37,6 +37,7 @@ export class Sockets {
 		this.#registerRollUpdateListener();
 		this.#registerRollModerationListeners();
 		this.#registerStoryTagsListeners();
+		this.#registerCampingListeners();
 	}
 
 	static #registerRollUpdateListener() {
@@ -103,6 +104,18 @@ export class Sockets {
 					if (dialog?.rendered) dialog.render();
 				});
 			}
+		});
+	}
+
+	static #registerCampingListeners() {
+		Sockets.on("campingOpen", () => {
+			Hooks.callAll("litm.camping.open");
+		});
+		Sockets.on("campingSaveOp", ({ data: { key, payload } }) => {
+			Hooks.callAll("litm.camping.saveOp", { key, payload });
+		});
+		Sockets.on("campingEnd", () => {
+			Hooks.callAll("litm.camping.end");
 		});
 	}
 }

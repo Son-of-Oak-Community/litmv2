@@ -55,6 +55,7 @@ export class HeroSheet extends LitmActorSheet {
 			adjustProgress: LitmActorSheet._onAdjustProgress,
 			openThemeAdvancement: HeroSheet.#onOpenThemeAdvancement,
 			toggleTier: { handler: HeroSheet.#onToggleTier, buttons: [0, 2] },
+			openCamping: HeroSheet.#onOpenCamping,
 		},
 		form: {
 			handler: HeroSheet.#onSubmitForm,
@@ -74,7 +75,13 @@ export class HeroSheet extends LitmActorSheet {
 		description: {
 			template: "systems/litmv2/templates/parts/description.html",
 		},
-		content: { template: "systems/litmv2/templates/actor/hero-content.html" },
+		content: {
+			template: "systems/litmv2/templates/actor/hero-content.html",
+			templates: [
+				"systems/litmv2/templates/partials/edit-theme-tags-activatable.html",
+				"systems/litmv2/templates/partials/icon-fellowship-hint.html",
+			],
+		},
 	};
 
 	static PLAY_CONTENT_TEMPLATE =
@@ -90,22 +97,37 @@ export class HeroSheet extends LitmActorSheet {
 	 */
 	async _renderFrame(options) {
 		const frame = await super._renderFrame(options);
-		if (!this.document.isOwner) return frame;
-
-		const label = game.i18n.localize("LITM.Actions.app_title");
-		const button = document.createElement("button");
-		button.type = "button";
-		button.className = "header-control icon fa-solid fa-scroll";
-		button.dataset.action = "openActionsApp";
-		button.dataset.tooltip = label;
-		button.setAttribute("aria-label", label);
-
-		// Sit alongside the copyUuid/mode-toggle slot (DocumentSheetV2 inserts
-		// copyUuid before close; _renderModeToggle later replaces it). Inserting
-		// before close keeps the actions button adjacent to the mode toggle and
-		// close as the rightmost control.
 		const close = frame.querySelector(".window-header [data-action='close']");
-		close.insertAdjacentElement("beforebegin", button);
+
+		if (this.document.isOwner) {
+			const label = game.i18n.localize("LITM.Actions.app_title");
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "header-control icon fa-solid fa-scroll";
+			button.dataset.action = "openActionsApp";
+			button.dataset.tooltip = label;
+			button.setAttribute("aria-label", label);
+
+			// Sit alongside the copyUuid/mode-toggle slot (DocumentSheetV2 inserts
+			// copyUuid before close; _renderModeToggle later replaces it). Inserting
+			// before close keeps the actions button adjacent to the mode toggle and
+			// close as the rightmost control.
+			close.insertAdjacentElement("beforebegin", button);
+		}
+
+		// Camping button falls back here when fellowship is disabled (no
+		// fellowship sheet to host it). GM-only since the scene is a GM tool.
+		if (game.user.isGM && !LitmSettings.useFellowship) {
+			const campLabel = game.i18n.localize("LITM.Ui.camping_open");
+			const campBtn = document.createElement("button");
+			campBtn.type = "button";
+			campBtn.className = "header-control icon fa-solid fa-campground";
+			campBtn.dataset.action = "openCamping";
+			campBtn.dataset.tooltip = campLabel;
+			campBtn.setAttribute("aria-label", campLabel);
+			close.insertAdjacentElement("beforebegin", campBtn);
+		}
+
 		return frame;
 	}
 
@@ -138,6 +160,10 @@ export class HeroSheet extends LitmActorSheet {
 		const app = this.actionsApp;
 		if (app.rendered) app.close();
 		else app.render(true);
+	}
+
+	static #onOpenCamping() {
+		game.litmv2?.LitmCampingScene?.open();
 	}
 
 	/**
