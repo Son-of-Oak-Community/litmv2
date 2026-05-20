@@ -116,6 +116,17 @@ export class HeroData extends LimitsMixin(
 				max: 5,
 				integer: true,
 			}),
+			// Promise that overflowed past a Moment of Fulfillment trigger and
+			// hasn't been applied yet. Per Core Book p.193: "Reset the track
+			// to zero, and mark any remaining promise as usual." The wizard
+			// banks the overflow here; the next Mof entry on the sheet resets
+			// the track and re-applies pending (potentially cascading another
+			// MoF if pending fills a fresh track).
+			pendingPromise: new fields.NumberField({
+				initial: 0,
+				min: 0,
+				integer: true,
+			}),
 			mof: new fields.ArrayField(
 				new fields.SchemaField({
 					name: new fields.StringField({ initial: "" }),

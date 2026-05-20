@@ -35,6 +35,16 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 					integer: true,
 				}),
 			}),
+			// Count of pending nascent-theme power-tag adds (Core Book p.192).
+			// Set to 2 by ThemeEvolutionWizard on replacement; the next two
+			// Improve advancements on this theme must add a power tag, after
+			// which it behaves as a normal theme again.
+			nascentImprovements: new fields.NumberField({
+				initial: 0,
+				min: 0,
+				max: 2,
+				integer: true,
+			}),
 			quest: new fields.SchemaField({
 				description: new fields.StringField({
 					initial: "",

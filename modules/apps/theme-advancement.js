@@ -136,6 +136,7 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		);
 
 		const improveValue = theme.system?.improve?.value || 0;
+		const nascentImprovements = theme.system?.nascentImprovements || 0;
 
 		return {
 			actorId: this.actorId,
@@ -152,6 +153,8 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			powerQuestionTexts,
 			weaknessQuestionTexts,
 			canSelect: improveValue >= 3,
+			nascentImprovements,
+			restrictedToPowerTag: nascentImprovements > 0,
 		};
 	}
 
@@ -173,9 +176,19 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 
 	/**
 	 * Spend improvement track: reset to 0 and fire the advancement hook.
+	 * If the theme is nascent and this improvement added a power tag, also
+	 * decrement the nascent counter (Core Book p.192).
 	 */
-	static async #spendImprove(theme, updateData = {}) {
+	static async #spendImprove(
+		theme,
+		updateData = {},
+		{ addedPowerTag = false } = {},
+	) {
 		updateData["system.improve.value"] = 0;
+		const nascent = theme.system?.nascentImprovements || 0;
+		if (addedPowerTag && nascent > 0) {
+			updateData["system.nascentImprovements"] = nascent - 1;
+		}
 		await theme.update(updateData);
 		Hooks.callAll("litm.themeAdvanced", theme.actor, theme, updateData);
 	}
@@ -270,7 +283,7 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		await theme.createEmbeddedDocuments("ActiveEffect", [
 			factory({ name, isActive: true, question }),
 		]);
-		await ThemeAdvancementApp.#spendImprove(theme, {});
+		await ThemeAdvancementApp.#spendImprove(theme, {}, { addedPowerTag: true });
 		this.close();
 	}
 

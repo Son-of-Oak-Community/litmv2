@@ -20,6 +20,7 @@ import { LitmRollDialog } from "./modules/apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "./modules/apps/spend-power.js";
 import { StoryTagSidebar } from "./modules/apps/story-tags/story-tag-sidebar.js";
 import { ThemeAdvancementApp } from "./modules/apps/theme-advancement.js";
+import { ThemeEvolutionWizard } from "./modules/apps/theme-evolution.js";
 import { WelcomeOverlay } from "./modules/apps/welcome/welcome-overlay.js";
 import { SuperCheckbox } from "./modules/components/super-checkbox.js";
 import { LitmTokenHUD } from "./modules/hud/litm-token-hud.js";
@@ -67,7 +68,8 @@ Hooks.once("init", () => {
 	 * - `LitmRoll`, `LitmRollDialog` — replaceable roll classes; combine with
 	 *   `CONFIG.litmv2.roll.{formula,resolver}` for third-party roll customisation
 	 * - `StoryTagApp`, `SpendPowerApp`, `ApplyActionMenuApp`,
-	 *   `ThemeAdvancementApp`, `WelcomeOverlay` — replaceable app classes
+	 *   `ThemeAdvancementApp`, `ThemeEvolutionWizard`, `WelcomeOverlay` —
+	 *   replaceable app classes
 	 * - `ContentSources` — compendium loading and status seeding entry point
 	 * - `storyTags` — set at ready time to the sidebar tab instance
 	 * - `rollDialogHud` — mutable reference to the active roll-dialog HUD
@@ -96,6 +98,7 @@ Hooks.once("init", () => {
 		SpendPowerApp,
 		ApplyActionMenuApp,
 		ThemeAdvancementApp,
+		ThemeEvolutionWizard,
 		ContentSources,
 		rollDialogHud: null,
 	};

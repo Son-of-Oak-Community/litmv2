@@ -15,6 +15,12 @@
 				</button>
 				{{/progress-buttons}}
 			</div>
+			{{#if source.system.pendingPromise}}
+			<span class="litm--promise-pending"
+				data-tooltip="{{localize 'LITM.Ui.evolution_promise_pending_tooltip'}}">
+				+{{source.system.pendingPromise}}
+			</span>
+			{{/if}}
 		</div>
 		{{else if (eq type "challenge")}}
 		<div class="challenge-meta">

@@ -14,7 +14,11 @@
 		</div>
 	</header>
 
-	<fieldset>
+	{{#if restrictedToPowerTag}}
+	<p class="hint">{{localize "LITM.Ui.nascent_must_add_power_tag"}}</p>
+	{{/if}}
+
+	<fieldset {{#if restrictedToPowerTag}}disabled{{/if}}>
 		<legend>{{localize "LITM.Ui.special_improvements"}}</legend>
 		{{#if canSelect}}
 		{{#if inactiveSpecialImprovements.length}}
@@ -82,7 +86,7 @@
 		{{/if}}
 	</fieldset>
 
-	<fieldset>
+	<fieldset {{#if restrictedToPowerTag}}disabled{{/if}}>
 		<legend>{{localize "LITM.Tags.weakness_tags"}}</legend>
 		{{#if canSelect}}
 		{{#if inactiveWeaknessTags.length}}

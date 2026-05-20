@@ -70,6 +70,8 @@ export function detectTrackCompletion(attrib, newValue, doc, actor) {
 					track: game.i18n.localize(trackKey),
 				}),
 				type: isMilestone ? "milestone" : "abandon",
+				actorId: doc.parent?.id ?? actor.id,
+				themeId: doc.id,
 			};
 		}
 	}
@@ -77,12 +79,29 @@ export function detectTrackCompletion(attrib, newValue, doc, actor) {
 	return null;
 }
 
+const FOOTER_BY_TYPE = {
+	improve: {
+		click: "open-theme-advancement",
+		labelKey: "LITM.Ui.choose_improvement",
+	},
+	milestone: {
+		click: "open-theme-evolution",
+		labelKey: "LITM.Ui.evolve_theme",
+	},
+	abandon: {
+		click: "open-theme-evolution",
+		labelKey: "LITM.Ui.replace_theme",
+	},
+};
+
 export async function buildTrackCompleteContent({
 	text,
 	type,
 	actorId,
 	themeId,
 }) {
+	const footer = FOOTER_BY_TYPE[type];
+	const hasFooter = !!(footer && actorId && themeId);
 	return foundry.applications.handlebars.renderTemplate(
 		"systems/litmv2/templates/chat/track-complete.html",
 		{
@@ -90,10 +109,11 @@ export async function buildTrackCompleteContent({
 			type,
 			icon: TRACK_ICONS[type],
 			label: game.i18n.localize(TRACK_LABEL_KEYS[type]),
-			hasFooter: type === "improve" && actorId && themeId,
+			hasFooter,
 			actorId,
 			themeId,
-			chooseLabel: game.i18n.localize("LITM.Ui.choose_improvement"),
+			footerClick: footer?.click,
+			footerLabel: hasFooter ? game.i18n.localize(footer.labelKey) : "",
 		},
 	);
 }

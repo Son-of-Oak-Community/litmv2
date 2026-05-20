@@ -2,6 +2,7 @@ import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
 import { ThemeAdvancementApp } from "../../apps/theme-advancement.js";
+import { ThemeEvolutionWizard } from "../../apps/theme-evolution.js";
 import { WelcomeOverlay } from "../../apps/welcome/welcome-overlay.js";
 import {
 	getAllowedVerbs,
@@ -193,6 +194,14 @@ async function _handleOpenThemeAdvancement(target) {
 	new ThemeAdvancementApp({ actorId, themeId }).render(true);
 }
 
+async function _handleOpenThemeEvolution(target) {
+	const { actorId, themeId } = target.dataset;
+	if (!actorId || !themeId) return;
+	const messageId = target.closest(".chat-message")?.dataset.messageId;
+	const Wizard = game.litmv2?.ThemeEvolutionWizard ?? ThemeEvolutionWizard;
+	new Wizard({ actorId, themeId, messageId }).render(true);
+}
+
 function _handleViewActionRef(target) {
 	return viewLinkedRefAction(null, target);
 }
@@ -257,6 +266,7 @@ const CLICK_HANDLERS = {
 	"complete-sacrifice": _handleCompleteSacrifice,
 	"reject-moderation": _handleRejectModeration,
 	"open-theme-advancement": _handleOpenThemeAdvancement,
+	"open-theme-evolution": _handleOpenThemeEvolution,
 	"action-view-ref": _handleViewActionRef,
 	"action-open-consequences": _handleOpenApplyConsequences,
 	"take-roll-request": _handleTakeRollRequest,
@@ -426,12 +436,21 @@ function onRenderChatMessage(app, html, _data) {
 		}
 	}
 
-	// Hide theme advancement button for non-owners
-	const advanceBtn = element.querySelector(
-		"[data-click='open-theme-advancement']",
+	// Hide theme advancement / evolution buttons for non-owners
+	for (const click of ["open-theme-advancement", "open-theme-evolution"]) {
+		const btn = element.querySelector(`[data-click='${click}']`);
+		if (btn && !app.isAuthor)
+			btn.closest(".litm-track-complete__footer")?.remove();
+	}
+
+	// Hide the evolution button once the wizard has resolved this card so
+	// the same chat message can't open the wizard a second time.
+	const evolveBtn = element.querySelector(
+		"[data-click='open-theme-evolution']",
 	);
-	if (advanceBtn && !app.isAuthor)
-		advanceBtn.closest(".litm-track-complete__footer")?.remove();
+	if (evolveBtn && app.getFlag("litmv2", "evolutionResolved")) {
+		evolveBtn.closest(".litm-track-complete__footer")?.remove();
+	}
 
 	// Hide react button from users who don't own the target actor
 	const reactBtn = element.querySelector("[data-click='react']");
