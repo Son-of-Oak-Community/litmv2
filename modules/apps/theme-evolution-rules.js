@@ -26,19 +26,30 @@ export function availableModes(theme) {
 
 /**
  * Build the list of *revisable* parts: every non-title power tag, every
- * weakness tag, and every Special Improvement. All are tradable — the
- * Core Book rule "power tags beyond the third / weakness tags beyond the
- * first" caps the COUNT, not which specific tags. The player chooses;
- * the wizard enforces the cap via {@link getTradeCaps} and live UI.
+ * weakness tag, and every Special Improvement that is currently active
+ * (unlocked) on the theme. Locked tags and unclaimed specials don't
+ * exist in the fiction yet, so they're invisible to the wizard — they
+ * neither cost Promise nor appear as rename / trade options. Scratched
+ * tags are still part of the theme (just temporarily unavailable) and
+ * remain revisable. All listed parts are tradable; the Core Book rule
+ * "power tags beyond the third / weakness tags beyond the first" caps
+ * the COUNT, not which specific tags. The player chooses; the wizard
+ * enforces the cap via {@link getTradeCaps} and live UI.
  */
 export function getRevisableParts(theme) {
 	const allPower = [...theme.effects].filter(
-		(e) => POWER_TAG_TYPES.has(e.type) && !e.system.isTitleTag,
+		(e) => POWER_TAG_TYPES.has(e.type) && !e.system.isTitleTag && !e.disabled,
 	);
 	const allWeakness = [...theme.effects].filter(
-		(e) => e.type === "weakness_tag",
+		(e) => e.type === "weakness_tag" && !e.disabled,
 	);
-	const specials = theme.system?.specialImprovements ?? [];
+	// Preserve the original array index as the part id so downstream
+	// rename/trade logic in {@link applyTransformation} (which uses
+	// `Number(p.id)` to look up entries in `theme.system.specialImprovements`)
+	// targets the right row even when inactive entries are skipped here.
+	const specials = (theme.system?.specialImprovements ?? [])
+		.map((si, idx) => ({ si, idx }))
+		.filter(({ si }) => si.isActive);
 
 	const power = allPower.map((e) => ({
 		kind: "power",
@@ -50,7 +61,7 @@ export function getRevisableParts(theme) {
 		id: e.id,
 		name: e.name,
 	}));
-	const special = specials.map((si, idx) => ({
+	const special = specials.map(({ si, idx }) => ({
 		kind: "special",
 		id: String(idx),
 		name: si.name || si.description || `#${idx + 1}`,
