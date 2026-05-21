@@ -8,10 +8,19 @@
 	<fieldset>
 		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Ui.themebook_details" action="addEntry" path="system.envisioningTags" tooltip="LITM.Ui.add_tag"}}
 		<div class="form-group">
-			<label for="theme_level">{{localize "LITM.Ui.theme_level"}}</label>
-			<select id="theme_level" name="system.theme_level">
-				{{selectOptions levels selected=system.theme_level localize=true}}
-			</select>
+			<label>{{localize "LITM.Ui.theme_level"}}</label>
+			<div class="litm--roll-type-bar" role="radiogroup" aria-label="{{localize 'LITM.Ui.theme_level'}}">
+				{{#each levelOptions as |opt|}}
+				<label class="litm--segmented-option litm--segmented-option--icon {{#if opt.selected}}is-active{{/if}}"
+					data-action="setLevel"
+					data-level="{{opt.value}}"
+					data-tooltip="{{opt.label}}"
+					aria-label="{{opt.label}}">
+					<input type="radio" name="system.theme_level" value="{{opt.value}}" {{checked opt.selected}} />
+					<img src="systems/litmv2/assets/media/icons/{{opt.value}}.svg" alt="" aria-hidden="true" />
+				</label>
+				{{/each}}
+			</div>
 		</div>
 		<div class="form-group">
 			<label for="isFellowship-{{document.id}}">{{localize "LITM.Terms.fellowship"}}</label>

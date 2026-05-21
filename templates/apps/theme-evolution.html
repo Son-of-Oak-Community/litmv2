@@ -108,11 +108,18 @@
 
 		<div class="form-group">
 			<label>{{localize "LITM.Ui.theme_level"}}</label>
-			<select name="level">
+			<div class="litm--roll-type-bar" role="radiogroup" aria-label="{{localize 'LITM.Ui.theme_level'}}">
 				{{#each levels as |opt|}}
-				<option value="{{opt.value}}" {{#if (eq opt.value ../currentLevel)}}selected{{/if}}>{{opt.label}}</option>
+				<label class="litm--segmented-option litm--segmented-option--icon {{#if (eq opt.value ../currentLevel)}}is-active{{/if}}"
+					data-action="setLevel"
+					data-level="{{opt.value}}"
+					data-tooltip="{{opt.label}}"
+					aria-label="{{opt.label}}">
+					<input type="radio" name="level" value="{{opt.value}}" {{checked (eq opt.value ../currentLevel)}} />
+					<img src="systems/litmv2/assets/media/icons/{{opt.value}}.svg" alt="" aria-hidden="true" />
+				</label>
 				{{/each}}
-			</select>
+			</div>
 		</div>
 
 		<p class="hint" data-hide-when="expand">{{localize "LITM.Ui.evolution_type_or_might_hint"}}</p>

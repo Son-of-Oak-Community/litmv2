@@ -12,6 +12,7 @@ export function registerActorHooks() {
 	_validateEffectType();
 	_syncUiOnEffectChange();
 	_syncRollDialogHudOnUpdate();
+	_flashSacrificeBannerOnUpdate();
 	_syncStoryThemeActorToItem();
 	_enforceStoryThemeActorLimits();
 }
@@ -210,12 +211,12 @@ function _syncUiOnEffectChange() {
 
 const HERO_ITEM_LIMITS = {
 	theme: {
-		max: 4,
+		max: () => CONFIG.litmv2?.themeLimit ?? 4,
 		warnKey: "LITM.Ui.warn_theme_limit",
 		filter: (i) => i.type === "theme" && !i.system.isFellowship,
 	},
 	backpack: {
-		max: 1,
+		max: () => 1,
 		warnKey: "LITM.Ui.warn_backpack_limit",
 		filter: (i) => i.type === "backpack",
 	},
@@ -230,7 +231,7 @@ function _enforceHeroItemLimits() {
 		if (!limit) return;
 		if (item.type === "theme" && item.system?.isFellowship) return;
 
-		if (actor.items.filter(limit.filter).length >= limit.max) {
+		if (actor.items.filter(limit.filter).length >= limit.max()) {
 			ui.notifications.warn(game.i18n.localize(limit.warnKey));
 			return false;
 		}
@@ -301,5 +302,34 @@ function _syncRollDialogHudOnUpdate() {
 	Hooks.on("updateActor", (actor) => {
 		if (actor.type !== "hero") return;
 		game.litmv2.rollDialogHud?.render?.();
+	});
+}
+
+/**
+ * Flash the sacrifice banner on peer clients when a hero's roll dialog
+ * transitions into sacrifice mode. The flag's `openedAt` is preserved
+ * across type changes, so we track which (actorId, openedAt) we've already
+ * announced — banner fires exactly once per arming, even though the flag
+ * may be rewritten several times in a session.
+ */
+function _flashSacrificeBannerOnUpdate() {
+	const announced = new Map(); // actorId → openedAt last announced
+	Hooks.on("updateActor", (actor, changes) => {
+		if (actor.type !== "hero") return;
+		if (!foundry.utils.hasProperty(changes, "flags.litmv2.rollDialogOwner"))
+			return;
+		const flag = actor.getFlag("litmv2", "rollDialogOwner");
+		if (!flag) {
+			announced.delete(actor.id);
+			return;
+		}
+		if (flag.type !== "sacrifice") return;
+		if (flag.ownerId === game.user.id) return;
+		if (announced.get(actor.id) === flag.openedAt) return;
+		announced.set(actor.id, flag.openedAt);
+		// Modules can return false from `litm.sacrificePrepared` to suppress
+		// the default banner (e.g. to replace it with their own treatment).
+		if (Hooks.call("litm.sacrificePrepared", { actor }) === false) return;
+		game.litmv2.showSacrificeBanner?.(actor.name);
 	});
 }

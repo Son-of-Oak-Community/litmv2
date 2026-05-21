@@ -620,6 +620,7 @@ async function submitExpand({
 	});
 	await markSourceMessageResolved(messageId);
 	close();
+	targetTheme.sheet?.render(true, { focus: true });
 }
 
 export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -640,6 +641,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		actions: {
 			confirm: ThemeEvolutionWizard.#onConfirm,
 			cancel: ThemeEvolutionWizard.#onCancel,
+			setLevel: ThemeEvolutionWizard.#onSetLevel,
 		},
 	};
 
@@ -689,15 +691,22 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		}
 
 		if (!this._themebooks.length) {
-			this._themebooks = await queryItemsFromPacks({
+			const all = await queryItemsFromPacks({
 				type: "themebook",
-				indexFields: ["name", "system.theme_level"],
+				indexFields: ["name", "system.theme_level", "system.isFellowship"],
 				map: (entry) => ({
 					name: entry.name,
 					label: entry.name,
 					themeLevel: entry.system?.theme_level ?? "",
+					isFellowship: !!entry.system?.isFellowship,
 				}),
 			});
+			// Fellowship themes can only evolve into other fellowship themebooks
+			// and vice versa — mixing kinds breaks the actor's invariant
+			// (heroes hold non-fellowship themes; the fellowship singleton
+			// holds fellowship themes).
+			const wantFellowship = !!theme.system?.isFellowship;
+			this._themebooks = all.filter((tb) => tb.isFellowship === wantFellowship);
 		}
 
 		const themebookGroups = buildThemebookGroups(this._themebooks);
@@ -705,6 +714,9 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			value: key,
 			label: t(`LITM.Terms.${key}`) || key,
 		}));
+		const themebookLevels = Object.fromEntries(
+			this._themebooks.map((tb) => [tb.name, tb.themeLevel ?? ""]),
+		);
 
 		const isFellowship = !!theme.system.isFellowship;
 		const { defaultMode, milestoneFull, abandonFull } = availableModes(theme);
@@ -746,6 +758,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			milestoneFull,
 			abandonFull,
 			themebookGroups,
+			themebookLevels,
 			levels,
 			currentLevel: theme.system?.level || getDefaultThemeLevel(),
 			revisable,
@@ -774,11 +787,29 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		)) {
 			input.addEventListener("change", refresh);
 		}
+
+		// When the player picks a themebook with a fixed tier, default the
+		// might selection to that tier. They can still override afterwards.
+		const themebookSelect = html.querySelector("select[name='themebook']");
+		if (themebookSelect && context?.themebookLevels) {
+			themebookSelect.addEventListener("change", (ev) => {
+				const level = context.themebookLevels[ev.target.value];
+				if (!level || level === "variable") return;
+				applyLevelSelection(html, level);
+			});
+		}
+
 		refresh();
 	}
 
 	static async #onCancel(_event, _target) {
 		this.close();
+	}
+
+	static #onSetLevel(_event, target) {
+		const level = target?.dataset?.level;
+		if (!level) return;
+		applyLevelSelection(this.element, level);
 	}
 
 	static async #onConfirm(_event, _target) {
@@ -875,5 +906,24 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		});
 		await markSourceMessageResolved(this.messageId);
 		this.close();
+		theme.sheet?.render(true, { focus: true });
+	}
+}
+
+/**
+ * Apply a level selection to the picker: toggle .is-active on each
+ * segmented label and check the matching radio so FormDataExtended sees
+ * the new value. Used by both the click handler and the themebook
+ * auto-select.
+ */
+function applyLevelSelection(html, level) {
+	if (!html) return;
+	const labels = html.querySelectorAll("[data-action='setLevel']");
+	for (const label of labels) {
+		label.classList.toggle("is-active", label.dataset.level === level);
+	}
+	const radios = html.querySelectorAll("input[type='radio'][name='level']");
+	for (const radio of radios) {
+		radio.checked = radio.value === level;
 	}
 }

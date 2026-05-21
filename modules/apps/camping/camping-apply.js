@@ -316,10 +316,11 @@ function buildReflectOps(act, hero, state, world, trackAccum, ops, heroRecap) {
 		}
 	}
 
-	// Quest marks — Reflect is also when players mark Abandon / Milestone
-	// "if the player sees fit to do so" (Core Book p.181). These are
-	// independent picks from the Improve target; same +1 mark on camp or
-	// sojourn (sojourn doesn't accelerate them).
+	// Quest marks — Sojourn Reflect lets players also mark Abandon /
+	// Milestone "if the player sees fit to do so" (Core Book p.181).
+	// Camp Reflect grants only Improve, so we skip the picker on camp
+	// and gate the apply path here too in case a stale state slips through.
+	if (state.type === "camp") return;
 	for (const track of ["abandon", "milestone"]) {
 		const targetId =
 			track === "abandon"
@@ -362,18 +363,21 @@ function buildQualityTimeOps(hero, heroState, world, ops, heroRecap) {
 		);
 		if (!effect) return;
 		ops.unscratches.push({ effect });
-		heroRecap.lines.push({ kind: "fellowship-tag-recovered", name: effect.name });
+		heroRecap.lines.push({
+			kind: "fellowship-tag-recovered",
+			name: effect.name,
+		});
 		return;
 	}
 
 	if (quality.action === "rephraseRelationship") {
 		const effect = allFx.find(
 			(e) =>
-				e.id === quality.relationshipEffectId &&
-				e.type === "relationship_tag" &&
-				e.system?.isScratched,
+				e.id === quality.relationshipEffectId && e.type === "relationship_tag",
 		);
 		if (!effect) return;
+		// Unscratch is a no-op for an already-fresh relationship
+		// (applyScratchBatch short-circuits when current === target).
 		ops.unscratches.push({ effect });
 		const next = quality.relationshipRephrase?.trim();
 		if (next && next !== effect.name) {

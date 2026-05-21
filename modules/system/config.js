@@ -206,6 +206,9 @@ export const LitmConfig = {
 	/** Default hero Limit value. Mirrored from the world setting at ready. */
 	heroLimit: 5,
 
+	/** Maximum non-fellowship themes a hero can have. Mirrored from the world setting at ready. */
+	themeLimit: 4,
+
 	challenge_types: [
 		"attacker",
 		"barrier-hazard",

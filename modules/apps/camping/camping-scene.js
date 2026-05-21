@@ -121,18 +121,7 @@ function buildPayloadFromTarget(target) {
 	if (isCheckbox) {
 		if (ds.update === "backpack-kept") payload.kept = target.checked;
 		else payload.on = target.checked;
-	}
-	if (ds.update === "rest-choice") {
-		// Two related inputs share this key: the <select> sets `action`, the
-		// <input type="number"> sets `amount`. The unset side keeps its prior
-		// value via the existing restChoice (read at apply time in the setter).
-		const row = target.closest("tr");
-		const sel = row?.querySelector(".litm-camping-scene__rest-action");
-		const amt = row?.querySelector(".litm-camping-scene__rest-amount");
-		payload.action = sel?.value ?? "";
-		payload.amount = Math.max(1, parseInt(amt?.value, 10) || 1);
-	}
-	if (!isCheckbox && ds.update !== "rest-choice") {
+	} else {
 		payload.value = target.value ?? "";
 	}
 	return payload;
@@ -163,6 +152,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			"edit-threat": LitmCampingScene.#onEditThreat,
 			"remove-threat": LitmCampingScene.#onRemoveThreat,
 			"open-sheet": LitmCampingScene.#onOpenSheet,
+			"rest-tier-delta": LitmCampingScene.#onRestTierDelta,
 		},
 	};
 
@@ -227,6 +217,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			heroes,
 			hasHeroes,
 			placeOfStay,
+			showThreats,
 			threats,
 			hasThreats,
 			sceneStoryTags,
@@ -257,6 +248,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			heroes,
 			hasHeroes,
 			placeOfStay,
+			showThreats,
 			threats,
 			hasThreats,
 			sceneStoryTags,
@@ -289,17 +281,6 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			if (!key || !SETTERS[key]) return;
 			const payload = buildPayloadFromTarget(target);
 			enqueueOp(key, payload);
-			// Visibility: when a rest-choice action select flips between
-			// reduce/other, the amount input needs to show/hide immediately
-			// without waiting for the next render.
-			if (
-				key === "rest-choice" &&
-				target.classList.contains("litm-camping-scene__rest-action")
-			) {
-				const row = target.closest("tr");
-				const amt = row?.querySelector(".litm-camping-scene__rest-amount");
-				if (amt) amt.hidden = target.value !== "reduce";
-			}
 		});
 
 		// Threat drop zone — accepts dragged vignette items from the items
@@ -355,9 +336,8 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		const data = item.toObject();
 		delete data._id;
 		data.folder = folder?.id ?? null;
-		const [created] = await foundry.documents.Item.implementation.createDocuments(
-			[data],
-		);
+		const [created] =
+			await foundry.documents.Item.implementation.createDocuments([data]);
 		return created;
 	}
 
@@ -413,6 +393,18 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		if (!state) {
 			LitmCampingScene.close();
 			return;
+		}
+
+		// Sweep every scene effect this camp session introduced. Includes
+		// both Begin Camp-time campsite tags and any tags/statuses added via
+		// the sidebar during the active phase, all stamped with state.campId.
+		if (state.campId) {
+			const stale = (await ContentSources.getStoryTags()).filter(
+				(e) => e.getFlag?.(FLAG_SCOPE, "campId") === state.campId,
+			);
+			if (stale.length) {
+				await ContentSources.deleteStoryTags(stale.map((e) => e.id));
+			}
 		}
 
 		const heroes = getCampingHeroes();
@@ -486,7 +478,9 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			await ContentSources.deleteStoryTags(toExpire);
 		}
 
+		const campId = state.campId || foundry.utils.randomID();
 		const entries = parseCampsiteEntries(state.placeOfStay?.campsiteTags);
+		const stamp = { flags: { [FLAG_SCOPE]: { campId } } };
 		const creationData = entries.map((entry) => {
 			if (entry.type === "status_tag") {
 				const tiers = entry.system?.tiers ?? [
@@ -497,12 +491,15 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 					false,
 					false,
 				];
-				return statusTagEffect({ name: entry.name, tiers });
+				return { ...statusTagEffect({ name: entry.name, tiers }), ...stamp };
 			}
-			return storyTagEffect({
-				name: entry.name,
-				isSingleUse: !!entry.system?.isSingleUse,
-			});
+			return {
+				...storyTagEffect({
+					name: entry.name,
+					isSingleUse: !!entry.system?.isSingleUse,
+				}),
+				...stamp,
+			};
 		});
 		const created = creationData.length
 			? ((await ContentSources.createStoryTags(creationData)) ?? [])
@@ -513,6 +510,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			const s = readState();
 			if (!s) return;
 			s.phase = "active";
+			s.campId = campId;
 			s.placeOfStay.createdCampsiteEffectIds = createdIds;
 			s.placeOfStay.sceneTagsToExpire = [];
 			await canvas.scene?.setFlag(FLAG_SCOPE, FLAG_PATH, s);
@@ -539,13 +537,15 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 	static async #onAddThreat() {
 		if (!game.user.isGM) return;
 		const folder = await getOrCreateCampingFolder();
-		const created = await foundry.documents.Item.implementation.createDocuments([
-			{
-				name: t("LITM.Ui.camping_threats_new"),
-				type: "vignette",
-				folder: folder?.id ?? null,
-			},
-		]);
+		const created = await foundry.documents.Item.implementation.createDocuments(
+			[
+				{
+					name: t("LITM.Ui.camping_threats_new"),
+					type: "vignette",
+					folder: folder?.id ?? null,
+				},
+			],
+		);
 		const vignette = created?.[0];
 		if (!vignette?.id) return;
 		await enqueueOp("threat-add", { itemId: vignette.id });
@@ -571,6 +571,22 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		await enqueueOp("threat-remove", { itemId });
 	}
 
+	static async #onRestTierDelta(_event, target) {
+		const heroId = target.dataset.heroId;
+		const period = Number(target.dataset.period);
+		const statusId = target.dataset.statusId;
+		const maxTier = Number(target.dataset.maxTier);
+		const delta = Number(target.dataset.delta);
+		if (!heroId || !statusId || !Number.isFinite(period)) return;
+		await enqueueOp("rest-tier-delta", {
+			heroId,
+			period,
+			statusId,
+			maxTier,
+			delta,
+		});
+	}
+
 	static #onLaunchCampRoll(_event, target) {
 		const heroId = target.dataset.heroId;
 		const actor = game.actors.get(heroId);
@@ -591,6 +607,22 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 	 * Called once from system bootup.
 	 */
 	static registerSocketHooks() {
+		// Stamp every story/status tag created in the scene story-tag pack
+		// during an active camp session with the session's campId, so Pack
+		// Up can later sweep them in one shot. Local hook only — the GM is
+		// the canonical creator (sidebar adds + sockets both route here),
+		// so a single stamp suffices for the table.
+		Hooks.on("preCreateActiveEffect", (effect, _data, _options, _userId) => {
+			if (!game.user.isGM) return;
+			if (effect.pack !== "world.litmv2-story-tags") return;
+			const state = readState();
+			if (!state || state.phase !== "active" || !state.campId) return;
+			if (effect.getFlag?.(FLAG_SCOPE, "campId")) return;
+			effect.updateSource({
+				[`flags.${FLAG_SCOPE}.campId`]: state.campId,
+			});
+		});
+
 		Hooks.on("litm.camping.open", () => {
 			LitmCampingScene.open();
 		});

@@ -22,6 +22,11 @@ export function defaultCampingState() {
 		phase: "setup",
 		type: "camp",
 		sojournDuration: "days",
+		// Per-session id stamped on every scene effect created during the
+		// active phase via `flags.litmv2.campId`. Pack Up uses it to sweep
+		// tags/statuses the camp introduced (Core Book p.179: "old camp tags
+		// don't survive into a new one"). Empty until Begin Camp generates one.
+		campId: "",
 		placeOfStay: {
 			name: "",
 			campsiteTags: "",
@@ -31,8 +36,7 @@ export function defaultCampingState() {
 			threats: [],
 			sceneTagsToExpire: [],
 			// Effect ids created from `campsiteTags` at Begin Camp. Tracked
-			// so Cancel can roll them back; Pack Up leaves them on the
-			// scene since they are now real scene tags.
+			// so Cancel can roll them back; Pack Up sweeps by campId instead.
 			createdCampsiteEffectIds: [],
 		},
 		heroStates: {},
@@ -189,6 +193,51 @@ export function setRestChoice(
 	};
 }
 
+/**
+ * Stepper-style adjustment of a status's rest choice. `delta = -1` nudges
+ * toward "reduce more / remove"; `delta = +1` nudges back toward "keep".
+ * Internally stored as the canonical `{action, amount}` shape so apply
+ * code stays unchanged. Action keys:
+ *   - decrement = 0           → action="" (keep)
+ *   - 0 < decrement < maxTier → action="reduce", amount=decrement
+ *   - decrement = maxTier     → action="remove"
+ */
+export function adjustRestChoice(
+	state,
+	heroId,
+	period,
+	statusEffectId,
+	{ delta = 0, maxTier = 6 } = {},
+) {
+	const h = ensureHeroState(state, heroId);
+	const slot = h.activities[period];
+	if (!slot.restChoices) slot.restChoices = {};
+	const cap = Number.isFinite(maxTier) && maxTier > 0 ? maxTier : 6;
+	const current = slot.restChoices[statusEffectId] ?? {
+		action: "",
+		amount: 1,
+	};
+	const currentDecrement =
+		current.action === "remove"
+			? cap
+			: current.action === "reduce"
+				? Math.max(1, Math.min(current.amount ?? 1, cap))
+				: 0;
+	const next = Math.max(
+		0,
+		Math.min(currentDecrement - Number(delta || 0), cap),
+	);
+	if (next === 0) {
+		delete slot.restChoices[statusEffectId];
+		return;
+	}
+	if (next >= cap) {
+		slot.restChoices[statusEffectId] = { action: "remove", amount: cap };
+		return;
+	}
+	slot.restChoices[statusEffectId] = { action: "reduce", amount: next };
+}
+
 export function setRestRecoverTag(state, heroId, period, effectId, on) {
 	const h = ensureHeroState(state, heroId);
 	const list = h.activities[period].restRecoverTagIds;
@@ -338,6 +387,11 @@ export const SETTERS = {
 		setRestChoice(s, p.heroId, p.period, p.statusId, {
 			action: p.action,
 			amount: p.amount,
+			maxTier: p.maxTier,
+		}),
+	"rest-tier-delta": (s, p) =>
+		adjustRestChoice(s, p.heroId, p.period, p.statusId, {
+			delta: p.delta,
 			maxTier: p.maxTier,
 		}),
 	"rest-recover": (s, { heroId, period, effectId, on }) =>

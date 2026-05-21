@@ -37,6 +37,10 @@ export class LitmSettings {
 		return game.settings.get("litmv2", "custom_dice");
 	}
 
+	static get colorblindMode() {
+		return game.settings.get("litmv2", "colorblind_mode");
+	}
+
 	static get systemMigrationVersion() {
 		return game.settings.get("litmv2", "systemMigrationVersion");
 	}
@@ -49,8 +53,16 @@ export class LitmSettings {
 		return game.settings.get("litmv2", "hero_limit");
 	}
 
+	static get themeLimit() {
+		return game.settings.get("litmv2", "theme_limit");
+	}
+
 	static get useFellowship() {
 		return game.settings.get("litmv2", "use_fellowship");
+	}
+
+	static get showCampingThreats() {
+		return game.settings.get("litmv2", "show_camping_threats");
 	}
 
 	static get fellowshipId() {
@@ -165,6 +177,19 @@ export class LitmSettings {
 				CONFIG.litmv2.heroLimit = value;
 			},
 		});
+		game.settings.register("litmv2", "theme_limit", {
+			name: "LITM.Settings.theme_limit",
+			hint: "LITM.Settings.theme_limit_hint",
+			scope: "world",
+			config: true,
+			type: Number,
+			default: 4,
+			range: { min: 1, max: 10, step: 1 },
+			requiresReload: true,
+			onChange: (value) => {
+				CONFIG.litmv2.themeLimit = value;
+			},
+		});
 		game.settings.register("litmv2", "use_fellowship", {
 			name: "LITM.Settings.use_fellowship",
 			hint: "LITM.Settings.use_fellowship_hint",
@@ -173,6 +198,14 @@ export class LitmSettings {
 			type: Boolean,
 			default: true,
 			requiresReload: true,
+		});
+		game.settings.register("litmv2", "show_camping_threats", {
+			name: "LITM.Settings.show_camping_threats",
+			hint: "LITM.Settings.show_camping_threats_hint",
+			scope: "world",
+			config: true,
+			type: Boolean,
+			default: true,
 		});
 		game.settings.register("litmv2", "custom_dice", {
 			name: "LITM.Settings.custom_dice",
@@ -190,6 +223,17 @@ export class LitmSettings {
 			config: true,
 			type: Boolean,
 			default: false,
+		});
+		game.settings.register("litmv2", "colorblind_mode", {
+			name: "LITM.Settings.colorblind_mode",
+			hint: "LITM.Settings.colorblind_mode_hint",
+			scope: "client",
+			config: true,
+			type: Boolean,
+			default: false,
+			onChange: (v) => {
+				document.body.classList.toggle("litm--colorblind", !!v);
+			},
 		});
 		game.settings.register("litmv2", "party_overview_show_all", {
 			scope: "client",

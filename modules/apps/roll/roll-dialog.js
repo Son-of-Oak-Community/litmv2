@@ -36,7 +36,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		},
 		position: {
 			width: 600,
-			height: 550,
+			height: 720,
 		},
 		form: {
 			handler: LitmRollDialog._onSubmit,
@@ -48,6 +48,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			viewLinkedRef: viewLinkedRefAction,
 			viewActionCard: LitmRollDialog.#onViewActionCard,
 			toggleRollTag: LitmRollDialog.#onToggleRollTag,
+			selectSacrificeTheme: LitmRollDialog.#onSelectSacrificeTheme,
+			setSacrificeLevel: LitmRollDialog.#onSetSacrificeLevel,
 		},
 	};
 
@@ -82,6 +84,45 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const rollData = this.extractRollData(formData);
 		await this._createModerationRequest(rollData);
 		this.close();
+	}
+
+	static #onSetSacrificeLevel(_event, target) {
+		if (!this.isOwner) return;
+		const level = target?.dataset?.level;
+		if (!level || level === this.#sacrificeLevel) return;
+		this.#sacrificeLevel = level;
+		const root = this.element;
+		if (root) {
+			for (const label of root.querySelectorAll(
+				"[data-action='setSacrificeLevel']",
+			)) {
+				label.classList.toggle("is-active", label.dataset.level === level);
+			}
+		}
+		this.#toggleSacrificeThemeSelector(this.#sacrificeLevel);
+		this.#dispatchUpdate();
+	}
+
+	static #onSelectSacrificeTheme(_event, target) {
+		if (!this.isOwner) return;
+		const themeId = target?.dataset?.themeId;
+		if (!themeId || themeId === this.#sacrificeThemeId) return;
+		this.#sacrificeThemeId = themeId;
+		const root = this.element;
+		if (root) {
+			for (const card of root.querySelectorAll(
+				"[data-action='selectSacrificeTheme']",
+			)) {
+				const isSelected = card.dataset.themeId === themeId;
+				card.classList.toggle("is-selected", isSelected);
+				card.setAttribute("aria-checked", isSelected ? "true" : "false");
+			}
+			const hidden = root.querySelector(
+				"input[type='hidden'][name='sacrificeThemeId']",
+			);
+			if (hidden) hidden.value = themeId;
+		}
+		this.#dispatchUpdate();
 	}
 
 	static async #onSpendHalf(_event, _target) {
@@ -246,6 +287,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (!type) return;
 		this.type = type;
 		if (this.rendered) this.render();
+		// Refresh presence so peers can react to the new type — e.g. the
+		// sacrifice banner fires off the flag transition to "sacrifice".
+		this.updatePresence(true);
 	}
 
 	/**
@@ -602,7 +646,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				quick: "LITM.Ui.roll_quick",
 				tracked: "LITM.Ui.roll_tracked",
 				mitigate: "LITM.Ui.roll_mitigate",
-				sacrifice: "LITM.Ui.roll_sacrifice",
 			},
 			storyTagGroups,
 			gmTagGroups,
@@ -622,11 +665,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			canHedge: this.totalPower >= 2,
 			canCaution: this.totalPower <= 2,
 			sacrificeLevel: this.#sacrificeLevel,
-			sacrificeLevelOptions: {
-				painful: "LITM.Ui.sacrifice_painful",
-				scarring: "LITM.Ui.sacrifice_scarring",
-				grave: "LITM.Ui.sacrifice_grave",
-			},
+			sacrificeLevelOptions: ["painful", "scarring", "grave"].map((key) => ({
+				value: key,
+				label: t(`LITM.Ui.sacrifice_${key}`),
+				description: t(`LITM.Ui.sacrifice_${key}_price`),
+				selected: this.#sacrificeLevel === key,
+			})),
 			sacrificeThemeId: this.#sacrificeThemeId,
 			sacrificeThemes: this.#ensureSacrificeThemeSelected(),
 			actionContext,
@@ -745,7 +789,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				this.#handleMightChange(target);
 			} else if (target.matches("input[name='tradePower']")) {
 				this.#handleTradePowerChange(target);
-			} else if (target.matches("[data-update='sacrificeLevel']")) {
+			} else if (target.matches("input[name='sacrificeLevel']")) {
 				this.#handleSacrificeLevelChange(target);
 			} else if (target.matches("[data-update='sacrificeThemeId']")) {
 				this.#handleSacrificeThemeChange(target);
@@ -925,9 +969,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	async updatePresence(isOpen) {
 		if (!this.isOwner) return;
 		if (isOpen) {
+			const existing = this.actor?.getFlag("litmv2", "rollDialogOwner");
 			await this.actor?.setFlag("litmv2", "rollDialogOwner", {
 				ownerId: this.ownerId,
-				openedAt: Date.now(),
+				// Preserve the original openedAt across type changes so the
+				// banner watcher doesn't re-fire on every setType refresh.
+				openedAt: existing?.openedAt ?? Date.now(),
+				type: this.type ?? "quick",
 			});
 		} else {
 			await this.actor?.unsetFlag("litmv2", "rollDialogOwner");
@@ -978,11 +1026,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const tagsFieldset = this.element.querySelector(
 			".litm--roll-dialog-tags-fieldset",
 		);
+		const typeBar = this.element.querySelector(".litm--roll-type-bar");
 		if (mightFieldset) mightFieldset.classList.toggle("hidden", isSacrifice);
 		if (totalPowerEl) totalPowerEl.classList.toggle("hidden", isSacrifice);
 		if (sacrificeFieldset)
 			sacrificeFieldset.classList.toggle("hidden", !isSacrifice);
 		if (tagsFieldset) tagsFieldset.classList.toggle("hidden", isSacrifice);
+		// Sacrifice is its own ritual — quick/tracked/mitigate make no sense
+		// during it. Hide the roll-type bar entirely in sacrifice mode.
+		if (typeBar) typeBar.classList.toggle("hidden", isSacrifice);
 		// Also toggle the theme selector based on current level
 		if (isSacrifice) {
 			this.#toggleSacrificeThemeSelector(this.#sacrificeLevel);
@@ -992,7 +1044,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	#handleSacrificeLevelChange(target) {
-		this.#sacrificeLevel = target.value;
+		const level = target.value;
+		if (!level || level === this.#sacrificeLevel) return;
+		this.#sacrificeLevel = level;
+		const root = this.element;
+		if (root) {
+			for (const label of root.querySelectorAll(
+				"[data-action='setSacrificeLevel']",
+			)) {
+				label.classList.toggle("is-active", label.dataset.level === level);
+			}
+		}
 		this.#toggleSacrificeThemeSelector(this.#sacrificeLevel);
 		this.#dispatchUpdate();
 	}
@@ -1003,7 +1065,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	#ensureSacrificeThemeSelected() {
-		if (!this.actor) return {};
+		if (!this.actor) return [];
 		const themes = this.actor.items
 			.filter(
 				(i) =>
@@ -1011,15 +1073,57 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					i.type === "story_theme",
 			)
 			.sort((a, b) => a.sort - b.sort);
-		const options = {};
-		for (const theme of themes) {
-			options[theme.id] = theme.name;
-		}
 		// Auto-select first theme if none selected
 		if (!this.#sacrificeThemeId && themes.length > 0) {
 			this.#sacrificeThemeId = themes[0].id;
 		}
-		return options;
+		const trackPips = (value) =>
+			Array.from({ length: 3 }, (_, i) => ({ filled: i < (value ?? 0) }));
+		return themes.map((theme) => {
+			const effects = [...theme.effects];
+			const powerTags = effects
+				.filter(
+					(e) =>
+						(e.type === "power_tag" || e.type === "fellowship_tag") &&
+						!e.disabled &&
+						!e.system?.isTitleTag,
+				)
+				.map((e) => e.name);
+			const weaknessTags = effects
+				.filter((e) => e.type === "weakness_tag" && !e.disabled)
+				.map((e) => e.name);
+			const specialImprovements = (theme.system?.specialImprovements ?? [])
+				.filter((si) => si.isActive && (si.name || "").trim())
+				.map((si) => si.name);
+			const level = theme.system?.level || "";
+			return {
+				id: theme.id,
+				name: theme.name,
+				themebook: theme.system?.themebook || "",
+				level,
+				levelLabel: level ? game.i18n.localize(`LITM.Terms.${level}`) : "",
+				quest: theme.system?.quest?.description || "",
+				powerTags,
+				weaknessTags,
+				specialImprovements,
+				hasTags: powerTags.length + weaknessTags.length > 0,
+				tracks: [
+					{
+						label: game.i18n.localize("LITM.Themes.abandon"),
+						pips: trackPips(theme.system?.quest?.tracks?.abandon?.value),
+					},
+					{
+						label: game.i18n.localize("LITM.Ui.improve"),
+						pips: trackPips(theme.system?.improve?.value),
+					},
+					{
+						label: game.i18n.localize("LITM.Themes.milestone"),
+						pips: trackPips(theme.system?.quest?.tracks?.milestone?.value),
+					},
+				],
+				selected: theme.id === this.#sacrificeThemeId,
+			};
+		});
 	}
 
 	#toggleSacrificeThemeSelector(level) {
