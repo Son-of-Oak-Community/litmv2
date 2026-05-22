@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	addThreatVignette,
+	adjacentStep,
 	adjustRestChoice,
 	defaultCampingState,
 	defaultHeroState,
@@ -8,6 +9,7 @@ import {
 	ensureHeroState,
 	removeThreatVignette,
 	SETTERS,
+	setActiveStep,
 	setActivity,
 	setActivityDetail,
 	setBackpackKept,
@@ -24,6 +26,7 @@ import {
 	setSojournDuration,
 	setThirdPeriod,
 	setType,
+	stepOrder,
 } from "../modules/apps/camping/camping-state.js";
 
 describe("defaultCampingState", () => {
@@ -44,6 +47,11 @@ describe("defaultCampingState", () => {
 	it("starts in the setup phase (GM-private prep)", () => {
 		const s = defaultCampingState();
 		expect(s.phase).toBe("setup");
+	});
+
+	it("starts the wizard on period1 even before active phase", () => {
+		const s = defaultCampingState();
+		expect(s.activeStep).toBe("period1");
 	});
 });
 
@@ -516,6 +524,131 @@ describe("setPhase", () => {
 		const s = defaultCampingState();
 		SETTERS["set-phase"](s, { value: "active" });
 		expect(s.phase).toBe("active");
+	});
+
+	it("transitioning setup → active resets the wizard to period1", () => {
+		const s = defaultCampingState();
+		s.activeStep = "packUp";
+		setPhase(s, "active");
+		expect(s.activeStep).toBe("period1");
+	});
+
+	it("re-entering active from active leaves the wizard step alone", () => {
+		const s = defaultCampingState();
+		setPhase(s, "active");
+		s.activeStep = "qualityTime";
+		setPhase(s, "active");
+		expect(s.activeStep).toBe("qualityTime");
+	});
+
+	it("going back to setup does not touch the wizard step", () => {
+		const s = defaultCampingState();
+		setPhase(s, "active");
+		s.activeStep = "period2";
+		setPhase(s, "setup");
+		expect(s.activeStep).toBe("period2");
+	});
+});
+
+describe("setActiveStep", () => {
+	it("accepts each of the five valid step ids", () => {
+		const s = defaultCampingState();
+		for (const step of [
+			"period1",
+			"period2",
+			"period3",
+			"qualityTime",
+			"packUp",
+		]) {
+			setActiveStep(s, step);
+			expect(s.activeStep).toBe(step);
+		}
+	});
+
+	it("rejects unknown step ids (leaves the current value alone)", () => {
+		const s = defaultCampingState();
+		setActiveStep(s, "qualityTime");
+		setActiveStep(s, "garbage");
+		expect(s.activeStep).toBe("qualityTime");
+	});
+
+	it("dispatch via SETTERS['active-step']", () => {
+		const s = defaultCampingState();
+		SETTERS["active-step"](s, { value: "packUp" });
+		expect(s.activeStep).toBe("packUp");
+	});
+});
+
+describe("stepOrder", () => {
+	it("omits period3 when no hero opted in", () => {
+		const s = defaultCampingState();
+		expect(stepOrder(s)).toEqual([
+			"period1",
+			"period2",
+			"qualityTime",
+			"packUp",
+		]);
+	});
+
+	it("includes period3 when any hero opted in", () => {
+		const s = defaultCampingState();
+		setThirdPeriod(s, "hero-1", true);
+		expect(stepOrder(s)).toEqual([
+			"period1",
+			"period2",
+			"period3",
+			"qualityTime",
+			"packUp",
+		]);
+	});
+
+	it("keeps period3 if it is the current step, even with no opt-ins", () => {
+		const s = defaultCampingState();
+		s.activeStep = "period3";
+		expect(stepOrder(s)).toContain("period3");
+	});
+});
+
+describe("adjacentStep", () => {
+	it("moves forward through the default 4-step order", () => {
+		const s = defaultCampingState();
+		s.activeStep = "period1";
+		expect(adjacentStep(s, "next")).toBe("period2");
+		s.activeStep = "period2";
+		expect(adjacentStep(s, "next")).toBe("qualityTime");
+	});
+
+	it("threads through period3 when a hero opted in", () => {
+		const s = defaultCampingState();
+		setThirdPeriod(s, "hero-1", true);
+		s.activeStep = "period2";
+		expect(adjacentStep(s, "next")).toBe("period3");
+		s.activeStep = "period3";
+		expect(adjacentStep(s, "next")).toBe("qualityTime");
+	});
+
+	it("moves backward symmetrically", () => {
+		const s = defaultCampingState();
+		s.activeStep = "qualityTime";
+		expect(adjacentStep(s, "prev")).toBe("period2");
+	});
+
+	it("clamps at the first step (no underflow)", () => {
+		const s = defaultCampingState();
+		s.activeStep = "period1";
+		expect(adjacentStep(s, "prev")).toBe("period1");
+	});
+
+	it("clamps at the last step (no overflow)", () => {
+		const s = defaultCampingState();
+		s.activeStep = "packUp";
+		expect(adjacentStep(s, "next")).toBe("packUp");
+	});
+
+	it("a stale activeStep resolves to the first step", () => {
+		const s = defaultCampingState();
+		s.activeStep = "ghost";
+		expect(adjacentStep(s, "next")).toBe("period1");
 	});
 });
 

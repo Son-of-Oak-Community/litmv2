@@ -1,0 +1,43 @@
+{{!--
+	step-period.html — heroes-as-rows panel for Period 1, Period 2, and Period 3.
+	Receives `heroes`, `periodIndex` (0/1/2), `isCamp`. Period 2 also renders
+	the per-hero "Take a risky third period?" toggle; Period 3 renders a
+	"Skipping" placeholder for heroes who didn't opt in.
+--}}
+<section class="litm-camping-scene__step litm-camping-scene__step--period">
+	<h3 class="litm-render__section-header">
+		{{localize "LITM.Ui.camping_period"}} {{add periodIndex 1}}
+	</h3>
+	{{#each heroes}}
+	<article class="litm-camping-scene__hero-row" data-hero-id="{{id}}">
+		{{> "systems/litmv2/templates/apps/camping/hero-row.html" .}}
+		<div class="litm-camping-scene__row-content">
+			{{#if (and (eq ../periodIndex 2) (not thirdPeriodActive))}}
+			<p class="hint">
+				{{localize "LITM.Ui.camping_step_third_skipping"}}
+			</p>
+			{{else}}
+			{{> "systems/litmv2/templates/apps/camping/hero-row-period.html"
+				hero=. periodIndex=../periodIndex isCamp=../isCamp}}
+			{{#if (eq ../periodIndex 1)}}
+			{{!-- Period 2 carries the per-hero opt-in for Period 3. Lives in
+			     the row so the timeline grows reactively when a player ticks
+			     the switch. --}}
+			{{#if canEdit}}
+			<button type="button"
+				class="litm-camping-scene__third-toggle{{#if thirdPeriodActive}} active{{/if}}"
+				data-action="toggle-third-period" data-hero-id="{{id}}"
+				aria-pressed="{{#if thirdPeriodActive}}true{{else}}false{{/if}}">
+				<span class="litm-camping-scene__third-toggle-label">
+					{{localize "LITM.Ui.camping_third_period"}}
+					<span class="hint">{{localize "LITM.Ui.camping_third_warn"}}</span>
+				</span>
+				<span class="litm-camping-scene__switch" aria-hidden="true"></span>
+			</button>
+			{{/if}}
+			{{/if}}
+			{{/if}}
+		</div>
+	</article>
+	{{/each}}
+</section>

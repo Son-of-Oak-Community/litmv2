@@ -268,7 +268,10 @@ async function applyExpansion({
  * question pointer is cleared, so the player can re-pick a question on
  * the new themebook in the theme sheet.
  */
-async function applyEvolveKeptTagUpdates(theme, { renames, traded, themebookChanged }) {
+async function applyEvolveKeptTagUpdates(
+	theme,
+	{ renames, traded, themebookChanged },
+) {
 	const tradedEffectIds = new Set(
 		traded
 			.filter((p) => p.kind === "power" || p.kind === "weakness")
@@ -691,7 +694,7 @@ async function submitExpand({
  */
 async function applyDroppedTheme({ actor, theme, dropped }) {
 	const isFellowship = !!theme.system?.isFellowship;
-	if (!isFellowship && !!dropped.system?.isFellowship) {
+	if (!isFellowship && dropped.system?.isFellowship) {
 		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
 		return;
 	}
@@ -911,7 +914,9 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			// peer-driven track completions) while the wizard is open.
 			const live = game.actors.get(this.actorId)?.system?.promise;
 			const ctx =
-				typeof live === "number" ? { ...context, currentPromise: live } : context;
+				typeof live === "number"
+					? { ...context, currentPromise: live }
+					: context;
 			applyModeVisibility(html, ctx);
 			enforceTradeCaps(html, ctx);
 			recomputePromiseSummary(html, ctx);
@@ -947,7 +952,8 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 	 * closes on success.
 	 */
 	async #onDropTheme(event) {
-		const data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
+		const data =
+			foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
 		if (!data?.uuid && data?.type !== "Item") return;
 		const item = await foundry.utils.fromUuid(data.uuid);
 		if (!item || item.type !== "theme") {

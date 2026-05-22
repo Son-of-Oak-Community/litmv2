@@ -1,0 +1,13 @@
+<header class="litm-camping-scene__row-header">
+	<img class="litm-camping-scene__hero-portrait" src="{{img}}" alt="{{name}}">
+	<span class="litm-camping-scene__hero-name">{{name}}</span>
+	<button type="button" class="litm-camping-scene__hero-open"
+		data-action="open-sheet" data-hero-id="{{id}}"
+		aria-label="{{localize 'LITM.Ui.camping_open_sheet'}}"
+		data-tooltip="{{localize 'LITM.Ui.camping_open_sheet'}}">
+		<i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+	</button>
+	{{#unless canEdit}}
+	<span class="litm-camping-scene__readonly-tag">{{localize "LITM.Ui.camping_read_only"}}</span>
+	{{/unless}}
+</header>

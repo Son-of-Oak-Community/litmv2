@@ -104,8 +104,40 @@ describe("buildOperations — backpack scratch", () => {
 		);
 
 		expect(operations.disables).toEqual([]);
+		expect(operations.enables).toEqual([]);
 		expect(recap.heroes[0].lines).not.toContainEqual(
 			expect.objectContaining({ kind: "backpack-deactivated" }),
+		);
+	});
+
+	it("ticking a disabled tag enqueues an enable (re-enable at Pack Up)", () => {
+		const fx = fakeEffect({
+			name: "wet match",
+			type: "story_tag",
+			disabled: true,
+		});
+		const backpack = fakeItem({ type: "backpack", effects: [fx] });
+		const hero = fakeActor({ items: [backpack] });
+		hero.system = { backpackItem: backpack };
+
+		const state = defaultCampingState();
+		state.heroStates[hero.id] = {
+			backpackKept: [fx.id],
+			activities: [],
+			qualityTime: {},
+		};
+		const { operations, recap } = buildOperations(
+			state,
+			world({ heroes: [hero] }),
+		);
+
+		expect(operations.disables).toEqual([]);
+		expect(operations.enables).toContainEqual({ effect: fx });
+		expect(recap.heroes[0].lines).toContainEqual(
+			expect.objectContaining({
+				kind: "backpack-reactivated",
+				names: ["wet match"],
+			}),
 		);
 	});
 

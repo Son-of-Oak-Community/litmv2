@@ -12,6 +12,7 @@ import {
 } from "./camping-apply.js";
 import { buildContext, getCampingHeroes } from "./camping-context.js";
 import {
+	adjacentStep,
 	defaultCampingState,
 	SETTERS,
 	sojournPowerBonus,
@@ -137,8 +138,11 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		classes: ["litm", "litm-camping-scene"],
 		window: {
 			title: "LITM.Ui.camping_title",
-			frame: false,
-			positioned: false,
+			resizable: true,
+		},
+		position: {
+			width: 720,
+			height: 720,
 		},
 		actions: {
 			"set-camp-type": LitmCampingScene.#onSetCampType,
@@ -153,6 +157,9 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			"remove-threat": LitmCampingScene.#onRemoveThreat,
 			"open-sheet": LitmCampingScene.#onOpenSheet,
 			"rest-tier-delta": LitmCampingScene.#onRestTierDelta,
+			"set-active-step": LitmCampingScene.#onSetActiveStep,
+			"next-step": LitmCampingScene.#onNextStep,
+			"prev-step": LitmCampingScene.#onPrevStep,
 		},
 	};
 
@@ -161,9 +168,19 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			template: "systems/litmv2/templates/apps/camping/camping-scene.html",
 			scrollable: [".litm-camping-scene__body"],
 			templates: [
-				"systems/litmv2/templates/apps/camping/camping-hero-column.html",
 				"systems/litmv2/templates/apps/camping/camping-place-of-stay.html",
 				"systems/litmv2/templates/apps/camping/camping-threats.html",
+				"systems/litmv2/templates/apps/camping/step-timeline.html",
+				"systems/litmv2/templates/apps/camping/step-period.html",
+				"systems/litmv2/templates/apps/camping/step-quality-time.html",
+				"systems/litmv2/templates/apps/camping/step-pack-up.html",
+				"systems/litmv2/templates/apps/camping/hero-row.html",
+				"systems/litmv2/templates/apps/camping/hero-row-period.html",
+				"systems/litmv2/templates/apps/camping/hero-row-rest.html",
+				"systems/litmv2/templates/apps/camping/hero-row-reflect.html",
+				"systems/litmv2/templates/apps/camping/hero-row-camp-action.html",
+				"systems/litmv2/templates/apps/camping/hero-row-quality-time.html",
+				"systems/litmv2/templates/apps/camping/hero-row-pack-up.html",
 			],
 		},
 	};
@@ -213,6 +230,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 	async _prepareContext(_options) {
 		const state = readState() ?? defaultCampingState();
 		const isGM = game.user.isGM;
+		const ctx = buildContext(state);
 		const {
 			heroes,
 			hasHeroes,
@@ -222,7 +240,14 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			hasThreats,
 			sceneStoryTags,
 			hasSceneStoryTags,
-		} = buildContext(state);
+			activeStep,
+			steps,
+			stepIsPeriod1,
+			stepIsPeriod2,
+			stepIsPeriod3,
+			stepIsQualityTime,
+			stepIsPackUp,
+		} = ctx;
 		const isSetup = state.phase === "setup";
 		const isCamp = state.type === "camp";
 		// Active-phase header is read-only — type + Power bonus + duration
@@ -236,15 +261,21 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			: game.i18n.format("LITM.Ui.camping_sojourn_title", {
 					duration: t(`LITM.Ui.camping_duration_${state.sojournDuration}`),
 				});
+		// Footer button visibility for the active phase. Pack Up only on the
+		// final step; Next on every step except the final; Previous on every
+		// step except the first. All footer buttons are GM-only.
+		const isFirstStep = activeStep === "period1";
 		return {
 			isGM,
 			isCamp,
 			sojournDuration: state.sojournDuration,
 			isSetup,
 			activeTitle,
-			// "Begin Camp" replaces "Pack Up" in the footer during setup.
+			// "Begin Camp" stays as the setup-phase primary footer button.
 			canBeginCamp: isGM && isSetup,
-			canPackUp: isGM && !isSetup,
+			canPackUp: isGM && !isSetup && stepIsPackUp,
+			canStepNext: isGM && !isSetup && !stepIsPackUp,
+			canStepPrev: isGM && !isSetup && !isFirstStep,
 			heroes,
 			hasHeroes,
 			placeOfStay,
@@ -253,21 +284,14 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			hasThreats,
 			sceneStoryTags,
 			hasSceneStoryTags,
+			activeStep,
+			steps,
+			stepIsPeriod1,
+			stepIsPeriod2,
+			stepIsPeriod3,
+			stepIsQualityTime,
+			stepIsPackUp,
 		};
-	}
-
-	_onFirstRender(context, options) {
-		super._onFirstRender?.(context, options);
-		// Elevate camping above whatever window spawned it (e.g. a fellowship
-		// sheet). We can't call ApplicationV2.bringToFront — it short-circuits
-		// when `frame: false` — so we participate in the same _maxZ counter
-		// directly. Only doing this on first render is important: re-renders
-		// triggered by updateItem / updateScene hooks must NOT re-elevate, or
-		// child windows (vignette sheet, hero sheet, roll dialog) opened from
-		// camping would slip back underneath after their parent re-renders.
-		const AV2 = foundry.applications.api.ApplicationV2;
-		AV2._maxZ = (AV2._maxZ ?? 100) + 1;
-		this.element.style.zIndex = String(AV2._maxZ);
 	}
 
 	_onRender(context, options) {
@@ -526,6 +550,50 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		// every client (Pack Up does the same; do it on Begin Camp too).
 		getStoryTagSidebar()?.render?.();
 		Sockets.dispatch("storyTagsRender", {});
+	}
+
+	/**
+	 * Jump to a specific step via a timeline click. GM-only — players see
+	 * the timeline as read-only markers. Free nav: every step is reachable
+	 * regardless of completion state. Emits `litm.campingStepChanged` after
+	 * the write so modules can react to the navigation.
+	 */
+	static async #onSetActiveStep(_event, target) {
+		if (!game.user.isGM) return;
+		const next = target.dataset.step;
+		const state = readState();
+		const from = state?.activeStep ?? null;
+		if (!next || next === from) return;
+		await enqueueOp("active-step", { value: next });
+		Hooks.callAll("litm.campingStepChanged", { from, to: next });
+	}
+
+	/**
+	 * Advance to the next step. Period 3's presence in the order depends
+	 * on at least one hero opting in (see `stepOrder`), so this naturally
+	 * skips over it when nobody has.
+	 */
+	static async #onNextStep() {
+		if (!game.user.isGM) return;
+		const state = readState();
+		if (!state) return;
+		const from = state.activeStep;
+		const to = adjacentStep(state, "next");
+		if (to === from) return;
+		await enqueueOp("active-step", { value: to });
+		Hooks.callAll("litm.campingStepChanged", { from, to });
+	}
+
+	/** Step backwards; symmetric to #onNextStep. */
+	static async #onPrevStep() {
+		if (!game.user.isGM) return;
+		const state = readState();
+		if (!state) return;
+		const from = state.activeStep;
+		const to = adjacentStep(state, "prev");
+		if (to === from) return;
+		await enqueueOp("active-step", { value: to });
+		Hooks.callAll("litm.campingStepChanged", { from, to });
 	}
 
 	static async #onToggleThirdPeriod(_event, target) {

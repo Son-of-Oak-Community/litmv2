@@ -2839,8 +2839,7 @@ section.standard-form.litm-actions-app {
    other input in a .standard-form lays out. Stacked .form-field columns
    (theme item sheet) deliberately don't get this rule — the bar stays
    left-aligned under its label there. */
-.standard-form
-	.form-group
+.standard-form .form-group
 	> .litm--roll-type-bar:has(.litm--segmented-option--icon) {
 	margin-left: auto;
 }
@@ -5288,7 +5287,8 @@ input[type="text"].litm--quick-add-input,
 }
 
 .litm-theme-evolution__drop-hint:hover,
-.litm-theme-evolution__new-theme.is-drop-target .litm-theme-evolution__drop-hint {
+.litm-theme-evolution__new-theme.is-drop-target
+	.litm-theme-evolution__drop-hint {
 	opacity: 1;
 }
 
@@ -6103,45 +6103,20 @@ body.litm--colorblind .themed.theme-dark,
    Manuscript-style page for camp/sojourn activities.
 ======================================== */
 
-.litm-camping-scene {
-	position: fixed;
-	inset: 0;
-	/* Sit just below Foundry's window layer (z-index-window = 100) so vignette
-	   sheets, roll dialogs, hero sheets and the like open ABOVE the camping
-	   overlay when triggered from inside it — while still covering the canvas
-	   (0) and the app/ui chrome (30/60). */
-	z-index: calc(var(--z-index-window) - 1);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	max-height: 100vh;
-}
-
-.litm-camping-scene::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	background: rgba(0, 0, 0, 0.55);
-	pointer-events: none;
+/* Hint text inside camping reads as faded apricot against the parchment
+   surface because Foundry's --color-form-hint is tuned for darker sheet
+   chrome. Override to the standard secondary text colour. */
+.litm-camping-scene .hint,
+.litm-camping-scene p.hint,
+.litm-camping-scene label.hint {
+	color: var(--color-text-secondary);
 }
 
 .litm-camping-scene__root {
-	position: relative;
-	z-index: 1;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacer-12);
-	width: min(1200px, 92vw);
-	max-height: 88vh;
-	padding: var(--spacer-16);
-	background: var(--background);
-	border-radius: var(--radius-md);
-	box-shadow: var(--shadow-glow-strong);
-	overflow: hidden;
-}
-
-.litm-camping-scene__root--setup {
-	width: min(600px, 92vw);
+	min-height: 100%;
 }
 
 .litm-camping-scene__header {
@@ -6276,6 +6251,9 @@ body.litm--colorblind .themed.theme-dark,
 	overflow-y: auto;
 	scrollbar-gutter: stable;
 	padding-right: var(--spacer-4);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-16);
 }
 
 .litm-camping-scene__place-of-stay {
@@ -6298,34 +6276,9 @@ body.litm--colorblind .themed.theme-dark,
 	margin: 0;
 }
 
-.litm-camping-scene__columns {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-	gap: var(--spacer-12);
-	align-items: start;
-}
-
-.litm-camping-scene__hero-col {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacer-12);
-	padding: var(--spacer-12);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-md);
-	background: var(--color-overlay-white-5);
-}
-
-.litm-camping-scene__hero-header {
-	display: flex;
-	align-items: center;
-	gap: var(--spacer-12);
-	padding-bottom: var(--spacer-8);
-	border-bottom: 1px solid var(--color-fieldset-border);
-}
-
 .litm-camping-scene__hero-portrait {
-	width: 44px;
-	height: 44px;
+	width: 32px;
+	height: 32px;
 	border-radius: var(--radius-circle);
 	object-fit: cover;
 	flex: 0 0 auto;
@@ -6338,9 +6291,11 @@ body.litm--colorblind .themed.theme-dark,
 	flex: 1 1 auto;
 	font-family: var(--font-serif);
 	font-style: italic;
-	font-size: var(--font-size-18);
+	font-size: var(--font-size-14);
 	line-height: var(--line-height-tight);
 	color: var(--color-text-emphatic);
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .litm-camping-scene__hero-open {
@@ -6365,12 +6320,6 @@ body.litm--colorblind .themed.theme-dark,
 .litm-camping-scene__hero-open:hover {
 	background: var(--color-overlay-white-5);
 	color: var(--color-text-primary);
-}
-
-.litm-camping-scene__hero-section {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacer-4);
 }
 
 /* Sub-label — quieter than the main section header. Serif italic at small
@@ -6408,6 +6357,18 @@ body.litm--colorblind .themed.theme-dark,
 .litm-camping-scene__pill.marked .litm-tag {
 	text-decoration: line-through;
 	opacity: 0.6;
+}
+
+/* Inactive backpack tags on Pack Up are still selectable — ticking
+   re-enables them at apply time (see buildBackpackOps in camping-apply).
+   Visually muted so the player can tell them apart from active ones at
+   a glance; the tooltip clarifies what ticking will do. */
+.litm-camping-scene__pill--inactive {
+	opacity: 0.65;
+}
+
+.litm-camping-scene__pill--inactive .litm-tag {
+	font-style: italic;
 }
 
 .litm-camping-scene__activity {
@@ -6494,20 +6455,21 @@ body.litm--colorblind .themed.theme-dark,
    when the period has no choice yet. Once chosen, the chip replaces them. */
 .litm-camping-scene__activity-cards {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacer-4);
 }
 
 .litm-camping-scene__activity-card {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
 	align-items: center;
+	justify-content: center;
 	gap: var(--spacer-4);
 	height: auto;
 	min-height: 0;
-	padding: var(--spacer-8) var(--spacer-4);
-	background: var(--color-overlay-white-3);
-	border: 1px solid var(--color-border);
+	padding: var(--spacer-4) var(--spacer-8);
+	background: transparent;
+	border: 1px solid var(--color-text-primary-15);
 	border-radius: var(--radius-sm);
 	color: var(--color-text-secondary);
 	cursor: pointer;
@@ -6517,19 +6479,25 @@ body.litm--colorblind .themed.theme-dark,
 		color var(--transition-fast);
 }
 
+.litm-camping-scene__activity-card:hover {
+	background: var(--color-text-primary-10);
+	border-color: var(--color-text-primary-40);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__activity-card:focus-visible {
+	outline: 1px solid var(--color-warm-1);
+	outline-offset: 2px;
+}
+
 .litm-camping-scene__activity-card i {
-	font-size: var(--font-size-18);
+	font-size: var(--font-size-14);
 }
 
 .litm-camping-scene__activity-card span {
 	font-family: var(--font-serif);
 	font-size: var(--font-size-13);
 	font-style: italic;
-}
-
-.litm-camping-scene__activity-card:hover {
-	background: var(--color-overlay-white-5);
-	color: var(--color-text-primary);
 }
 
 .litm-camping-scene__activity-card--rest:hover {
@@ -6615,19 +6583,21 @@ body.litm--colorblind .themed.theme-dark,
 
 /* Third-period choice — a small inline link/banner, not a toggle. When armed
    it turns weakness-colored to communicate "you've opted into Consequences." */
+/* Third-period toggle — typographic only. Active state pulls the apricot
+   "weakness" hue (the book frames the third period as risky). No bespoke
+   indicator glyph; the chip itself signals state. */
 .litm-camping-scene__third-toggle {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacer-8);
+	gap: var(--spacer-4);
 	align-self: flex-start;
 	height: auto;
 	min-height: 0;
-	margin-top: var(--spacer-4);
-	padding: var(--spacer-4) var(--spacer-12);
+	padding: var(--spacer-2) var(--spacer-8);
 	background: transparent;
-	border: 1px dashed var(--color-fieldset-border);
+	border: 1px solid var(--color-text-primary-15);
 	border-radius: var(--radius-pill);
-	color: var(--color-text-subtle);
+	color: var(--color-text-secondary);
 	cursor: pointer;
 	transition:
 		background var(--transition-fast),
@@ -6636,15 +6606,19 @@ body.litm--colorblind .themed.theme-dark,
 }
 
 .litm-camping-scene__third-toggle:hover {
-	color: var(--color-text-primary);
-	border-color: var(--color-text-subtle);
+	background: var(--color-text-primary-10);
+	border-color: var(--color-text-primary-40);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__third-toggle:focus-visible {
+	outline: 1px solid var(--color-warm-1);
+	outline-offset: 2px;
 }
 
 .litm-camping-scene__third-toggle.active {
-	border-style: solid;
 	border-color: var(--color-litm-weakness);
-	background: var(--color-litm-weakness-10);
-	color: var(--color-text-emphatic);
+	color: var(--color-litm-weakness-text);
 }
 
 .litm-camping-scene__third-toggle-label {
@@ -6681,6 +6655,15 @@ body.litm--colorblind .themed.theme-dark,
 	gap: var(--spacer-8);
 	padding-top: var(--spacer-8);
 	border-top: 1px solid var(--color-fieldset-border);
+}
+
+/* Group nav (Prev/Next) + commit (Begin Camp / Pack Up) buttons together
+   on the trailing edge so the eye sees one cluster of forward motion;
+   Cancel stays alone on the leading edge as the escape hatch. */
+.litm-camping-scene__footer-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
 }
 
 /* Footer buttons. Cancel is quiet body chrome; only Pack Up & Go gets the
@@ -6833,4 +6816,205 @@ body.litm--colorblind .themed.theme-dark,
 .litm-camping-scene__threats-dropzone .hint {
 	margin: 0;
 	text-align: center;
+}
+
+/* ----------------------------------------------------------------------
+ * Wizard layout — horizontal "table of contents" above the step panel.
+ * No card container: the timeline sits inline on the parchment with
+ * marker + italic label per step, joined by thin connector lines. The
+ * current step is italic + emphatic; completed steps get a filled
+ * marker. Reads like a manuscript chapter index, not a SaaS stepper.
+ * -------------------------------------------------------------------- */
+
+.litm-camping-scene__step-panel {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-8);
+}
+
+/* Timeline strip sits inline on the parchment — no surface chrome, no
+   drawn borders. Reads as a manuscript chapter index. The body's
+   spacer-16 gap separates it from the step panel below; the step's
+   section-header (with its extending lines) acts as the visual divider. */
+.litm-camping-scene__timeline-rail {
+	padding: 0 var(--spacer-4);
+}
+
+.litm-camping-scene__timeline {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	gap: var(--spacer-4);
+}
+
+/* Natural-width items so the row sits centered; the connector between
+   each pair stretches with a sensible minimum so the timeline still
+   feels visually balanced as labels grow. */
+.litm-camping-scene__timeline-item {
+	margin: 0;
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	min-width: 0;
+}
+
+.litm-camping-scene__timeline-item:not(:last-child)::after {
+	content: "";
+	flex: 0 1 60px;
+	min-width: 24px;
+	height: 1px;
+	margin: 0 var(--spacer-8);
+	background: var(--color-border);
+}
+
+.litm-camping-scene__timeline-item.complete:not(:last-child)::after {
+	background: var(--color-litm-tag);
+}
+
+.litm-camping-scene__timeline-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	padding: var(--spacer-2) var(--spacer-4);
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-sm);
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+	color: var(--color-text-secondary);
+	text-align: left;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: color var(--transition-fast);
+	outline: none;
+}
+
+.litm-camping-scene__timeline-btn:hover {
+	color: var(--color-text-primary);
+}
+
+/* Focus ring drawn with outline-offset so it sits outside the small pill
+   and doesn't clip against the connector lines or the marker. */
+.litm-camping-scene__timeline-btn:focus-visible {
+	outline: 1px solid var(--color-warm-1);
+	outline-offset: 3px;
+}
+
+.litm-camping-scene__timeline-btn--static {
+	cursor: default;
+}
+
+.litm-camping-scene__timeline-btn--static:hover {
+	color: var(--color-text-secondary);
+}
+
+/* Active step: emphatic + bold text with a warm-1 underline drawn via
+   inset shadow (same pattern as .litm--segmented-option.is-active).
+   Filled gold marker on the left. */
+.litm-camping-scene__timeline-item.active .litm-camping-scene__timeline-btn {
+	color: var(--color-text-emphatic);
+	font-weight: bold;
+	box-shadow: inset 0 -2px 0 var(--color-warm-1);
+}
+
+.litm-camping-scene__timeline-item.active .litm-camping-scene__timeline-marker,
+.litm-camping-scene__timeline-item.complete
+	.litm-camping-scene__timeline-marker {
+	background: var(--color-litm-tag);
+	border-color: var(--color-litm-tag);
+	color: var(--color-litm-tag-text);
+}
+
+.litm-camping-scene__timeline-marker {
+	flex: 0 0 auto;
+	width: 18px;
+	height: 18px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-circle);
+	border: 1px solid var(--color-border);
+	background: transparent;
+	font-family: var(--font-serif);
+	font-size: var(--font-size-11);
+	color: var(--color-text-secondary);
+}
+
+.litm-camping-scene__timeline-label {
+	flex: 1 1 auto;
+}
+
+/* ----------------------------------------------------------------------
+ * Step content — outer wrapper for the panel's current step. The step
+ * title reuses the manuscript-header treatment. Each hero is a card row
+ * stacked vertically inside the step.
+ * -------------------------------------------------------------------- */
+
+/* Gap is intentionally large — it's the primary visual separator between
+   adjacent heroes (no row borders or shadows). Section header above gets
+   the same spacer-16 breathing room from the first hero. */
+.litm-camping-scene__step {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-16);
+}
+
+/* ----------------------------------------------------------------------
+ * Hero row — left cell carries portrait + name + open-sheet button,
+ * right cell carries the active step's controls. Collapses to a stacked
+ * column on narrow viewports so the row remains readable.
+ * -------------------------------------------------------------------- */
+
+/* Hero "rows" are ledger entries on parchment. Portrait + name sits at
+   the START of the group (not centered) so when content expands the
+   left annotation still reads as the heading. Adjacent rows separated
+   by a hairline rule and a generous spacer-16 gap (set on the parent)
+   so groups remain visually distinct even with multi-line content. */
+.litm-camping-scene__hero-row {
+	display: grid;
+	grid-template-columns: 140px minmax(0, 1fr);
+	gap: var(--spacer-12);
+	align-items: start;
+	padding-top: var(--spacer-12);
+}
+
+.litm-camping-scene__hero-row + .litm-camping-scene__hero-row {
+	border-top: 1px solid var(--color-text-primary-15);
+}
+
+.litm-camping-scene__row-header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	min-height: 32px;
+}
+
+.litm-camping-scene__row-content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+	min-width: 0;
+}
+
+@media (max-width: 720px) {
+	.litm-camping-scene__hero-row {
+		grid-template-columns: 1fr;
+	}
+
+	.litm-camping-scene__row-header {
+		padding-right: 0;
+		padding-bottom: var(--spacer-8);
+		border-right: none;
+		border-bottom: 1px solid var(--color-fieldset-border);
+	}
+
+	.litm-camping-scene__timeline-label {
+		display: none;
+	}
 }

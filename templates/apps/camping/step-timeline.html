@@ -1,0 +1,24 @@
+<ol class="litm-camping-scene__timeline" aria-label="{{localize 'LITM.Ui.camping_step_timeline'}}">
+	{{#each steps}}
+	<li class="litm-camping-scene__timeline-item {{cssClass}}">
+		{{#if ../isGM}}
+		<button type="button" class="litm-camping-scene__timeline-btn"
+			data-action="set-active-step" data-step="{{id}}"
+			{{#if isCurrent}}aria-current="step"{{/if}}>
+			<span class="litm-camping-scene__timeline-marker" aria-hidden="true">
+				{{#if isComplete}}<i class="fa-solid fa-check"></i>{{else}}{{add @index 1}}{{/if}}
+			</span>
+			<span class="litm-camping-scene__timeline-label">{{label}}</span>
+		</button>
+		{{else}}
+		<span class="litm-camping-scene__timeline-btn litm-camping-scene__timeline-btn--static"
+			{{#if isCurrent}}aria-current="step"{{/if}}>
+			<span class="litm-camping-scene__timeline-marker" aria-hidden="true">
+				{{#if isComplete}}<i class="fa-solid fa-check"></i>{{else}}{{add @index 1}}{{/if}}
+			</span>
+			<span class="litm-camping-scene__timeline-label">{{label}}</span>
+		</span>
+		{{/if}}
+	</li>
+	{{/each}}
+</ol>

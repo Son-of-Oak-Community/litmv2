@@ -1,0 +1,19 @@
+{{#if hero.hasBackpack}}
+<ul class="litm-camping-scene__pills plain">
+	{{#each hero.backpackTags}}
+	<li>
+		<label class="litm-camping-scene__pill{{#unless kept}} marked{{/unless}}{{#if disabled}} litm-camping-scene__pill--inactive{{/if}}"
+			data-tooltip="{{#if disabled}}{{#if kept}}{{localize 'LITM.Ui.camping_backpack_will_reactivate'}}{{else}}{{localize 'LITM.Ui.camping_backpack_stays_inactive'}}{{/if}}{{else}}{{#if kept}}{{localize 'LITM.Ui.camping_backpack_kept'}}{{else}}{{localize 'LITM.Ui.camping_backpack_will_deactivate'}}{{/if}}{{/if}}">
+			{{#if ../hero.canEdit}}
+			<input type="checkbox" data-update="backpack-kept"
+				data-hero-id="{{../hero.id}}" data-effect-id="{{id}}"
+				{{#if kept}}checked{{/if}}>
+			{{/if}}
+			<span class="litm-tag">{{name}}</span>
+		</label>
+	</li>
+	{{/each}}
+</ul>
+{{else}}
+<p class="hint">{{localize "LITM.Ui.camping_no_backpack"}}</p>
+{{/if}}

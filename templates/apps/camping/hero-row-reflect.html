@@ -1,0 +1,42 @@
+<div class="litm-camping-scene__reflect">
+	{{#if hero.canEdit}}
+	<label class="litm-camping-scene__reflect-label">
+		<span class="hint">{{localize "LITM.Ui.camping_reflect_improve_label"}}</span>
+		<select class="litm-camping-scene__reflect-sel" data-update="reflect-target"
+			data-hero-id="{{hero.id}}" data-period="{{activity.index}}">
+			<option value="">{{localize "LITM.Ui.camping_reflect_pick"}}</option>
+			{{#each activity.reflectTargets}}
+			<option value="{{id}}" {{#if (eq ../activity.reflectTargetItemId id)}}selected{{/if}}>{{name}}</option>
+			{{/each}}
+		</select>
+	</label>
+	{{#if activity.showQuestMarks}}
+	<label class="litm-camping-scene__reflect-label">
+		<span class="hint">{{localize "LITM.Ui.camping_reflect_milestone_label"}}</span>
+		<select class="litm-camping-scene__reflect-sel" data-update="reflect-milestone"
+			data-hero-id="{{hero.id}}" data-period="{{activity.index}}">
+			<option value="">{{localize "LITM.Ui.camping_reflect_quest_skip"}}</option>
+			{{#each activity.reflectTargets}}
+			<option value="{{id}}" {{#if (eq ../activity.reflectMilestoneItemId id)}}selected{{/if}}>{{name}}</option>
+			{{/each}}
+		</select>
+	</label>
+	<label class="litm-camping-scene__reflect-label">
+		<span class="hint">{{localize "LITM.Ui.camping_reflect_abandon_label"}}</span>
+		<select class="litm-camping-scene__reflect-sel" data-update="reflect-abandon"
+			data-hero-id="{{hero.id}}" data-period="{{activity.index}}">
+			<option value="">{{localize "LITM.Ui.camping_reflect_quest_skip"}}</option>
+			{{#each activity.reflectTargets}}
+			<option value="{{id}}" {{#if (eq ../activity.reflectAbandonItemId id)}}selected{{/if}}>{{name}}</option>
+			{{/each}}
+		</select>
+	</label>
+	{{/if}}
+	{{else}}
+	{{#if activity.reflectTargetName}}<span class="hint">{{localize "LITM.Ui.camping_reflect_improve_label"}}: {{activity.reflectTargetName}}</span>{{/if}}
+	{{#if activity.showQuestMarks}}
+	{{#if activity.reflectMilestoneName}}<span class="hint">{{localize "LITM.Ui.camping_reflect_milestone_label"}}: {{activity.reflectMilestoneName}}</span>{{/if}}
+	{{#if activity.reflectAbandonName}}<span class="hint">{{localize "LITM.Ui.camping_reflect_abandon_label"}}: {{activity.reflectAbandonName}}</span>{{/if}}
+	{{/if}}
+	{{/if}}
+</div>

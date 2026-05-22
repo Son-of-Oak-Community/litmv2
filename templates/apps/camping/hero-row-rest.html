@@ -1,0 +1,68 @@
+<div class="litm-camping-scene__rest">
+	{{#if activity.restStatuses.length}}
+	<table class="litm-camping-scene__rest-statuses">
+		<tbody>
+			{{#each activity.restStatuses}}
+			<tr data-status-id="{{id}}">
+				<td>
+					<span class="litm-tag litm-status_tag">{{name}} {{currentTier}}</span>
+				</td>
+				<td>
+					{{#if ../hero.canEdit}}
+					<div class="litm-camping-scene__rest-stepper">
+						<button type="button" class="litm-camping-scene__rest-step"
+							data-action="rest-tier-delta"
+							data-hero-id="{{../hero.id}}" data-period="{{../activity.index}}"
+							data-status-id="{{id}}" data-max-tier="{{currentTier}}"
+							data-delta="-1"
+							{{#unless canDecrease}}disabled aria-disabled="true"{{/unless}}
+							aria-label="{{localize 'LITM.Ui.camping_status_lower'}}"
+							data-tooltip="{{localize 'LITM.Ui.camping_status_lower'}}">
+							<i class="fa-solid fa-minus" aria-hidden="true"></i>
+						</button>
+						<span class="litm-camping-scene__rest-readout">
+							{{#if willRemove}}{{localize "LITM.Ui.camping_status_will_remove"}}{{else if willKeep}}{{localize "LITM.Ui.camping_status_will_keep"}}{{else}}{{currentTier}} → {{nextTier}}{{/if}}
+						</span>
+						<button type="button" class="litm-camping-scene__rest-step"
+							data-action="rest-tier-delta"
+							data-hero-id="{{../hero.id}}" data-period="{{../activity.index}}"
+							data-status-id="{{id}}" data-max-tier="{{currentTier}}"
+							data-delta="1"
+							{{#unless canIncrease}}disabled aria-disabled="true"{{/unless}}
+							aria-label="{{localize 'LITM.Ui.camping_status_raise'}}"
+							data-tooltip="{{localize 'LITM.Ui.camping_status_raise'}}">
+							<i class="fa-solid fa-plus" aria-hidden="true"></i>
+						</button>
+					</div>
+					{{else}}
+					<span class="hint">
+						{{#if willRemove}}{{localize "LITM.Ui.camping_status_will_remove"}}{{else if willKeep}}{{localize "LITM.Ui.camping_status_will_keep"}}{{else}}{{currentTier}} → {{nextTier}}{{/if}}
+					</span>
+					{{/if}}
+				</td>
+			</tr>
+			{{/each}}
+		</tbody>
+	</table>
+	{{/if}}
+	{{#if activity.restRecoverableTags.length}}
+	<h4 class="litm-camping-scene__sub-label">{{localize "LITM.Ui.camping_recover_power_tags"}}</h4>
+	<ul class="litm-camping-scene__pills plain">
+		{{#each activity.restRecoverableTags}}
+		<li>
+			<label class="litm-camping-scene__pill{{#if checked}} marked{{/if}}">
+				{{#if ../hero.canEdit}}
+				<input type="checkbox" data-update="rest-recover"
+					data-hero-id="{{../hero.id}}" data-period="{{../activity.index}}" data-effect-id="{{id}}"
+					{{#if checked}}checked{{/if}}>
+				{{/if}}
+				<span class="litm-tag">{{name}}</span>
+			</label>
+		</li>
+		{{/each}}
+	</ul>
+	{{/if}}
+	{{#unless activity.restStatuses.length}}{{#unless activity.restRecoverableTags.length}}
+	<p class="hint">{{localize "LITM.Ui.camping_rest_nothing"}}</p>
+	{{/unless}}{{/unless}}
+</div>
