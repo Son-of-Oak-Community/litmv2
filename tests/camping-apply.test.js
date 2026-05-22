@@ -294,6 +294,7 @@ describe("buildOperations — reflect Quest marks", () => {
 		hero.system = { themes: [{ theme, tags: [] }] };
 
 		const state = defaultCampingState();
+		setType(state, "sojourn");
 		setActivity(state, hero.id, 0, "reflect");
 		setReflectAbandon(state, hero.id, 0, theme.id);
 
@@ -328,6 +329,7 @@ describe("buildOperations — reflect Quest marks", () => {
 		hero.system = { themes: [{ theme, tags: [] }] };
 
 		const state = defaultCampingState();
+		setType(state, "sojourn");
 		setActivity(state, hero.id, 0, "reflect");
 		setReflectMilestone(state, hero.id, 0, theme.id);
 
@@ -363,16 +365,17 @@ describe("buildOperations — reflect Quest marks", () => {
 		};
 
 		const state = defaultCampingState();
+		setType(state, "sojourn");
 		setActivity(state, hero.id, 0, "reflect");
 		setReflectTarget(state, hero.id, 0, themeA.id);
 		setReflectAbandon(state, hero.id, 0, themeB.id);
 		setReflectMilestone(state, hero.id, 0, themeA.id);
 
 		const { operations } = buildOperations(state, world({ heroes: [hero] }));
-		expect(operations.improves).toContainEqual({
+		expect(operations.improvements).toContainEqual({
 			theme: themeA,
 			owner: hero,
-			newValue: 1,
+			sourceHero: hero,
 		});
 		expect(operations.questMarks).toContainEqual({
 			theme: themeB,
@@ -405,6 +408,7 @@ describe("buildOperations — reflect Quest marks", () => {
 		heroB.system = { themes: [], fellowshipActor };
 
 		const state = defaultCampingState();
+		setType(state, "sojourn");
 		setActivity(state, heroA.id, 0, "reflect");
 		setReflectAbandon(state, heroA.id, 0, fwTheme.id);
 		setActivity(state, heroB.id, 0, "reflect");
@@ -682,7 +686,7 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 		);
 	});
 
-	it("rephraseRelationship ignores non-scratched relationship tags", () => {
+	it("rephraseRelationship works on a non-scratched relationship tag (renew + reframe)", () => {
 		const rel = fakeEffect({
 			name: "rival",
 			type: "relationship_tag",
@@ -693,9 +697,13 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 		const state = defaultCampingState();
 		setQualityTime(state, hero.id, "action", "rephraseRelationship");
 		setQualityTime(state, hero.id, "relationshipEffectId", rel.id);
+		setQualityTime(state, hero.id, "relationshipRephrase", "uneasy allies");
 
 		const { operations } = buildOperations(state, world({ heroes: [hero] }));
-		expect(operations.unscratches).toEqual([]);
+		expect(operations.unscratches).toEqual([{ effect: rel }]);
+		expect(operations.renames).toEqual([
+			{ effect: rel, newName: "uneasy allies" },
+		]);
 	});
 
 	it("newRelationship: forges a relationship toward a fellowship hero with no existing one", () => {

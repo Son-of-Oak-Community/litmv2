@@ -88,6 +88,7 @@ export class FellowshipSheet extends LitmActorSheet {
 			selectTag: FellowshipSheet.#onSelectTag,
 			adjustProgress: LitmActorSheet._onAdjustProgress,
 			openThemeAdvancement: FellowshipSheet.#onOpenThemeAdvancement,
+			openThemeEvolution: FellowshipSheet.#onOpenThemeEvolution,
 			browseThemes: FellowshipSheet.#onBrowseThemes,
 			"open-hero-sheet": FellowshipSheet.#onOpenHeroSheet,
 			scratchTag: FellowshipSheet.#onScratchTag,
@@ -351,6 +352,17 @@ export class FellowshipSheet extends LitmActorSheet {
 		if (!item) return;
 
 		new game.litmv2.ThemeAdvancementApp({
+			actorId: this.document.id,
+			themeId: itemId,
+		}).render(true);
+	}
+
+	static #onOpenThemeEvolution(_event, target) {
+		const itemId = target.dataset.itemId;
+		const item = this.document.items.get(itemId);
+		if (!item) return;
+
+		new game.litmv2.ThemeEvolutionWizard({
 			actorId: this.document.id,
 			themeId: itemId,
 		}).render(true);

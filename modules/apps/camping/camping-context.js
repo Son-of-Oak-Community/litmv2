@@ -97,7 +97,7 @@ function buildReflectTargets(actor) {
 function buildActivityRows(
 	heroState,
 	periodCount,
-	{ statusEffects, scratchedRecoverable, reflectTargets },
+	{ statusEffects, scratchedRecoverable, reflectTargets, isCamp },
 ) {
 	const claimed = new Set(
 		heroState.activities
@@ -125,6 +125,10 @@ function buildActivityRows(
 			isRest: act.activity === "rest",
 			isReflect: act.activity === "reflect",
 			isCampAction: act.activity === "campAction",
+			// Camp Reflect grants only Improve (Core Book p.181). Sojourn
+			// Reflect additionally allows marking Milestone/Abandon. Surface
+			// the flag so the template can hide those rows on a camp scene.
+			showQuestMarks: !isCamp,
 			canRest,
 			canReflect,
 			canCampAction: true,
@@ -137,12 +141,25 @@ function buildActivityRows(
 			reflectMilestoneName,
 			restStatuses: statusEffects.map((e) => {
 				const ch = restChoices[e.id] ?? { action: "", amount: 1 };
+				const tier = e.system?.currentTier ?? 0;
+				const decrement =
+					ch.action === "remove"
+						? tier
+						: ch.action === "reduce"
+							? Math.max(0, Math.min(ch.amount ?? 1, tier))
+							: 0;
 				return {
 					id: e.id,
 					name: e.name,
-					currentTier: e.system?.currentTier ?? 0,
+					currentTier: tier,
 					restAction: ch.action,
 					restAmount: ch.amount ?? 1,
+					decrement,
+					nextTier: Math.max(0, tier - decrement),
+					willRemove: ch.action === "remove" || (tier > 0 && decrement >= tier),
+					willKeep: decrement === 0,
+					canDecrease: decrement < tier,
+					canIncrease: decrement > 0,
 				};
 			}),
 			restRecoverableTags: scratchedRecoverable.map((e) => ({
@@ -170,9 +187,9 @@ function buildQualityTimeContext(
 	scratchedFellowshipTags,
 ) {
 	const quality = heroState.qualityTime ?? {};
-	const scratchedRelationships = relationshipEffects.filter(
-		(e) => e.system?.isScratched,
-	);
+	// Rephrase is offered for ANY existing relationship — the action covers
+	// both renewing a spent (scratched) relationship and re-framing one
+	// that hasn't been spent yet, so don't filter by isScratched here.
 	const existingTargets = new Set(
 		relationshipEffects.map((e) => e.system?.targetId).filter(Boolean),
 	);
@@ -184,7 +201,7 @@ function buildQualityTimeContext(
 		id: e.id,
 		name: e.name,
 	}));
-	const relationshipOptions = scratchedRelationships.map((e) => {
+	const relationshipOptions = relationshipEffects.map((e) => {
 		const target = e.system?.targetId
 			? game.actors?.get(e.system.targetId)
 			: null;
@@ -214,7 +231,7 @@ function buildQualityTimeContext(
 	};
 }
 
-function buildHeroContext(actor, heroState, allHeroes) {
+function buildHeroContext(actor, heroState, allHeroes, isCamp) {
 	const buckets = partitionEffects(actor);
 	const backpackTags = buildBackpackPills(actor, heroState);
 	const reflectTargets = buildReflectTargets(actor);
@@ -222,6 +239,7 @@ function buildHeroContext(actor, heroState, allHeroes) {
 	const activities = buildActivityRows(heroState, periodCount, {
 		...buckets,
 		reflectTargets,
+		isCamp,
 	});
 	const qualityTime = buildQualityTimeContext(
 		actor,
@@ -254,16 +272,19 @@ function buildHeroContext(actor, heroState, allHeroes) {
 export function buildContext(state) {
 	const live = state ?? defaultCampingState();
 	const allHeroes = getCampingHeroes();
+	const isCamp = live.type !== "sojourn";
+	const showThreats = LitmSettings.showCampingThreats;
 	const heroes = allHeroes.map((actor) =>
-		buildHeroContext(actor, ensureHeroState(live, actor.id), allHeroes),
+		buildHeroContext(actor, ensureHeroState(live, actor.id), allHeroes, isCamp),
 	);
 	const placeOfStay = buildPlaceOfStayContext(live);
-	const threats = buildThreatsContext(live);
+	const threats = showThreats ? buildThreatsContext(live) : [];
 	const sceneStoryTags = buildSceneStoryTags();
 	return {
 		heroes,
 		hasHeroes: heroes.length > 0,
 		placeOfStay,
+		showThreats,
 		threats,
 		hasThreats: threats.length > 0,
 		sceneStoryTags,

@@ -22,8 +22,9 @@ export class RollDialogHud {
 				if (!actor?.sheet) return;
 				actor.sheet.renderRollDialog();
 			});
-			parent.prepend(this.#container);
 		}
+		// Foundry replaces #players contents on re-render, detaching our node.
+		if (!this.#container.isConnected) parent.prepend(this.#container);
 
 		await this.#renderEntries();
 	}
@@ -34,6 +35,9 @@ export class RollDialogHud {
 				?.filter((a) => {
 					const flag = a.getFlag("litmv2", "rollDialogOwner");
 					if (!flag || flag.ownerId === game.user.id) return false;
+					// Sacrifice rolls get their own dramatic banner — don't
+					// double up by also showing a "click to join" entry.
+					if (flag.type === "sacrifice") return false;
 					return game.users.get(flag.ownerId)?.active;
 				})
 				.map((a) => {

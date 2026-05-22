@@ -69,21 +69,78 @@
 		<!-- Settings column -->
 		{{#if isOwner}}
 		<div class="litm--roll-dialog-settings">
-		<!-- Title -->
-		<input type="text" name="title" value="{{title}}" placeholder="{{localize 'LITM.Ui.roll_title_placeholder'}}" aria-label="{{localize 'LITM.Ui.roll_title_placeholder'}}" class="litm--roll-title-input" />
-
 		<!-- Sacrifice Level & Theme -->
 		<fieldset class="litm--sacrifice-level-fieldset hidden">
 			<legend>{{localize "LITM.Ui.sacrifice_level"}}</legend>
-			<select name="sacrificeLevel" data-update="sacrificeLevel">
-				{{selectOptions sacrificeLevelOptions selected=sacrificeLevel localize=true}}
-			</select>
+			<div class="litm--roll-type-bar" role="radiogroup" aria-label="{{localize 'LITM.Ui.sacrifice_level'}}">
+				{{#each sacrificeLevelOptions as |opt|}}
+				<label class="litm--segmented-option litm--roll-type-option {{#if opt.selected}}is-active{{/if}}"
+					data-action="setSacrificeLevel"
+					data-level="{{opt.value}}"
+					data-tooltip="{{opt.description}}"
+					aria-label="{{opt.label}} — {{opt.description}}">
+					<input type="radio" name="sacrificeLevel" value="{{opt.value}}" {{checked opt.selected}} />
+					<span>{{opt.label}}</span>
+				</label>
+				{{/each}}
+			</div>
 		</fieldset>
 		<fieldset class="litm--sacrifice-theme-fieldset hidden">
 			<legend>{{localize "LITM.Ui.sacrifice_choose_theme"}}</legend>
-			<select name="sacrificeThemeId" data-update="sacrificeThemeId">
-				{{selectOptions sacrificeThemes selected=sacrificeThemeId}}
-			</select>
+			<div class="litm--sacrifice-theme-grid" role="radiogroup" aria-label="{{localize 'LITM.Ui.sacrifice_choose_theme'}}">
+				{{#each sacrificeThemes as |t|}}
+				<fieldset class="theme-card {{#if t.selected}}is-selected{{/if}}"
+					data-action="selectSacrificeTheme"
+					data-theme-id="{{t.id}}"
+					role="radio"
+					tabindex="0"
+					aria-checked="{{#if t.selected}}true{{else}}false{{/if}}">
+					{{#if t.themebook}}<legend class="litm-banner theme-card__book">{{t.themebook}}</legend>{{/if}}
+					<div class="theme-card-header">
+						<div class="flexrow noflex gap-sm">
+							{{#if t.level}}
+							<img class="noflex icon-md" src="systems/litmv2/assets/media/icons/{{t.level}}.svg"
+								alt="{{t.levelLabel}}" data-tooltip="{{t.levelLabel}}" />
+							{{/if}}
+							<span class="litm-power_tag litm-title_tag" data-text="{{t.name}}">{{t.name}}</span>
+						</div>
+					</div>
+					{{#if t.hasTags}}
+					<div class="theme-card-tags">
+						{{#each t.powerTags}}
+						<span class="litm-power_tag" data-text="{{this}}">{{this}}</span>
+						{{/each}}
+						{{#each t.weaknessTags}}
+						<span class="litm-weakness_tag" data-text="{{this}}">{{this}}</span>
+						{{/each}}
+					</div>
+					{{/if}}
+					{{#if t.specialImprovements.length}}
+					<ul class="plain">
+						{{#each t.specialImprovements}}
+						<li><i class="fa-solid fa-medal" aria-hidden="true"></i> {{this}}</li>
+						{{/each}}
+					</ul>
+					{{/if}}
+					<div class="theme-card-tracks">
+						{{#each t.tracks}}
+						<div class="theme-card-track">
+							<div class="progress-display" role="group" aria-label="{{label}}">
+								{{#each pips}}
+								<span class="progress-box litm--track-pip-readonly">
+									<img src="systems/litmv2/assets/media/checkbox{{ifThen filled '-c' ''}}.svg" alt="" aria-hidden="true" />
+								</span>
+								{{/each}}
+							</div>
+							<label>{{label}}</label>
+						</div>
+						{{/each}}
+					</div>
+					{{#if t.quest}}<blockquote class="theme-card__quest">{{t.quest}}</blockquote>{{/if}}
+				</fieldset>
+				{{/each}}
+			</div>
+			<input type="hidden" name="sacrificeThemeId" value="{{sacrificeThemeId}}" />
 		</fieldset>
 
 		<!-- Modifiers: Might, Modifier stepper, and Trade Power -->

@@ -62,7 +62,9 @@
 		{{#if isSetup}}
 		{{#if isGM}}
 		{{> "systems/litmv2/templates/apps/camping/camping-place-of-stay.html" placeOfStay=placeOfStay isSetup=isSetup}}
+		{{#if showThreats}}
 		{{> "systems/litmv2/templates/apps/camping/camping-threats.html" threats=threats isGM=isGM}}
+		{{/if}}
 		{{/if}}
 
 
@@ -72,8 +74,10 @@
 		<p class="hint">{{localize "LITM.Ui.camping_setup_waiting"}}</p>
 		{{/if}}
 		{{else}}
+		{{#if showThreats}}
 		{{#if hasThreats}}
 		{{> "systems/litmv2/templates/apps/camping/camping-threats.html" threats=threats isGM=isGM readOnly=true}}
+		{{/if}}
 		{{/if}}
 		{{#if hasHeroes}}
 		<div class="litm-camping-scene__columns">

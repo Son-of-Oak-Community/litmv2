@@ -25,6 +25,7 @@ import { ThemeEvolutionWizard } from "./modules/apps/theme-evolution.js";
 import { WelcomeOverlay } from "./modules/apps/welcome/welcome-overlay.js";
 import { SuperCheckbox } from "./modules/components/super-checkbox.js";
 import { LitmTokenHUD } from "./modules/hud/litm-token-hud.js";
+import { showSacrificeBanner } from "./modules/hud/sacrifice-banner.js";
 import { ActionData } from "./modules/item/action/action-data.js";
 import { AddonData } from "./modules/item/addon/addon-data.js";
 import { BackpackData } from "./modules/item/backpack/backpack-data.js";
@@ -74,6 +75,8 @@ Hooks.once("init", () => {
 	 * - `ContentSources` — compendium loading and status seeding entry point
 	 * - `storyTags` — set at ready time to the sidebar tab instance
 	 * - `rollDialogHud` — mutable reference to the active roll-dialog HUD
+	 * - `showSacrificeBanner` — flash the sacrifice rite on peer clients;
+	 *   reassign to replace the default visual treatment
 	 */
 	game.litmv2 = {
 		data: {
@@ -103,6 +106,7 @@ Hooks.once("init", () => {
 		LitmCampingScene,
 		ContentSources,
 		rollDialogHud: null,
+		showSacrificeBanner,
 	};
 
 	info("Initializing Config...");

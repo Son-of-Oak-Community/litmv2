@@ -17,10 +17,19 @@
 			</div>
 
 			<div class="form-field">
-				<label for="level">{{localize "LITM.Ui.theme_level"}}</label>
-				<select id="level" name="system.level">
-					{{selectOptions levels selected=system.level localize=true}}
-				</select>
+				<label>{{localize "LITM.Ui.theme_level"}}</label>
+				<div class="litm--roll-type-bar" role="radiogroup" aria-label="{{localize 'LITM.Ui.theme_level'}}">
+					{{#each levelOptions as |opt|}}
+					<label class="litm--segmented-option litm--segmented-option--icon {{#if opt.selected}}is-active{{/if}}"
+						data-action="setLevel"
+						data-level="{{opt.value}}"
+						data-tooltip="{{opt.label}}"
+						aria-label="{{opt.label}}">
+						<input type="radio" name="system.level" value="{{opt.value}}" {{checked opt.selected}} />
+						<img src="systems/litmv2/assets/media/icons/{{opt.value}}.svg" alt="" aria-hidden="true" />
+					</label>
+					{{/each}}
+				</div>
 			</div>
 
 			<div class="form-field">

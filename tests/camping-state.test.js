@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
 	addThreatVignette,
+	adjustRestChoice,
 	defaultCampingState,
-	defaultQualityTime,
 	defaultHeroState,
+	defaultQualityTime,
 	ensureHeroState,
 	removeThreatVignette,
 	SETTERS,
@@ -11,9 +12,9 @@ import {
 	setActivityDetail,
 	setBackpackKept,
 	setCampsiteTags,
-	setQualityTime,
 	setPhase,
 	setPlaceOfStayName,
+	setQualityTime,
 	setReflectAbandon,
 	setReflectMilestone,
 	setReflectTarget,
@@ -223,6 +224,112 @@ describe("setRestChoice", () => {
 	});
 });
 
+describe("adjustRestChoice", () => {
+	const choice = (state, statusId = "status-1") =>
+		state.heroStates["hero-1"].activities[0].restChoices[statusId];
+
+	it("from keep, a -1 nudge enters reduce mode at amount 1", () => {
+		const s = defaultCampingState();
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1, maxTier: 3 });
+		expect(choice(s)).toEqual({ action: "reduce", amount: 1 });
+	});
+
+	it("accumulating -1 nudges raises the reduction up to maxTier - 1, then flips to remove at cap", () => {
+		const s = defaultCampingState();
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1, maxTier: 3 });
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1, maxTier: 3 });
+		expect(choice(s)).toEqual({ action: "reduce", amount: 2 });
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1, maxTier: 3 });
+		expect(choice(s)).toEqual({ action: "remove", amount: 3 });
+	});
+
+	it("a +1 nudge from remove drops back into reduce at cap - 1", () => {
+		const s = defaultCampingState();
+		setRestChoice(s, "hero-1", 0, "status-1", { action: "remove", maxTier: 3 });
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: 1, maxTier: 3 });
+		expect(choice(s)).toEqual({ action: "reduce", amount: 2 });
+	});
+
+	it("a +1 nudge from reduce-1 returns to keep (entry deleted)", () => {
+		const s = defaultCampingState();
+		setRestChoice(s, "hero-1", 0, "status-1", {
+			action: "reduce",
+			amount: 1,
+			maxTier: 3,
+		});
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: 1, maxTier: 3 });
+		expect(choice(s)).toBeUndefined();
+	});
+
+	it("-1 past the cap stays at remove (no overflow)", () => {
+		const s = defaultCampingState();
+		setRestChoice(s, "hero-1", 0, "status-1", { action: "remove", maxTier: 3 });
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1, maxTier: 3 });
+		expect(choice(s)).toEqual({ action: "remove", amount: 3 });
+	});
+
+	it("+1 past keep stays at keep (no underflow)", () => {
+		const s = defaultCampingState();
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: 1, maxTier: 3 });
+		expect(choice(s)).toBeUndefined();
+	});
+
+	it("defaults maxTier to 6 when not provided", () => {
+		const s = defaultCampingState();
+		for (let i = 0; i < 5; i++) {
+			adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1 });
+		}
+		expect(choice(s)).toEqual({ action: "reduce", amount: 5 });
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1 });
+		expect(choice(s)).toEqual({ action: "remove", amount: 6 });
+	});
+
+	it("clamps an invalid maxTier (zero or negative) to the default of 6", () => {
+		const s = defaultCampingState();
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1, maxTier: 0 });
+		expect(choice(s)).toEqual({ action: "reduce", amount: 1 });
+		for (let i = 0; i < 5; i++) {
+			adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1, maxTier: 0 });
+		}
+		expect(choice(s)).toEqual({ action: "remove", amount: 6 });
+	});
+
+	it("missing delta is a no-op", () => {
+		const s = defaultCampingState();
+		setRestChoice(s, "hero-1", 0, "status-1", {
+			action: "reduce",
+			amount: 2,
+			maxTier: 3,
+		});
+		adjustRestChoice(s, "hero-1", 0, "status-1", { maxTier: 3 });
+		expect(choice(s)).toEqual({ action: "reduce", amount: 2 });
+	});
+
+	it("interprets a stored reduce amount above the cap as the cap", () => {
+		const s = defaultCampingState();
+		// Stored state from a prior maxTier; new call uses a smaller cap.
+		s.heroStates = {
+			"hero-1": {
+				...defaultHeroState(),
+				activities: [
+					{
+						activity: "rest",
+						campActionDetail: "",
+						reflectTargetItemId: null,
+						reflectAbandonItemId: null,
+						reflectMilestoneItemId: null,
+						restChoices: { "status-1": { action: "reduce", amount: 9 } },
+						restRecoverTagIds: [],
+					},
+					...defaultHeroState().activities.slice(1),
+				],
+			},
+		};
+		adjustRestChoice(s, "hero-1", 0, "status-1", { delta: -1, maxTier: 3 });
+		expect(choice(s)).toEqual({ action: "remove", amount: 3 });
+	});
+});
+
 describe("setRestRecoverTag", () => {
 	it("toggles an effect id in the recover list", () => {
 		const s = defaultCampingState();
@@ -292,7 +399,9 @@ describe("setQualityTime", () => {
 		const s = defaultCampingState();
 		setQualityTime(s, "hero-1", "action", "newRelationship");
 		setQualityTime(s, "hero-1", "garbageField", "x");
-		expect(s.heroStates["hero-1"].qualityTime).not.toHaveProperty("garbageField");
+		expect(s.heroStates["hero-1"].qualityTime).not.toHaveProperty(
+			"garbageField",
+		);
 	});
 });
 

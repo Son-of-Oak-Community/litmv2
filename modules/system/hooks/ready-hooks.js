@@ -11,12 +11,23 @@ export function registerReadyHooks() {
 	_setupRollDialogHud();
 	_renderWelcomeScreen();
 	_popoutTagsSidebar();
+	_applyColorblindMode();
 	Hooks.once("ready", registerTours);
+}
+
+function _applyColorblindMode() {
+	Hooks.once("ready", () => {
+		document.body.classList.toggle(
+			"litm--colorblind",
+			!!LitmSettings.colorblindMode,
+		);
+	});
 }
 
 function _seedConfigFromSettings() {
 	Hooks.once("ready", () => {
 		CONFIG.litmv2.heroLimit = LitmSettings.heroLimit;
+		CONFIG.litmv2.themeLimit = LitmSettings.themeLimit;
 	});
 }
 

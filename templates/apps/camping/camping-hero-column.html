@@ -101,26 +101,35 @@
 							</td>
 							<td>
 								{{#if ../../canEdit}}
-								<select class="litm-camping-scene__rest-action"
-									data-update="rest-choice"
-									data-hero-id="{{../../id}}" data-period="{{../index}}"
-									data-status-id="{{id}}" data-max-tier="{{currentTier}}">
-									<option value="">{{localize "LITM.Ui.camping_status_keep"}}</option>
-									<option value="reduce" {{#if (eq restAction "reduce")}}selected{{/if}}>
-										{{localize "LITM.Ui.camping_status_reduce"}}
-									</option>
-									<option value="remove" {{#if (eq restAction "remove")}}selected{{/if}}>
-										{{localize "LITM.Ui.camping_status_remove"}}
-									</option>
-								</select>
-								<input type="number" class="litm-camping-scene__rest-amount"
-									data-update="rest-choice"
-									data-hero-id="{{../../id}}" data-period="{{../index}}"
-									data-status-id="{{id}}" data-max-tier="{{currentTier}}"
-									min="1" max="{{currentTier}}" value="{{restAmount}}"
-									{{#unless (eq restAction "reduce")}}hidden{{/unless}}>
+								<div class="litm-camping-scene__rest-stepper">
+									<button type="button" class="litm-camping-scene__rest-step"
+										data-action="rest-tier-delta"
+										data-hero-id="{{../../id}}" data-period="{{../index}}"
+										data-status-id="{{id}}" data-max-tier="{{currentTier}}"
+										data-delta="-1"
+										{{#unless canDecrease}}disabled aria-disabled="true"{{/unless}}
+										aria-label="{{localize 'LITM.Ui.camping_status_lower'}}"
+										data-tooltip="{{localize 'LITM.Ui.camping_status_lower'}}">
+										<i class="fa-solid fa-minus" aria-hidden="true"></i>
+									</button>
+									<span class="litm-camping-scene__rest-readout">
+										{{#if willRemove}}{{localize "LITM.Ui.camping_status_will_remove"}}{{else if willKeep}}{{localize "LITM.Ui.camping_status_will_keep"}}{{else}}{{currentTier}} → {{nextTier}}{{/if}}
+									</span>
+									<button type="button" class="litm-camping-scene__rest-step"
+										data-action="rest-tier-delta"
+										data-hero-id="{{../../id}}" data-period="{{../index}}"
+										data-status-id="{{id}}" data-max-tier="{{currentTier}}"
+										data-delta="1"
+										{{#unless canIncrease}}disabled aria-disabled="true"{{/unless}}
+										aria-label="{{localize 'LITM.Ui.camping_status_raise'}}"
+										data-tooltip="{{localize 'LITM.Ui.camping_status_raise'}}">
+										<i class="fa-solid fa-plus" aria-hidden="true"></i>
+									</button>
+								</div>
 								{{else}}
-								<span class="hint">{{restAction}}{{#if (eq restAction "reduce")}} {{restAmount}}{{/if}}</span>
+								<span class="hint">
+									{{#if willRemove}}{{localize "LITM.Ui.camping_status_will_remove"}}{{else if willKeep}}{{localize "LITM.Ui.camping_status_will_keep"}}{{else}}{{currentTier}} → {{nextTier}}{{/if}}
+								</span>
 								{{/if}}
 							</td>
 						</tr>
@@ -163,6 +172,7 @@
 						{{/each}}
 					</select>
 				</label>
+				{{#if showQuestMarks}}
 				<label class="litm-camping-scene__reflect-label">
 					<span class="hint">{{localize "LITM.Ui.camping_reflect_milestone_label"}}</span>
 					<select class="litm-camping-scene__reflect-sel" data-update="reflect-milestone"
@@ -183,10 +193,13 @@
 						{{/each}}
 					</select>
 				</label>
+				{{/if}}
 				{{else}}
 				{{#if reflectTargetName}}<span class="hint">{{localize "LITM.Ui.camping_reflect_improve_label"}}: {{reflectTargetName}}</span>{{/if}}
+				{{#if showQuestMarks}}
 				{{#if reflectMilestoneName}}<span class="hint">{{localize "LITM.Ui.camping_reflect_milestone_label"}}: {{reflectMilestoneName}}</span>{{/if}}
 				{{#if reflectAbandonName}}<span class="hint">{{localize "LITM.Ui.camping_reflect_abandon_label"}}: {{reflectAbandonName}}</span>{{/if}}
+				{{/if}}
 				{{/if}}
 			</div>
 			{{/if}}

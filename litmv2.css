@@ -94,6 +94,11 @@ body,
 	--color-warm-1-10: color-mix(in srgb, var(--color-warm-1) 10%, transparent);
 	--color-warm-1-25: color-mix(in srgb, var(--color-warm-1) 25%, transparent);
 	--color-warm-1-50: color-mix(in srgb, var(--color-warm-1) 50%, transparent);
+	--color-litm-tag-15: color-mix(
+		in srgb,
+		var(--color-litm-tag) 15%,
+		transparent
+	);
 	--color-litm-limit-15: color-mix(
 		in srgb,
 		var(--color-litm-limit) 15%,
@@ -239,6 +244,23 @@ body,
 	--underline-url: url(assets/media/underline.webp) center / contain no-repeat;
 	--sidebar-background: url("/systems/litmv2/assets/media/sheet-background.webp")
 		repeat;
+}
+
+/* Colorblind-safe palette — light mode.
+   Replaces the four chip hues with values separable across deuteranopia,
+   protanopia, and tritanopia. Derived color-mix() tokens recompute
+   automatically from these bases. */
+body.litm--colorblind,
+body.litm--colorblind .themed.theme-light:not(.chat-log),
+.themed.theme-light.litm--colorblind:not(.chat-log) {
+	--color-litm-tag: #f0c83d;
+	--color-litm-status: #7fb8e0;
+	--color-litm-limit: #c89ec8;
+	--color-litm-limit-accent: #7a3a7a;
+	--color-litm-weakness: #e07a4f;
+	--color-litm-tag-text: #7a5a08;
+	--color-litm-status-text: #1a4a6b;
+	--color-litm-weakness-text: #7a2412;
 }
 
 .chat-message {
@@ -1953,6 +1975,12 @@ section.standard-form.litm-actions-app {
 	text-transform: uppercase;
 }
 
+/* Track-completion action button — shown above an abandon/milestone/improve
+   track when it caps out, to invoke the matching advancement/evolution flow. */
+.litm .theme-card-track .litm--track-action {
+	margin-top: var(--spacer-4);
+}
+
 .litm .theme-card__quest {
 	margin: var(--spacer-12) 0 0;
 	font-family: var(--font-trattatello);
@@ -2043,6 +2071,163 @@ section.standard-form.litm-actions-app {
 
 .litm--play-header {
 	padding-top: var(--spacer-8);
+}
+
+/* Play-header action stack — vertical column of small icon buttons (Roll +
+   Sacrifice) anchored to the right of the avatar/name/promise block. Has
+   its own class so it doesn't pick up the name-column's 25ch min-width. */
+.litm--play-header__actions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+	align-self: center;
+	margin-left: auto;
+	flex: 0 0 auto;
+}
+
+.litm--play-header__actions button {
+	width: 2.5rem;
+	height: 2.5rem;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* Sacrifice trigger on the hero play header — warm/dire styling that sits
+   next to the regular Roll dice button so it's available for desperate
+   moments. Click sets the dialog's type to sacrifice and opens it. */
+.litm--sacrifice-button {
+	border-color: var(--color-litm-weakness);
+	color: var(--color-litm-weakness);
+}
+
+.litm--sacrifice-button:hover {
+	background: var(--color-warm-1-10);
+}
+
+/* Sacrifice rite — a transient inscription that appears when another player
+   arms a Sacrifice. Full-screen vignette dims the whole canvas uniformly,
+   then a single line of blackletter cream is set on top. No band, no halo,
+   no boxes — the vignette carries the weight; the text floats. */
+.litm--sacrifice-rite {
+	--rite-cream: #efe2c6;
+	position: fixed;
+	inset: 0;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding-top: 24vh;
+	pointer-events: none;
+	opacity: 0;
+	/* Subtle radial vignette: slightly lighter at the inscription's anchor,
+	   slightly heavier at the corners — but the spread is so wide that the
+	   whole screen reads as uniformly dimmed, with no sharp hotspot. */
+	background: radial-gradient(
+		ellipse 120% 90% at 50% 30%,
+		rgba(0, 0, 0, 0.32) 0%,
+		rgba(0, 0, 0, 0.5) 100%
+	);
+}
+
+/* No scrim box — the rite is just a centered flex wrapper for the text. */
+.litm--sacrifice-rite__scrim {
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.litm--sacrifice-rite__inscription {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-16);
+	max-width: 90vw;
+	padding: 0 var(--spacer-16);
+}
+
+/* Hairline rules flanking the text. Cream center, dissolving to transparent. */
+.litm--sacrifice-rite__rule {
+	flex: 0 0 5rem;
+	height: 1px;
+	background: linear-gradient(
+		to right,
+		transparent,
+		var(--rite-cream) 50%,
+		transparent
+	);
+	opacity: 0.65;
+}
+
+.litm--sacrifice-rite__text {
+	flex: 0 1 auto;
+	font-family: var(--font-blackletter);
+	font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+	line-height: var(--line-height-tight);
+	color: var(--rite-cream);
+	letter-spacing: 0.03em;
+	text-align: center;
+	/* A thin stroke under the fill (for letter crispness) plus a soft drop
+	   shadow (for local contrast against whatever's behind the vignette).
+	   Together they keep the cream legible on both bright and dark canvas
+	   regions without ever reading as outlined or glowing text. */
+	paint-order: stroke fill;
+	-webkit-text-stroke: 1px rgba(0, 0, 0, 0.45);
+	text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.litm--sacrifice-rite {
+		transition: opacity 0.9s ease-out;
+	}
+
+	.litm--sacrifice-rite.is-visible {
+		transition: opacity 0.9s ease-in;
+	}
+}
+
+.litm--sacrifice-rite.is-visible {
+	opacity: 1;
+}
+
+/* Sacrifice theme picker — a responsive grid of regular .theme-cards.
+   The cards themselves are the established play-mode chrome (parchment,
+   banner plaque, title-tag, tag chips); the picker only owns the layout
+   and the selected affordance. */
+.litm--sacrifice-theme-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: var(--spacer-8);
+}
+
+/* Selected theme card: gold border + soft glow, matching the existing
+   .litm-render--card[data-render-action]:focus-visible treatment. No
+   weakness-colored chrome — selection is a neutral act, the rite around
+   it provides the gravity. */
+.litm .theme-card.is-selected {
+	border-color: var(--color-litm-tag);
+	background: var(--color-litm-tag-15);
+	box-shadow: var(--shadow-glow);
+}
+
+/* Read-only progress pip used by the sacrifice theme cards to show each
+   theme's abandon/improve/milestone state at a glance. The play-mode
+   pips inherit their dimensions from <button> chrome — these spans need
+   them set explicitly, otherwise the 128×128 checkbox SVG renders at
+   intrinsic size. */
+.litm .progress-box.litm--track-pip-readonly {
+	display: inline-flex;
+	width: 0.95rem;
+	height: 0.95rem;
+	padding: 0;
+	cursor: default;
+	pointer-events: none;
+}
+
+/* Tighten the track labels inside the sacrifice picker. Play-mode tracks
+   keep their existing label size; only the dense per-card readout shrinks. */
+.litm--sacrifice-theme-grid .theme-card-track label {
+	font-size: var(--font-size-10);
 }
 
 .litm-hero-sheet .litm--play-header > .flexcol {
@@ -2565,6 +2750,9 @@ section.standard-form.litm-actions-app {
 	display: flex;
 	flex-direction: column;
 	gap: 0;
+	/* Establish a sizing container so the nested @container queries fire
+	   off the dialog's own width, regardless of the surrounding window. */
+	container-type: inline-size;
 }
 
 .litm--roll-dialog-content {
@@ -2831,6 +3019,28 @@ section.standard-form.litm-actions-app {
 	margin: 0 auto var(--spacer-2);
 }
 
+/* Icon-only variant of the shared segmented-option chrome. Used by the
+   might-tier picker on theme/themebook/evolution. The .is-active state
+   inherits the gold inset rule from the base — the SVG icon itself
+   carries the tier identity, so the chip stays neutral. */
+.litm--segmented-option--icon {
+	padding: var(--spacer-4) var(--spacer-8);
+	flex: 0 1 auto;
+}
+
+.litm--segmented-option--icon img {
+	width: 1.25rem;
+	height: 1.25rem;
+	object-fit: contain;
+	opacity: 0.55;
+	transition: opacity var(--transition-fast);
+}
+
+.litm--segmented-option--icon:hover img,
+.litm--segmented-option--icon.is-active img {
+	opacity: 1;
+}
+
 /* Modifier stepper: -/value/+ */
 .litm--modifier-stepper {
 	display: flex;
@@ -3019,6 +3229,16 @@ section.standard-form.litm-actions-app {
 	border-top: 1px solid var(--color-border);
 }
 
+/* At wider widths the tags column has plenty of breathing room — the per-
+   group borders add noise without separating anything meaningful, so drop
+   them and rely on the existing spacing for separation. */
+@container (min-width: 720px) {
+	.litm--roll-dialog-section-break {
+		border-top: none;
+		padding-top: 0;
+	}
+}
+
 .litm--roll-dialog-tag.is-selected .litm--roll-dialog-badge {
 	font-size: 1.05em;
 }
@@ -3166,13 +3386,25 @@ section.standard-form.litm-actions-app {
 ======================================== */
 
 .chat-message:has(
-	:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
+	:is(
+			.litm.dice-roll,
+			.litm-track-complete,
+			.litm-spend-chat,
+			.litm-camping-recap
+		)
 ) {
 	padding: 0;
 	contain: layout style;
 }
 
-.chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap))
+.chat-message:has(
+		:is(
+				.litm.dice-roll,
+				.litm-track-complete,
+				.litm-spend-chat,
+				.litm-camping-recap
+			)
+	)
 	.message-header {
 	padding: 4px 10px;
 	border-bottom: var(--hr-border);
@@ -5165,7 +5397,9 @@ fieldset.litm-party-overview > legend {
 	font-size: var(--font-size-12);
 	color: var(--color-text-subtle);
 	opacity: 0.7;
-	transition: opacity var(--transition-fast), color var(--transition-fast);
+	transition:
+		opacity var(--transition-fast),
+		color var(--transition-fast);
 }
 
 .litm-party-overview__toggle:hover {
@@ -5380,7 +5614,12 @@ body.theme-dark .application:not(.theme-light),
 	   reads -secondary/-subtle render as near-black on the dark chat bg. */
 	&
 		.chat-message:has(
-			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
+			:is(
+					.litm.dice-roll,
+					.litm-track-complete,
+					.litm-spend-chat,
+					.litm-camping-recap
+				)
 		) {
 		--color-scheme: dark;
 		--chat-message-border-color: var(--color-litm-chat-border);
@@ -5396,7 +5635,12 @@ body.theme-dark .application:not(.theme-light),
 
 	&
 		.chat-message:has(
-			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
+			:is(
+					.litm.dice-roll,
+					.litm-track-complete,
+					.litm-spend-chat,
+					.litm-camping-recap
+				)
 		)
 		.message-header {
 		border-bottom: 1px solid var(--color-litm-chat-border);
@@ -5558,6 +5802,24 @@ body.theme-dark .application:not(.theme-light),
 		color: var(--color-light-2);
 		border-top-color: var(--color-litm-chat-border);
 	}
+}
+
+/* Colorblind-safe palette — dark mode.
+   Mirrors the light-mode colorblind block: chip backgrounds become dark
+   variants and the lighter saturated hues move to -text tokens, matching
+   the existing light/dark inversion pattern. */
+body.theme-dark.litm--colorblind,
+body.theme-dark.litm--colorblind .application:not(.theme-light),
+body.litm--colorblind .themed.theme-dark,
+.themed.theme-dark.litm--colorblind {
+	--color-litm-tag: #7a5a08;
+	--color-litm-status: #1a4a6b;
+	--color-litm-limit: #7a3a7a;
+	--color-litm-limit-accent: #c89ec8;
+	--color-litm-weakness: #7a2412;
+	--color-litm-tag-text: #f0c83d;
+	--color-litm-status-text: #7fb8e0;
+	--color-litm-weakness-text: #e07a4f;
 }
 
 /* Scene Tag Dialog */
@@ -6219,7 +6481,6 @@ body.theme-dark .application:not(.theme-light),
 }
 
 .litm-camping-scene__reflect-sel,
-.litm-camping-scene__rest-action,
 .litm-camping-scene__duration {
 	flex: 1 1 auto;
 	font-family: var(--font-serif);
@@ -6253,8 +6514,30 @@ body.theme-dark .application:not(.theme-light),
 	gap: var(--spacer-4);
 }
 
-.litm-camping-scene__rest-amount {
-	width: 3em;
+.litm-camping-scene__rest-stepper {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+}
+
+.litm-camping-scene__rest-step {
+	flex: 0 0 auto;
+	width: 1.75rem;
+	height: 1.75rem;
+	min-height: 0;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.litm-camping-scene__rest-readout {
+	min-width: 4em;
+	text-align: center;
+	color: var(--color-text-primary);
 }
 
 /* Third-period choice — a small inline link/banner, not a toggle. When armed

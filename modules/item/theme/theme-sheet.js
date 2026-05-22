@@ -41,6 +41,7 @@ export class ThemeSheet extends LitmItemSheet {
 			addSpecialImprovementFromThemebook:
 				ThemeSheet.#onAddSpecialImprovementFromThemebook,
 			removeSpecialImprovement: ThemeSheet.#onRemoveSpecialImprovement,
+			setLevel: ThemeSheet.#onSetLevel,
 		},
 		form: {
 			submitOnChange: true,
@@ -77,8 +78,14 @@ export class ThemeSheet extends LitmItemSheet {
 			acc[level] = game.i18n.localize(`LITM.Terms.${level}`);
 			return acc;
 		}, {});
+		const levelOptions = getThemeLevels().map((level) => ({
+			value: level,
+			label: game.i18n.localize(`LITM.Terms.${level}`),
+			selected: level === this.system.level,
+		}));
 
-		const themebooks = await this.#getThemebookOptions();
+		const { options: themebooks, levels: themebookLevels } =
+			await this.#getThemebookOptions();
 		const selectedThemebook = await findThemebookByName(this.system.themebook);
 		const allPowerQuestions =
 			selectedThemebook?.system?.powerTagQuestions || [];
@@ -125,7 +132,9 @@ export class ThemeSheet extends LitmItemSheet {
 			powerTags: this.system.powerTags,
 			weaknessTags: this.system.weaknessTags,
 			levels,
+			levelOptions,
 			themebooks,
+			themebookLevels,
 			powerQuestionOptions,
 			weaknessQuestionOptions,
 			powerQuestionTexts,
@@ -170,6 +179,7 @@ export class ThemeSheet extends LitmItemSheet {
 
 		const seen = new Set();
 		const options = [];
+		const levels = {};
 		for (const item of finalSource) {
 			if (!item.name || seen.has(item.name)) continue;
 			seen.add(item.name);
@@ -177,6 +187,7 @@ export class ThemeSheet extends LitmItemSheet {
 				value: item.name,
 				label: item.name,
 			});
+			levels[item.name] = item.level ?? "";
 		}
 
 		if (
@@ -189,12 +200,41 @@ export class ThemeSheet extends LitmItemSheet {
 			});
 		}
 
-		return options;
+		return { options, levels };
+	}
+
+	/** @override */
+	_onRender(context, options) {
+		super._onRender(context, options);
+		const html = this.element;
+		if (!html) return;
+
+		const themebookSelect = html.querySelector(
+			"select[name='system.themebook']",
+		);
+		if (themebookSelect && context?.themebookLevels) {
+			themebookSelect.addEventListener("change", (ev) => {
+				const level = context.themebookLevels[ev.target.value];
+				if (!level || level === "variable") return;
+				if (level === this.system.level) return;
+				this.document.update({ "system.level": level });
+			});
+		}
 	}
 
 	/* -------------------------------------------- */
 	/*  Event Handlers & Actions                    */
 	/* -------------------------------------------- */
+
+	/**
+	 * Update the theme's might tier from the icon picker.
+	 * @private
+	 */
+	static async #onSetLevel(_event, target) {
+		const level = target?.dataset?.level;
+		if (!level || level === this.system.level) return;
+		await this.document.update({ "system.level": level });
+	}
 
 	/**
 	 * Add a new tag to the theme

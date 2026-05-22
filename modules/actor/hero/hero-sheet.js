@@ -40,6 +40,7 @@ export class HeroSheet extends LitmActorSheet {
 		tag: "form",
 		actions: {
 			openRollDialog: HeroSheet.#onOpenRollDialog,
+			openSacrificeRoll: HeroSheet.#onOpenSacrificeRoll,
 			openActionsApp: HeroSheet.#onOpenActionsApp,
 			addStoryTag: LitmActorSheet._onAddStoryTag,
 			addStoryTheme: LitmActorSheet._onAddStoryTheme,
@@ -54,6 +55,7 @@ export class HeroSheet extends LitmActorSheet {
 			viewActor: HeroSheet.#onViewActor,
 			adjustProgress: LitmActorSheet._onAdjustProgress,
 			openThemeAdvancement: HeroSheet.#onOpenThemeAdvancement,
+			openThemeEvolution: HeroSheet.#onOpenThemeEvolution,
 			toggleTier: { handler: HeroSheet.#onToggleTier, buttons: [0, 2] },
 			openCamping: HeroSheet.#onOpenCamping,
 		},
@@ -423,7 +425,20 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	static #onOpenRollDialog(_event, _target) {
+		// If the dialog was previously opened in sacrifice mode and then
+		// cancelled, the instance still has type="sacrifice". Clicking the
+		// regular Roll button should bring the user back to a standard roll —
+		// preserve "tracked"/"mitigate" preferences, but clear sacrifice.
+		// Gate on hasRollDialog so we don't spawn an instance just to check.
+		if (this.hasRollDialog && this.rollDialogInstance.type === "sacrifice") {
+			this.rollDialogInstance.setType("quick");
+		}
 		this.renderRollDialog();
+	}
+
+	static #onOpenSacrificeRoll(_event, _target) {
+		this.renderRollDialog();
+		this.rollDialogInstance?.setType("sacrifice");
 	}
 
 	/**
@@ -677,6 +692,20 @@ export class HeroSheet extends LitmActorSheet {
 		}).render(true);
 	}
 
+	static #onOpenThemeEvolution(_event, target) {
+		const item = this.resolveItem(target);
+		if (!item) return;
+
+		const fellowshipEl = target.closest("[data-fellowship-actor-id]");
+		const actorId =
+			fellowshipEl?.dataset?.fellowshipActorId ?? this.document.id;
+
+		new game.litmv2.ThemeEvolutionWizard({
+			actorId,
+			themeId: item.id,
+		}).render(true);
+	}
+
 	/**
 	 * Resolve an item from the hero or a linked fellowship actor
 	 * @param {HTMLElement} element An element inside the item container
@@ -717,7 +746,7 @@ export class HeroSheet extends LitmActorSheet {
 				const numThemes = this.document.items.filter(
 					(i) => i.type === "theme" && !i.system.isFellowship,
 				).length;
-				if (numThemes >= 4) {
+				if (numThemes >= (CONFIG.litmv2?.themeLimit ?? 4)) {
 					return ui.notifications.warn(
 						game.i18n.localize("LITM.Ui.warn_theme_limit"),
 					);
