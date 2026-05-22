@@ -2825,6 +2825,26 @@ section.standard-form.litm-actions-app {
 	overflow: hidden;
 }
 
+/* When the bar contains the icon-only variant (.litm--segmented-option--icon
+   uses `flex: 0 1 auto`, so it does NOT stretch to fill), shrink the bar to
+   wrap its content rather than letting the form column stretch it wide. */
+.litm--roll-type-bar:has(.litm--segmented-option--icon) {
+	flex: 0 0 auto;
+	width: fit-content;
+}
+
+/* In Foundry's row-layout .form-group the label is `flex: 1` and grows.
+   Without this margin the shrunk bar sits flush against the label; the
+   auto margin parks it at the right edge of the row, matching how every
+   other input in a .standard-form lays out. Stacked .form-field columns
+   (theme item sheet) deliberately don't get this rule — the bar stays
+   left-aligned under its label there. */
+.standard-form
+	.form-group
+	> .litm--roll-type-bar:has(.litm--segmented-option--icon) {
+	margin-left: auto;
+}
+
 .litm--roll-type-option {
 	gap: var(--spacer-4);
 	padding: var(--spacer-8) var(--spacer-8);
@@ -3051,12 +3071,23 @@ section.standard-form.litm-actions-app {
 	height: 1.25rem;
 	object-fit: contain;
 	opacity: 0.55;
-	transition: opacity var(--transition-fast);
+	transition:
+		opacity var(--transition-fast),
+		filter var(--transition-fast);
 }
 
 .litm--segmented-option--icon:hover img,
 .litm--segmented-option--icon.is-active img {
 	opacity: 1;
+}
+
+/* The three tier SVGs (origin/adventure/greatness) ship with dark
+   hardcoded fills tuned for the parchment surface. In dark mode they
+   land on a near-black background and effectively disappear — boost
+   brightness + saturation so the silhouette and tier hue both read. */
+.themed.theme-dark .litm--segmented-option--icon img,
+.litm.application.theme-dark .litm--segmented-option--icon img {
+	filter: brightness(1.6) saturate(1.4);
 }
 
 /* Modifier stepper: -/value/+ */
@@ -5239,6 +5270,30 @@ input[type="text"].litm--quick-add-input,
 .litm-theme-evolution__trade-toggle {
 	opacity: 0.4;
 	cursor: not-allowed;
+}
+
+.litm-theme-evolution__drop-hint {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	padding: var(--spacer-8) var(--spacer-12);
+	border: 1px solid var(--color-fieldset-border);
+	border-radius: var(--radius-md);
+	color: var(--color-text-subtle);
+	font-size: var(--font-size-14);
+	font-style: italic;
+	background: transparent;
+	opacity: 0.7;
+	transition: opacity var(--transition-normal);
+}
+
+.litm-theme-evolution__drop-hint:hover,
+.litm-theme-evolution__new-theme.is-drop-target .litm-theme-evolution__drop-hint {
+	opacity: 1;
+}
+
+.litm-theme-evolution__drop-hint > .fa-solid {
+	color: var(--color-text-subtle);
 }
 
 .litm-theme-evolution__keep-old {

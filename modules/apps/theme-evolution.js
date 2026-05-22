@@ -121,6 +121,19 @@ function enforceTradeCaps(html, context) {
 		if (!(kind in used)) continue;
 		// Don't fight the replace-mode lock (those are externally disabled).
 		if (row.dataset.modeLocked === "true") continue;
+		// When the rule cap for this kind is zero (player is at baseline,
+		// nothing to trade), hide the +1 toggle entirely so the row reads as
+		// rename-only. Showing an unclickable pill misleads players into
+		// thinking the cap calculation is broken when it isn't.
+		const toggleEl = cb.closest(".litm-theme-evolution__trade-toggle");
+		if (caps[kind] === 0) {
+			if (toggleEl) toggleEl.hidden = true;
+			cb.disabled = true;
+			cb.checked = false;
+			row.classList.remove("is-trade-cap");
+			continue;
+		}
+		if (toggleEl) toggleEl.hidden = false;
 		const atCap = used[kind] >= caps[kind];
 		cb.disabled = !cb.checked && atCap;
 		row.classList.toggle("is-trade-cap", cb.disabled);
@@ -247,15 +260,43 @@ async function applyExpansion({
 }
 
 /**
- * Apply evolve-mode renames to surviving (non-traded) tags before any
- * deletes, so the player's revised names land on the kept effects.
+ * Apply evolve-mode updates to surviving (non-traded) power/weakness tag
+ * effects: the player's revised names, and — when the themebook changes
+ * — a reset of each tag's `system.question` index, since the kept tags'
+ * answers belong to questions that no longer exist on the new themebook.
+ * The tag name (the player's authored answer) is preserved; only the
+ * question pointer is cleared, so the player can re-pick a question on
+ * the new themebook in the theme sheet.
  */
-async function applyEvolveRenames(theme, renames) {
-	const effectRenames = renames
-		.filter((r) => r.kind === "power" || r.kind === "weakness")
-		.map((r) => ({ _id: r.id, name: r.newName }));
-	if (effectRenames.length) {
-		await theme.updateEmbeddedDocuments("ActiveEffect", effectRenames);
+async function applyEvolveKeptTagUpdates(theme, { renames, traded, themebookChanged }) {
+	const tradedEffectIds = new Set(
+		traded
+			.filter((p) => p.kind === "power" || p.kind === "weakness")
+			.map((p) => p.id),
+	);
+	const renameByEffectId = new Map(
+		renames
+			.filter((r) => r.kind === "power" || r.kind === "weakness")
+			.map((r) => [r.id, r.newName]),
+	);
+
+	const updates = [];
+	for (const eff of theme.effects) {
+		const isPower = POWER_TAG_TYPES.has(eff.type) && !eff.system?.isTitleTag;
+		const isWeakness = eff.type === "weakness_tag";
+		if (!isPower && !isWeakness) continue;
+		if (tradedEffectIds.has(eff.id)) continue;
+		const update = { _id: eff.id };
+		if (renameByEffectId.has(eff.id)) {
+			update.name = renameByEffectId.get(eff.id);
+		}
+		if (themebookChanged && eff.system?.question != null) {
+			update["system.question"] = null;
+		}
+		if (Object.keys(update).length > 1) updates.push(update);
+	}
+	if (updates.length) {
+		await theme.updateEmbeddedDocuments("ActiveEffect", updates);
 	}
 }
 
@@ -273,6 +314,18 @@ async function wipeNonTitleTagEffects(theme) {
 		.map((e) => e.id);
 	if (wipeIds.length) {
 		await theme.deleteEmbeddedDocuments("ActiveEffect", wipeIds);
+	}
+	// The surviving title tag still carries the OLD themebook's question
+	// index — reset it so the new theme starts with a clean slot. The
+	// title tag's name is updated by the item-hooks rename-sync; only its
+	// question pointer needs zeroing.
+	const titleTag = [...theme.effects].find(
+		(e) => POWER_TAG_TYPES.has(e.type) && e.system?.isTitleTag,
+	);
+	if (titleTag && titleTag.system?.question != null) {
+		await theme.updateEmbeddedDocuments("ActiveEffect", [
+			{ _id: titleTag.id, "system.question": null },
+		]);
 	}
 }
 
@@ -409,8 +462,14 @@ async function applyTransformation({
 	// Fellowship themes never mark Promise (Core Book p.193).
 	const promiseGained = isFellowship ? 0 : 1 + traded.length;
 
-	if (mode === "evolve" && renames.length) {
-		await applyEvolveRenames(theme, renames);
+	if (mode === "evolve") {
+		const themebookChanged =
+			(newThemebook ?? "") !== (theme.system?.themebook ?? "");
+		await applyEvolveKeptTagUpdates(theme, {
+			renames,
+			traded,
+			themebookChanged,
+		});
 	}
 
 	// Delete traded power/weakness effects; Replace then wipes the rest
@@ -623,6 +682,64 @@ async function submitExpand({
 	targetTheme.sheet?.render(true, { focus: true });
 }
 
+/**
+ * Replace the current theme with a full copy of a dropped theme item.
+ * Wipes the current theme's non-title power/weakness tags, then copies
+ * shape (name, themebook, level, quest, description, specials) and tags
+ * from the source. Promise math follows the Core Book Replace rule:
+ * +1 base plus +1 per extra power/weakness/special on the source.
+ */
+async function applyDroppedTheme({ actor, theme, dropped }) {
+	const isFellowship = !!theme.system?.isFellowship;
+	if (!isFellowship && !!dropped.system?.isFellowship) {
+		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
+		return;
+	}
+	if (isFellowship && !dropped.system?.isFellowship) {
+		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
+		return;
+	}
+
+	await wipeNonTitleTagEffects(theme);
+
+	await theme.update({
+		name: dropped.name,
+		"system.themebook": dropped.system?.themebook ?? "",
+		"system.level": dropped.system?.level || getDefaultThemeLevel(),
+		"system.description": dropped.system?.description ?? "",
+		"system.quest.description": dropped.system?.quest?.description ?? "",
+		"system.quest.tracks.milestone.value": 0,
+		"system.quest.tracks.abandon.value": 0,
+		"system.improve.value": 0,
+		"system.nascentImprovements": 2,
+		"system.specialImprovements": foundry.utils.deepClone(
+			dropped.system?.specialImprovements ?? [],
+		),
+	});
+
+	// Copy power/weakness tag effects from the source. Title tag stays
+	// on the current theme (it auto-renames to the new theme's name via
+	// the item-hooks rename sync); only revisable tags are duplicated.
+	const toCreate = [];
+	for (const eff of dropped.effects) {
+		const isPower = POWER_TAG_TYPES.has(eff.type) && !eff.system?.isTitleTag;
+		const isWeakness = eff.type === "weakness_tag";
+		if (!isPower && !isWeakness) continue;
+		const obj = eff.toObject();
+		delete obj._id;
+		toCreate.push(obj);
+	}
+	if (toCreate.length) {
+		await theme.createEmbeddedDocuments("ActiveEffect", toCreate);
+	}
+
+	if (!isFellowship) {
+		const sourceCaps = getTradeCaps(getRevisableParts(dropped));
+		const promiseGained = 1 + totalTradeCap(sourceCaps);
+		await applyPromiseToActor(actor, promiseGained);
+	}
+}
+
 export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
 ) {
@@ -652,6 +769,8 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		},
 	};
 
+	#dragDrop = null;
+
 	constructor(options = {}) {
 		super(options);
 		this.actorId = options.actorId;
@@ -664,6 +783,15 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		// without this, a second click during the in-flight transformation
 		// would trigger duplicate document updates and chat cards.
 		this._submitting = false;
+	}
+
+	get _dragDrop() {
+		this.#dragDrop ??= new foundry.applications.ux.DragDrop.implementation({
+			dropSelector: ".litm-theme-evolution__new-theme",
+			permissions: { drop: () => true },
+			callbacks: { drop: this.#onDropTheme.bind(this) },
+		});
+		return this.#dragDrop;
 	}
 
 	get title() {
@@ -806,6 +934,46 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		}
 
 		refresh();
+
+		this._dragDrop.bind(html);
+	}
+
+	/**
+	 * Drop handler for the "new theme" fieldset. Replaces the current theme
+	 * with a full copy of the dropped theme — name, themebook, level, quest,
+	 * description, specials, and all power/weakness tag effects — in a
+	 * single confirmed action. Equivalent to a Replace transformation that
+	 * seeds from a curated source instead of placeholders. The wizard
+	 * closes on success.
+	 */
+	async #onDropTheme(event) {
+		const data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
+		if (!data?.uuid && data?.type !== "Item") return;
+		const item = await foundry.utils.fromUuid(data.uuid);
+		if (!item || item.type !== "theme") {
+			ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_invalid"));
+			return;
+		}
+		const actor = getActor(this);
+		const theme = getTheme(this);
+		if (!actor || !theme) return;
+		if (this._submitting) return;
+
+		const confirmed = await foundry.applications.api.DialogV2.confirm({
+			window: { title: t("LITM.Ui.evolution_drop_theme_confirm_title") },
+			content: `<p>${game.i18n.format("LITM.Ui.evolution_drop_theme_confirm_body", { current: theme.name, dropped: item.name })}</p>`,
+		});
+		if (!confirmed) return;
+
+		this._submitting = true;
+		try {
+			await applyDroppedTheme({ actor, theme, dropped: item });
+			await markSourceMessageResolved(this.messageId);
+			this.close();
+			theme.sheet?.render(true, { focus: true });
+		} finally {
+			this._submitting = false;
+		}
 	}
 
 	static async #onCancel(_event, _target) {
