@@ -2196,8 +2196,26 @@ section.standard-form.litm-actions-app {
    and the selected affordance. */
 .litm--sacrifice-theme-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 	gap: var(--spacer-8);
+}
+
+/* Cards in the sacrifice picker need explicit min-width:0 so the grid
+   track honours the minmax minimum instead of stretching to fit the
+   intrinsic (nowrap) size of long title tags, which would push adjacent
+   columns into each other. Clipping the card contains the skewed tag
+   pseudo-element from bleeding into neighbours. */
+.litm--sacrifice-theme-grid .theme-card {
+	min-width: 0;
+	overflow: clip;
+}
+
+/* Long theme titles must wrap inside the sacrifice picker — the global
+   tag chrome forces nowrap, which is correct for inline tag chips but
+   breaks the card grid when a title is several words long. */
+.litm--sacrifice-theme-grid .litm-title_tag,
+.litm--sacrifice-theme-grid .litm-title_tag::before {
+	white-space: normal;
 }
 
 /* Selected theme card: gold border + soft glow, matching the existing
