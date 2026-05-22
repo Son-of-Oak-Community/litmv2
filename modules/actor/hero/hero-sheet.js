@@ -281,16 +281,23 @@ export class HeroSheet extends LitmActorSheet {
 			? this.system.mof
 			: [];
 
-		const momentOfFulfillmentEntries = await Promise.all(
-			momentsOfFulfillment.map(async (moment) => {
-				const description = moment.description ?? "";
-				return {
-					name: moment.name ?? "",
-					description,
-					enrichedDescription: await enrichHTML(description, this.document),
-				};
-			}),
-		);
+		// Render newest-first so a freshly-added moment lands next to the
+		// add button instead of at the bottom of the list. The form name
+		// still references the underlying array index (`idx`) so the data
+		// shape stays append-only.
+		const momentOfFulfillmentEntries = (
+			await Promise.all(
+				momentsOfFulfillment.map(async (moment, idx) => {
+					const description = moment.description ?? "";
+					return {
+						idx,
+						name: moment.name ?? "",
+						description,
+						enrichedDescription: await enrichHTML(description, this.document),
+					};
+				}),
+			)
+		).reverse();
 		const momentOfFulfillmentVisible = momentOfFulfillmentEntries.filter(
 			(moment) =>
 				(moment.name ?? "").trim() || (moment.description ?? "").trim(),
