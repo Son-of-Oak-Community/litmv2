@@ -280,11 +280,24 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	setAction(uuid) {
 		this.#actionUuid = uuid || null;
 		this.#actionDoc = null;
+		// Action rolls and sacrifice are mutually exclusive — rolling an
+		// action while the dialog is parked in sacrifice mode must drop
+		// sacrifice, mirroring the Roll button's behaviour in hero-sheet.
+		if (this.#actionUuid && this.type === "sacrifice") {
+			this.type = "quick";
+			this.updatePresence(true);
+		}
 		if (this.rendered) this.render();
 	}
 
 	setType(type) {
 		if (!type) return;
+		// Sacrifice is its own ritual — clear any pending action so the
+		// dialog never shows the action strip alongside the sacrifice grid.
+		if (type === "sacrifice") {
+			this.#actionUuid = null;
+			this.#actionDoc = null;
+		}
 		this.type = type;
 		if (this.rendered) this.render();
 		// Refresh presence so peers can react to the new type — e.g. the
@@ -635,6 +648,24 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 		const contributedTagGroups = this.#buildContributedTagGroups(shared);
 
+		// Owner-view tabs (Hero / Allies / Scene) group the tag sections
+		// the way the story-tag sidebar does for GMs: each tab is a clean
+		// column of related sources. Non-owner views show only selected
+		// tags and don't need the tab chrome. GM viewers have their own
+		// per-actor tab group above and are handled separately.
+		let ownerTabs = [];
+		if (isOwner) {
+			this.tabGroups["roll-tags"] ??= "hero";
+			ownerTabs = [
+				{ id: "hero", label: t("LITM.Ui.roll_tab_hero") },
+				{ id: "allies", label: t("LITM.Ui.roll_tab_allies") },
+				{ id: "scene", label: t("LITM.Ui.roll_tab_scene") },
+			];
+			for (const tab of ownerTabs) {
+				tab.cssClass = this.tabGroups["roll-tags"] === tab.id ? "active" : "";
+			}
+		}
+
 		return {
 			actorId: this.actorId,
 			characterTagGroups,
@@ -642,6 +673,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				game.litmv2?.fellowship?.name ?? t("LITM.Terms.fellowship"),
 			fellowshipTagGroups,
 			contributedTagGroups,
+			ownerTabs,
 			rollTypes: {
 				quick: "LITM.Ui.roll_quick",
 				tracked: "LITM.Ui.roll_tracked",
@@ -1026,12 +1058,19 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const tagsFieldset = this.element.querySelector(
 			".litm--roll-dialog-tags-fieldset",
 		);
+		// The owner-view tag-category nav lives in the same column wrapper
+		// as the tags fieldset — hide them together so the column collapses
+		// entirely during sacrifice rolls instead of leaving an orphan nav.
+		const tagsColumn = this.element.querySelector(
+			".litm--roll-dialog-tags-column",
+		);
 		const typeBar = this.element.querySelector(".litm--roll-type-bar");
 		if (mightFieldset) mightFieldset.classList.toggle("hidden", isSacrifice);
 		if (totalPowerEl) totalPowerEl.classList.toggle("hidden", isSacrifice);
 		if (sacrificeFieldset)
 			sacrificeFieldset.classList.toggle("hidden", !isSacrifice);
 		if (tagsFieldset) tagsFieldset.classList.toggle("hidden", isSacrifice);
+		if (tagsColumn) tagsColumn.classList.toggle("hidden", isSacrifice);
 		// Sacrifice is its own ritual — quick/tracked/mitigate make no sense
 		// during it. Hide the roll-type bar entirely in sacrifice mode.
 		if (typeBar) typeBar.classList.toggle("hidden", isSacrifice);

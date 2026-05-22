@@ -2761,6 +2761,14 @@ section.standard-form.litm-actions-app {
 	min-height: 0;
 }
 
+/* The roll dialog manages its own internal padding via the inner content
+   and footer — strip Foundry's default 16px window-content inset so the
+   scrollable region (and its scrollbar) sit flush against the window
+   edge instead of being floated 16px in from every side. */
+.litm--roll .window-content {
+	padding: 0;
+}
+
 .litm--roll-dialog-body {
 	flex: 1;
 	min-height: 0;
@@ -2874,11 +2882,15 @@ section.standard-form.litm-actions-app {
 	font-weight: bold;
 }
 
-/* Grid: settings beside tags when wide enough */
+/* Grid: settings beside the tag column when wide enough.
+   align-content: start keeps the two grid items at the top of the
+   available height so the cells don't get visually stretched when the
+   content is short. */
 .litm--roll-dialog-grid {
 	display: grid;
 	grid-template-columns: 1fr;
 	gap: var(--spacer-8);
+	align-content: start;
 	flex: 1;
 	min-height: 0;
 }
@@ -2889,10 +2901,12 @@ section.standard-form.litm-actions-app {
 	}
 }
 
-.litm--roll-dialog-settings {
+.litm--roll-dialog-settings,
+.litm--roll-dialog-tags-column {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacer-8);
+	min-width: 0;
 }
 
 /* Compact fieldsets inside the roll dialog */
@@ -3198,6 +3212,12 @@ section.standard-form.litm-actions-app {
 	user-select: none;
 }
 
+.litm--roll-dialog-tag-target {
+	color: var(--color-text-subtle);
+	font-style: italic;
+	font-size: var(--font-size-12);
+}
+
 .litm fieldset ul.litm--roll-dialog-tags-summary {
 	display: flex;
 	flex-flow: row wrap;
@@ -3238,10 +3258,19 @@ section.standard-form.litm-actions-app {
 	border-top: 1px solid var(--color-border-40);
 }
 
-.litm--roll-dialog-theme-group:first-child {
+.litm--roll-dialog-theme-group:first-child,
+.litm--roll-dialog-tags-fieldset > section.tab > .litm--roll-dialog-theme-group:first-of-type,
+.litm--roll-dialog-tags-fieldset > section.tab > div:first-of-type > .litm--roll-dialog-theme-group:first-of-type {
 	margin-top: 0;
 	padding-top: 0;
 	border-top: none;
+}
+
+/* Each tab pane padded so tag rows breathe between the tab nav and the
+   bottom edge — the per-row spacing alone left tags too close to the
+   horizontal section borders, per issue feedback. */
+.litm--roll-dialog-tags-fieldset > section.tab {
+	padding-block: var(--spacer-8);
 }
 
 .litm--roll-dialog-theme-label,
