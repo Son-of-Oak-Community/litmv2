@@ -360,11 +360,17 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 	}
 
 	static async #onCancel() {
-		// Cancel = discard this session. Close first (nulls the singleton
-		// so the updateScene re-render hook short-circuits), then clear
-		// the flag. Only the GM has setFlag rights; non-GMs just close.
+		// Non-GM Cancel only closes their own window — it must NOT broadcast
+		// `campingEnd`, which would tear down the session for everyone else.
+		// Only the GM can actually discard the session.
+		if (!game.user.isGM) {
+			await LitmCampingScene.#instance?.close();
+			return;
+		}
+		// GM cancel = discard this session for the whole table. Close first
+		// (nulls the singleton so the updateScene re-render hook short-
+		// circuits), then clear the flag.
 		await LitmCampingScene.close();
-		if (!game.user.isGM) return;
 		// Roll back any campsite effects created at Begin Camp.
 		const state = readState();
 		const createdIds = state?.placeOfStay?.createdCampsiteEffectIds ?? [];

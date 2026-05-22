@@ -63,8 +63,12 @@ function buildBackpackPills(actor, heroState) {
 	const backpackItem = actor.system?.backpackItem ?? null;
 	if (!backpackItem) return [];
 	const keptSet = new Set(heroState.backpackKept);
+	// Disabled story tags are intentionally invisible here: the apply step
+	// leaves them untouched (see buildBackpackOps), so showing them in the
+	// pill list would let players "keep" tags that camping then silently
+	// ignores. Disabled tags are managed from the hero sheet, not camping.
 	return [...backpackItem.effects]
-		.filter((e) => e.type === "story_tag")
+		.filter((e) => e.type === "story_tag" && !e.disabled)
 		.map((e) => ({
 			id: e.id,
 			name: e.name,

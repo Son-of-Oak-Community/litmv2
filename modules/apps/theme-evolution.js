@@ -778,9 +778,15 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		if (!html) return;
 
 		const refresh = () => {
-			applyModeVisibility(html, context);
-			enforceTradeCaps(html, context);
-			recomputePromiseSummary(html, context);
+			// Re-read the live actor on every refresh so the Promise preview
+			// reflects external mutations (camping advancement, GM edits,
+			// peer-driven track completions) while the wizard is open.
+			const live = game.actors.get(this.actorId)?.system?.promise;
+			const ctx =
+				typeof live === "number" ? { ...context, currentPromise: live } : context;
+			applyModeVisibility(html, ctx);
+			enforceTradeCaps(html, ctx);
+			recomputePromiseSummary(html, ctx);
 		};
 		for (const input of html.querySelectorAll(
 			"input[name='mode'], input[name^='trade-'], select[name='expandTarget']",

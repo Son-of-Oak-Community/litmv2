@@ -119,6 +119,7 @@ export function parseCampsiteEntries(raw) {
 	const text = (typeof raw === "string" ? raw : "").trim();
 	if (!text) return [];
 	const re = globalThis.CONFIG?.litmv2?.tagStringRe;
+	if (!re) return [];
 	const out = [];
 	for (const match of text.matchAll(re)) {
 		out.push(parseTagStringMatch(match));
