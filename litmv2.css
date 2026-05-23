@@ -80,65 +80,26 @@ body,
 	--background-url: url("assets/media/sheet-background.webp");
 	--background: url("/systems/litmv2/assets/media/sheet-background.webp") repeat;
 	--main-logo: url("assets/media/logo.svg");
-	--font-blackletter:
-		Ysgarth, "Modesto Condensed", "Arial Narrow Bold", sans-serif;
-	--font-packard:
-		PackardAntique, "Garamond Premier Pro", "Palatino Linotype", Palatino, serif;
+	--font-blackletter: Ysgarth, "Modesto Condensed", "Arial Narrow Bold", sans-serif;
+	--font-packard: PackardAntique, "Garamond Premier Pro", "Palatino Linotype", Palatino, serif;
 	--font-luminari: Luminari, "Germania One", STFU, cursive;
 	--font-powell: PowellAntique, PackardAntiqu, serif;
 	--font-trattatello: Trattatello, AlchemyItalic, PackardAntique, cursive;
-	--font-serif:
-		Labrada, Fraunces, LibreCaslonText, "Book Antiqua", Palatino, serif;
+	--font-serif: Labrada, Fraunces, LibreCaslonText, "Book Antiqua", Palatino, serif;
 
 	/* Alpha-variant colors (kept: 3+ uses across core styles) */
 	--color-warm-1-10: color-mix(in srgb, var(--color-warm-1) 10%, transparent);
 	--color-warm-1-25: color-mix(in srgb, var(--color-warm-1) 25%, transparent);
 	--color-warm-1-50: color-mix(in srgb, var(--color-warm-1) 50%, transparent);
-	--color-litm-tag-15: color-mix(
-		in srgb,
-		var(--color-litm-tag) 15%,
-		transparent
-	);
-	--color-litm-limit-15: color-mix(
-		in srgb,
-		var(--color-litm-limit) 15%,
-		transparent
-	);
-	--color-litm-limit-30: color-mix(
-		in srgb,
-		var(--color-litm-limit) 30%,
-		transparent
-	);
-	--color-litm-weakness-8: color-mix(
-		in srgb,
-		var(--color-litm-weakness) 8%,
-		transparent
-	);
-	--color-litm-weakness-10: color-mix(
-		in srgb,
-		var(--color-litm-weakness) 10%,
-		transparent
-	);
-	--color-litm-weakness-40: color-mix(
-		in srgb,
-		var(--color-litm-weakness) 40%,
-		transparent
-	);
-	--color-text-primary-10: color-mix(
-		in srgb,
-		var(--color-text-primary) 10%,
-		transparent
-	);
-	--color-text-primary-15: color-mix(
-		in srgb,
-		var(--color-text-primary) 15%,
-		transparent
-	);
-	--color-text-primary-40: color-mix(
-		in srgb,
-		var(--color-text-primary) 40%,
-		transparent
-	);
+	--color-litm-tag-15: color-mix(in srgb, var(--color-litm-tag) 15%, transparent);
+	--color-litm-limit-15: color-mix(in srgb, var(--color-litm-limit) 15%, transparent);
+	--color-litm-limit-30: color-mix(in srgb, var(--color-litm-limit) 30%, transparent);
+	--color-litm-weakness-8: color-mix(in srgb, var(--color-litm-weakness) 8%, transparent);
+	--color-litm-weakness-10: color-mix(in srgb, var(--color-litm-weakness) 10%, transparent);
+	--color-litm-weakness-40: color-mix(in srgb, var(--color-litm-weakness) 40%, transparent);
+	--color-text-primary-10: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+	--color-text-primary-15: color-mix(in srgb, var(--color-text-primary) 15%, transparent);
+	--color-text-primary-40: color-mix(in srgb, var(--color-text-primary) 40%, transparent);
 
 	/* Overlay colors */
 	--color-overlay-light: color-mix(in srgb, white 25%, transparent);
@@ -242,8 +203,7 @@ body,
 	--color-litm-track-abandon: #583a3a;
 	--color-litm-track-limit: #6e3a3a;
 	--underline-url: url(assets/media/underline.webp) center / contain no-repeat;
-	--sidebar-background: url("/systems/litmv2/assets/media/sheet-background.webp")
-		repeat;
+	--sidebar-background: url("/systems/litmv2/assets/media/sheet-background.webp") repeat;
 }
 
 /* Colorblind-safe palette — light mode.
@@ -264,8 +224,7 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 }
 
 .chat-message {
-	--chat-message-background: url("/systems/litmv2/assets/media/sheet-background.webp")
-		repeat;
+	--chat-message-background: url("/systems/litmv2/assets/media/sheet-background.webp") repeat;
 }
 
 /* ========================================
@@ -373,11 +332,9 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 :where(.litm, .litm-landscape) [tabindex="0"]:focus-visible,
 :where(.litm, .litm-landscape) select:focus-visible,
 :where(.litm, .litm-landscape)
-	input:not([type="hidden"]):not([type="checkbox"]):not(
-		.litm--tag-item-name
-	):not(.litm--quick-add-input):not(.litm--limit-label):not(
-		.litm--limit-max
-	):focus-visible,
+	input:not([type="hidden"]):not([type="checkbox"]):not(.litm--tag-item-name):not(
+		.litm--quick-add-input
+	):not(.litm--limit-label):not(.litm--limit-max):focus-visible,
 :where(.litm, .litm-landscape) textarea:focus-visible,
 :where(.litm, .litm-landscape) litm-super-checkbox:focus-visible {
 	outline: 2px solid var(--color-litm-tag);
@@ -666,8 +623,7 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	border: 1px solid var(--color-litm-limit);
 	color: var(--color-litm-limit-accent);
 }
-.chat-message
-	.litm--chat-action-consequence-btn:hover:not(:disabled):not(.is-applied) {
+.chat-message .litm--chat-action-consequence-btn:hover:not(:disabled):not(.is-applied) {
 	background: var(--color-litm-limit-15);
 }
 .chat-message .litm--chat-action-consequence-btn.is-applied {
@@ -1202,29 +1158,29 @@ section.standard-form.litm-actions-app {
 	color: var(--color-text-primary);
 	mask:
 		radial-gradient(
-			circle at 0 0,
-			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		top left,
+				circle at 0 0,
+				transparent var(--banner-notch),
+				black calc(var(--banner-notch) + 0.5px)
+			)
+			top left,
 		radial-gradient(
-			circle at 100% 0,
-			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		top right,
+				circle at 100% 0,
+				transparent var(--banner-notch),
+				black calc(var(--banner-notch) + 0.5px)
+			)
+			top right,
 		radial-gradient(
-			circle at 0 100%,
-			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		bottom left,
+				circle at 0 100%,
+				transparent var(--banner-notch),
+				black calc(var(--banner-notch) + 0.5px)
+			)
+			bottom left,
 		radial-gradient(
-			circle at 100% 100%,
-			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		bottom right;
+				circle at 100% 100%,
+				transparent var(--banner-notch),
+				black calc(var(--banner-notch) + 0.5px)
+			)
+			bottom right;
 	mask-size: 51% 51%;
 	mask-repeat: no-repeat;
 }
@@ -2010,7 +1966,7 @@ section.standard-form.litm-actions-app {
 ======================================== */
 
 .litm-actor .window-content {
-	padding: 0px 16px var(--spacer-16);
+	padding: var(--spacer-8) 16px var(--spacer-16);
 	overflow: hidden auto;
 	scrollbar-width: thin;
 }
@@ -2073,30 +2029,8 @@ section.standard-form.litm-actions-app {
 	padding-top: var(--spacer-8);
 }
 
-/* Play-header action stack — vertical column of small icon buttons (Roll +
-   Sacrifice) anchored to the right of the avatar/name/promise block. Has
-   its own class so it doesn't pick up the name-column's 25ch min-width. */
-.litm--play-header__actions {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacer-4);
-	align-self: center;
-	margin-left: auto;
-	flex: 0 0 auto;
-}
-
-.litm--play-header__actions button {
-	width: 2.5rem;
-	height: 2.5rem;
-	padding: 0;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-}
-
-/* Sacrifice trigger on the hero play header — warm/dire styling that sits
-   next to the regular Roll dice button so it's available for desperate
-   moments. Click sets the dialog's type to sacrifice and opens it. */
+/* Sacrifice trigger — warm/dire styling on the Roll-adjacent button.
+   Click sets the dialog's type to sacrifice and opens it. */
 .litm--sacrifice-button {
 	border-color: var(--color-litm-weakness);
 	color: var(--color-litm-weakness);
@@ -2150,12 +2084,7 @@ section.standard-form.litm-actions-app {
 .litm--sacrifice-rite__rule {
 	flex: 0 0 5rem;
 	height: 1px;
-	background: linear-gradient(
-		to right,
-		transparent,
-		var(--rite-cream) 50%,
-		transparent
-	);
+	background: linear-gradient(to right, transparent, var(--rite-cream) 50%, transparent);
 	opacity: 0.65;
 }
 
@@ -2378,11 +2307,7 @@ section.standard-form.litm-actions-app {
 
 /* Receded sections — visually lighter for lower-priority content */
 .litm-hero-sheet fieldset.litm--receded {
-	border-color: color-mix(
-		in srgb,
-		var(--color-fieldset-border) 30%,
-		transparent
-	);
+	border-color: color-mix(in srgb, var(--color-fieldset-border) 30%, transparent);
 	padding: var(--spacer-12);
 	gap: var(--spacer-12);
 }
@@ -2409,6 +2334,209 @@ section.standard-form.litm-actions-app {
 
 .litm--play-statuses .litm--tier-box {
 	cursor: pointer;
+}
+
+/* ========================================
+   6b. Hero Sheet — board layout
+   Width-driven via a container query on .litm-hero-sheet (the form root).
+   Default = stacked single-column flow; past the breakpoint the board
+   spreads into a 4-up theme row, split inventory/fellowship middle band,
+   and 3-up story themes — applies to either sheet variant once it's wide
+   enough. The .litm-landscape class only sets initial width, not layout.
+======================================== */
+.litm-hero-sheet {
+	container-type: inline-size;
+}
+
+.litm-hero-board {
+	display: grid;
+	gap: var(--spacer-12);
+	grid-template-columns: 1fr;
+	grid-template-areas:
+		"fellowship"
+		"themes"
+		"inventory"
+		"story"
+		"mof";
+}
+
+.litm-hero-board__themes {
+	grid-area: themes;
+}
+.litm-hero-board__inventory {
+	grid-area: inventory;
+}
+.litm-hero-board__fellowship {
+	grid-area: fellowship;
+}
+.litm-hero-board__story {
+	grid-area: story;
+}
+.litm-hero-board__mof {
+	grid-area: mof;
+}
+
+/* Smallest defaults: everything stacks 1-up so tag chips and tracks have
+   room to breathe at narrow widths. A medium breakpoint below lifts most
+   grids to 2-up, and the wide layout takes themes up to 4-up. */
+.litm-hero-board__themes {
+	display: grid;
+	gap: var(--spacer-12);
+	grid-template-columns: minmax(0, 1fr);
+}
+.litm-hero-board__inventory {
+	display: grid;
+	gap: var(--spacer-12);
+	grid-template-columns: minmax(0, 1fr);
+}
+.litm-hero-board__story-grid {
+	display: grid;
+	gap: var(--spacer-12);
+	grid-template-columns: minmax(0, 1fr);
+}
+
+/* Medium layout — kicks in once the sheet is wide enough that 2-up
+   theme/inventory/story cards stop feeling cramped. Themes step up from
+   the 1-up smallest layout but stay below the 4-up landscape grid. */
+@container (min-width: 720px) {
+	.litm-hero-board__themes,
+	.litm-hero-board__inventory,
+	.litm-hero-board__story-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+/* Actions band — prompt + buttons centered horizontally with flanking
+   gradient lines (same treatment as <hr>). Applies in both portrait and
+   landscape layouts; the wide-layout grid below relocates the band to
+   span both columns but inherits this chrome. */
+.litm--play-actions {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacer-12);
+	padding-top: var(--spacer-8);
+}
+
+.litm--play-actions::before,
+.litm--play-actions::after {
+	content: "";
+	flex: 1;
+	height: 2px;
+}
+.litm--play-actions::before {
+	background-image: linear-gradient(90deg, transparent 0%, var(--color-light-3) 100%);
+}
+.litm--play-actions::after {
+	background-image: linear-gradient(90deg, var(--color-light-3) 0%, transparent 100%);
+}
+
+.litm--play-actions__prompt {
+	margin: 0;
+	font-family: var(--font-serif);
+	font-style: italic;
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-14);
+}
+
+.litm--play-actions__buttons {
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.litm--play-actions__buttons button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0;
+	flex: 0 0 auto;
+}
+
+/* Wide layout — kicks in once the sheet is wide enough to fit a 4-up
+   theme row comfortably. Same templates, different grid: profile sits on
+   the left and the description/actions stack share the right column, so
+   the action strip slides under the description rather than competing for
+   horizontal space with it. The right column is sized to profile so
+   themes pull tight underneath without the description blowing it out. */
+@container (min-width: 1100px) {
+	.litm-hero-sheet .window-content {
+		display: grid;
+		gap: var(--spacer-12);
+		grid-template-columns: min-content minmax(0, 1fr);
+		grid-template-areas:
+			"profile description"
+			"actions actions"
+			"content content";
+		align-items: start;
+	}
+	.litm-hero-sheet [data-application-part="header"] {
+		grid-area: profile;
+		flex-wrap: nowrap;
+		padding-inline-end: var(--spacer-16);
+	}
+	.litm-hero-sheet [data-application-part="description"] {
+		grid-area: description;
+	}
+	/* Play mode only: cap the rendered description height so themes don't
+	   get pushed down by a long flavor passage. The actions PART being
+	   hidden in edit mode is our mode flag — no cap there, so the
+	   prose-mirror editor keeps full room to type. `min-height: 0` is
+	   load-bearing — grid items default to `min-height: auto` which
+	   refuses to shrink below content size, leaving the cell sized to
+	   the natural description height while overflow visually clips
+	   elsewhere; the explicit override lets max-height win. */
+	.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
+		[data-application-part="description"] {
+		align-self: center;
+		height: 100%;
+		overflow-y: auto;
+	}
+	.litm-hero-sheet [data-application-part="actions"] {
+		grid-area: actions;
+	}
+	.litm-hero-sheet [data-application-part="content"] {
+		grid-area: content;
+	}
+
+	.litm-hero-board {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		grid-template-areas:
+			"themes themes"
+			"inventory fellowship"
+			"story story"
+			"mof mof";
+	}
+	.litm-hero-board__themes {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+	.litm-hero-board__inventory {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacer-12);
+	}
+	.litm-hero-board__story-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.litm--play-actions {
+		padding-top: 0;
+	}
+}
+
+/* Suppress duplicate frame chrome buttons when the actions strip is
+   actively rendered — Roll/Actions/Sacrifice/Camping are already in the
+   strip in play mode. Edit mode renders an empty hidden stub for the
+   actions PART, so the frame buttons remain visible there. */
+.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
+	.window-header
+	> button[data-action="openActionsApp"],
+.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
+	.window-header
+	> button[data-action="openCamping"] {
+	display: none;
 }
 
 /* ========================================
@@ -2847,8 +2975,7 @@ section.standard-form.litm-actions-app {
    other input in a .standard-form lays out. Stacked .form-field columns
    (theme item sheet) deliberately don't get this rule — the bar stays
    left-aligned under its label there. */
-.standard-form .form-group
-	> .litm--roll-type-bar:has(.litm--segmented-option--icon) {
+.standard-form .form-group > .litm--roll-type-bar:has(.litm--segmented-option--icon) {
 	margin-left: auto;
 }
 
@@ -3260,7 +3387,10 @@ section.standard-form.litm-actions-app {
 
 .litm--roll-dialog-theme-group:first-child,
 .litm--roll-dialog-tags-fieldset > section.tab > .litm--roll-dialog-theme-group:first-of-type,
-.litm--roll-dialog-tags-fieldset > section.tab > div:first-of-type > .litm--roll-dialog-theme-group:first-of-type {
+.litm--roll-dialog-tags-fieldset
+	> section.tab
+	> div:first-of-type
+	> .litm--roll-dialog-theme-group:first-of-type {
 	margin-top: 0;
 	padding-top: 0;
 	border-top: none;
@@ -3463,25 +3593,13 @@ section.standard-form.litm-actions-app {
 ======================================== */
 
 .chat-message:has(
-	:is(
-			.litm.dice-roll,
-			.litm-track-complete,
-			.litm-spend-chat,
-			.litm-camping-recap
-		)
+	:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
 ) {
 	padding: 0;
 	contain: layout style;
 }
 
-.chat-message:has(
-		:is(
-				.litm.dice-roll,
-				.litm-track-complete,
-				.litm-spend-chat,
-				.litm-camping-recap
-			)
-	)
+.chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap))
 	.message-header {
 	padding: 4px 10px;
 	border-bottom: var(--hr-border);
@@ -4266,14 +4384,15 @@ section.standard-form.litm-actions-app {
 }
 
 /* Compact button style — shared by visibility toggles, add-tag, and any tag-row buttons */
-.litm--story-tags .window-content
-	button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(
-		.litm--quick-add-btn
-	):not(.litm--load-scene-btn),
+.litm--story-tags
+	.window-content
+	button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn):not(
+		.litm--load-scene-btn
+	),
 .litm--story-tags.sidebar-tab
-	button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(
-		.litm--quick-add-btn
-	):not(.litm--load-scene-btn),
+	button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn):not(
+		.litm--load-scene-btn
+	),
 .litm--story-tags .window-content .litm--visibility-toggle,
 .litm--story-tags.sidebar-tab .litm--visibility-toggle {
 	padding: 0.2em 0.35em;
@@ -4331,11 +4450,8 @@ section.standard-form.litm-actions-app {
 }
 
 /* Always show toggle indicators when checked */
-.litm--story-tags .litm--tag-row:has(.litm--single-use:checked)
-	.litm--single-use-label,
-.litm--story-tags
-	.litm--tag-row:has(.litm--scratch:checked)
-	.litm--scratch-label {
+.litm--story-tags .litm--tag-row:has(.litm--single-use:checked) .litm--single-use-label,
+.litm--story-tags .litm--tag-row:has(.litm--scratch:checked) .litm--scratch-label {
 	opacity: 1;
 	pointer-events: auto;
 	cursor: pointer;
@@ -4488,11 +4604,7 @@ input[type="text"].litm--quick-add-input,
 .litm--limit-group {
 	margin: 3px 0;
 	padding: var(--spacer-4) 1px;
-	background: color-mix(
-		in srgb,
-		var(--color-litm-limit-accent) 12%,
-		transparent
-	);
+	background: color-mix(in srgb, var(--color-litm-limit-accent) 12%, transparent);
 	border-radius: var(--border-radius);
 }
 
@@ -4564,11 +4676,7 @@ input[type="text"].litm--quick-add-input,
 
 /* Dragover highlight on limit headers */
 .litm--limit-header.dragover {
-	background: color-mix(
-		in srgb,
-		var(--color-litm-limit-accent) 20%,
-		transparent
-	);
+	background: color-mix(in srgb, var(--color-litm-limit-accent) 20%, transparent);
 	border-radius: var(--border-radius);
 }
 
@@ -5144,8 +5252,7 @@ input[type="text"].litm--quick-add-input,
 	transition: color var(--transition-normal) ease;
 }
 
-.litm-theme-evolution__path-choice:has(input:checked)
-	.litm-theme-evolution__path-icon {
+.litm-theme-evolution__path-choice:has(input:checked) .litm-theme-evolution__path-icon {
 	color: inherit;
 }
 
@@ -5163,8 +5270,7 @@ input[type="text"].litm--quick-add-input,
 	color: var(--color-text-secondary);
 }
 
-.litm-theme-evolution__path-choice:has(input:checked)
-	.litm-theme-evolution__path-consequence {
+.litm-theme-evolution__path-choice:has(input:checked) .litm-theme-evolution__path-consequence {
 	color: inherit;
 	opacity: 0.85;
 }
@@ -5294,8 +5400,7 @@ input[type="text"].litm--quick-add-input,
 
 /* Trade cap reached for this row's kind: pill is unselected and locked
    until the player frees a slot by unchecking another. */
-.litm-theme-evolution__trade-row.is-trade-cap
-.litm-theme-evolution__trade-toggle {
+.litm-theme-evolution__trade-row.is-trade-cap .litm-theme-evolution__trade-toggle {
 	opacity: 0.4;
 	cursor: not-allowed;
 }
@@ -5436,18 +5541,13 @@ input[type="text"].litm--quick-add-input,
 	background: unset;
 }
 
-:is(body, .themed).theme-light
-	.litm.application:not(.theme-dark)
-	.window-header,
+:is(body, .themed).theme-light .litm.application:not(.theme-dark) .window-header,
 .litm.application.theme-light .window-header {
 	color: var(--color-dark-2);
 	border-bottom: var(--sidebar-separator);
 }
 
-:is(body, .themed).theme-light
-	.litm.application:not(.theme-dark)
-	.window-header
-	.window-title,
+:is(body, .themed).theme-light .litm.application:not(.theme-dark) .window-header .window-title,
 .litm.application.theme-light .window-header .window-title {
 	color: var(--color-dark-2);
 }
@@ -5668,8 +5768,7 @@ body.theme-dark,
 body.theme-dark .application:not(.theme-light),
 .themed.theme-dark {
 	--background: var(--color-cool-5-90);
-	--underline-url:
-		url(assets/media/underline-w.webp) center / contain no-repeat;
+	--underline-url: url(assets/media/underline-w.webp) center / contain no-repeat;
 	--hr-border: 1px solid var(--color-warm-1-25);
 	--litm-icon-filter: none;
 	--color-litm-tag: #946a1e;
@@ -5716,12 +5815,7 @@ body.theme-dark .application:not(.theme-light),
 	   reads -secondary/-subtle render as near-black on the dark chat bg. */
 	&
 		.chat-message:has(
-			:is(
-					.litm.dice-roll,
-					.litm-track-complete,
-					.litm-spend-chat,
-					.litm-camping-recap
-				)
+			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
 		) {
 		--color-scheme: dark;
 		--chat-message-border-color: var(--color-litm-chat-border);
@@ -5737,12 +5831,7 @@ body.theme-dark .application:not(.theme-light),
 
 	&
 		.chat-message:has(
-			:is(
-					.litm.dice-roll,
-					.litm-track-complete,
-					.litm-spend-chat,
-					.litm-camping-recap
-				)
+			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
 		)
 		.message-header {
 		border-bottom: 1px solid var(--color-litm-chat-border);
@@ -6025,10 +6114,7 @@ body.litm--colorblind .themed.theme-dark,
 
 .litm-hud-grid {
 	display: grid;
-	grid-template-columns: repeat(
-			var(--effect-columns, 5),
-			var(--effect-size, 24px)
-		);
+	grid-template-columns: repeat(var(--effect-columns, 5), var(--effect-size, 24px));
 	gap: var(--effect-gap, 3px);
 	padding: var(--effect-gap, 3px);
 	margin-inline: auto;

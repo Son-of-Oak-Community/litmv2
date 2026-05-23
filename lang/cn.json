@@ -713,6 +713,7 @@
 			"warn_no_fellowship": "在此世界中未找到团契角色。",
 			"warn_not_owner": "你不是这个实体的所有者，无法进行编辑。",
 			"warn_theme_limit": "你的主题数量已达到上限，请在添加前移除一个已有的主题。",
+			"what_do_you_do": "你做什么？",
 			"welcome_create_hero": "Create Your Hero",
 			"welcome_custom_dice": "Themed Dice",
 			"welcome_custom_dice_hint": "Use the custom Legend in the Mist dice visuals instead of standard d6s.",

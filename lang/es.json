@@ -708,6 +708,7 @@
 			"warn_no_fellowship": "No se encontró ningún actor de Hermandad en este mundo.",
 			"warn_not_owner": "No eres el propietario de este actor. No puedes editarlo.",
 			"warn_theme_limit": "Has llegado al número máximo de temas. Por favor, elimina un tema antes de añadir otro.",
+			"what_do_you_do": "¿Qué haces?",
 			"welcome_create_hero": "Create Your Hero",
 			"welcome_custom_dice": "Themed Dice",
 			"welcome_custom_dice_hint": "Use the custom Legend in the Mist dice visuals instead of standard d6s.",

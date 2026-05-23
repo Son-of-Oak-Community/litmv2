@@ -11,8 +11,18 @@ const LANDSCAPE_OPTIONS = {
 	},
 };
 
+/**
+ * The hero landscape variant starts wider so the responsive board layout
+ * (4-up themes, split inventory/fellowship band, 3-up story themes) kicks
+ * in by default. The layout itself is driven by container queries on
+ * .litm-hero-sheet, so resizing either variant past the breakpoint shows
+ * the same wide layout; this just picks the initial width.
+ */
 export class HeroSheetLandscape extends HeroSheet {
-	static DEFAULT_OPTIONS = LANDSCAPE_OPTIONS;
+	static DEFAULT_OPTIONS = {
+		classes: ["litm-landscape"],
+		position: { width: 1280 },
+	};
 }
 
 export class ChallengeSheetLandscape extends ChallengeSheet {

@@ -1,68 +1,7 @@
-<section class="flexcol gap-lg">
-	<!-- Relationship Tags & Fellowship -->
-	{{#if hasFellowship}}
-	<div class="grid-2col">
-		<fieldset data-tour="fellowship-section">
-			<legend class="control flexrow gap-sm">
-				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.fellowship"}}</span>
-				<button type="button" data-action="viewActor" data-actor-id="{{fellowship.actorId}}"
-					data-tooltip="{{localize 'LITM.Ui.click_to_edit_fellowship'}}"
-					aria-label="{{localize 'LITM.Ui.click_to_edit_fellowship'}}">
-					<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-				</button>
-			</legend>
-
-			{{#if fellowship.hasTheme}}
-			<div data-fellowship-actor-id="{{fellowship.actorId}}">
-				<div class="theme-card item" data-id="{{fellowship._id}}">
-					{{> systems/litmv2/templates/partials/theme-card-header.html fellowship action="toggleTagActive"
-					tooltip=(localize "LITM.Ui.click_to_scratch_tag")}}
-
-					{{> systems/litmv2/templates/partials/edit-theme-tags-activatable.html fellowship}}
-					{{> systems/litmv2/templates/partials/theme-special-improvements.html fellowship}}
-					{{> systems/litmv2/templates/partials/play-theme-tracks.html fellowship}}
-
-					<div class="flexcol gap-xs">
-						<blockquote style="margin: 0">
-							{{fellowship.system.quest.description}}
-						</blockquote>
-					</div>
-
-					<div>{{{ fellowship.system.description }}}</div>
-				</div>
-			</div>
-			{{else}}
-			<p class="flexrow gap-sm hint">
-				{{> systems/litmv2/templates/partials/icon-fellowship-hint.html}}<span>{{localize
-					"LITM.Ui.fellowship_no_theme_edit"}}</span>
-			</p>
-			{{/if}}
-			<hr class="flush" />
-			{{#if relationshipEntries.length}}
-			<ul class="plain">
-				{{#each relationshipEntries as |relationship|}}
-				<li class="form-group" style="gap: 8px; align-items: center; justify-content: space-between">
-					<span class="flex2">{{relationship.name}}</span>
-					{{#if relationship.effectId}}
-					<input class="flex3" type="text" name="effects.{{relationship.effectId}}.name" value="{{relationship.tag}}"
-						placeholder="{{localize 'LITM.Ui.name_relationship'}}" />
-					{{else}}
-					<input class="flex3" type="text" name="newRelationship.{{relationship.actorId}}" value=""
-						placeholder="{{localize 'LITM.Ui.name_relationship'}}" />
-					{{/if}}
-				</li>
-				{{/each}}
-			</ul>
-			{{else}}
-			<p class="hint">{{localize "LITM.Ui.no_relationship_tags"}}</p>
-			{{/if}}
-		</fieldset>
-	</div>
-	{{/if}}
-
+<section class="litm-hero-board">
 	<!-- Themes -->
 	{{#if themes.length}}
-	<div class="grid-2col">
+	<div class="litm-hero-board__themes">
 		{{#each themes as |theme|}}
 		<fieldset class="theme-card item draggable" data-item-id="{{theme._id}}">
 			<legend class="flexrow gap-xs"><span class="litm-banner theme-card__book">{{theme.system.themebook}}</span>
@@ -95,64 +34,14 @@
 		{{/each}}
 	</div>
 	{{else}}
-	<div class="empty-state">
+	<div class="litm-hero-board__themes empty-state">
 		<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
 		<p class="hint">{{localize "LITM.Ui.no_themes"}}</p>
 	</div>
 	{{/if}}
 
-	<!-- Story Themes -->
-	<fieldset>
-		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Terms.story_themes" action="addStoryTheme" tooltip="LITM.Terms.add"}}
-		{{#if storyThemes.length}}
-		<div class="grid-2col">
-		{{#each storyThemes as |theme|}}
-		<fieldset class="theme-card story-theme-card item draggable" data-item-id="{{theme._id}}">
-			<legend class="flexrow gap-xs">
-				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.story"}}</span>
-				{{#unless theme.isFellowship}}
-				<button type="button" data-action="editItem" data-item-id="{{theme._id}}"
-					data-tooltip="{{localize 'LITM.Ui.click_to_edit_story_theme'}}"
-					aria-label="{{localize 'LITM.Ui.click_to_edit_story_theme'}}">
-					<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-				</button>
-				<button type="button" data-action="removeItem" data-item-id="{{theme._id}}"
-					data-tooltip="{{localize 'LITM.Ui.remove_story_theme'}}"
-					aria-label="{{localize 'LITM.Ui.remove_story_theme'}}">
-					<i class="fa-solid fa-trash" aria-hidden="true"></i>
-				</button>
-				{{/unless}}
-			</legend>
-
-			<div class="story-theme-card__header">
-				{{#if theme.hasCustomImage}}
-				<img class="story-theme-card__portrait" src="{{theme.img}}" alt="{{theme.name}}" />
-				{{/if}}
-				<div class="flexcol gap-xs">
-					<div class="flexrow noflex gap-sm">
-						<img class="noflex icon-md" src="{{theme.levelIcon}}" alt="{{theme.levelLabel}}"
-							data-tooltip="{{theme.levelLabel}}" />
-						{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag
-						action="toggleTagActive"
-						tooltip=(localize "LITM.Ui.click_to_scratch_tag")
-						extraClass="litm-title_tag"
-						}}
-					</div>
-					{{> systems/litmv2/templates/partials/edit-theme-tags-activatable.html theme}}
-				</div>
-			</div>
-
-			<div>
-				{{{ theme.system.description }}}
-			</div>
-		</fieldset>
-		{{/each}}
-		</div>
-		{{/if}}
-	</fieldset>
-
-	<!-- Backpack + Statuses (paired to save vertical space on landscape) -->
-	<div class="grid-2col">
+	<!-- Backpack + Statuses (stacked vertically in landscape, side-by-side in portrait) -->
+	<div class="litm-hero-board__inventory">
 		{{#if backpack}}
 		<fieldset>
 			<legend class="control flexrow gap-sm">
@@ -221,10 +110,121 @@
 		</fieldset>
 	</div>
 
-	<!-- Moment of Fulfillment (moved to bottom — themes, story themes,
-	     backpack & statuses are the load-bearing sheet content; MoF is
-	     reference material the player consults rather than acts on) -->
-	<fieldset>
+	<!-- Fellowship + Relationships -->
+	{{#if hasFellowship}}
+	<div class="litm-hero-board__fellowship">
+		<fieldset data-tour="fellowship-section">
+			<legend class="control flexrow gap-sm">
+				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.fellowship"}}</span>
+				<button type="button" data-action="viewActor" data-actor-id="{{fellowship.actorId}}"
+					data-tooltip="{{localize 'LITM.Ui.click_to_edit_fellowship'}}"
+					aria-label="{{localize 'LITM.Ui.click_to_edit_fellowship'}}">
+					<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+				</button>
+			</legend>
+
+			{{#if fellowship.hasTheme}}
+			<div data-fellowship-actor-id="{{fellowship.actorId}}">
+				<div class="theme-card item" data-id="{{fellowship._id}}">
+					{{> systems/litmv2/templates/partials/theme-card-header.html fellowship action="toggleTagActive"
+					tooltip=(localize "LITM.Ui.click_to_scratch_tag")}}
+
+					{{> systems/litmv2/templates/partials/edit-theme-tags-activatable.html fellowship}}
+					{{> systems/litmv2/templates/partials/theme-special-improvements.html fellowship}}
+					{{> systems/litmv2/templates/partials/play-theme-tracks.html fellowship}}
+
+					<div class="flexcol gap-xs">
+						<blockquote style="margin: 0">
+							{{fellowship.system.quest.description}}
+						</blockquote>
+					</div>
+
+					<div>{{{ fellowship.system.description }}}</div>
+				</div>
+			</div>
+			{{else}}
+			<p class="flexrow gap-sm hint">
+				{{> systems/litmv2/templates/partials/icon-fellowship-hint.html}}<span>{{localize
+					"LITM.Ui.fellowship_no_theme_edit"}}</span>
+			</p>
+			{{/if}}
+			<hr class="flush" />
+			{{#if relationshipEntries.length}}
+			<ul class="plain">
+				{{#each relationshipEntries as |relationship|}}
+				<li class="form-group" style="gap: 8px; align-items: center; justify-content: space-between">
+					<span class="flex2">{{relationship.name}}</span>
+					{{#if relationship.effectId}}
+					<input class="flex3" type="text" name="effects.{{relationship.effectId}}.name" value="{{relationship.tag}}"
+						placeholder="{{localize 'LITM.Ui.name_relationship'}}" />
+					{{else}}
+					<input class="flex3" type="text" name="newRelationship.{{relationship.actorId}}" value=""
+						placeholder="{{localize 'LITM.Ui.name_relationship'}}" />
+					{{/if}}
+				</li>
+				{{/each}}
+			</ul>
+			{{else}}
+			<p class="hint">{{localize "LITM.Ui.no_relationship_tags"}}</p>
+			{{/if}}
+		</fieldset>
+	</div>
+	{{/if}}
+
+	<!-- Story Themes -->
+	<fieldset class="litm-hero-board__story">
+		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Terms.story_themes" action="addStoryTheme" tooltip="LITM.Terms.add"}}
+		{{#if storyThemes.length}}
+		<div class="litm-hero-board__story-grid">
+		{{#each storyThemes as |theme|}}
+		<fieldset class="theme-card story-theme-card item draggable" data-item-id="{{theme._id}}">
+			<legend class="flexrow gap-xs">
+				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.story"}}</span>
+				{{#unless theme.isFellowship}}
+				<button type="button" data-action="editItem" data-item-id="{{theme._id}}"
+					data-tooltip="{{localize 'LITM.Ui.click_to_edit_story_theme'}}"
+					aria-label="{{localize 'LITM.Ui.click_to_edit_story_theme'}}">
+					<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+				</button>
+				<button type="button" data-action="removeItem" data-item-id="{{theme._id}}"
+					data-tooltip="{{localize 'LITM.Ui.remove_story_theme'}}"
+					aria-label="{{localize 'LITM.Ui.remove_story_theme'}}">
+					<i class="fa-solid fa-trash" aria-hidden="true"></i>
+				</button>
+				{{/unless}}
+			</legend>
+
+			<div class="story-theme-card__header">
+				{{#if theme.hasCustomImage}}
+				<img class="story-theme-card__portrait" src="{{theme.img}}" alt="{{theme.name}}" />
+				{{/if}}
+				<div class="flexcol gap-xs">
+					<div class="flexrow noflex gap-sm">
+						<img class="noflex icon-md" src="{{theme.levelIcon}}" alt="{{theme.levelLabel}}"
+							data-tooltip="{{theme.levelLabel}}" />
+						{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag
+						action="toggleTagActive"
+						tooltip=(localize "LITM.Ui.click_to_scratch_tag")
+						extraClass="litm-title_tag"
+						}}
+					</div>
+					{{> systems/litmv2/templates/partials/edit-theme-tags-activatable.html theme}}
+				</div>
+			</div>
+
+			<div>
+				{{{ theme.system.description }}}
+			</div>
+		</fieldset>
+		{{/each}}
+		</div>
+		{{/if}}
+	</fieldset>
+
+	<!-- Moment of Fulfillment (bottom — themes, story themes, backpack &
+	     statuses are the load-bearing sheet content; MoF is reference
+	     material the player consults rather than acts on) -->
+	<fieldset class="litm-hero-board__mof">
 		<legend class="control flexrow gap-sm">
 			<span class="litm-banner theme-card__book">{{localize "LITM.Hero.moment_of_fulfillment"}}</span>
 			<button type="button" class="noflex" data-action="addMomentOfFulfillment"
