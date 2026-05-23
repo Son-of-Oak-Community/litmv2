@@ -498,8 +498,9 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	 */
 	#calculateOptionCost(li, cost) {
 		// Action-success rows: cost = fixed + sum(var-tier counter values).
-		// Counter values default to 1, so the displayed `data-cost` (min cost)
-		// matches when no counters have been incremented.
+		// Counter values default to 0 ("skip"), so the displayed `data-cost`
+		// (min cost) is the fixed part alone until the player nudges a
+		// [name-] counter upward.
 		if (li.dataset.source === "action" && li.dataset.variableTier === "true") {
 			const fixed = Number(li.dataset.fixedCost ?? 0);
 			let varSum = 0;

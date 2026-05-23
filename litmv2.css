@@ -80,26 +80,65 @@ body,
 	--background-url: url("assets/media/sheet-background.webp");
 	--background: url("/systems/litmv2/assets/media/sheet-background.webp") repeat;
 	--main-logo: url("assets/media/logo.svg");
-	--font-blackletter: Ysgarth, "Modesto Condensed", "Arial Narrow Bold", sans-serif;
-	--font-packard: PackardAntique, "Garamond Premier Pro", "Palatino Linotype", Palatino, serif;
+	--font-blackletter:
+		Ysgarth, "Modesto Condensed", "Arial Narrow Bold", sans-serif;
+	--font-packard:
+		PackardAntique, "Garamond Premier Pro", "Palatino Linotype", Palatino, serif;
 	--font-luminari: Luminari, "Germania One", STFU, cursive;
 	--font-powell: PowellAntique, PackardAntiqu, serif;
 	--font-trattatello: Trattatello, AlchemyItalic, PackardAntique, cursive;
-	--font-serif: Labrada, Fraunces, LibreCaslonText, "Book Antiqua", Palatino, serif;
+	--font-serif:
+		Labrada, Fraunces, LibreCaslonText, "Book Antiqua", Palatino, serif;
 
 	/* Alpha-variant colors (kept: 3+ uses across core styles) */
 	--color-warm-1-10: color-mix(in srgb, var(--color-warm-1) 10%, transparent);
 	--color-warm-1-25: color-mix(in srgb, var(--color-warm-1) 25%, transparent);
 	--color-warm-1-50: color-mix(in srgb, var(--color-warm-1) 50%, transparent);
-	--color-litm-tag-15: color-mix(in srgb, var(--color-litm-tag) 15%, transparent);
-	--color-litm-limit-15: color-mix(in srgb, var(--color-litm-limit) 15%, transparent);
-	--color-litm-limit-30: color-mix(in srgb, var(--color-litm-limit) 30%, transparent);
-	--color-litm-weakness-8: color-mix(in srgb, var(--color-litm-weakness) 8%, transparent);
-	--color-litm-weakness-10: color-mix(in srgb, var(--color-litm-weakness) 10%, transparent);
-	--color-litm-weakness-40: color-mix(in srgb, var(--color-litm-weakness) 40%, transparent);
-	--color-text-primary-10: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
-	--color-text-primary-15: color-mix(in srgb, var(--color-text-primary) 15%, transparent);
-	--color-text-primary-40: color-mix(in srgb, var(--color-text-primary) 40%, transparent);
+	--color-litm-tag-15: color-mix(
+		in srgb,
+		var(--color-litm-tag) 15%,
+		transparent
+	);
+	--color-litm-limit-15: color-mix(
+		in srgb,
+		var(--color-litm-limit) 15%,
+		transparent
+	);
+	--color-litm-limit-30: color-mix(
+		in srgb,
+		var(--color-litm-limit) 30%,
+		transparent
+	);
+	--color-litm-weakness-8: color-mix(
+		in srgb,
+		var(--color-litm-weakness) 8%,
+		transparent
+	);
+	--color-litm-weakness-10: color-mix(
+		in srgb,
+		var(--color-litm-weakness) 10%,
+		transparent
+	);
+	--color-litm-weakness-40: color-mix(
+		in srgb,
+		var(--color-litm-weakness) 40%,
+		transparent
+	);
+	--color-text-primary-10: color-mix(
+		in srgb,
+		var(--color-text-primary) 10%,
+		transparent
+	);
+	--color-text-primary-15: color-mix(
+		in srgb,
+		var(--color-text-primary) 15%,
+		transparent
+	);
+	--color-text-primary-40: color-mix(
+		in srgb,
+		var(--color-text-primary) 40%,
+		transparent
+	);
 
 	/* Overlay colors */
 	--color-overlay-light: color-mix(in srgb, white 25%, transparent);
@@ -193,7 +232,7 @@ body,
 	--color-litm-limit: #d9b2a9;
 	--color-litm-limit-accent: #a0522d;
 	--color-litm-weakness: #edbb89;
-	--color-litm-tag-text: #88621c;
+	--color-litm-tag-text: #553c0c;
 	--color-litm-status-text: #3f5a3f;
 	--color-litm-weakness-text: #8d4320;
 	--color-litm-banner: #c4b5a8;
@@ -203,7 +242,8 @@ body,
 	--color-litm-track-abandon: #583a3a;
 	--color-litm-track-limit: #6e3a3a;
 	--underline-url: url(assets/media/underline.webp) center / contain no-repeat;
-	--sidebar-background: url("/systems/litmv2/assets/media/sheet-background.webp") repeat;
+	--sidebar-background: url("/systems/litmv2/assets/media/sheet-background.webp")
+		repeat;
 }
 
 /* Colorblind-safe palette — light mode.
@@ -224,7 +264,8 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 }
 
 .chat-message {
-	--chat-message-background: url("/systems/litmv2/assets/media/sheet-background.webp") repeat;
+	--chat-message-background: url("/systems/litmv2/assets/media/sheet-background.webp")
+		repeat;
 }
 
 /* ========================================
@@ -332,9 +373,11 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 :where(.litm, .litm-landscape) [tabindex="0"]:focus-visible,
 :where(.litm, .litm-landscape) select:focus-visible,
 :where(.litm, .litm-landscape)
-	input:not([type="hidden"]):not([type="checkbox"]):not(.litm--tag-item-name):not(
-		.litm--quick-add-input
-	):not(.litm--limit-label):not(.litm--limit-max):focus-visible,
+	input:not([type="hidden"]):not([type="checkbox"]):not(
+		.litm--tag-item-name
+	):not(.litm--quick-add-input):not(.litm--limit-label):not(
+		.litm--limit-max
+	):focus-visible,
 :where(.litm, .litm-landscape) textarea:focus-visible,
 :where(.litm, .litm-landscape) litm-super-checkbox:focus-visible {
 	outline: 2px solid var(--color-litm-tag);
@@ -623,7 +666,8 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	border: 1px solid var(--color-litm-limit);
 	color: var(--color-litm-limit-accent);
 }
-.chat-message .litm--chat-action-consequence-btn:hover:not(:disabled):not(.is-applied) {
+.chat-message
+	.litm--chat-action-consequence-btn:hover:not(:disabled):not(.is-applied) {
 	background: var(--color-litm-limit-15);
 }
 .chat-message .litm--chat-action-consequence-btn.is-applied {
@@ -724,7 +768,7 @@ section.standard-form.litm-actions-app {
 /* Rote variant — gold-tinted border so magical actions read at silhouette
    level, not only by reading the practitioner string. */
 .litm-actions-app .litm--action-card[data-rote="true"] {
-	border-color: var(--color-litm-tag);
+	border-color: var(--color-litm-tag-text);
 }
 .litm--action-card-img {
 	width: 36px;
@@ -758,7 +802,7 @@ section.standard-form.litm-actions-app {
 	flex: 0 0 auto;
 	gap: var(--spacer-8);
 	padding-inline: var(--spacer-12);
-	border-color: var(--color-litm-tag);
+	border-color: var(--color-litm-tag-text);
 	color: var(--color-litm-tag-text);
 	font-weight: 600;
 }
@@ -1158,29 +1202,29 @@ section.standard-form.litm-actions-app {
 	color: var(--color-text-primary);
 	mask:
 		radial-gradient(
-				circle at 0 0,
-				transparent var(--banner-notch),
-				black calc(var(--banner-notch) + 0.5px)
-			)
-			top left,
+			circle at 0 0,
+			transparent var(--banner-notch),
+			black calc(var(--banner-notch) + 0.5px)
+		)
+		top left,
 		radial-gradient(
-				circle at 100% 0,
-				transparent var(--banner-notch),
-				black calc(var(--banner-notch) + 0.5px)
-			)
-			top right,
+			circle at 100% 0,
+			transparent var(--banner-notch),
+			black calc(var(--banner-notch) + 0.5px)
+		)
+		top right,
 		radial-gradient(
-				circle at 0 100%,
-				transparent var(--banner-notch),
-				black calc(var(--banner-notch) + 0.5px)
-			)
-			bottom left,
+			circle at 0 100%,
+			transparent var(--banner-notch),
+			black calc(var(--banner-notch) + 0.5px)
+		)
+		bottom left,
 		radial-gradient(
-				circle at 100% 100%,
-				transparent var(--banner-notch),
-				black calc(var(--banner-notch) + 0.5px)
-			)
-			bottom right;
+			circle at 100% 100%,
+			transparent var(--banner-notch),
+			black calc(var(--banner-notch) + 0.5px)
+		)
+		bottom right;
 	mask-size: 51% 51%;
 	mask-repeat: no-repeat;
 }
@@ -2032,8 +2076,8 @@ section.standard-form.litm-actions-app {
 /* Sacrifice trigger — warm/dire styling on the Roll-adjacent button.
    Click sets the dialog's type to sacrifice and opens it. */
 .litm--sacrifice-button {
-	border-color: var(--color-litm-weakness);
-	color: var(--color-litm-weakness);
+	border-color: var(--color-litm-weakness-text);
+	color: var(--color-litm-weakness-text);
 }
 
 .litm--sacrifice-button:hover {
@@ -2084,7 +2128,12 @@ section.standard-form.litm-actions-app {
 .litm--sacrifice-rite__rule {
 	flex: 0 0 5rem;
 	height: 1px;
-	background: linear-gradient(to right, transparent, var(--rite-cream) 50%, transparent);
+	background: linear-gradient(
+		to right,
+		transparent,
+		var(--rite-cream) 50%,
+		transparent
+	);
 	opacity: 0.65;
 }
 
@@ -2141,18 +2190,21 @@ section.standard-form.litm-actions-app {
 
 /* Long theme titles must wrap inside the sacrifice picker — the global
    tag chrome forces nowrap, which is correct for inline tag chips but
-   breaks the card grid when a title is several words long. */
+   breaks the card grid when a title is several words long. Also size
+   the chip to its content: the parent .flexrow gives its children
+   `flex: 1` by default, which would otherwise stretch the chip's
+   skewed underline bar all the way across the card header. */
 .litm--sacrifice-theme-grid .litm-title_tag,
 .litm--sacrifice-theme-grid .litm-title_tag::before {
 	white-space: normal;
 }
+.litm--sacrifice-theme-grid .litm-title_tag {
+	flex: 0 1 auto;
+}
 
-/* Selected theme card: gold border + soft glow, matching the existing
-   .litm-render--card[data-render-action]:focus-visible treatment. No
-   weakness-colored chrome — selection is a neutral act, the rite around
-   it provides the gravity. */
+/* Selected theme card: soft gold wash + glow do the affordance work; no
+   loud border, the rite around the dialog provides the gravity. */
 .litm .theme-card.is-selected {
-	border-color: var(--color-litm-tag);
 	background: var(--color-litm-tag-15);
 	box-shadow: var(--shadow-glow);
 }
@@ -2307,7 +2359,11 @@ section.standard-form.litm-actions-app {
 
 /* Receded sections — visually lighter for lower-priority content */
 .litm-hero-sheet fieldset.litm--receded {
-	border-color: color-mix(in srgb, var(--color-fieldset-border) 30%, transparent);
+	border-color: color-mix(
+		in srgb,
+		var(--color-fieldset-border) 30%,
+		transparent
+	);
 	padding: var(--spacer-12);
 	gap: var(--spacer-12);
 }
@@ -2426,10 +2482,18 @@ section.standard-form.litm-actions-app {
 	height: 2px;
 }
 .litm--play-actions::before {
-	background-image: linear-gradient(90deg, transparent 0%, var(--color-light-3) 100%);
+	background-image: linear-gradient(
+		90deg,
+		transparent 0%,
+		var(--color-border) 100%
+	);
 }
 .litm--play-actions::after {
-	background-image: linear-gradient(90deg, var(--color-light-3) 0%, transparent 100%);
+	background-image: linear-gradient(
+		90deg,
+		var(--color-border) 0%,
+		transparent 100%
+	);
 }
 
 .litm--play-actions__prompt {
@@ -2489,7 +2553,7 @@ section.standard-form.litm-actions-app {
 	   the natural description height while overflow visually clips
 	   elsewhere; the explicit override lets max-height win. */
 	.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
-		[data-application-part="description"] {
+	[data-application-part="description"] {
 		align-self: center;
 		height: 100%;
 		overflow-y: auto;
@@ -2530,8 +2594,9 @@ section.standard-form.litm-actions-app {
    actively rendered — Roll/Actions/Sacrifice/Camping are already in the
    strip in play mode. Edit mode renders an empty hidden stub for the
    actions PART, so the frame buttons remain visible there. */
-.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
-	.window-header
+.litm-hero-sheet:has(
+		[data-application-part="actions"]:not([hidden])
+	) .window-header
 	> button[data-action="openActionsApp"],
 .litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
 	.window-header
@@ -2975,7 +3040,8 @@ section.standard-form.litm-actions-app {
    other input in a .standard-form lays out. Stacked .form-field columns
    (theme item sheet) deliberately don't get this rule — the bar stays
    left-aligned under its label there. */
-.standard-form .form-group > .litm--roll-type-bar:has(.litm--segmented-option--icon) {
+.standard-form .form-group
+	> .litm--roll-type-bar:has(.litm--segmented-option--icon) {
 	margin-left: auto;
 }
 
@@ -3386,7 +3452,9 @@ section.standard-form.litm-actions-app {
 }
 
 .litm--roll-dialog-theme-group:first-child,
-.litm--roll-dialog-tags-fieldset > section.tab > .litm--roll-dialog-theme-group:first-of-type,
+.litm--roll-dialog-tags-fieldset
+	> section.tab
+	> .litm--roll-dialog-theme-group:first-of-type,
 .litm--roll-dialog-tags-fieldset
 	> section.tab
 	> div:first-of-type
@@ -3593,13 +3661,25 @@ section.standard-form.litm-actions-app {
 ======================================== */
 
 .chat-message:has(
-	:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
+	:is(
+			.litm.dice-roll,
+			.litm-track-complete,
+			.litm-spend-chat,
+			.litm-camping-recap
+		)
 ) {
 	padding: 0;
 	contain: layout style;
 }
 
-.chat-message:has(:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap))
+.chat-message:has(
+		:is(
+				.litm.dice-roll,
+				.litm-track-complete,
+				.litm-spend-chat,
+				.litm-camping-recap
+			)
+	)
 	.message-header {
 	padding: 4px 10px;
 	border-bottom: var(--hr-border);
@@ -4334,12 +4414,34 @@ section.standard-form.litm-actions-app {
 	}
 }
 
+/* Status tier suffix — "-3" rendered flush against the name so the chip
+   reads "wounded-3" at a glance instead of leaving the tier inferable only
+   from the filled pips. `field-sizing: content` collapses the input to its
+   value width so the suffix sits immediately after; without it, the input's
+   default size=20 leaves a long gap before the suffix. */
+.litm--status .litm--tag-item-name {
+	flex: 0 1 auto;
+	min-width: 0;
+	width: auto;
+	field-sizing: content;
+}
+
+.litm--tag-item-tier {
+	flex: 0 0 auto;
+	margin-right: var(--spacer-4);
+	pointer-events: none;
+	font: inherit;
+}
+
 /* Status tier boxes — hidden checkbox drives a checkbox SVG image */
 .litm--tag-item-status {
 	display: flex;
 	gap: 2px;
 	flex-shrink: 0;
 	align-items: center;
+	/* Push the pips to the far right of the chip so the name + tier suffix
+	   stay grouped on the left ("wounded-3        ◇◇◆◇◇◇"). */
+	margin-left: auto;
 }
 
 .litm--tier-label {
@@ -4384,15 +4486,14 @@ section.standard-form.litm-actions-app {
 }
 
 /* Compact button style — shared by visibility toggles, add-tag, and any tag-row buttons */
-.litm--story-tags
-	.window-content
-	button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn):not(
-		.litm--load-scene-btn
-	),
+.litm--story-tags .window-content
+	button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(
+		.litm--quick-add-btn
+	):not(.litm--load-scene-btn),
 .litm--story-tags.sidebar-tab
-	button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(.litm--quick-add-btn):not(
-		.litm--load-scene-btn
-	),
+	button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(
+		.litm--quick-add-btn
+	):not(.litm--load-scene-btn),
 .litm--story-tags .window-content .litm--visibility-toggle,
 .litm--story-tags.sidebar-tab .litm--visibility-toggle {
 	padding: 0.2em 0.35em;
@@ -4450,8 +4551,11 @@ section.standard-form.litm-actions-app {
 }
 
 /* Always show toggle indicators when checked */
-.litm--story-tags .litm--tag-row:has(.litm--single-use:checked) .litm--single-use-label,
-.litm--story-tags .litm--tag-row:has(.litm--scratch:checked) .litm--scratch-label {
+.litm--story-tags .litm--tag-row:has(.litm--single-use:checked)
+	.litm--single-use-label,
+.litm--story-tags
+	.litm--tag-row:has(.litm--scratch:checked)
+	.litm--scratch-label {
 	opacity: 1;
 	pointer-events: auto;
 	cursor: pointer;
@@ -4604,7 +4708,11 @@ input[type="text"].litm--quick-add-input,
 .litm--limit-group {
 	margin: 3px 0;
 	padding: var(--spacer-4) 1px;
-	background: color-mix(in srgb, var(--color-litm-limit-accent) 12%, transparent);
+	background: color-mix(
+		in srgb,
+		var(--color-litm-limit-accent) 12%,
+		transparent
+	);
 	border-radius: var(--border-radius);
 }
 
@@ -4676,7 +4784,11 @@ input[type="text"].litm--quick-add-input,
 
 /* Dragover highlight on limit headers */
 .litm--limit-header.dragover {
-	background: color-mix(in srgb, var(--color-litm-limit-accent) 20%, transparent);
+	background: color-mix(
+		in srgb,
+		var(--color-litm-limit-accent) 20%,
+		transparent
+	);
 	border-radius: var(--border-radius);
 }
 
@@ -5252,7 +5364,8 @@ input[type="text"].litm--quick-add-input,
 	transition: color var(--transition-normal) ease;
 }
 
-.litm-theme-evolution__path-choice:has(input:checked) .litm-theme-evolution__path-icon {
+.litm-theme-evolution__path-choice:has(input:checked)
+	.litm-theme-evolution__path-icon {
 	color: inherit;
 }
 
@@ -5270,7 +5383,8 @@ input[type="text"].litm--quick-add-input,
 	color: var(--color-text-secondary);
 }
 
-.litm-theme-evolution__path-choice:has(input:checked) .litm-theme-evolution__path-consequence {
+.litm-theme-evolution__path-choice:has(input:checked)
+	.litm-theme-evolution__path-consequence {
 	color: inherit;
 	opacity: 0.85;
 }
@@ -5400,7 +5514,8 @@ input[type="text"].litm--quick-add-input,
 
 /* Trade cap reached for this row's kind: pill is unselected and locked
    until the player frees a slot by unchecking another. */
-.litm-theme-evolution__trade-row.is-trade-cap .litm-theme-evolution__trade-toggle {
+.litm-theme-evolution__trade-row.is-trade-cap
+.litm-theme-evolution__trade-toggle {
 	opacity: 0.4;
 	cursor: not-allowed;
 }
@@ -5541,13 +5656,18 @@ input[type="text"].litm--quick-add-input,
 	background: unset;
 }
 
-:is(body, .themed).theme-light .litm.application:not(.theme-dark) .window-header,
+:is(body, .themed).theme-light
+	.litm.application:not(.theme-dark)
+	.window-header,
 .litm.application.theme-light .window-header {
 	color: var(--color-dark-2);
 	border-bottom: var(--sidebar-separator);
 }
 
-:is(body, .themed).theme-light .litm.application:not(.theme-dark) .window-header .window-title,
+:is(body, .themed).theme-light
+	.litm.application:not(.theme-dark)
+	.window-header
+	.window-title,
 .litm.application.theme-light .window-header .window-title {
 	color: var(--color-dark-2);
 }
@@ -5768,7 +5888,8 @@ body.theme-dark,
 body.theme-dark .application:not(.theme-light),
 .themed.theme-dark {
 	--background: var(--color-cool-5-90);
-	--underline-url: url(assets/media/underline-w.webp) center / contain no-repeat;
+	--underline-url:
+		url(assets/media/underline-w.webp) center / contain no-repeat;
 	--hr-border: 1px solid var(--color-warm-1-25);
 	--litm-icon-filter: none;
 	--color-litm-tag: #946a1e;
@@ -5815,7 +5936,12 @@ body.theme-dark .application:not(.theme-light),
 	   reads -secondary/-subtle render as near-black on the dark chat bg. */
 	&
 		.chat-message:has(
-			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
+			:is(
+					.litm.dice-roll,
+					.litm-track-complete,
+					.litm-spend-chat,
+					.litm-camping-recap
+				)
 		) {
 		--color-scheme: dark;
 		--chat-message-border-color: var(--color-litm-chat-border);
@@ -5831,7 +5957,12 @@ body.theme-dark .application:not(.theme-light),
 
 	&
 		.chat-message:has(
-			:is(.litm.dice-roll, .litm-track-complete, .litm-spend-chat, .litm-camping-recap)
+			:is(
+					.litm.dice-roll,
+					.litm-track-complete,
+					.litm-spend-chat,
+					.litm-camping-recap
+				)
 		)
 		.message-header {
 		border-bottom: 1px solid var(--color-litm-chat-border);
@@ -6114,7 +6245,10 @@ body.litm--colorblind .themed.theme-dark,
 
 .litm-hud-grid {
 	display: grid;
-	grid-template-columns: repeat(var(--effect-columns, 5), var(--effect-size, 24px));
+	grid-template-columns: repeat(
+			var(--effect-columns, 5),
+			var(--effect-size, 24px)
+		);
 	gap: var(--effect-gap, 3px);
 	padding: var(--effect-gap, 3px);
 	margin-inline: auto;

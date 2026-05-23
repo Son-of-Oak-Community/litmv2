@@ -245,7 +245,10 @@ describe("applySuccess — createOrTag (self-target, markup-driven)", () => {
 	it("applies the picked subset and skips zero-tier alternatives", async () => {
 		const actor = heroActor();
 		await applySuccess({
-			success: { verb: "enhance", text: "Apply [ferido-] [cortado-] [perfurado-]" },
+			success: {
+				verb: "enhance",
+				text: "Apply [ferido-] [cortado-] [perfurado-]",
+			},
 			actor,
 			chosenTiers: [0, 2, 0],
 		});

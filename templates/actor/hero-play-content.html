@@ -71,10 +71,10 @@
 			<div class="litm--play-statuses">
 				{{#each statuses as |tag|}}
 				<span class="litm-status{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}" data-tag-id="{{tag.id}}"
-					data-text="{{tag.name}}" data-effect-id="{{tag.id}}">
+					data-text="{{tag.name}}{{#if tag.system.currentTier}}-{{tag.system.currentTier}}{{/if}}" data-effect-id="{{tag.id}}">
 					<span {{#if @root.isOwner}}data-action="selectTag"
 						data-tooltip="{{localize 'LITM.Ui.click_to_add_tag_only'}}"
-						{{/if}}>{{tag.name}}</span>
+						{{/if}}>{{tag.name}}{{#if tag.system.currentTier}}-{{tag.system.currentTier}}{{/if}}</span>
 					<span class="litm--tag-item-status" data-action="toggleTier" data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}">
 						{{#each tag.system.tiers as |filled|}}
 						<img class="litm--tier-box" data-action="toggleTier" data-tier="{{add @index 1}}"

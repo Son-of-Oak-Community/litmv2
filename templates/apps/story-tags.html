@@ -9,6 +9,9 @@
 		<input type="hidden" name="{{formKey}}.{{tag.id}}.limitId" value="{{tag.limitId}}" />
 		<input class="litm--tag-item-name {{ifThen editable 'litm--locked' ''}}" data-focus="select"
 			name="{{formKey}}.{{tag.id}}.name" value="{{tag.name}}" {{ifThen editable "" "readonly"}} />
+		{{#if (and (eq tag.type "status_tag") tag.value)}}
+		<span class="litm--tag-item-tier" aria-hidden="true">-{{tag.value}}</span>
+		{{/if}}
 		{{#if (eq tag.type "story_tag")}}
 		<label class="litm--toggle-label litm--single-use-label" data-tooltip="{{localize 'LITM.Terms.single_use'}}">
 			<input class="litm--single-use" type="checkbox" name="{{formKey}}.{{tag.id}}.isSingleUse" {{disabled (not editable)}}

@@ -135,7 +135,7 @@ async function _applyActionSuccessOption(opt, actor, messageId) {
 	const variableSpent = (opt.chosenTiers ?? [])
 		.filter((n) => Number.isFinite(n))
 		.reduce((sum, n) => sum + n, 0);
-	return c.fixed + (variableSpent || c.variableTokens);
+	return c.fixed + variableSpent;
 }
 
 async function _applyStatusPicker(actor, opt) {

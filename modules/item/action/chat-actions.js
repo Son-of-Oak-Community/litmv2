@@ -24,6 +24,8 @@ function resolveTier(token, chosenTiers, variableIndex) {
  * variable-tier markup like `[shocked-]` renders as `[shocked-3]` in chat.
  * Used by narrative-style appliers (Quick, Discover) that don't materially
  * create the status but still want the picked tier to appear in the prose.
+ * A skipped token (chosenTiers slot 0 or missing) keeps its literal
+ * `[name-]` form so the prose doesn't lie about an unpicked tier.
  */
 function substituteVariableTiers(text, chosenTiers) {
 	if (!text) return text;
@@ -32,8 +34,10 @@ function substituteVariableTiers(text, chosenTiers) {
 	let varIdx = 0;
 	return text.replace(re, (match, name, _exclamation, separator, value) => {
 		if (separator !== "-" || value) return match;
-		const tier = Math.max(1, Math.min(6, Number(chosenTiers?.[varIdx]) || 1));
+		const raw = Number(chosenTiers?.[varIdx]);
 		varIdx++;
+		if (!Number.isFinite(raw) || raw <= 0) return match;
+		const tier = Math.min(6, raw);
 		return `[${name}-${tier}]`;
 	});
 }
@@ -309,7 +313,9 @@ async function _reduceStatusOnActor(
 
 /**
  * Advance / Set Back — shift the picked Limit by the (sum of) parsed tiers.
- * Variable-tier tokens use chosenTiers fallback (default 1).
+ * Variable-tier tokens resolve via chosenTiers (default 0 = skip). The
+ * final shift is floored at 1 so a process success always advances the
+ * limit, even when every variable token was skipped.
  */
 async function _applyProcess({ success, limitInfo, chosenTiers }) {
 	if (!limitInfo) return null;

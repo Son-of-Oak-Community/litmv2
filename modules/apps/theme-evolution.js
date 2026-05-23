@@ -954,7 +954,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 	async #onDropTheme(event) {
 		const data =
 			foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
-		if (!data?.uuid && data?.type !== "Item") return;
+		if (!data?.uuid || data?.type !== "Item") return;
 		const item = await foundry.utils.fromUuid(data.uuid);
 		if (!item || item.type !== "theme") {
 			ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_invalid"));
