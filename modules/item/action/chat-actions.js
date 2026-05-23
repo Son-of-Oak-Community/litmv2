@@ -6,11 +6,17 @@ import { scanMarkup } from "./action-rules.js";
 import { parseTagStringMatch } from "./tag-string.js";
 import { getVerbDef } from "./verb-definitions.js";
 
-/** Resolve a status token's tier, honoring the player's pick for `[name-]`. */
+/**
+ * Resolve a status token's tier, honoring the player's pick for `[name-]`.
+ * Returns 0 for a variable token whose `chosenTiers` slot is missing or zero,
+ * which the appliers interpret as "skip this token" — supports successes that
+ * list many alternative statuses (eg. an Action Grimoire Attack rote with
+ * eight harmful statuses, where the player applies one or two of them).
+ */
 function resolveTier(token, chosenTiers, variableIndex) {
 	if (!token.isVariable) return token.tier;
-	const raw = chosenTiers?.[variableIndex];
-	return Math.max(1, Math.min(6, Number(raw) || 1));
+	const raw = Number(chosenTiers?.[variableIndex]) || 0;
+	return Math.max(0, Math.min(6, raw));
 }
 
 /**
@@ -138,6 +144,7 @@ async function _applyCreateOrTag({ success, actor, chosenTiers }) {
 
 		const tier = resolveTier(tok, chosenTiers, varIdx);
 		if (tok.isVariable) varIdx++;
+		if (tier <= 0) continue;
 
 		await actor.system.addStatus(tok.name, { tier, isHidden: false });
 		summaries.push(
@@ -149,6 +156,7 @@ async function _applyCreateOrTag({ success, actor, chosenTiers }) {
 		);
 	}
 
+	if (!summaries.length) return null;
 	return { appliedSummary: summaries.join(" · ") };
 }
 
@@ -468,15 +476,17 @@ export async function applyConsequence({ text, actor, chosenTiers = [] }) {
 			const parsedTier = data.system.tiers.lastIndexOf(true) + 1;
 			const isVariable = parsedTier === 0;
 			const tier = isVariable
-				? Math.max(1, Math.min(6, Number(chosenTiers?.[varIdx]) || 1))
+				? Math.max(0, Math.min(6, Number(chosenTiers?.[varIdx]) || 0))
 				: parsedTier;
 			if (isVariable) varIdx++;
-			await actor.system.addStatus(data.name, { tier });
+			if (tier <= 0) continue;
+			await actor.system.addStatus(data.name, { tier, isHidden: false });
 			created.push(`[${data.name}-${tier}]`);
 		} else {
 			await actor.system.addStoryTag(storyTagEffect({ name: data.name }));
 			created.push(`[${data.name}]`);
 		}
 	}
+	if (!created.length) return null;
 	return { appliedSummary: created.join(" ") };
 }

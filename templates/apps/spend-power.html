@@ -33,6 +33,7 @@
 					{{#if item.cost}}<span class="litm-spend-power__cost" data-action-success-cost>{{item.cost}} {{localize "LITM.Tags.power"}}</span>{{/if}}
 				</div>
 				{{#if item.hasVariableTier}}
+				<p class="hint">{{localize "LITM.Actions.variable_tier_hint"}}</p>
 				<div class="litm-spend-power__var-tiers flexrow gap-sm">
 					{{#each item.varTokens}}
 					<div class="litm-spend-power__var-tier flexrow gap-sm" data-var-idx="{{idx}}" data-var-name="{{name}}">
@@ -41,7 +42,7 @@
 							aria-label="{{localize "LITM.Ui.decrease"}}">
 							<i class="fas fa-minus" aria-hidden="true"></i>
 						</button>
-						<span class="litm-spend-power__counter-value" aria-live="polite">1</span>
+						<span class="litm-spend-power__counter-value" aria-live="polite">0</span>
 						<button type="button" class="litm-spend-power__counter-btn" data-action="counter-inc"
 							aria-label="{{localize "LITM.Ui.increase"}}">
 							<i class="fas fa-plus" aria-hidden="true"></i>

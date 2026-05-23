@@ -99,6 +99,7 @@
 			"practitioners": "Practitioners",
 			"practitioners_hint": "Who can perform this rote (e.g., Sorcerers, Bards).",
 			"practitioners_placeholder": "Sorcerers, Bards, …",
+			"push_consequence_hint": "Push Your Luck deals exactly one consequence. Pick which one applies.",
 			"ref_not_found": "Couldn't find the linked reference.",
 			"remove_example": "Remove example",
 			"remove_extra_feat": "Remove Extra Feat",
@@ -124,6 +125,7 @@
 			"suggestion_hindering": "Suggested hindering by this action",
 			"tag_label_placeholder": "Tag or status name",
 			"unlink_tag": "Unlink from tag",
+			"variable_tier_hint": "Use 0 to skip a status, or pick the tier you want to apply.",
 			"verb": "Verb",
 			"verbs": {
 				"advance": "Advance",

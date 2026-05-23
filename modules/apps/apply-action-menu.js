@@ -2,7 +2,8 @@ import { scanMarkup } from "../item/action/action-rules.js";
 import { applyConsequence } from "../item/action/chat-actions.js";
 import { error } from "../logger.js";
 import { proseChipsHtml } from "../system/renderers/renderer-utils.js";
-import { localize as t } from "../utils.js";
+import { LitmSettings } from "../system/settings.js";
+import { getStoryTagSidebar, localize as t } from "../utils.js";
 import { adjustCounter } from "./counter-controls.js";
 import { stripActorPrefix } from "./spend-power.js";
 
@@ -70,6 +71,12 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		const applied = new Set(
 			message.getFlag("litmv2", "appliedConsequences") ?? [],
 		);
+		// Push Your Luck adds one consequence to a clean Success (Core Book
+		// p.158). Once a consequence has been applied to a pushed roll, the
+		// remaining entries are locked so the GM can't keep adding more.
+		const isPushed = message.rolls?.[0]?.litm?.pushed === true;
+		const appliedCount = applied.size;
+		const pushedLocked = isPushed && appliedCount >= 1;
 		const items = (sys.consequences ?? []).map((text, index) => {
 			const varTokens = [];
 			let v = 0;
@@ -85,7 +92,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 				varTokens,
 				hasVariableTier: varTokens.length > 0,
 				applied: applied.has(index),
-				disabled: applied.has(index),
+				disabled: applied.has(index) || pushedLocked,
 			};
 		});
 
@@ -110,12 +117,18 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 			targets,
 			rollingActorId,
 			empty: items.length === 0,
+			isPushed,
+			pushedLocked,
+			inputType: isPushed ? "radio" : "checkbox",
 		};
 	}
 
 	/** @this {ApplyActionMenuApp} */
 	static #onCounter(_event, target) {
-		adjustCounter(target, { min: 1, max: 6 });
+		// min=0 so a consequence with multiple variable-tier statuses lets
+		// the GM pick which ones to apply (mirror to the apply-success path
+		// in SpendPowerApp). A token left at 0 is skipped.
+		adjustCounter(target, { min: 0, max: 6 });
 	}
 
 	static async #onSubmit(_event, form, _formData) {
@@ -128,10 +141,15 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 			return;
 		}
 
-		const checkedKeys = Array.from(
+		const isPushed = message.rolls?.[0]?.litm?.pushed === true;
+		let checkedKeys = Array.from(
 			form.querySelectorAll("input[name='option']:checked"),
 		).map((el) => el.value);
 		if (!checkedKeys.length) return;
+		// Push Your Luck imposes exactly one consequence on the otherwise-clean
+		// Success — defensive cap in case the template's radio constraint is
+		// bypassed (eg. by browser DOM tampering or a re-render race).
+		if (isPushed) checkedKeys = checkedKeys.slice(0, 1);
 
 		// Target chip picks the actor; falls back to the rolling actor if no
 		// chip is selected. Pre-selection in the template already defaults
@@ -164,10 +182,10 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 					if (!Number.isInteger(i) || i < 0) return;
 					const raw = Number(
 						row.querySelector(".litm-spend-power__counter-value")
-							?.textContent ?? 1,
+							?.textContent ?? 0,
 					);
-					const val = Number.isFinite(raw) ? raw : 1;
-					chosenTiers[i] = Math.max(1, Math.min(6, val));
+					const val = Number.isFinite(raw) ? raw : 0;
+					chosenTiers[i] = Math.max(0, Math.min(6, val));
 				});
 
 			let result;
@@ -179,6 +197,13 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 				continue;
 			}
 			if (!result) continue;
+
+			// Ensure the target lives in the story-tag sidebar so the GM can
+			// see the freshly-applied tag/status there. Heroes and the
+			// fellowship singleton are added automatically; placed-token
+			// challenges and journeys are not, and the rote consequence is
+			// most often what first puts a status on them.
+			if (actor) await ApplyActionMenuApp.#ensureActorInSidebar(actor);
 
 			await message.setFlag("litmv2", "appliedConsequences", [
 				...appliedNow,
@@ -199,5 +224,24 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 				),
 			});
 		}
+	}
+
+	/**
+	 * Append the actor's uuid to the story-tag sidebar config when missing
+	 * so consequence-applied tags/statuses are visible in the Manage Tags &
+	 * Statuses window without forcing the GM to add the actor by hand.
+	 */
+	static async #ensureActorInSidebar(actor) {
+		if (!game.user.isGM) return;
+		const sidebar = getStoryTagSidebar();
+		const config = sidebar?.config ?? LitmSettings.storyTags ?? {};
+		const existing = config.actors ?? [];
+		if (existing.includes(actor.uuid)) return;
+		await LitmSettings.setStoryTags({
+			...config,
+			actors: [...existing, actor.uuid],
+		});
+		sidebar?.invalidateCache();
+		sidebar?.render();
 	}
 }

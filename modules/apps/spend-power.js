@@ -253,7 +253,10 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			.map((s) => {
 				const def = getVerbDef(s.verb);
 				const cost = getSuccessCost(s);
-				const minCost = cost.fixed + cost.variableTokens;
+				// Variable tokens default to 0 ("skip") so the floor cost is
+				// the fixed part alone. The badge updates as the player nudges
+				// each [name-] counter upward in #onCounter.
+				const minCost = cost.fixed;
 				const isUnsupported = def?.kind === "unsupported";
 				const cantAfford = minCost > remaining;
 
@@ -337,9 +340,12 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	static #onCounter(_event, target) {
 		const statusItem = target.closest(".litm-spend-power__status-item");
 		const varTier = target.closest(".litm-spend-power__var-tier");
-		// Variable-tier counters clamp 1..6 (tier range). reduce_status clamps
-		// 0..currentTier. Everything else clamps 1..∞.
-		const min = statusItem ? 0 : 1;
+		// Variable-tier counters clamp 0..6 — 0 means "skip this token" so a
+		// success listing many alternative statuses (eg. an Action Grimoire
+		// Attack with [ferido-] [cortado-] [perfurado-] …) lets the player
+		// pick which ones to apply. reduce_status clamps 0..currentTier.
+		// Everything else clamps 1..∞.
+		const min = statusItem || varTier ? 0 : 1;
 		const max = statusItem
 			? Number(statusItem.dataset.maxTier)
 			: varTier
@@ -500,10 +506,10 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			li.querySelectorAll(".litm-spend-power__var-tier").forEach((row) => {
 				const raw = Number(
 					row.querySelector(".litm-spend-power__counter-value")?.textContent ??
-						1,
+						0,
 				);
-				const val = Number.isFinite(raw) ? raw : 1;
-				varSum += Math.max(1, val);
+				const val = Number.isFinite(raw) ? raw : 0;
+				varSum += Math.max(0, val);
 			});
 			return fixed + varSum;
 		}
@@ -560,10 +566,10 @@ function parseSpendIntent(form, dialog) {
 				if (!Number.isInteger(idx) || idx < 0) return;
 				const raw = Number(
 					row.querySelector(".litm-spend-power__counter-value")?.textContent ??
-						1,
+						0,
 				);
-				const val = Number.isFinite(raw) ? raw : 1;
-				chosenTiers[idx] = Math.max(1, Math.min(6, val));
+				const val = Number.isFinite(raw) ? raw : 0;
+				chosenTiers[idx] = Math.max(0, Math.min(6, val));
 			});
 			options.push({
 				source: "action",

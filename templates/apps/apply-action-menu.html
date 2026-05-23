@@ -20,13 +20,16 @@
 	{{/if}}
 	<fieldset>
 		<legend>{{localize "LITM.Terms.consequences"}}</legend>
+		{{#if isPushed}}
+		<p class="hint">{{localize "LITM.Actions.push_consequence_hint"}}</p>
+		{{/if}}
 		<ul class="litm-spend-power__options">
 			{{#each items as |item|}}
 			<li class="litm-spend-power__option {{#if item.applied}}is-applied{{/if}} {{#if item.disabled}}is-disabled{{/if}}"
 				data-key="{{item.key}}">
 				<div class="litm-spend-power__option-row">
 					<label class="litm-spend-power__option-label">
-						<input type="checkbox" name="option" value="{{item.key}}"
+						<input type="{{../inputType}}" name="option" value="{{item.key}}"
 							{{#if item.applied}}checked{{/if}}
 							{{#if item.disabled}}disabled{{/if}} />
 						<span>{{{item.text}}}</span>
@@ -41,7 +44,7 @@
 							aria-label="{{localize "LITM.Ui.decrease"}}">
 							<i class="fas fa-minus" aria-hidden="true"></i>
 						</button>
-						<span class="litm-spend-power__counter-value" aria-live="polite">1</span>
+						<span class="litm-spend-power__counter-value" aria-live="polite">0</span>
 						<button type="button" class="litm-spend-power__counter-btn" data-action="counter-inc"
 							aria-label="{{localize "LITM.Ui.increase"}}">
 							<i class="fas fa-plus" aria-hidden="true"></i>

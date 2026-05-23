@@ -225,18 +225,37 @@ describe("applySuccess — createOrTag (self-target, markup-driven)", () => {
 		]);
 	});
 
-	it("defaults variable tier to 1 when chosenTiers entry is missing", async () => {
+	it("skips a variable-tier token when its chosenTiers entry is missing or 0", async () => {
+		// Variable tier defaults to 0 ("skip this token") so a success listing
+		// many alternative statuses doesn't apply them all unintentionally — see
+		// issue #91 where an Action Grimoire Attack rote with eight statuses
+		// forced one of each at rank-1, swallowing the player's whole Power
+		// budget. The player now opts in by raising the counter.
 		const actor = heroActor();
-		await applySuccess({
+		const result = await applySuccess({
 			success: { verb: "enhance", text: "[bleeding-]" },
 			actor,
 			// no chosenTiers
 		});
 
+		expect(actor.createEmbeddedDocuments).not.toHaveBeenCalled();
+		expect(result).toBeNull();
+	});
+
+	it("applies the picked subset and skips zero-tier alternatives", async () => {
+		const actor = heroActor();
+		await applySuccess({
+			success: { verb: "enhance", text: "Apply [ferido-] [cortado-] [perfurado-]" },
+			actor,
+			chosenTiers: [0, 2, 0],
+		});
+
+		expect(actor.createEmbeddedDocuments).toHaveBeenCalledTimes(1);
 		const [, [data]] = actor.createEmbeddedDocuments.mock.calls[0];
+		expect(data.name).toBe("cortado");
 		expect(data.system.tiers).toEqual([
-			true,
 			false,
+			true,
 			false,
 			false,
 			false,
