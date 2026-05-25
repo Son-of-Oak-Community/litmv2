@@ -13,6 +13,18 @@
  *   [name-tier]       → status_tag with that tier marked
  *
  * The regex producing the match lives at CONFIG.litmv2.tagStringRe.
+ *
+ * Note: weakness and limit semantics are *enricher-only*. The enricher
+ * renders [-name] as a weakness chip and [name:N] (for N != 1) as a limit
+ * chip, but neither shape produces a matching ActiveEffect here:
+ *   - [-name] still matches the regex (name = "-name") and would fall into
+ *     the story_tag branch below; callers using this parser should filter
+ *     such matches out. Weakness ActiveEffects are created only by the
+ *     theme/story_theme sheet drop handler when a weakness chip is dragged
+ *     onto a sheet.
+ *   - [name:N] is parsed as a story_tag (single-use when N === "1", per
+ *     the legacy Core Book p.165 convention). There is no "limit"
+ *     ActiveEffect type — limits live as fields on actor data models.
  */
 
 /**

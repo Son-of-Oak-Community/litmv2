@@ -3414,7 +3414,7 @@ section.standard-form.litm-actions-app {
 .litm fieldset ul.litm--roll-dialog-tags-summary {
 	display: flex;
 	flex-flow: row wrap;
-	gap: var(--spacer-4) var(--spacer-8);
+	gap: var(--spacer-8) var(--spacer-16);
 	align-items: center;
 }
 
