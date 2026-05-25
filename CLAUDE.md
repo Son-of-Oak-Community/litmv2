@@ -200,6 +200,18 @@ Legend in the Mist is a tag-based RPG. Instead of numeric stats, characters are 
 
 **Story Theme Tags** -- Story tags elevated into a mini-theme with positive and negative tags. Impermanent (entire theme can be removed).
 
+### Enricher Tag Syntax
+
+Prose text supports five bracketed shapes that render as inline chips:
+
+- `[name]`   → story tag
+- `[name!]`  → single-use story tag
+- `[name-N]` → status tier N (or `[name-]` for tier-less)
+- `[name:N]` → limit (max N), or `[name:]` for unbounded
+- `[-name]`  → weakness chip (draggable onto a theme/story_theme sheet to create a `weakness_tag` effect)
+
+`[-name]` and `[name:N]` are **enricher-only** — they render styled chips but do not flow through the AE-creation parser in `modules/item/action/tag-string.js`. Weakness chips become real effects only via the theme-sheet drop handler.
+
 ### Power Calculation
 
 - +1 per helpful (positive) tag

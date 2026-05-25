@@ -56,6 +56,7 @@ export class HandlebarsPartials {
 		"systems/litmv2/templates/partials/play-profile-img.html",
 		"systems/litmv2/templates/partials/rating-star.html",
 		"systems/litmv2/templates/partials/control-legend.html",
+		"systems/litmv2/templates/partials/weakness-chevron.html",
 	];
 
 	static register() {

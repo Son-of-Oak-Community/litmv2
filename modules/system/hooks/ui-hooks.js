@@ -12,6 +12,7 @@ export function registerUiHooks() {
 	_renderRollDialogHudOnPlayers();
 	_listenToTagDragTransfer();
 	_refreshRollDialogsOnSceneTagChange();
+	_refreshSidebarOnStoryTagsSetting();
 }
 
 function _iconOnlyHeaderButtons() {
@@ -221,11 +222,35 @@ function _refreshRollDialogsOnSceneTagChange() {
 	});
 }
 
+/**
+ * Re-render the sidebar and open roll dialogs on remote clients after the
+ * `storytags` world setting is updated. The custom `storyTagsRender` socket
+ * fires synchronously, but Foundry's `modifyDocument` handler for the Setting
+ * is async — so the sidebar can render before the new value lands in the
+ * local cache. `updateSetting` fires after the local update is applied, so
+ * this is the race-free signal for setting-driven changes (e.g. actor
+ * hide/reveal, tracked-actor list, limits).
+ */
+function _refreshSidebarOnStoryTagsSetting() {
+	Hooks.on("updateSetting", (setting, _change, _options, userId) => {
+		if (setting.key !== "litmv2.storytags") return;
+		if (userId === game.userId) return;
+		const sidebar = getStoryTagSidebar();
+		if (sidebar) {
+			sidebar.invalidateCache();
+			if (sidebar.rendered) sidebar.render();
+		}
+		for (const app of foundry.applications.instances.values()) {
+			if (app instanceof LitmRollDialog && app.rendered) app.render();
+		}
+	});
+}
+
 function _listenToTagDragTransfer() {
 	Hooks.on("ready", () => {
 		document.addEventListener("dragstart", (event) => {
 			const target = event.target.closest(
-				".litm--tag, .litm--status, .litm-tag, .litm-status, .litm-limit",
+				".litm--tag, .litm--status, .litm-tag, .litm-status, .litm-limit, .litm-weakness_tag",
 			);
 			if (!target) return;
 
@@ -235,20 +260,28 @@ function _listenToTagDragTransfer() {
 			if (!match) return;
 
 			const [, name, , separator, value] = match;
+			const isWeakness = target.classList.contains("litm-weakness_tag");
 			const isStatus =
 				separator === "-" && !target.classList.contains("litm-limit");
 			const isLimit =
-				separator === ":" ||
-				name.startsWith("-") ||
-				target.classList.contains("litm-limit");
-			const cleanName = name.replace(/^-/, "");
+				!isWeakness &&
+				(separator === ":" || target.classList.contains("litm-limit"));
+			const cleanName = isWeakness
+				? target.dataset.text || name
+				: name.replace(/^-/, "");
 			const appEl = target.closest(".sheet");
 			const app = appEl ? foundry.applications.instances.get(appEl.id) : null;
 			const sourceActorId = app?.document?.id ?? null;
 			const data = {
 				id: foundry.utils.randomID(),
-				name: isLimit ? cleanName : name,
-				type: isStatus ? "status_tag" : isLimit ? "limit" : "story_tag",
+				name: isWeakness || isLimit ? cleanName : name,
+				type: isWeakness
+					? "weakness_tag"
+					: isStatus
+						? "status_tag"
+						: isLimit
+							? "limit"
+							: "story_tag",
 				values: Array(6)
 					.fill(null)
 					.map((_, i) => (Number.parseInt(value, 10) === i + 1 ? value : null)),

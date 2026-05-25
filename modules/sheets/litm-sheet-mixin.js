@@ -1,4 +1,6 @@
-import { enrichHTML, localize } from "../utils.js";
+import { enrichHTML, findThemebookByName, localize } from "../utils.js";
+
+const WEAKNESS_DROP_TYPES = new Set(["theme", "story_theme"]);
 
 /**
  * Mixin that adds shared sheet infrastructure to both LitmActorSheet and LitmItemSheet.
@@ -99,12 +101,22 @@ export function LitmSheetMixin(Base) {
 					return this._onDropLinkedRef(event, refTarget);
 				}
 
-				const textarea = event.target.closest("textarea");
-				if (!textarea) return;
 				const data =
 					foundry.applications.ux.TextEditor.implementation.getDragEventData(
 						event,
 					);
+
+				if (
+					data?.type === "weakness_tag" &&
+					WEAKNESS_DROP_TYPES.has(this.document?.type)
+				) {
+					event.preventDefault();
+					event.stopPropagation();
+					return this._onDropWeaknessTag(data);
+				}
+
+				const textarea = event.target.closest("textarea");
+				if (!textarea) return;
 				if (!data?.uuid) return;
 				event.preventDefault();
 				event.stopPropagation();
@@ -217,6 +229,30 @@ export function LitmSheetMixin(Base) {
 			if (!effect) return;
 
 			await effect.update({ "system.linkedRefUuid": data.uuid });
+		}
+
+		/**
+		 * Handle a weakness_tag drag payload dropped on a theme or story_theme
+		 * sheet. Creates a `weakness_tag` ActiveEffect on the underlying item.
+		 * @param {{ name: string }} data
+		 * @protected
+		 */
+		async _onDropWeaknessTag(data) {
+			if (!this.document.isOwner) return;
+			const { weaknessTagEffect } = await import(
+				"../active-effects/effect-factories.js"
+			);
+			const themebook = await findThemebookByName(
+				this.document.system?.themebook,
+			);
+			const question =
+				this.document.system?.nextAvailableQuestion?.(
+					"weakness_tag",
+					themebook,
+				) ?? null;
+			await this.document.createEmbeddedDocuments("ActiveEffect", [
+				weaknessTagEffect({ name: data.name, isActive: true, question }),
+			]);
 		}
 
 		/**

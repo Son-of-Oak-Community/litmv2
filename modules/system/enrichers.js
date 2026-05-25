@@ -242,10 +242,37 @@ export class Enrichers {
 	static #enrichTags() {
 		const tooltip = game.i18n.localize("LITM.Ui.drag_apply");
 		const esc = Enrichers.#esc;
-		const enrichTags = ([_text, name, _exclamation, separator, value]) => {
-			// Limits: new [name:N] syntax or old [-name] syntax
-			if (separator === ":" || name.startsWith("-")) {
+		// Render the static chevron SVG once; reuse the cached string for every
+		// weakness chip the enricher produces.
+		let chevronPromise = null;
+		const getChevron = () => {
+			chevronPromise ??= foundry.applications.handlebars.renderTemplate(
+				"systems/litmv2/templates/partials/weakness-chevron.html",
+				{},
+			);
+			return chevronPromise;
+		};
+		const enrichTags = async ([
+			_text,
+			name,
+			_exclamation,
+			separator,
+			value,
+		]) => {
+			// Weakness: [-name]
+			if (name.startsWith("-")) {
 				const clean = name.replace(/^-/, "");
+				const chevron = await getChevron();
+				return Enrichers.#html(
+					`<span class="litm-weakness_tag" data-text="${esc(
+						clean,
+					)}" data-tooltip="${tooltip}" draggable="true">${esc(
+						clean,
+					)} ${chevron}</span>`,
+				);
+			}
+			// Limits: [name:N] or [name:]
+			if (separator === ":") {
 				const valueHtml = value
 					? `<img src="systems/litmv2/assets/media/icons/limit.svg"
 							style="height:1.4em;width:1.4em;position:absolute;right:-0.5em;top:-0.05em;z-index:-1;" /> <span
@@ -255,9 +282,9 @@ export class Enrichers {
 					: "";
 				return Enrichers.#html(
 					`<span class="litm-limit" data-text="${esc(
-						clean,
+						name,
 					)}" data-tooltip="${tooltip}" draggable="true">${esc(
-						clean,
+						name,
 					)}${valueHtml}</span>`,
 				);
 			}
