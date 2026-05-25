@@ -1,6 +1,7 @@
 import { resolveEffect } from "../../active-effects/effect-queries.js";
 import { scratchTag as applyScratch } from "../../active-effects/scratchable-mixin.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
+import { warn } from "../../logger.js";
 import { buildTrackCompleteContent } from "../../system/chat.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { Sockets } from "../../system/sockets.js";
@@ -217,6 +218,20 @@ export async function processPostRollEffects({
 				await applyScratch(actor, effect);
 				return;
 			}
+			// Diagnostic: a tag came back from the dialog but resolveEffect
+			// couldn't locate the live document — this is the path the
+			// fellowship-title-tag bug report hits. Logging the shape lets a
+			// repro session show whether the tag is missing an id/uuid, the
+			// fellowship lookup is short-circuiting, or allApplicableEffects
+			// just isn't yielding it.
+			warn("post-roll scratchTag: effect not resolved", {
+				tagId: tag.id,
+				tagUuid: tag.uuid,
+				tagType: tag.type,
+				tagName: tag.name,
+				actorId: actor.id,
+				fellowshipId: actor.system?.fellowshipActor?.id ?? null,
+			});
 		}
 		if (tag.uuid) {
 			const parsed = foundry.utils.parseUuid(tag.uuid);

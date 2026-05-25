@@ -1,0 +1,67 @@
+{{!--
+	hero-row-period.html — one hero's content for a Period step. Receives
+	`hero` (full hero context), `periodIndex` (0/1/2), `isCamp`. Looks up
+	the activity slot for the current period and renders the picker or
+	chosen activity inline.
+--}}
+{{#with (lookup hero.activities periodIndex)}}
+<div class="litm-camping-scene__activity" data-period="{{index}}" data-activity="{{activity}}">
+	<div class="litm-camping-scene__activity-row">
+		{{#if activity}}
+		<span class="litm-camping-scene__period-chip litm-camping-scene__period-chip--{{activity}}">
+			{{#if isRest}}<i class="fa-solid fa-leaf" aria-hidden="true"></i> {{localize "LITM.Ui.camping_rest"}}{{/if}}
+			{{#if isReflect}}<i class="fa-solid fa-book-open" aria-hidden="true"></i> {{localize "LITM.Ui.camping_reflect"}}{{/if}}
+			{{#if isCampAction}}<i class="fa-solid fa-fire" aria-hidden="true"></i> {{localize "LITM.Ui.camping_camp_action"}}{{/if}}
+		</span>
+		{{#if ../hero.canEdit}}
+		<button type="button" class="litm-camping-scene__period-clear"
+			data-action="set-activity" data-hero-id="{{../hero.id}}" data-period="{{index}}" data-activity="{{activity}}"
+			aria-label="{{localize 'LITM.Ui.camping_change'}}"
+			data-tooltip="{{localize 'LITM.Ui.camping_change'}}">
+			<i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+		</button>
+		{{/if}}
+		{{/if}}
+	</div>
+	{{#unless activity}}
+	{{#if ../hero.canEdit}}
+	<div class="litm-camping-scene__activity-cards" role="radiogroup">
+		<button type="button"
+			class="litm-camping-scene__activity-card litm-camping-scene__activity-card--rest"
+			data-action="set-activity" data-hero-id="{{../hero.id}}" data-period="{{index}}" data-activity="rest"
+			role="radio" aria-checked="false"
+			{{#unless canRest}}disabled aria-disabled="true" data-tooltip="{{localize 'LITM.Ui.camping_once_per_scene'}}" title="{{localize 'LITM.Ui.camping_once_per_scene'}}"{{/unless}}>
+			<i class="fa-solid fa-leaf" aria-hidden="true"></i>
+			<span>{{localize "LITM.Ui.camping_rest"}}</span>
+		</button>
+		<button type="button"
+			class="litm-camping-scene__activity-card litm-camping-scene__activity-card--reflect"
+			data-action="set-activity" data-hero-id="{{../hero.id}}" data-period="{{index}}" data-activity="reflect"
+			role="radio" aria-checked="false"
+			{{#unless canReflect}}disabled aria-disabled="true" data-tooltip="{{localize 'LITM.Ui.camping_once_per_scene'}}" title="{{localize 'LITM.Ui.camping_once_per_scene'}}"{{/unless}}>
+			<i class="fa-solid fa-book-open" aria-hidden="true"></i>
+			<span>{{localize "LITM.Ui.camping_reflect"}}</span>
+		</button>
+		<button type="button"
+			class="litm-camping-scene__activity-card litm-camping-scene__activity-card--action"
+			data-action="set-activity" data-hero-id="{{../hero.id}}" data-period="{{index}}" data-activity="campAction"
+			role="radio" aria-checked="false">
+			<i class="fa-solid fa-fire" aria-hidden="true"></i>
+			<span>{{localize "LITM.Ui.camping_camp_action"}}</span>
+		</button>
+	</div>
+	{{else}}
+	<span class="litm-camping-scene__act-readonly">—</span>
+	{{/if}}
+	{{/unless}}
+	{{#if isRest}}
+		{{> "systems/litmv2/templates/apps/camping/hero-row-rest.html" activity=. hero=../hero}}
+	{{/if}}
+	{{#if isReflect}}
+		{{> "systems/litmv2/templates/apps/camping/hero-row-reflect.html" activity=. hero=../hero}}
+	{{/if}}
+	{{#if isCampAction}}
+		{{> "systems/litmv2/templates/apps/camping/hero-row-camp-action.html" activity=. hero=../hero}}
+	{{/if}}
+</div>
+{{/with}}

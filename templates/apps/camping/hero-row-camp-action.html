@@ -1,0 +1,14 @@
+<div class="litm-camping-scene__camp-action">
+	{{#if hero.canEdit}}
+	<input type="text" class="litm-camping-scene__act-detail" data-update="activity-detail"
+		data-hero-id="{{hero.id}}" data-period="{{activity.index}}"
+		value="{{activity.campActionDetail}}"
+		placeholder="{{localize 'LITM.Ui.camping_camp_action_placeholder'}}">
+	<button type="button" class="litm-camping-scene__launch-roll"
+		data-action="launch-camp-roll" data-hero-id="{{hero.id}}" data-period="{{activity.index}}">
+		{{localize "LITM.Ui.camping_launch_roll"}}
+	</button>
+	{{else}}
+	<span class="hint">{{activity.campActionDetail}}</span>
+	{{/if}}
+</div>

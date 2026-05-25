@@ -134,24 +134,44 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 			});
 		}
 	}
-	const fellowshipTags = fellowship.tags
-		.filter((e) => e.active)
+	const fellowshipNonTheme = fellowship.tags.filter((e) => e.active);
+	const fellowshipStoryTags = fellowshipNonTheme
+		.filter((e) => e.type === "story_tag")
 		.map(withSelection);
-	if (fellowshipTags.length) {
+	if (fellowshipStoryTags.length) {
 		fellowshipTagGroups.push({
-			themeName: t("LITM.Tags.tags_and_statuses"),
+			themeName: t("LITM.Terms.story_tags"),
 			icon: "fa-solid fa-tags",
-			tags: fellowshipTags,
+			tags: fellowshipStoryTags,
+		});
+	}
+	const fellowshipStatuses = fellowshipNonTheme
+		.filter((e) => e.type === "status_tag")
+		.map(withSelection);
+	if (fellowshipStatuses.length) {
+		fellowshipTagGroups.push({
+			themeName: t("LITM.Terms.statuses"),
+			icon: "fa-solid fa-droplet",
+			tags: fellowshipStatuses,
 		});
 	}
 
-	// Relationship tags
-	const relTags = sys.relationships.filter((e) => e.name).map(withSelection);
+	// Relationship tags. Single bucket; the target hero is rendered as a
+	// plain-text suffix outside the tag chip (see the `tag` partial in
+	// roll-dialog.html) so the chip chrome stays clean.
+	const relTags = sys.relationships.filter((e) => e.name);
 	if (relTags.length) {
+		const mapped = relTags.map((rel) => {
+			const decorated = withSelection(rel);
+			const targetId = rel.system?.targetId;
+			const target = targetId ? game.actors?.get(targetId) : null;
+			if (target) decorated.targetName = target.name;
+			return decorated;
+		});
 		fellowshipTagGroups.push({
 			themeName: t("LITM.Terms.relationship"),
 			icon: "fa-solid fa-handshake",
-			tags: relTags,
+			tags: mapped,
 		});
 	}
 

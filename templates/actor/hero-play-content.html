@@ -1,28 +1,99 @@
-<section class="flexcol gap-lg">
-	{{#if (or (and hasFellowship (or relationshipVisible.length fellowship.hasTheme fellowshipActorId)) momentOfFulfillmentVisible.length)}}
-	<div class="grid-2col">
-		<!-- Moment of Fulfillment -->
-		{{#if momentOfFulfillmentVisible.length}}
-		<fieldset class="litm--receded">
-			<legend class="litm-banner">{{localize "LITM.Hero.moment_of_fulfillment"}}</legend>
-			<ul class="plain" style="gap: 0px">
-				{{#each momentOfFulfillmentVisible as |moment|}}
-				<li class="flexcol gap-sm" style="margin-bottom: 0.5rem">
-					{{#if moment.name}}
-					<h4 style="margin: 0">{{moment.name}}</h4>
-					{{/if}} {{#if moment.enrichedDescription}}
-					<div class="enriched-content">{{{moment.enrichedDescription}}}</div>
-					{{/if}}
-				</li>
-				{{#unless @last}}
-				<hr />
-				{{/unless}} {{/each}}
-			</ul>
+<section class="litm-hero-board">
+	<!-- Themes -->
+	{{#if themes.length}}
+	<div class="litm-hero-board__themes">
+		{{#each themes as |theme|}}
+		<fieldset class="theme-card item" data-id="{{theme._id}}">
+			<legend class="litm-banner theme-card__book">{{theme.system.themebook}}</legend>
+			{{> systems/litmv2/templates/partials/theme-card-header.html theme}}
+
+			{{> systems/litmv2/templates/partials/play-theme-tags.html theme}} {{>
+			systems/litmv2/templates/partials/theme-special-improvements.html theme}} {{>
+			systems/litmv2/templates/partials/play-theme-tracks.html theme}}
+
+			<blockquote class="theme-card__quest">{{theme.system.quest.description}}</blockquote>
+
+			<div>{{{ theme.system.description }}}</div>
 		</fieldset>
+		{{/each}}
+	</div>
+	{{else}}
+	<div class="litm-hero-board__themes empty-state">
+		<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
+		<p class="hint">{{localize "LITM.Ui.no_themes"}}</p>
+	</div>
+	{{/if}}
+
+	<!-- Backpack + Statuses (stacked vertically in landscape, side-by-side in portrait) -->
+	<div class="litm-hero-board__inventory">
+		{{#if backpack}}
+		<fieldset>
+			<legend class="flexrow gap-sm">
+				<span class="litm-banner" style="font-size: var(--font-size-11)">{{backpack.name}}</span>
+				<button type="button" class="noflex" data-action="editItem" data-item-id="{{backpack.id}}"
+					data-tooltip="{{localize 'LITM.Ui.edit_backpack'}}" aria-label="{{localize 'LITM.Ui.edit_backpack'}}">
+					<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+				</button>
+			</legend>
+
+			{{#if backpack.tags.length}}
+			<div class="flexrow gap-sm" style="flex-wrap: wrap">
+				{{#each backpack.tags as |tag|}} {{#unless tag.disabled}}
+				{{> systems/litmv2/templates/partials/play-tag.html
+					_id=tag._id
+					name=tag.name
+					type="backpack"
+					system=tag.system
+					noBurn=true
+				}}
+				{{/unless}} {{/each}}
+			</div>
+			{{else}}
+			<p class="hint">{{localize "LITM.Ui.backpack_empty"}}</p>
+			{{/if}}
+		</fieldset>
+		{{else}}
+		<div class="empty-state">
+			<img height="64" width="64" src="systems/litmv2/assets/media/icons/backpack.svg" alt="" aria-hidden="true" />
+			<p class="hint">{{localize "LITM.Ui.no_backpack"}}</p>
+		</div>
 		{{/if}}
 
-		<!-- Relationship Tags & Fellowship -->
-		{{#if hasFellowship}}
+		<fieldset class="litm-hero-board__statuses">
+			<legend class="flexrow gap-sm">
+				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.statuses"}}</span>
+				<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="status_tag"
+					data-tooltip="{{localize 'LITM.Ui.add_status'}}" aria-label="{{localize 'LITM.Ui.add_status'}}">
+					<i class="fa-solid fa-droplet" aria-hidden="true"></i>
+				</button>
+			</legend>
+			{{#if statuses.length}}
+			<div class="litm--play-statuses">
+				{{#each statuses as |tag|}}
+				<span class="litm-status{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}" data-tag-id="{{tag.id}}"
+					data-text="{{tag.name}}{{#if tag.system.currentTier}}-{{tag.system.currentTier}}{{/if}}" data-effect-id="{{tag.id}}">
+					<span {{#if @root.isOwner}}data-action="selectTag"
+						data-tooltip="{{localize 'LITM.Ui.click_to_add_tag_only'}}"
+						{{/if}}>{{tag.name}}{{#if tag.system.currentTier}}-{{tag.system.currentTier}}{{/if}}</span>
+					<span class="litm--tag-item-status" data-action="toggleTier" data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}">
+						{{#each tag.system.tiers as |filled|}}
+						<img class="litm--tier-box" data-action="toggleTier" data-tier="{{add @index 1}}"
+							alt="" aria-hidden="true"
+							src="systems/litmv2/assets/media/checkbox{{ifThen filled '-c' ''}}.svg" />
+						{{/each}}
+					</span>
+				</span>
+				{{/each}}
+			</div>
+			{{else}}
+			<p class="hint">{{localize "LITM.Ui.no_statuses"}}</p>
+			{{/if}}
+		</fieldset>
+	</div>
+
+	<!-- Fellowship + Relationships -->
+	{{#if (and hasFellowship (or relationshipVisible.length fellowship.hasTheme fellowshipActorId))}}
+	<div class="litm-hero-board__fellowship">
 		<fieldset class="theme-card item" data-tour="fellowship-section">
 			<legend class="litm-banner theme-card__book">{{localize "LITM.Terms.fellowship"}}</legend>
 			{{#if fellowship.hasTheme}}
@@ -71,38 +142,13 @@
 			</ul>
 			{{/if}}
 		</fieldset>
-		{{/if}}
-	</div>
-	{{/if}}
-
-	<!-- Themes -->
-	{{#if themes.length}}
-	<div class="grid-2col">
-		{{#each themes as |theme|}}
-		<fieldset class="theme-card item" data-id="{{theme._id}}">
-			<legend class="litm-banner theme-card__book">{{theme.system.themebook}}</legend>
-			{{> systems/litmv2/templates/partials/theme-card-header.html theme}}
-
-			{{> systems/litmv2/templates/partials/play-theme-tags.html theme}} {{>
-			systems/litmv2/templates/partials/theme-special-improvements.html theme}} {{>
-			systems/litmv2/templates/partials/play-theme-tracks.html theme}}
-
-			<blockquote class="theme-card__quest">{{theme.system.quest.description}}</blockquote>
-
-			<div>{{{ theme.system.description }}}</div>
-		</fieldset>
-		{{/each}}
-	</div>
-	{{else}}
-	<div class="empty-state">
-		<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
-		<p class="hint">{{localize "LITM.Ui.no_themes"}}</p>
 	</div>
 	{{/if}}
 
 	<!-- Story Themes -->
 	{{#if storyThemes.length}}
-	<div class="grid-2col">
+	<div class="litm-hero-board__story">
+		<div class="litm-hero-board__story-grid">
 		{{#each storyThemes as |theme|}}
 		<fieldset class="theme-card story-theme-card item" data-id="{{theme._id}}">
 			<legend class="flexrow gap-xs">
@@ -133,66 +179,28 @@
 			<div>{{{ theme.system.description }}}</div>
 		</fieldset>
 		{{/each}}
+		</div>
 	</div>
 	{{/if}}
 
-	<!-- Backpack -->
-	{{#if backpack}}
-	<fieldset>
-		<legend class="flexrow gap-sm">
-			<span class="litm-banner" style="font-size: var(--font-size-11)">{{backpack.name}}</span>
-			<button type="button" class="noflex" data-action="editItem" data-item-id="{{backpack.id}}"
-				data-tooltip="{{localize 'LITM.Ui.edit_backpack'}}" aria-label="{{localize 'LITM.Ui.edit_backpack'}}">
-				<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-			</button>
-		</legend>
-
-		{{#if backpack.tags.length}}
-		<div class="flexrow gap-sm" style="flex-wrap: wrap">
-			{{#each backpack.tags as |tag|}} {{#unless tag.disabled}}
-			{{> systems/litmv2/templates/partials/play-tag.html
-				_id=tag._id
-				name=tag.name
-				type="backpack"
-				system=tag.system
-				noBurn=true
-			}}
+	<!-- Moment of Fulfillment (bottom — less load-bearing than themes,
+	     story themes, backpack & statuses on a play-mode sheet) -->
+	{{#if momentOfFulfillmentVisible.length}}
+	<fieldset class="litm-hero-board__mof litm--receded">
+		<legend class="litm-banner">{{localize "LITM.Hero.moment_of_fulfillment"}}</legend>
+		<ul class="plain" style="gap: 0px">
+			{{#each momentOfFulfillmentVisible as |moment|}}
+			<li class="flexcol gap-sm" style="margin-bottom: 0.5rem">
+				{{#if moment.name}}
+				<h4 style="margin: 0">{{moment.name}}</h4>
+				{{/if}} {{#if moment.enrichedDescription}}
+				<div class="enriched-content">{{{moment.enrichedDescription}}}</div>
+				{{/if}}
+			</li>
+			{{#unless @last}}
+			<hr />
 			{{/unless}} {{/each}}
-		</div>
-		{{else}}
-		<p class="hint">{{localize "LITM.Ui.backpack_empty"}}</p>
-		{{/if}}
-	</fieldset>
-	{{else}}
-	<div class="empty-state">
-		<img height="64" width="64" src="systems/litmv2/assets/media/icons/backpack.svg" alt="" aria-hidden="true" />
-		<p class="hint">{{localize "LITM.Ui.no_backpack"}}</p>
-	</div>
-	{{/if}}
-
-	<!-- Statuses -->
-	{{#if statuses.length}}
-	<fieldset class="litm--receded">
-		<legend class="litm-banner theme-card__book">
-			{{localize "LITM.Terms.statuses"}}
-		</legend>
-		<div class="litm--play-statuses">
-			{{#each statuses as |tag|}}
-			<span class="litm-status{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}" data-tag-id="{{tag.id}}"
-				data-text="{{tag.name}}" data-effect-id="{{tag.id}}">
-				<span {{#if @root.isOwner}}data-action="selectTag"
-					data-tooltip="{{localize 'LITM.Ui.click_to_add_tag_only'}}"
-					{{/if}}>{{tag.name}}</span>
-				<span class="litm--tag-item-status" data-action="toggleTier" data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}">
-					{{#each tag.system.tiers as |filled|}}
-					<img class="litm--tier-box" data-action="toggleTier" data-tier="{{add @index 1}}"
-						alt="" aria-hidden="true"
-						src="systems/litmv2/assets/media/checkbox{{ifThen filled '-c' ''}}.svg" />
-					{{/each}}
-				</span>
-			</span>
-			{{/each}}
-		</div>
+		</ul>
 	</fieldset>
 	{{/if}}
 </section>

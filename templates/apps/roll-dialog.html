@@ -11,6 +11,7 @@
 		<span class="litm--roll-dialog-badge litm-{{tag.type}}"
 			data-text="{{tag.displayName}}{{ifThen (eq tag.type 'status_tag') (ifThen tag.value (concat '-' tag.value) '') ''}}">{{tag.displayName}}{{ifThen
 			(eq tag.type "status_tag") (ifThen tag.value (concat "-" tag.value) "") ""}}</span>
+		{{#if tag.targetName}}<span class="litm--roll-dialog-tag-target">({{tag.targetName}})</span>{{/if}}
 	</label>
 </li>
 {{/inline}}
@@ -267,6 +268,24 @@
 		</div>
 		{{/if}}
 
+		{{!-- Tag column: owner-view category tabs (Hero / Fellowship / Story)
+		     sit above the tags fieldset and share a single grid cell so the
+		     two travel together — beside the settings column when wide,
+		     stacked below when narrow. Foundry's tab system links nav and
+		     sections by data-group, so they don't need to be siblings. --}}
+		<div class="litm--roll-dialog-tags-column">
+		{{#if isOwner}}
+		{{#unless isGMViewer}}
+		<nav class="tabs litm--roll-dialog-tabs" data-group="roll-tags">
+			{{#each ownerTabs as |tab|}}
+			<a class="item {{tab.cssClass}}" data-action="tab" data-group="roll-tags" data-tab="{{tab.id}}">
+				<span>{{tab.label}}</span>
+			</a>
+			{{/each}}
+		</nav>
+		{{/unless}}
+		{{/if}}
+
 		<!-- Tags Summary -->
 		<fieldset class="litm--roll-dialog-tags-fieldset">
 			<legend>{{localize "LITM.Terms.tags"}}</legend>
@@ -289,8 +308,131 @@
 			</section>
 			{{/each}}
 
+			{{else if isOwner}}
+			{{!-- Owner view: three tabs mirror the GM sidebar's column
+			     grouping so the player sees the same logical structure
+			     their narrator uses. The nav lives above this fieldset;
+			     Foundry's tab system links nav and sections by data-group. --}}
+
+			{{!-- "Hero" tab: this character's themes, backpack, own statuses. --}}
+			<section class="tab {{#each ownerTabs}}{{#if (eq id "hero")}}{{cssClass}}{{/if}}{{/each}}" data-group="roll-tags" data-tab="hero">
+				{{#if characterTagGroups.length}}
+				{{#each characterTagGroups as |group|}}
+				<div class="litm--roll-dialog-theme-group">
+					<p class="litm--roll-dialog-actor-label">
+						{{#if group.themeImg}}
+						<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
+						{{else if group.icon}}
+						<i class="{{group.icon}}" aria-hidden="true"></i>
+						{{/if}}
+						<span>{{group.themeName}}</span>
+					</p>
+					<ul class="plain litm--roll-dialog-tags-summary">
+						{{#each group.tags as |tag|}}
+						{{> tag tag=tag}}
+						{{/each}}
+					</ul>
+				</div>
+				{{/each}}
+				{{else}}
+				<p class="hint">{{localize "LITM.Ui.roll_tab_empty_hero"}}</p>
+				{{/if}}
+			</section>
+
+			{{!-- Allies tab: fellowship theme + tags, relationships, and
+			     any tags contributed by other heroes for this roll. --}}
+			<section class="tab {{#each ownerTabs}}{{#if (eq id "allies")}}{{cssClass}}{{/if}}{{/each}}" data-group="roll-tags" data-tab="allies">
+				{{#if fellowshipTagGroups.length}}
+				<div>
+					<p class="litm--roll-dialog-actor-label">
+						<img src="systems/litmv2/assets/media/icons/fellowship.svg" alt="{{fellowshipName}}" />
+						<span>{{fellowshipName}}</span>
+					</p>
+					{{#each fellowshipTagGroups as |group|}}
+					<div class="litm--roll-dialog-theme-group">
+						<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{else if group.icon}}<i class="{{group.icon}}" aria-hidden="true"></i>{{/if}}{{group.themeName}}</p>
+						<ul class="plain litm--roll-dialog-tags-summary">
+							{{#each group.tags as |tag|}}
+							{{> tag tag=tag}}
+							{{/each}}
+						</ul>
+					</div>
+					{{/each}}
+				</div>
+				{{/if}}
+
+				{{#each contributedTagGroups as |contributor|}}
+				<div class="litm--roll-dialog-section-break">
+					<p class="litm--roll-dialog-actor-label">
+						{{#if contributor.actorImg}}<img src="{{contributor.actorImg}}"
+							alt="{{contributor.actorName}}" />{{/if}}
+						<span>{{contributor.actorName}}</span>
+					</p>
+					{{#each contributor.themeGroups as |group|}}
+					<div class="litm--roll-dialog-theme-group">
+						<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{/if}}{{group.themeName}}</p>
+						<ul class="plain litm--roll-dialog-tags-summary">
+							{{#each group.tags as |tag|}}
+							{{> tag tag=tag}}
+							{{/each}}
+						</ul>
+					</div>
+					{{/each}}
+				</div>
+				{{/each}}
+
+				{{#unless (or fellowshipTagGroups.length contributedTagGroups.length)}}
+				<p class="hint">{{localize "LITM.Ui.roll_tab_empty_allies"}}</p>
+				{{/unless}}
+			</section>
+
+			{{!-- Scene tab: scene story tags, challenge/journey tags. --}}
+			<section class="tab {{#each ownerTabs}}{{#if (eq id "scene")}}{{cssClass}}{{/if}}{{/each}}" data-group="roll-tags" data-tab="scene">
+				{{#each storyTagGroups as |group|}}
+				<div class="litm--roll-dialog-section-break">
+					{{#if group.actorName}}
+					<p class="litm--roll-dialog-actor-label">
+						<img src="{{group.actorImg}}" alt="{{group.actorName}}" />
+						<span>{{group.actorName}}</span>
+					</p>
+					{{else}}
+					<p class="litm--roll-dialog-actor-label">
+						<i class="fa-solid fa-tags" aria-hidden="true"></i>
+						<span>{{localize "LITM.Tags.story"}}</span>
+					</p>
+					{{/if}}
+					<ul class="plain litm--roll-dialog-tags-summary">
+						{{#each group.tags as |tag|}}
+						{{> tag tag=tag}}
+						{{/each}}
+					</ul>
+				</div>
+				{{/each}}
+
+				{{#if isGM}}
+				{{#each gmTagGroups as |group|}}
+				<div class="litm--roll-dialog-section-break">
+					<p class="litm--roll-dialog-actor-label">
+						<img src="{{group.actorImg}}" alt="{{group.actorName}}" />
+						<span>{{group.actorName}}</span>
+					</p>
+					<ul class="plain litm--roll-dialog-tags-summary">
+						{{#each group.tags as |tag|}}
+						{{> tag tag=tag}}
+						{{/each}}
+					</ul>
+				</div>
+				{{/each}}
+				{{/if}}
+
+				{{#unless (or storyTagGroups.length gmTagGroups.length)}}
+				<p class="hint">{{localize "LITM.Ui.roll_tab_empty_scene"}}</p>
+				{{/unless}}
+			</section>
+
 			{{else}}
-			<!-- Fellowship (all themes + tags under one header) -->
+			{{!-- Non-owner view (player watching another player's roll):
+			     show only the selected tags, no tabs. --}}
 			{{#if fellowshipTagGroups.length}}
 			<div>
 				<p class="litm--roll-dialog-actor-label">
@@ -310,7 +452,6 @@
 			</div>
 			{{/if}}
 
-			<!-- Character Tags (grouped by theme) -->
 			{{#if characterTagGroups.length}}
 			<div class="litm--roll-dialog-section-break">
 			{{#each characterTagGroups as |group|}}
@@ -333,7 +474,6 @@
 			</div>
 			{{/if}}
 
-			<!-- Contributed Tags (from other characters) -->
 			{{#each contributedTagGroups as |contributor|}}
 			<div class="litm--roll-dialog-section-break">
 				<p class="litm--roll-dialog-actor-label">
@@ -354,7 +494,6 @@
 			</div>
 			{{/each}}
 
-			<!-- Story Tags & Statuses (grouped by source) -->
 			{{#each storyTagGroups as |group|}}
 			<div class="litm--roll-dialog-section-break">
 				{{#if group.actorName}}
@@ -376,7 +515,6 @@
 			</div>
 			{{/each}}
 
-			<!-- GM Tags (grouped by actor) -->
 			{{#if isGM}}
 			{{#each gmTagGroups as |group|}}
 			<div class="litm--roll-dialog-section-break">
@@ -394,6 +532,7 @@
 			{{/if}}
 			{{/if}}
 		</fieldset>
+		</div><!-- /litm--roll-dialog-tags-column -->
 
 		</div><!-- /litm--roll-dialog-grid -->
 

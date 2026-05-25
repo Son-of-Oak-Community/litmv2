@@ -1,0 +1,82 @@
+{{#if hero.canEdit}}
+<label class="litm-camping-scene__quality-action">
+	<span class="hint">{{localize "LITM.Ui.camping_quality_time_choice"}}</span>
+	<select data-update="quality-time" data-field="action" data-hero-id="{{hero.id}}">
+		<option value="">{{localize "LITM.Ui.camping_quality_time_none"}}</option>
+		<option value="recoverFellowship"
+			{{#if hero.qualityTime.isRecoverFellowship}}selected{{/if}}
+			{{#unless hero.qualityTime.canRecoverFellowship}}disabled{{/unless}}>
+			{{localize "LITM.Ui.camping_quality_time_recover_fellowship"}}
+		</option>
+		<option value="rephraseRelationship"
+			{{#if hero.qualityTime.isRephraseRelationship}}selected{{/if}}
+			{{#unless hero.qualityTime.canRephraseRelationship}}disabled{{/unless}}>
+			{{localize "LITM.Ui.camping_quality_time_rephrase_relationship"}}
+		</option>
+		<option value="newRelationship"
+			{{#if hero.qualityTime.isNewRelationship}}selected{{/if}}
+			{{#unless hero.qualityTime.canCreateNewRelationship}}disabled{{/unless}}>
+			{{localize "LITM.Ui.camping_quality_time_new_relationship"}}
+		</option>
+	</select>
+</label>
+{{#if hero.qualityTime.isRecoverFellowship}}
+<label class="litm-camping-scene__quality-sub">
+	<span class="hint">{{localize "LITM.Ui.camping_quality_time_pick_fellowship_tag"}}</span>
+	<select data-update="quality-time" data-field="fellowshipTagId" data-hero-id="{{hero.id}}">
+		<option value="">{{localize "LITM.Ui.camping_quality_time_pick"}}</option>
+		{{#each hero.qualityTime.fellowshipTagOptions}}
+		<option value="{{id}}" {{#if (eq ../hero.qualityTime.fellowshipTagId id)}}selected{{/if}}>{{name}}</option>
+		{{/each}}
+	</select>
+</label>
+{{/if}}
+{{#if hero.qualityTime.isRephraseRelationship}}
+<label class="litm-camping-scene__quality-sub">
+	<span class="hint">{{localize "LITM.Ui.camping_quality_time_pick_relationship"}}</span>
+	<select data-update="quality-time" data-field="relationshipEffectId" data-hero-id="{{hero.id}}">
+		<option value="">{{localize "LITM.Ui.camping_quality_time_pick"}}</option>
+		{{#each hero.qualityTime.relationshipOptions}}
+		<option value="{{id}}" {{#if (eq ../hero.qualityTime.relationshipEffectId id)}}selected{{/if}}>
+			{{name}}{{#if partnerName}} → {{partnerName}}{{/if}}
+		</option>
+		{{/each}}
+	</select>
+</label>
+<label class="litm-camping-scene__quality-sub">
+	<span class="hint">{{localize "LITM.Ui.camping_quality_time_rephrase_optional"}}</span>
+	<input type="text" class="litm-camping-scene__rephrase-input" data-update="quality-time"
+		data-field="relationshipRephrase" data-hero-id="{{hero.id}}"
+		value="{{hero.qualityTime.relationshipRephrase}}"
+		placeholder="{{localize 'LITM.Ui.camping_rephrase_placeholder'}}">
+</label>
+{{/if}}
+{{#if hero.qualityTime.isNewRelationship}}
+<label class="litm-camping-scene__quality-sub">
+	<span class="hint">{{localize "LITM.Ui.camping_quality_time_pick_target"}}</span>
+	<select data-update="quality-time" data-field="newRelationshipTargetId" data-hero-id="{{hero.id}}">
+		<option value="">{{localize "LITM.Ui.camping_quality_time_pick"}}</option>
+		{{#each hero.qualityTime.newRelationshipTargets}}
+		<option value="{{targetId}}" {{#if (eq ../hero.qualityTime.newRelationshipTargetId targetId)}}selected{{/if}}>{{name}}</option>
+		{{/each}}
+	</select>
+</label>
+<label class="litm-camping-scene__quality-sub">
+	<span class="hint">{{localize "LITM.Ui.camping_quality_time_new_name"}}</span>
+	<input type="text" class="litm-camping-scene__rephrase-input" data-update="quality-time"
+		data-field="newRelationshipName" data-hero-id="{{hero.id}}"
+		value="{{hero.qualityTime.newRelationshipName}}"
+		placeholder="{{localize 'LITM.Ui.camping_new_relationship_placeholder'}}">
+</label>
+{{/if}}
+{{else}}
+{{#if hero.qualityTime.isRecoverFellowship}}
+<p class="hint">{{localize "LITM.Ui.camping_quality_time_recover_fellowship"}}: <span class="litm-tag">{{hero.qualityTime.fellowshipTagId}}</span></p>
+{{/if}}
+{{#if hero.qualityTime.isRephraseRelationship}}
+<p class="hint">{{localize "LITM.Ui.camping_quality_time_rephrase_relationship"}}</p>
+{{/if}}
+{{#if hero.qualityTime.isNewRelationship}}
+<p class="hint">{{localize "LITM.Ui.camping_quality_time_new_relationship"}}: {{hero.qualityTime.newRelationshipName}}</p>
+{{/if}}
+{{/if}}

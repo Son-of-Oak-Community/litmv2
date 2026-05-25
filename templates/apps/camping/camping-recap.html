@@ -29,6 +29,8 @@
 			<li>
 				{{#if (eq kind "backpack-deactivated")}}
 				{{localize "LITM.Ui.camping_recap_backpack_deactivated"}}: {{join names ", "}}
+				{{else if (eq kind "backpack-reactivated")}}
+				{{localize "LITM.Ui.camping_recap_backpack_reactivated"}}: {{join names ", "}}
 				{{else if (eq kind "rest")}}
 				{{localize "LITM.Ui.camping_recap_rest"}}
 				{{#if changes.length}}

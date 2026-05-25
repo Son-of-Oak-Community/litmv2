@@ -88,6 +88,9 @@ function emptyOps() {
 		// disabled flag), not scratched — the effect stays on the bag and
 		// can be re-enabled later instead of consumed.
 		disables: [],
+		// Symmetric to disables: previously-deactivated backpack tags the
+		// hero ticked to bring back. Clears the disabled flag at Pack Up.
+		enables: [],
 		renames: [],
 		improves: [],
 		improvements: [],
@@ -163,16 +166,26 @@ function buildBackpackOps(hero, heroState, ops, heroRecap) {
 	const backpack = hero.system?.backpackItem ?? null;
 	if (!backpack) return;
 	const keptSet = new Set(heroState.backpackKept);
-	const names = [];
+	const deactivated = [];
+	const reactivated = [];
 	for (const effect of backpack.effects) {
 		if (effect.type !== "story_tag") continue;
-		if (effect.disabled) continue;
-		if (keptSet.has(effect.id)) continue;
-		ops.disables.push({ effect });
-		names.push(effect.name);
+		const kept = keptSet.has(effect.id);
+		// Active + not kept → disable. Disabled + kept → re-enable. The
+		// other two combinations leave the effect alone.
+		if (!effect.disabled && !kept) {
+			ops.disables.push({ effect });
+			deactivated.push(effect.name);
+		} else if (effect.disabled && kept) {
+			ops.enables.push({ effect });
+			reactivated.push(effect.name);
+		}
 	}
-	if (names.length) {
-		heroRecap.lines.push({ kind: "backpack-deactivated", names });
+	if (deactivated.length) {
+		heroRecap.lines.push({ kind: "backpack-deactivated", names: deactivated });
+	}
+	if (reactivated.length) {
+		heroRecap.lines.push({ kind: "backpack-reactivated", names: reactivated });
 	}
 }
 
@@ -474,6 +487,19 @@ export async function applyOperations(operations) {
 		});
 	}
 	for (const [parent, updates] of disablesByParent) {
+		await parent.updateEmbeddedDocuments("ActiveEffect", updates);
+	}
+
+	// Enables — previously-deactivated backpack tags the hero ticked to
+	// bring back into circulation. Mirrors disables; same grouping.
+	const enablesByParent = new Map();
+	for (const { effect } of operations.enables) {
+		groupByParent(enablesByParent, effect.parent, {
+			_id: effect.id,
+			disabled: false,
+		});
+	}
+	for (const [parent, updates] of enablesByParent) {
 		await parent.updateEmbeddedDocuments("ActiveEffect", updates);
 	}
 

@@ -77,6 +77,7 @@ export class HeroSheet extends LitmActorSheet {
 		description: {
 			template: "systems/litmv2/templates/parts/description.html",
 		},
+		actions: { template: "systems/litmv2/templates/parts/play-actions.html" },
 		content: {
 			template: "systems/litmv2/templates/actor/hero-content.html",
 			templates: [
@@ -88,6 +89,24 @@ export class HeroSheet extends LitmActorSheet {
 
 	static PLAY_CONTENT_TEMPLATE =
 		"systems/litmv2/templates/actor/hero-play-content.html";
+
+	/**
+	 * The actions PART is only meaningful in play mode (Roll / Actions /
+	 * Sacrifice launchers). In edit mode we swap to an empty stub rather
+	 * than deleting the part — Foundry's _replaceHTML only touches parts
+	 * present in the new render result, so a removed part leaves an
+	 * orphan DOM element from the prior render.
+	 * @override
+	 */
+	_configureRenderParts(options) {
+		const parts = super._configureRenderParts(options);
+		if (this._isEditMode && parts.actions) {
+			parts.actions = {
+				template: "systems/litmv2/templates/parts/empty.html",
+			};
+		}
+		return parts;
+	}
 
 	/**
 	 * Inline Actions browser button alongside the edit/play mode toggle. V14's
@@ -269,6 +288,7 @@ export class HeroSheet extends LitmActorSheet {
 			...mofContext,
 			rollTags,
 			limit: this.system.limit,
+			showCamping: game.user.isGM && !LitmSettings.useFellowship,
 		};
 	}
 
@@ -281,16 +301,23 @@ export class HeroSheet extends LitmActorSheet {
 			? this.system.mof
 			: [];
 
-		const momentOfFulfillmentEntries = await Promise.all(
-			momentsOfFulfillment.map(async (moment) => {
-				const description = moment.description ?? "";
-				return {
-					name: moment.name ?? "",
-					description,
-					enrichedDescription: await enrichHTML(description, this.document),
-				};
-			}),
-		);
+		// Render newest-first so a freshly-added moment lands next to the
+		// add button instead of at the bottom of the list. The form name
+		// still references the underlying array index (`idx`) so the data
+		// shape stays append-only.
+		const momentOfFulfillmentEntries = (
+			await Promise.all(
+				momentsOfFulfillment.map(async (moment, idx) => {
+					const description = moment.description ?? "";
+					return {
+						idx,
+						name: moment.name ?? "",
+						description,
+						enrichedDescription: await enrichHTML(description, this.document),
+					};
+				}),
+			)
+		).reverse();
 		const momentOfFulfillmentVisible = momentOfFulfillmentEntries.filter(
 			(moment) =>
 				(moment.name ?? "").trim() || (moment.description ?? "").trim(),

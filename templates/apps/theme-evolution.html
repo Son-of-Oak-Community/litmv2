@@ -76,8 +76,13 @@
 	</fieldset>
 	{{/if}}
 
-	<fieldset>
+	<fieldset class="litm-theme-evolution__new-theme">
 		<legend>{{localize "LITM.Ui.evolution_new_theme"}}</legend>
+
+		<p class="hint litm-theme-evolution__drop-hint" data-role="drop-hint">
+			<i class="fa-solid fa-arrow-down-to-bracket" aria-hidden="true"></i>
+			<span>{{{localize "LITM.Ui.evolution_drop_theme_hint"}}}</span>
+		</p>
 
 		<div class="form-group stacked">
 			<label>{{localize "LITM.Ui.evolution_new_title_tag"}}</label>

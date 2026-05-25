@@ -8,8 +8,8 @@
 </div>
 {{#each statusEffects as |status|}}
 {{#if status.isActive}}
-<span class="litm-status litm-hud-active" data-text="{{status.title}}" data-effect-id="{{status.effectId}}">
-	<span>{{status.title}}</span>
+<span class="litm-status litm-hud-active" data-text="{{status.title}}{{#if status.currentTier}}-{{status.currentTier}}{{/if}}" data-effect-id="{{status.effectId}}">
+	<span>{{status.title}}{{#if status.currentTier}}-{{status.currentTier}}{{/if}}</span>
 	<span class="litm--tag-item-status" data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}">
 		{{#each status.tiers as |filled|}}
 		<img class="litm--tier-box" data-action="tier" data-tier="{{sum @index 1}}"

@@ -11,6 +11,13 @@
 const VALID_DURATIONS = new Set(["days", "weeks", "months"]);
 const PERIOD_COUNT = 3; // Always 3 slots; thirdPeriodActive gates rendering/use.
 const ONCE_PER_SCENE = new Set(["rest", "reflect"]);
+const VALID_ACTIVE_STEPS = new Set([
+	"period1",
+	"period2",
+	"period3",
+	"qualityTime",
+	"packUp",
+]);
 
 export function defaultCampingState() {
 	return {
@@ -27,6 +34,12 @@ export function defaultCampingState() {
 		// tags/statuses the camp introduced (Core Book p.179: "old camp tags
 		// don't survive into a new one"). Empty until Begin Camp generates one.
 		campId: "",
+		// Wizard step within the active phase. Setup → active transitions
+		// initialize this to "period1"; the GM advances via Next/Prev or by
+		// clicking any timeline entry. Players follow along; the value is
+		// authoritative for everyone via the scene flag. See setActiveStep
+		// + VALID_ACTIVE_STEPS for the full step set.
+		activeStep: "period1",
 		placeOfStay: {
 			name: "",
 			campsiteTags: "",
@@ -286,10 +299,61 @@ export function setType(state, type) {
 /**
  * Transition the camping lifecycle phase. "setup" → GM-only prep view;
  * "active" → table-wide scene with hero columns. Only valid values are
- * stored; anything else is ignored.
+ * stored; anything else is ignored. Entering the active phase resets the
+ * wizard back to step 1 so a freshly-begun camp always lands on Period 1
+ * (resuming an in-flight camp uses the persisted activeStep).
  */
 export function setPhase(state, phase) {
-	if (phase === "setup" || phase === "active") state.phase = phase;
+	if (phase !== "setup" && phase !== "active") return;
+	const wasSetup = state.phase === "setup";
+	state.phase = phase;
+	if (wasSetup && phase === "active") state.activeStep = "period1";
+}
+
+/**
+ * Set the wizard step inside the active phase. Rejects unknown step ids so
+ * a stale socket payload or hand-edited flag can't park the UI on a step
+ * the template doesn't know how to render.
+ */
+export function setActiveStep(state, step) {
+	if (VALID_ACTIVE_STEPS.has(step)) state.activeStep = step;
+}
+
+/**
+ * Ordered list of step ids for the current state. Period 3 is included
+ * only when at least one hero has opted in via `thirdPeriodActive`; the
+ * opt-in toggle lives in the Period 2 step row, so the timeline grows
+ * reactively as players toggle it. Pure function — same input always
+ * produces the same output, no Foundry calls.
+ */
+export function stepOrder(state) {
+	const anyThirdPeriod = Object.values(state.heroStates ?? {}).some(
+		(h) => h?.thirdPeriodActive,
+	);
+	// Keep Period 3 in the order if it's the current step even when no hero
+	// is opted in any more — prevents an in-flight GM from being silently
+	// teleported when the last hero unticks the toggle. Manual nav then
+	// removes it on next render.
+	const showThirdPeriod = anyThirdPeriod || state.activeStep === "period3";
+	const ids = ["period1", "period2"];
+	if (showThirdPeriod) ids.push("period3");
+	ids.push("qualityTime", "packUp");
+	return ids;
+}
+
+/**
+ * Resolve the neighbour of the current step in either direction. Returns
+ * the same step id when already at the edge (no overflow / underflow).
+ * Used by Next/Prev footer handlers — keeping the math here keeps the
+ * scene-side handler a one-liner.
+ */
+export function adjacentStep(state, direction) {
+	const order = stepOrder(state);
+	const ix = order.indexOf(state.activeStep);
+	if (ix < 0) return order[0];
+	if (direction === "next") return order[Math.min(ix + 1, order.length - 1)];
+	if (direction === "prev") return order[Math.max(ix - 1, 0)];
+	return state.activeStep;
 }
 
 export function setSojournDuration(state, duration) {
@@ -361,6 +425,7 @@ export function sojournPowerBonus(state) {
 export const SETTERS = {
 	"set-type": (s, { value }) => setType(s, value),
 	"set-phase": (s, { value }) => setPhase(s, value),
+	"active-step": (s, { value }) => setActiveStep(s, value),
 	"sojourn-duration": (s, { value }) => setSojournDuration(s, value),
 	"place-of-stay-name": (s, { value }) => setPlaceOfStayName(s, value),
 	"campsite-tags": (s, { value }) => setCampsiteTags(s, value),

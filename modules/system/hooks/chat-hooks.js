@@ -360,9 +360,16 @@ async function _renderActionPanel(app, element) {
 	const appliedConsequences = new Set(
 		app.getFlag("litmv2", "appliedConsequences") ?? [],
 	);
-	const unappliedConsequences =
-		totalConsequences -
-		[...appliedConsequences].filter((i) => i < totalConsequences).length;
+	const appliedCount = [...appliedConsequences].filter(
+		(i) => i < totalConsequences,
+	).length;
+	// Push Your Luck adds exactly one consequence to a clean Success, no
+	// matter how many entries the action declares (Core Book p.158). Cap
+	// the count badge so the apply panel reflects the rule.
+	const isPushed = roll?.litm?.pushed === true;
+	const maxToApply = isPushed ? 1 : totalConsequences;
+	const unappliedConsequences = Math.max(0, maxToApply - appliedCount);
+	if (unappliedConsequences === 0) return;
 
 	const html = await foundry.applications.handlebars.renderTemplate(
 		"systems/litmv2/templates/partials/action-success-buttons.html",

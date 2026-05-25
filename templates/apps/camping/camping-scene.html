@@ -80,10 +80,25 @@
 		{{/if}}
 		{{/if}}
 		{{#if hasHeroes}}
-		<div class="litm-camping-scene__columns">
-			{{#each heroes}}
-			{{> "systems/litmv2/templates/apps/camping/camping-hero-column.html" .}}
-			{{/each}}
+		<nav class="litm-camping-scene__timeline-rail" aria-label="{{localize 'LITM.Ui.camping_step_timeline'}}">
+			{{> "systems/litmv2/templates/apps/camping/step-timeline.html" steps=steps isGM=isGM}}
+		</nav>
+		<div class="litm-camping-scene__step-panel">
+			{{#if stepIsPeriod1}}
+			{{> "systems/litmv2/templates/apps/camping/step-period.html" heroes=heroes periodIndex=0 isCamp=isCamp}}
+			{{/if}}
+			{{#if stepIsPeriod2}}
+			{{> "systems/litmv2/templates/apps/camping/step-period.html" heroes=heroes periodIndex=1 isCamp=isCamp}}
+			{{/if}}
+			{{#if stepIsPeriod3}}
+			{{> "systems/litmv2/templates/apps/camping/step-period.html" heroes=heroes periodIndex=2 isCamp=isCamp}}
+			{{/if}}
+			{{#if stepIsQualityTime}}
+			{{> "systems/litmv2/templates/apps/camping/step-quality-time.html" heroes=heroes}}
+			{{/if}}
+			{{#if stepIsPackUp}}
+			{{> "systems/litmv2/templates/apps/camping/step-pack-up.html" heroes=heroes}}
+			{{/if}}
 		</div>
 		{{else}}
 		<p class="hint">{{localize "LITM.Ui.camping_no_heroes"}}</p>
@@ -93,11 +108,24 @@
 
 	<footer class="litm-camping-scene__footer">
 		<button type="button" class="litm-camping-scene__btn" data-action="cancel">{{localize "LITM.Ui.cancel"}}</button>
+		<div class="litm-camping-scene__footer-actions">
 		{{#if canBeginCamp}}
 		<button type="button" class="litm-camping-scene__btn litm-camping-scene__btn--primary"
 			data-action="begin-camp">
 			<i class="fa-solid {{#if isCamp}}fa-campground{{else}}fa-route{{/if}}" aria-hidden="true"></i>
 			{{localize "LITM.Ui.camping_begin"}}
+		</button>
+		{{/if}}
+		{{#if canStepPrev}}
+		<button type="button" class="litm-camping-scene__btn" data-action="prev-step">
+			<i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+			{{localize "LITM.Ui.camping_step_previous"}}
+		</button>
+		{{/if}}
+		{{#if canStepNext}}
+		<button type="button" class="litm-camping-scene__btn" data-action="next-step">
+			{{localize "LITM.Ui.camping_step_next"}}
+			<i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
 		</button>
 		{{/if}}
 		{{#if canPackUp}}
@@ -107,5 +135,6 @@
 			{{localize "LITM.Ui.camping_pack_up"}}
 		</button>
 		{{/if}}
+		</div>
 	</footer>
 </div>

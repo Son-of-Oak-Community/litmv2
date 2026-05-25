@@ -1,0 +1,17 @@
+{{!--
+	step-quality-time.html — heroes-as-rows panel for the Quality Time
+	step. Each hero picks one of three exclusive actions: recover a
+	fellowship tag, rephrase a relationship, or forge a new relationship.
+--}}
+<section class="litm-camping-scene__step litm-camping-scene__step--quality-time">
+	<h3 class="litm-render__section-header">{{localize "LITM.Ui.camping_quality_time"}}</h3>
+	<p class="hint">{{localize "LITM.Ui.camping_quality_time_hint"}}</p>
+	{{#each heroes}}
+	<article class="litm-camping-scene__hero-row" data-hero-id="{{id}}">
+		{{> "systems/litmv2/templates/apps/camping/hero-row.html" .}}
+		<div class="litm-camping-scene__row-content">
+			{{> "systems/litmv2/templates/apps/camping/hero-row-quality-time.html" hero=.}}
+		</div>
+	</article>
+	{{/each}}
+</section>

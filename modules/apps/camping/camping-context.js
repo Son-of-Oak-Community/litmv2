@@ -1,6 +1,10 @@
 import { ACTOR_TYPES } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
-import { findFellowshipTheme, getStoryTagSidebar } from "../../utils.js";
+import {
+	findFellowshipTheme,
+	getStoryTagSidebar,
+	localize as t,
+} from "../../utils.js";
 import { defaultCampingState, ensureHeroState } from "./camping-state.js";
 
 const ONCE_PER_SCENE = new Set(["rest", "reflect"]);
@@ -63,15 +67,18 @@ function buildBackpackPills(actor, heroState) {
 	const backpackItem = actor.system?.backpackItem ?? null;
 	if (!backpackItem) return [];
 	const keptSet = new Set(heroState.backpackKept);
-	// Disabled story tags are intentionally invisible here: the apply step
-	// leaves them untouched (see buildBackpackOps), so showing them in the
-	// pill list would let players "keep" tags that camping then silently
-	// ignores. Disabled tags are managed from the hero sheet, not camping.
+	// Both active and disabled tags are selectable. For active tags, "kept"
+	// means "don't deactivate me at Pack Up"; for disabled tags it means
+	// "re-enable me at Pack Up". The apply pass mirrors this — see the
+	// disables/enables ops in buildBackpackOps. Default state per type:
+	// active = kept (won't be scratched), disabled = not-kept (won't be
+	// re-enabled). The user only toggles when they want the opposite.
 	return [...backpackItem.effects]
-		.filter((e) => e.type === "story_tag" && !e.disabled)
+		.filter((e) => e.type === "story_tag")
 		.map((e) => ({
 			id: e.id,
 			name: e.name,
+			disabled: !!e.disabled,
 			kept: keptSet.has(e.id),
 		}));
 }
@@ -283,7 +290,9 @@ export function buildContext(state) {
 	);
 	const placeOfStay = buildPlaceOfStayContext(live);
 	const threats = showThreats ? buildThreatsContext(live) : [];
-	const sceneStoryTags = buildSceneStoryTags();
+	const sceneStoryTags = buildSceneStoryTags(live.campId);
+	const activeStep = live.activeStep ?? "period1";
+	const steps = buildSteps(activeStep, heroes);
 	return {
 		heroes,
 		hasHeroes: heroes.length > 0,
@@ -293,27 +302,125 @@ export function buildContext(state) {
 		hasThreats: threats.length > 0,
 		sceneStoryTags,
 		hasSceneStoryTags: sceneStoryTags.length > 0,
+		activeStep,
+		steps,
+		stepIsPeriod1: activeStep === "period1",
+		stepIsPeriod2: activeStep === "period2",
+		stepIsPeriod3: activeStep === "period3",
+		stepIsQualityTime: activeStep === "qualityTime",
+		stepIsPackUp: activeStep === "packUp",
 	};
 }
 
 /**
- * Snapshot of every scene story tag currently on the scene, shaped for the
- * active-phase banner. We pull from the story-tag sidebar (single source of
- * truth) rather than from `createdCampsiteEffectIds` so the banner also
- * shows tags carried over from previous camps and any sidebar edits made
- * during this active session.
+ * Build the wizard timeline for the active phase. Period 3 is only emitted
+ * when at least one hero has opted in via thirdPeriodActive — the toggle
+ * lives in the Period 2 step row, so opting in *during* Period 2 grows the
+ * timeline reactively. Each step carries:
+ *   - isCurrent:  the activeStep id matches
+ *   - isComplete: per-step heuristic (see stepIsComplete)
+ *   - cssClass:   handy class list the template can drop in directly
  */
-export function buildSceneStoryTags() {
+export function buildSteps(activeStep, heroes) {
+	const anyThirdPeriod = heroes.some((h) => h.thirdPeriodActive);
+	// Mirror stepOrder() in camping-state.js: keep Period 3 visible when it
+	// is the current step even if no hero is opted in any longer.
+	const showThirdPeriod = anyThirdPeriod || activeStep === "period3";
+	const ids = ["period1", "period2"];
+	if (showThirdPeriod) ids.push("period3");
+	ids.push("qualityTime", "packUp");
+	return ids.map((id) => {
+		const isCurrent = id === activeStep;
+		const isComplete = stepIsComplete(id, heroes);
+		return {
+			id,
+			label: stepLabel(id),
+			isCurrent,
+			isComplete,
+			cssClass: [
+				isCurrent ? "active" : "",
+				isComplete && !isCurrent ? "complete" : "",
+			]
+				.filter(Boolean)
+				.join(" "),
+		};
+	});
+}
+
+function stepLabel(id) {
+	switch (id) {
+		case "period1":
+			return t("LITM.Ui.camping_step_period_one");
+		case "period2":
+			return t("LITM.Ui.camping_step_period_two");
+		case "period3":
+			return t("LITM.Ui.camping_step_period_three");
+		case "qualityTime":
+			return t("LITM.Ui.camping_step_quality_time");
+		case "packUp":
+			return t("LITM.Ui.camping_step_pack_up");
+		default:
+			return id;
+	}
+}
+
+/**
+ * Completion heuristic per step. Drives the timeline's "✓" marker only;
+ * it does NOT gate navigation (free-nav lets the GM jump anywhere).
+ *
+ *   period1/period2: every hero has an activity set for that slot
+ *   period3:         every opted-in hero has an activity set; if no hero
+ *                    opted in the step isn't in the timeline anyway
+ *   qualityTime:     every hero has an explicit action picked
+ *   packUp:          terminal — never marked complete (the Pack Up button
+ *                    is the actual commit)
+ */
+export function stepIsComplete(stepId, heroes) {
+	if (!heroes.length) return false;
+	if (stepId === "period1") {
+		return heroes.every((h) => !!h.activities[0]?.activity);
+	}
+	if (stepId === "period2") {
+		return heroes.every((h) => !!h.activities[1]?.activity);
+	}
+	if (stepId === "period3") {
+		const optedIn = heroes.filter((h) => h.thirdPeriodActive);
+		if (!optedIn.length) return false;
+		return optedIn.every((h) => !!h.activities[2]?.activity);
+	}
+	if (stepId === "qualityTime") {
+		return heroes.every((h) => !!h.qualityTime?.action);
+	}
+	return false;
+}
+
+/**
+ * Snapshot of scene story tags created during the active camp session,
+ * shaped for the active-phase banner. Pre-existing scene tags (carried
+ * over from previous camps, or any unrelated effects sitting in the
+ * sidebar) are deliberately excluded — the banner is meant to "paint
+ * the scene" of THIS camp, not summarise the table's entire story-tag
+ * inventory.
+ *
+ * The campId stamp is applied to every effect created during Begin Camp
+ * and during ops dispatched via the active-phase UI; tags created in
+ * the sidebar without going through camping (e.g. a GM dragging in a
+ * leftover story tag) won't be stamped and won't appear here.
+ */
+export function buildSceneStoryTags(campId) {
+	if (!campId) return [];
 	const sidebar = getStoryTagSidebar();
 	const sceneEffects = sidebar?.sceneStoryEffects ?? [];
-	return sceneEffects.map((e) => ({
-		id: e.id,
-		name: e.name,
-		type: e.type,
-		isStatus: e.type === "status_tag",
-		isSingleUse: !!e.system?.isSingleUse,
-		currentTier: e.system?.currentTier ?? 0,
-	}));
+	return sceneEffects
+		.filter((e) => e.getFlag?.("litmv2", "campId") === campId)
+		.map((e) => ({
+			id: e.id,
+			name: e.name,
+			type: e.type,
+			isStatus: e.type === "status_tag",
+			isSingleUse: !!e.system?.isSingleUse,
+			currentTier: e.system?.currentTier ?? 0,
+		}));
 }
 
 /**

@@ -1,5 +1,6 @@
 import { error, warn } from "../../logger.js";
 import { getDefaultThemeLevel, getThemeLevels } from "../../system/config.js";
+import { createSampleHero } from "../../system/sample-hero.js";
 import { LitmSettings } from "../../system/settings.js";
 import { localize as t, toQuestionOptions } from "../../utils.js";
 import { HeroCreationData } from "./hero-creation-data.js";

@@ -1,0 +1,16 @@
+{{!--
+	step-pack-up.html — final step. Each hero row contains the
+	backpack-keep pills; clicking Pack Up in the footer commits everything.
+--}}
+<section class="litm-camping-scene__step litm-camping-scene__step--pack-up">
+	<h3 class="litm-render__section-header">{{localize "LITM.Ui.camping_backpack_keep"}}</h3>
+	<p class="hint">{{localize "LITM.Ui.camping_step_pack_up_hint"}}</p>
+	{{#each heroes}}
+	<article class="litm-camping-scene__hero-row" data-hero-id="{{id}}">
+		{{> "systems/litmv2/templates/apps/camping/hero-row.html" .}}
+		<div class="litm-camping-scene__row-content">
+			{{> "systems/litmv2/templates/apps/camping/hero-row-pack-up.html" hero=.}}
+		</div>
+	</article>
+	{{/each}}
+</section>

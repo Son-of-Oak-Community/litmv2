@@ -232,7 +232,7 @@ body,
 	--color-litm-limit: #d9b2a9;
 	--color-litm-limit-accent: #a0522d;
 	--color-litm-weakness: #edbb89;
-	--color-litm-tag-text: #88621c;
+	--color-litm-tag-text: #553c0c;
 	--color-litm-status-text: #3f5a3f;
 	--color-litm-weakness-text: #8d4320;
 	--color-litm-banner: #c4b5a8;
@@ -768,7 +768,7 @@ section.standard-form.litm-actions-app {
 /* Rote variant — gold-tinted border so magical actions read at silhouette
    level, not only by reading the practitioner string. */
 .litm-actions-app .litm--action-card[data-rote="true"] {
-	border-color: var(--color-litm-tag);
+	border-color: var(--color-litm-tag-text);
 }
 .litm--action-card-img {
 	width: 36px;
@@ -802,7 +802,7 @@ section.standard-form.litm-actions-app {
 	flex: 0 0 auto;
 	gap: var(--spacer-8);
 	padding-inline: var(--spacer-12);
-	border-color: var(--color-litm-tag);
+	border-color: var(--color-litm-tag-text);
 	color: var(--color-litm-tag-text);
 	font-weight: 600;
 }
@@ -2010,7 +2010,7 @@ section.standard-form.litm-actions-app {
 ======================================== */
 
 .litm-actor .window-content {
-	padding: 0px 16px var(--spacer-16);
+	padding: var(--spacer-8) 16px var(--spacer-16);
 	overflow: hidden auto;
 	scrollbar-width: thin;
 }
@@ -2073,33 +2073,11 @@ section.standard-form.litm-actions-app {
 	padding-top: var(--spacer-8);
 }
 
-/* Play-header action stack — vertical column of small icon buttons (Roll +
-   Sacrifice) anchored to the right of the avatar/name/promise block. Has
-   its own class so it doesn't pick up the name-column's 25ch min-width. */
-.litm--play-header__actions {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacer-4);
-	align-self: center;
-	margin-left: auto;
-	flex: 0 0 auto;
-}
-
-.litm--play-header__actions button {
-	width: 2.5rem;
-	height: 2.5rem;
-	padding: 0;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-}
-
-/* Sacrifice trigger on the hero play header — warm/dire styling that sits
-   next to the regular Roll dice button so it's available for desperate
-   moments. Click sets the dialog's type to sacrifice and opens it. */
+/* Sacrifice trigger — warm/dire styling on the Roll-adjacent button.
+   Click sets the dialog's type to sacrifice and opens it. */
 .litm--sacrifice-button {
-	border-color: var(--color-litm-weakness);
-	color: var(--color-litm-weakness);
+	border-color: var(--color-litm-weakness-text);
+	color: var(--color-litm-weakness-text);
 }
 
 .litm--sacrifice-button:hover {
@@ -2196,16 +2174,37 @@ section.standard-form.litm-actions-app {
    and the selected affordance. */
 .litm--sacrifice-theme-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 	gap: var(--spacer-8);
 }
 
-/* Selected theme card: gold border + soft glow, matching the existing
-   .litm-render--card[data-render-action]:focus-visible treatment. No
-   weakness-colored chrome — selection is a neutral act, the rite around
-   it provides the gravity. */
+/* Cards in the sacrifice picker need explicit min-width:0 so the grid
+   track honours the minmax minimum instead of stretching to fit the
+   intrinsic (nowrap) size of long title tags, which would push adjacent
+   columns into each other. Clipping the card contains the skewed tag
+   pseudo-element from bleeding into neighbours. */
+.litm--sacrifice-theme-grid .theme-card {
+	min-width: 0;
+	overflow: clip;
+}
+
+/* Long theme titles must wrap inside the sacrifice picker — the global
+   tag chrome forces nowrap, which is correct for inline tag chips but
+   breaks the card grid when a title is several words long. Also size
+   the chip to its content: the parent .flexrow gives its children
+   `flex: 1` by default, which would otherwise stretch the chip's
+   skewed underline bar all the way across the card header. */
+.litm--sacrifice-theme-grid .litm-title_tag,
+.litm--sacrifice-theme-grid .litm-title_tag::before {
+	white-space: normal;
+}
+.litm--sacrifice-theme-grid .litm-title_tag {
+	flex: 0 1 auto;
+}
+
+/* Selected theme card: soft gold wash + glow do the affordance work; no
+   loud border, the rite around the dialog provides the gravity. */
 .litm .theme-card.is-selected {
-	border-color: var(--color-litm-tag);
 	background: var(--color-litm-tag-15);
 	box-shadow: var(--shadow-glow);
 }
@@ -2391,6 +2390,218 @@ section.standard-form.litm-actions-app {
 
 .litm--play-statuses .litm--tier-box {
 	cursor: pointer;
+}
+
+/* ========================================
+   6b. Hero Sheet — board layout
+   Width-driven via a container query on .litm-hero-sheet (the form root).
+   Default = stacked single-column flow; past the breakpoint the board
+   spreads into a 4-up theme row, split inventory/fellowship middle band,
+   and 3-up story themes — applies to either sheet variant once it's wide
+   enough. The .litm-landscape class only sets initial width, not layout.
+======================================== */
+.litm-hero-sheet {
+	container-type: inline-size;
+}
+
+.litm-hero-board {
+	display: grid;
+	gap: var(--spacer-12);
+	grid-template-columns: 1fr;
+	grid-template-areas:
+		"fellowship"
+		"themes"
+		"inventory"
+		"story"
+		"mof";
+}
+
+.litm-hero-board__themes {
+	grid-area: themes;
+}
+.litm-hero-board__inventory {
+	grid-area: inventory;
+}
+.litm-hero-board__fellowship {
+	grid-area: fellowship;
+}
+.litm-hero-board__story {
+	grid-area: story;
+}
+.litm-hero-board__mof {
+	grid-area: mof;
+}
+
+/* Smallest defaults: everything stacks 1-up so tag chips and tracks have
+   room to breathe at narrow widths. A medium breakpoint below lifts most
+   grids to 2-up, and the wide layout takes themes up to 4-up. */
+.litm-hero-board__themes {
+	display: grid;
+	gap: var(--spacer-12);
+	grid-template-columns: minmax(0, 1fr);
+}
+.litm-hero-board__inventory {
+	display: grid;
+	gap: var(--spacer-12);
+	grid-template-columns: minmax(0, 1fr);
+}
+.litm-hero-board__story-grid {
+	display: grid;
+	gap: var(--spacer-12);
+	grid-template-columns: minmax(0, 1fr);
+}
+
+/* Medium layout — kicks in once the sheet is wide enough that 2-up
+   theme/inventory/story cards stop feeling cramped. Themes step up from
+   the 1-up smallest layout but stay below the 4-up landscape grid. */
+@container (min-width: 720px) {
+	.litm-hero-board__themes,
+	.litm-hero-board__inventory,
+	.litm-hero-board__story-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+/* Actions band — prompt + buttons centered horizontally with flanking
+   gradient lines (same treatment as <hr>). Applies in both portrait and
+   landscape layouts; the wide-layout grid below relocates the band to
+   span both columns but inherits this chrome. */
+.litm--play-actions {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacer-12);
+	padding-top: var(--spacer-8);
+}
+
+.litm--play-actions::before,
+.litm--play-actions::after {
+	content: "";
+	flex: 1;
+	height: 2px;
+}
+.litm--play-actions::before {
+	background-image: linear-gradient(
+		90deg,
+		transparent 0%,
+		var(--color-border) 100%
+	);
+}
+.litm--play-actions::after {
+	background-image: linear-gradient(
+		90deg,
+		var(--color-border) 0%,
+		transparent 100%
+	);
+}
+
+.litm--play-actions__prompt {
+	margin: 0;
+	font-family: var(--font-serif);
+	font-style: italic;
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-14);
+}
+
+.litm--play-actions__buttons {
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.litm--play-actions__buttons button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0;
+	flex: 0 0 auto;
+}
+
+/* Wide layout — kicks in once the sheet is wide enough to fit a 4-up
+   theme row comfortably. Same templates, different grid: profile sits on
+   the left and the description/actions stack share the right column, so
+   the action strip slides under the description rather than competing for
+   horizontal space with it. The right column is sized to profile so
+   themes pull tight underneath without the description blowing it out. */
+@container (min-width: 1100px) {
+	.litm-hero-sheet .window-content {
+		display: grid;
+		gap: var(--spacer-12);
+		grid-template-columns: min-content minmax(0, 1fr);
+		grid-template-areas:
+			"profile description"
+			"actions actions"
+			"content content";
+		align-items: start;
+	}
+	.litm-hero-sheet [data-application-part="header"] {
+		grid-area: profile;
+		flex-wrap: nowrap;
+		padding-inline-end: var(--spacer-16);
+	}
+	.litm-hero-sheet [data-application-part="description"] {
+		grid-area: description;
+	}
+	/* Play mode only: cap the rendered description height so themes don't
+	   get pushed down by a long flavor passage. The actions PART being
+	   hidden in edit mode is our mode flag — no cap there, so the
+	   prose-mirror editor keeps full room to type. `min-height: 0` is
+	   load-bearing — grid items default to `min-height: auto` which
+	   refuses to shrink below content size, leaving the cell sized to
+	   the natural description height while overflow visually clips
+	   elsewhere; the explicit override lets max-height win. */
+	.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
+	[data-application-part="description"] {
+		align-self: center;
+		height: 100%;
+		overflow-y: auto;
+	}
+	.litm-hero-sheet [data-application-part="actions"] {
+		grid-area: actions;
+	}
+	.litm-hero-sheet [data-application-part="content"] {
+		grid-area: content;
+	}
+
+	.litm-hero-board {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		grid-template-areas:
+			"themes themes"
+			"inventory fellowship"
+			"story story"
+			"mof mof";
+	}
+	.litm-hero-board__themes {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+	.litm-hero-board__inventory {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacer-12);
+	}
+	.litm-hero-board__story-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.litm--play-actions {
+		padding-top: 0;
+	}
+}
+
+/* Suppress duplicate frame chrome buttons when the actions strip is
+   actively rendered — Roll/Actions/Sacrifice/Camping are already in the
+   strip in play mode. Edit mode renders an empty hidden stub for the
+   actions PART, so the frame buttons remain visible there. */
+.litm-hero-sheet:has(
+		[data-application-part="actions"]:not([hidden])
+	) .window-header
+	> button[data-action="openActionsApp"],
+.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
+	.window-header
+	> button[data-action="openCamping"] {
+	display: none;
 }
 
 /* ========================================
@@ -2743,6 +2954,14 @@ section.standard-form.litm-actions-app {
 	min-height: 0;
 }
 
+/* The roll dialog manages its own internal padding via the inner content
+   and footer — strip Foundry's default 16px window-content inset so the
+   scrollable region (and its scrollbar) sit flush against the window
+   edge instead of being floated 16px in from every side. */
+.litm--roll .window-content {
+	padding: 0;
+}
+
 .litm--roll-dialog-body {
 	flex: 1;
 	min-height: 0;
@@ -2807,6 +3026,25 @@ section.standard-form.litm-actions-app {
 	overflow: hidden;
 }
 
+/* When the bar contains the icon-only variant (.litm--segmented-option--icon
+   uses `flex: 0 1 auto`, so it does NOT stretch to fill), shrink the bar to
+   wrap its content rather than letting the form column stretch it wide. */
+.litm--roll-type-bar:has(.litm--segmented-option--icon) {
+	flex: 0 0 auto;
+	width: fit-content;
+}
+
+/* In Foundry's row-layout .form-group the label is `flex: 1` and grows.
+   Without this margin the shrunk bar sits flush against the label; the
+   auto margin parks it at the right edge of the row, matching how every
+   other input in a .standard-form lays out. Stacked .form-field columns
+   (theme item sheet) deliberately don't get this rule — the bar stays
+   left-aligned under its label there. */
+.standard-form .form-group
+	> .litm--roll-type-bar:has(.litm--segmented-option--icon) {
+	margin-left: auto;
+}
+
 .litm--roll-type-option {
 	gap: var(--spacer-4);
 	padding: var(--spacer-8) var(--spacer-8);
@@ -2837,11 +3075,15 @@ section.standard-form.litm-actions-app {
 	font-weight: bold;
 }
 
-/* Grid: settings beside tags when wide enough */
+/* Grid: settings beside the tag column when wide enough.
+   align-content: start keeps the two grid items at the top of the
+   available height so the cells don't get visually stretched when the
+   content is short. */
 .litm--roll-dialog-grid {
 	display: grid;
 	grid-template-columns: 1fr;
 	gap: var(--spacer-8);
+	align-content: start;
 	flex: 1;
 	min-height: 0;
 }
@@ -2852,10 +3094,12 @@ section.standard-form.litm-actions-app {
 	}
 }
 
-.litm--roll-dialog-settings {
+.litm--roll-dialog-settings,
+.litm--roll-dialog-tags-column {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacer-8);
+	min-width: 0;
 }
 
 /* Compact fieldsets inside the roll dialog */
@@ -3033,12 +3277,23 @@ section.standard-form.litm-actions-app {
 	height: 1.25rem;
 	object-fit: contain;
 	opacity: 0.55;
-	transition: opacity var(--transition-fast);
+	transition:
+		opacity var(--transition-fast),
+		filter var(--transition-fast);
 }
 
 .litm--segmented-option--icon:hover img,
 .litm--segmented-option--icon.is-active img {
 	opacity: 1;
+}
+
+/* The three tier SVGs (origin/adventure/greatness) ship with dark
+   hardcoded fills tuned for the parchment surface. In dark mode they
+   land on a near-black background and effectively disappear — boost
+   brightness + saturation so the silhouette and tier hue both read. */
+.themed.theme-dark .litm--segmented-option--icon img,
+.litm.application.theme-dark .litm--segmented-option--icon img {
+	filter: brightness(1.6) saturate(1.4);
 }
 
 /* Modifier stepper: -/value/+ */
@@ -3150,6 +3405,12 @@ section.standard-form.litm-actions-app {
 	user-select: none;
 }
 
+.litm--roll-dialog-tag-target {
+	color: var(--color-text-subtle);
+	font-style: italic;
+	font-size: var(--font-size-12);
+}
+
 .litm fieldset ul.litm--roll-dialog-tags-summary {
 	display: flex;
 	flex-flow: row wrap;
@@ -3190,10 +3451,24 @@ section.standard-form.litm-actions-app {
 	border-top: 1px solid var(--color-border-40);
 }
 
-.litm--roll-dialog-theme-group:first-child {
+.litm--roll-dialog-theme-group:first-child,
+.litm--roll-dialog-tags-fieldset
+	> section.tab
+	> .litm--roll-dialog-theme-group:first-of-type,
+.litm--roll-dialog-tags-fieldset
+	> section.tab
+	> div:first-of-type
+	> .litm--roll-dialog-theme-group:first-of-type {
 	margin-top: 0;
 	padding-top: 0;
 	border-top: none;
+}
+
+/* Each tab pane padded so tag rows breathe between the tab nav and the
+   bottom edge — the per-row spacing alone left tags too close to the
+   horizontal section borders, per issue feedback. */
+.litm--roll-dialog-tags-fieldset > section.tab {
+	padding-block: var(--spacer-8);
 }
 
 .litm--roll-dialog-theme-label,
@@ -4139,12 +4414,34 @@ section.standard-form.litm-actions-app {
 	}
 }
 
+/* Status tier suffix — "-3" rendered flush against the name so the chip
+   reads "wounded-3" at a glance instead of leaving the tier inferable only
+   from the filled pips. `field-sizing: content` collapses the input to its
+   value width so the suffix sits immediately after; without it, the input's
+   default size=20 leaves a long gap before the suffix. */
+.litm--status .litm--tag-item-name {
+	flex: 0 1 auto;
+	min-width: 0;
+	width: auto;
+	field-sizing: content;
+}
+
+.litm--tag-item-tier {
+	flex: 0 0 auto;
+	margin-right: var(--spacer-4);
+	pointer-events: none;
+	font: inherit;
+}
+
 /* Status tier boxes — hidden checkbox drives a checkbox SVG image */
 .litm--tag-item-status {
 	display: flex;
 	gap: 2px;
 	flex-shrink: 0;
 	align-items: center;
+	/* Push the pips to the far right of the chip so the name + tier suffix
+	   stay grouped on the left ("wounded-3        ◇◇◆◇◇◇"). */
+	margin-left: auto;
 }
 
 .litm--tier-label {
@@ -5223,6 +5520,31 @@ input[type="text"].litm--quick-add-input,
 	cursor: not-allowed;
 }
 
+.litm-theme-evolution__drop-hint {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	padding: var(--spacer-8) var(--spacer-12);
+	border: 1px solid var(--color-fieldset-border);
+	border-radius: var(--radius-md);
+	color: var(--color-text-subtle);
+	font-size: var(--font-size-14);
+	font-style: italic;
+	background: transparent;
+	opacity: 0.7;
+	transition: opacity var(--transition-normal);
+}
+
+.litm-theme-evolution__drop-hint:hover,
+.litm-theme-evolution__new-theme.is-drop-target
+	.litm-theme-evolution__drop-hint {
+	opacity: 1;
+}
+
+.litm-theme-evolution__drop-hint > .fa-solid {
+	color: var(--color-text-subtle);
+}
+
 .litm-theme-evolution__keep-old {
 	display: flex;
 	align-items: center;
@@ -6030,45 +6352,20 @@ body.litm--colorblind .themed.theme-dark,
    Manuscript-style page for camp/sojourn activities.
 ======================================== */
 
-.litm-camping-scene {
-	position: fixed;
-	inset: 0;
-	/* Sit just below Foundry's window layer (z-index-window = 100) so vignette
-	   sheets, roll dialogs, hero sheets and the like open ABOVE the camping
-	   overlay when triggered from inside it — while still covering the canvas
-	   (0) and the app/ui chrome (30/60). */
-	z-index: calc(var(--z-index-window) - 1);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	max-height: 100vh;
-}
-
-.litm-camping-scene::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	background: rgba(0, 0, 0, 0.55);
-	pointer-events: none;
+/* Hint text inside camping reads as faded apricot against the parchment
+   surface because Foundry's --color-form-hint is tuned for darker sheet
+   chrome. Override to the standard secondary text colour. */
+.litm-camping-scene .hint,
+.litm-camping-scene p.hint,
+.litm-camping-scene label.hint {
+	color: var(--color-text-secondary);
 }
 
 .litm-camping-scene__root {
-	position: relative;
-	z-index: 1;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacer-12);
-	width: min(1200px, 92vw);
-	max-height: 88vh;
-	padding: var(--spacer-16);
-	background: var(--background);
-	border-radius: var(--radius-md);
-	box-shadow: var(--shadow-glow-strong);
-	overflow: hidden;
-}
-
-.litm-camping-scene__root--setup {
-	width: min(600px, 92vw);
+	min-height: 100%;
 }
 
 .litm-camping-scene__header {
@@ -6203,6 +6500,9 @@ body.litm--colorblind .themed.theme-dark,
 	overflow-y: auto;
 	scrollbar-gutter: stable;
 	padding-right: var(--spacer-4);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-16);
 }
 
 .litm-camping-scene__place-of-stay {
@@ -6225,34 +6525,9 @@ body.litm--colorblind .themed.theme-dark,
 	margin: 0;
 }
 
-.litm-camping-scene__columns {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-	gap: var(--spacer-12);
-	align-items: start;
-}
-
-.litm-camping-scene__hero-col {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacer-12);
-	padding: var(--spacer-12);
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-md);
-	background: var(--color-overlay-white-5);
-}
-
-.litm-camping-scene__hero-header {
-	display: flex;
-	align-items: center;
-	gap: var(--spacer-12);
-	padding-bottom: var(--spacer-8);
-	border-bottom: 1px solid var(--color-fieldset-border);
-}
-
 .litm-camping-scene__hero-portrait {
-	width: 44px;
-	height: 44px;
+	width: 32px;
+	height: 32px;
 	border-radius: var(--radius-circle);
 	object-fit: cover;
 	flex: 0 0 auto;
@@ -6265,9 +6540,11 @@ body.litm--colorblind .themed.theme-dark,
 	flex: 1 1 auto;
 	font-family: var(--font-serif);
 	font-style: italic;
-	font-size: var(--font-size-18);
+	font-size: var(--font-size-14);
 	line-height: var(--line-height-tight);
 	color: var(--color-text-emphatic);
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .litm-camping-scene__hero-open {
@@ -6292,12 +6569,6 @@ body.litm--colorblind .themed.theme-dark,
 .litm-camping-scene__hero-open:hover {
 	background: var(--color-overlay-white-5);
 	color: var(--color-text-primary);
-}
-
-.litm-camping-scene__hero-section {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacer-4);
 }
 
 /* Sub-label — quieter than the main section header. Serif italic at small
@@ -6335,6 +6606,18 @@ body.litm--colorblind .themed.theme-dark,
 .litm-camping-scene__pill.marked .litm-tag {
 	text-decoration: line-through;
 	opacity: 0.6;
+}
+
+/* Inactive backpack tags on Pack Up are still selectable — ticking
+   re-enables them at apply time (see buildBackpackOps in camping-apply).
+   Visually muted so the player can tell them apart from active ones at
+   a glance; the tooltip clarifies what ticking will do. */
+.litm-camping-scene__pill--inactive {
+	opacity: 0.65;
+}
+
+.litm-camping-scene__pill--inactive .litm-tag {
+	font-style: italic;
 }
 
 .litm-camping-scene__activity {
@@ -6421,20 +6704,21 @@ body.litm--colorblind .themed.theme-dark,
    when the period has no choice yet. Once chosen, the chip replaces them. */
 .litm-camping-scene__activity-cards {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacer-4);
 }
 
 .litm-camping-scene__activity-card {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
 	align-items: center;
+	justify-content: center;
 	gap: var(--spacer-4);
 	height: auto;
 	min-height: 0;
-	padding: var(--spacer-8) var(--spacer-4);
-	background: var(--color-overlay-white-3);
-	border: 1px solid var(--color-border);
+	padding: var(--spacer-4) var(--spacer-8);
+	background: transparent;
+	border: 1px solid var(--color-text-primary-15);
 	border-radius: var(--radius-sm);
 	color: var(--color-text-secondary);
 	cursor: pointer;
@@ -6444,19 +6728,25 @@ body.litm--colorblind .themed.theme-dark,
 		color var(--transition-fast);
 }
 
+.litm-camping-scene__activity-card:hover {
+	background: var(--color-text-primary-10);
+	border-color: var(--color-text-primary-40);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__activity-card:focus-visible {
+	outline: 1px solid var(--color-warm-1);
+	outline-offset: 2px;
+}
+
 .litm-camping-scene__activity-card i {
-	font-size: var(--font-size-18);
+	font-size: var(--font-size-14);
 }
 
 .litm-camping-scene__activity-card span {
 	font-family: var(--font-serif);
 	font-size: var(--font-size-13);
 	font-style: italic;
-}
-
-.litm-camping-scene__activity-card:hover {
-	background: var(--color-overlay-white-5);
-	color: var(--color-text-primary);
 }
 
 .litm-camping-scene__activity-card--rest:hover {
@@ -6542,19 +6832,21 @@ body.litm--colorblind .themed.theme-dark,
 
 /* Third-period choice — a small inline link/banner, not a toggle. When armed
    it turns weakness-colored to communicate "you've opted into Consequences." */
+/* Third-period toggle — typographic only. Active state pulls the apricot
+   "weakness" hue (the book frames the third period as risky). No bespoke
+   indicator glyph; the chip itself signals state. */
 .litm-camping-scene__third-toggle {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacer-8);
+	gap: var(--spacer-4);
 	align-self: flex-start;
 	height: auto;
 	min-height: 0;
-	margin-top: var(--spacer-4);
-	padding: var(--spacer-4) var(--spacer-12);
+	padding: var(--spacer-2) var(--spacer-8);
 	background: transparent;
-	border: 1px dashed var(--color-fieldset-border);
+	border: 1px solid var(--color-text-primary-15);
 	border-radius: var(--radius-pill);
-	color: var(--color-text-subtle);
+	color: var(--color-text-secondary);
 	cursor: pointer;
 	transition:
 		background var(--transition-fast),
@@ -6563,15 +6855,19 @@ body.litm--colorblind .themed.theme-dark,
 }
 
 .litm-camping-scene__third-toggle:hover {
-	color: var(--color-text-primary);
-	border-color: var(--color-text-subtle);
+	background: var(--color-text-primary-10);
+	border-color: var(--color-text-primary-40);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__third-toggle:focus-visible {
+	outline: 1px solid var(--color-warm-1);
+	outline-offset: 2px;
 }
 
 .litm-camping-scene__third-toggle.active {
-	border-style: solid;
 	border-color: var(--color-litm-weakness);
-	background: var(--color-litm-weakness-10);
-	color: var(--color-text-emphatic);
+	color: var(--color-litm-weakness-text);
 }
 
 .litm-camping-scene__third-toggle-label {
@@ -6608,6 +6904,15 @@ body.litm--colorblind .themed.theme-dark,
 	gap: var(--spacer-8);
 	padding-top: var(--spacer-8);
 	border-top: 1px solid var(--color-fieldset-border);
+}
+
+/* Group nav (Prev/Next) + commit (Begin Camp / Pack Up) buttons together
+   on the trailing edge so the eye sees one cluster of forward motion;
+   Cancel stays alone on the leading edge as the escape hatch. */
+.litm-camping-scene__footer-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
 }
 
 /* Footer buttons. Cancel is quiet body chrome; only Pack Up & Go gets the
@@ -6760,4 +7065,205 @@ body.litm--colorblind .themed.theme-dark,
 .litm-camping-scene__threats-dropzone .hint {
 	margin: 0;
 	text-align: center;
+}
+
+/* ----------------------------------------------------------------------
+ * Wizard layout — horizontal "table of contents" above the step panel.
+ * No card container: the timeline sits inline on the parchment with
+ * marker + italic label per step, joined by thin connector lines. The
+ * current step is italic + emphatic; completed steps get a filled
+ * marker. Reads like a manuscript chapter index, not a SaaS stepper.
+ * -------------------------------------------------------------------- */
+
+.litm-camping-scene__step-panel {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-8);
+}
+
+/* Timeline strip sits inline on the parchment — no surface chrome, no
+   drawn borders. Reads as a manuscript chapter index. The body's
+   spacer-16 gap separates it from the step panel below; the step's
+   section-header (with its extending lines) acts as the visual divider. */
+.litm-camping-scene__timeline-rail {
+	padding: 0 var(--spacer-4);
+}
+
+.litm-camping-scene__timeline {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	gap: var(--spacer-4);
+}
+
+/* Natural-width items so the row sits centered; the connector between
+   each pair stretches with a sensible minimum so the timeline still
+   feels visually balanced as labels grow. */
+.litm-camping-scene__timeline-item {
+	margin: 0;
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	min-width: 0;
+}
+
+.litm-camping-scene__timeline-item:not(:last-child)::after {
+	content: "";
+	flex: 0 1 60px;
+	min-width: 24px;
+	height: 1px;
+	margin: 0 var(--spacer-8);
+	background: var(--color-border);
+}
+
+.litm-camping-scene__timeline-item.complete:not(:last-child)::after {
+	background: var(--color-litm-tag);
+}
+
+.litm-camping-scene__timeline-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	padding: var(--spacer-2) var(--spacer-4);
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-sm);
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+	color: var(--color-text-secondary);
+	text-align: left;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: color var(--transition-fast);
+	outline: none;
+}
+
+.litm-camping-scene__timeline-btn:hover {
+	color: var(--color-text-primary);
+}
+
+/* Focus ring drawn with outline-offset so it sits outside the small pill
+   and doesn't clip against the connector lines or the marker. */
+.litm-camping-scene__timeline-btn:focus-visible {
+	outline: 1px solid var(--color-warm-1);
+	outline-offset: 3px;
+}
+
+.litm-camping-scene__timeline-btn--static {
+	cursor: default;
+}
+
+.litm-camping-scene__timeline-btn--static:hover {
+	color: var(--color-text-secondary);
+}
+
+/* Active step: emphatic + bold text with a warm-1 underline drawn via
+   inset shadow (same pattern as .litm--segmented-option.is-active).
+   Filled gold marker on the left. */
+.litm-camping-scene__timeline-item.active .litm-camping-scene__timeline-btn {
+	color: var(--color-text-emphatic);
+	font-weight: bold;
+	box-shadow: inset 0 -2px 0 var(--color-warm-1);
+}
+
+.litm-camping-scene__timeline-item.active .litm-camping-scene__timeline-marker,
+.litm-camping-scene__timeline-item.complete
+	.litm-camping-scene__timeline-marker {
+	background: var(--color-litm-tag);
+	border-color: var(--color-litm-tag);
+	color: var(--color-litm-tag-text);
+}
+
+.litm-camping-scene__timeline-marker {
+	flex: 0 0 auto;
+	width: 18px;
+	height: 18px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-circle);
+	border: 1px solid var(--color-border);
+	background: transparent;
+	font-family: var(--font-serif);
+	font-size: var(--font-size-11);
+	color: var(--color-text-secondary);
+}
+
+.litm-camping-scene__timeline-label {
+	flex: 1 1 auto;
+}
+
+/* ----------------------------------------------------------------------
+ * Step content — outer wrapper for the panel's current step. The step
+ * title reuses the manuscript-header treatment. Each hero is a card row
+ * stacked vertically inside the step.
+ * -------------------------------------------------------------------- */
+
+/* Gap is intentionally large — it's the primary visual separator between
+   adjacent heroes (no row borders or shadows). Section header above gets
+   the same spacer-16 breathing room from the first hero. */
+.litm-camping-scene__step {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-16);
+}
+
+/* ----------------------------------------------------------------------
+ * Hero row — left cell carries portrait + name + open-sheet button,
+ * right cell carries the active step's controls. Collapses to a stacked
+ * column on narrow viewports so the row remains readable.
+ * -------------------------------------------------------------------- */
+
+/* Hero "rows" are ledger entries on parchment. Portrait + name sits at
+   the START of the group (not centered) so when content expands the
+   left annotation still reads as the heading. Adjacent rows separated
+   by a hairline rule and a generous spacer-16 gap (set on the parent)
+   so groups remain visually distinct even with multi-line content. */
+.litm-camping-scene__hero-row {
+	display: grid;
+	grid-template-columns: 140px minmax(0, 1fr);
+	gap: var(--spacer-12);
+	align-items: start;
+	padding-top: var(--spacer-12);
+}
+
+.litm-camping-scene__hero-row + .litm-camping-scene__hero-row {
+	border-top: 1px solid var(--color-text-primary-15);
+}
+
+.litm-camping-scene__row-header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	min-height: 32px;
+}
+
+.litm-camping-scene__row-content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+	min-width: 0;
+}
+
+@media (max-width: 720px) {
+	.litm-camping-scene__hero-row {
+		grid-template-columns: 1fr;
+	}
+
+	.litm-camping-scene__row-header {
+		padding-right: 0;
+		padding-bottom: var(--spacer-8);
+		border-right: none;
+		border-bottom: 1px solid var(--color-fieldset-border);
+	}
+
+	.litm-camping-scene__timeline-label {
+		display: none;
+	}
 }
