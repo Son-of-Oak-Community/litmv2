@@ -1,23 +1,28 @@
+import { enrichHTML } from "../../utils.js";
+
 /**
  * Build the vignette-card fieldset shape. Used by both `renderVignette` and
  * the journey renderer's "general consequences" block, which is structurally
  * the same fieldset with a localized banner label and consequence-only data.
  *
- * Tags/statuses in threat and consequence text are left as raw text nodes
- * so the tag enricher (which runs after @render) processes them.
+ * Threat and consequence strings may contain HTML markup (from paste or
+ * imported pack content), so they're run through `enrichHTML` — that handles
+ * both rich-text passthrough and litm tag/status enrichment in one pass.
  *
  * @param {object} options
  * @param {string} options.label                   Banner label text
- * @param {string} [options.threat]                Threat description
- * @param {string[]} [options.consequences=[]]
+ * @param {string} [options.threat]                Threat description (may be HTML)
+ * @param {string[]} [options.consequences=[]]    Consequence strings (may be HTML)
  * @param {boolean} [options.isConsequenceOnly=false]
- * @returns {HTMLElement}
+ * @param {Document} [options.relativeTo]          Document context for enrichment
+ * @returns {Promise<HTMLElement>}
  */
-export function vignetteCard({
+export async function vignetteCard({
 	label,
 	threat,
 	consequences = [],
 	isConsequenceOnly = false,
+	relativeTo,
 }) {
 	const container = document.createElement("fieldset");
 	container.classList.add("litm", "vignette-card", "litm-render");
@@ -30,7 +35,7 @@ export function vignetteCard({
 	if (!isConsequenceOnly && threat) {
 		const div = document.createElement("div");
 		div.classList.add("threat-text");
-		div.textContent = threat;
+		div.innerHTML = await enrichHTML(threat, relativeTo);
 		container.appendChild(div);
 	}
 
@@ -40,7 +45,7 @@ export function vignetteCard({
 		for (const c of consequences) {
 			const li = document.createElement("li");
 			li.classList.add("consequence-item");
-			li.textContent = c;
+			li.innerHTML = await enrichHTML(c, relativeTo);
 			ul.appendChild(li);
 		}
 		container.appendChild(ul);
@@ -51,15 +56,19 @@ export function vignetteCard({
 
 /**
  * Renders a Vignette item as an embed card, matching the challenge sheet style.
- * @param {Item} item - A vignette item document
- * @returns {HTMLElement}
+ * @param {Item|object} item       A vignette item document, or a mock shaped
+ *                                  like one (e.g. addonThreats on a challenge)
+ * @param {Document} [relativeTo]  Document context for enrichment; defaults to
+ *                                  `item` when it's a real document
+ * @returns {Promise<HTMLElement>}
  */
-export function renderVignette(item) {
+export function renderVignette(item, relativeTo = item) {
 	const { threat, consequences, isConsequenceOnly } = item.system;
 	return vignetteCard({
 		label: item.name,
 		threat,
 		consequences,
 		isConsequenceOnly,
+		relativeTo,
 	});
 }

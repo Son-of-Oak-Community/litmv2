@@ -216,9 +216,12 @@ async function _confirmAndApplySacrifice(
 	if (effective === "grave") {
 		const name =
 			(statusName || "").trim() || t("LITM.Ui.sacrifice_grave_default");
+		// Status name is user input from the roll dialog — escape before
+		// interpolating into Dialog HTML, but keep the raw name for addStatus.
+		const safeName = foundry.utils.escapeHTML(name);
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: t("LITM.Ui.sacrifice_confirm_title") },
-			content: `<p>${game.i18n.format("LITM.Ui.sacrifice_confirm_grave_named", { status: name })}</p>`,
+			content: `<p>${game.i18n.format("LITM.Ui.sacrifice_confirm_grave_named", { status: safeName })}</p>`,
 			rejectClose: false,
 			modal: true,
 		});
