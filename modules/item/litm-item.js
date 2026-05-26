@@ -81,11 +81,21 @@ export class LitmItem extends foundry.documents.Item {
 
 	static migrateData(source) {
 		LitmItem.#LEGACY_STASHERS[source.type]?.(source);
+		const isFellowshipTheme =
+			source.type === "theme" && source.system?.isFellowship === true;
 		for (const e of source.effects ?? []) {
 			if (e.flags?.litmv2?.isTitleTag && !e.system?.isTitleTag) {
 				e.system ??= {};
 				e.system.isTitleTag = true;
 				delete e.flags.litmv2.isTitleTag;
+			}
+			// Title tags on fellowship themes must be fellowship_tag, not
+			// power_tag — otherwise they inherit the burnable cycle and a
+			// player can scratch the title tag for +3 power, contradicting
+			// the rules. Older content still occasionally surfaces with the
+			// wrong type, so coerce it here on load.
+			if (isFellowshipTheme && e.system?.isTitleTag && e.type === "power_tag") {
+				e.type = "fellowship_tag";
 			}
 		}
 		return super.migrateData(source);

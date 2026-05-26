@@ -16,7 +16,14 @@ export class WeaknessTagData extends foundry.data.ActiveEffectTypeDataModel {
 	}
 
 	get allowedStates() {
+		// GM-side cycle. The "positive" flip is the Narrator-only inversion
+		// (Core Book p.76) and only the GM ever reaches it.
 		return ",negative,positive";
+	}
+
+	get playerAllowedStates() {
+		// Players can only invoke a weakness as the hindrance it is.
+		return ",negative";
 	}
 
 	get defaultPolarity() {

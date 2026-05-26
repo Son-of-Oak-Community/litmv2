@@ -45,9 +45,34 @@ export async function pickTargetActor({
 		}))
 		.filter((e) => e.actor && (allowSelf || e.actor !== exclude));
 
+	// Litm games frequently skip the canvas entirely — chat-output successes
+	// shouldn't be gated on token placement. Fall back to the actor sidebar
+	// (anything the user can observe) so Apply Successes still works in
+	// theatre-of-mind sessions.
 	if (!candidates.length) {
-		ui.notifications.warn(t("LITM.Actions.no_targets_in_scene"));
-		return null;
+		const TARGETABLE_TYPES = new Set([
+			"hero",
+			"challenge",
+			"journey",
+			"fellowship",
+			"story_theme",
+		]);
+		const fallbackActors = game.actors?.contents ?? [];
+		const fallback = fallbackActors
+			.filter((a) => TARGETABLE_TYPES.has(a.type))
+			.filter((a) => a.testUserPermission(game.user, "OBSERVER"))
+			.filter((a) => allowSelf || a !== exclude)
+			.map((a) => ({
+				id: a.id,
+				label: a.name,
+				img: a.img,
+				actor: a,
+			}));
+		if (!fallback.length) {
+			ui.notifications.warn(t("LITM.Actions.no_targets_in_scene"));
+			return null;
+		}
+		return _chooseFrom(fallback, "LITM.Actions.pick_target");
 	}
 	return _chooseFrom(candidates, "LITM.Actions.pick_target");
 }

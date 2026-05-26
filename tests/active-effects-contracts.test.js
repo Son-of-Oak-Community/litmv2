@@ -24,10 +24,17 @@ describe("PowerTagData contracts", () => {
 		expect(make(PowerTagData, { isScratched: true }).canBurn).toBe(false);
 	});
 
-	it("allowedStates allows positive, negative (Narrator override), and scratched", () => {
+	it("allowedStates (GM cycle) is positive → scratched → negative", () => {
+		// Narrator override (Core Book p.76) places the negative flip last, so
+		// the natural-polarity path (positive, then burn-via-scratch) is
+		// reached first on the cycle.
 		expect(make(PowerTagData).allowedStates).toBe(
-			",positive,negative,scratched",
+			",positive,scratched,negative",
 		);
+	});
+
+	it("playerAllowedStates restricts players to natural polarity", () => {
+		expect(make(PowerTagData).playerAllowedStates).toBe(",positive,scratched");
 	});
 
 	it("defaultPolarity is +1", () => {
@@ -40,8 +47,12 @@ describe("WeaknessTagData contracts", () => {
 		expect(make(WeaknessTagData).canBurn).toBe(false);
 	});
 
-	it("allows negative and positive states (no scratch)", () => {
+	it("allowedStates (GM cycle) is negative → positive (no scratch)", () => {
 		expect(make(WeaknessTagData).allowedStates).toBe(",negative,positive");
+	});
+
+	it("playerAllowedStates restricts players to negative only", () => {
+		expect(make(WeaknessTagData).playerAllowedStates).toBe(",negative");
 	});
 
 	it("defaultPolarity is -1", () => {

@@ -617,10 +617,20 @@ export class HeroSheet extends LitmActorSheet {
 		if (selected) {
 			this.rollDialogInstance.setCharacterTagState(tagKey, "");
 		} else {
-			const states = (
-				tagFromSystem?.system?.allowedStates ?? ",positive"
-			).split(",");
-			const nextState = event.shiftKey ? states[states.length - 1] : states[1];
+			const allowedRaw =
+				!game.user.isGM && tagFromSystem?.system?.playerAllowedStates
+					? tagFromSystem.system.playerAllowedStates
+					: (tagFromSystem?.system?.allowedStates ?? ",positive");
+			const states = allowedRaw.split(",");
+			// Shift-click is "burn this tag" — jump straight to scratched when
+			// the cycle allows it, regardless of where it sits in the order.
+			// Falling back to the final cycle entry preserves the prior
+			// behaviour for tags without scratched (e.g. weakness flips).
+			const nextState = event.shiftKey
+				? states.includes("scratched")
+					? "scratched"
+					: states[states.length - 1]
+				: states[1];
 			this.rollDialogInstance.setCharacterTagState(tagKey, nextState);
 		}
 

@@ -37,6 +37,13 @@
 			aria-label="{{localize 'LITM.Actions.view_action'}}">
 			<i class="fa-solid fa-book-open" aria-hidden="true"></i>
 		</button>
+		{{#if isOwner}}
+		<button type="button" class="noflex" data-action="clearAction"
+			data-tooltip="{{localize 'LITM.Actions.clear_action'}}"
+			aria-label="{{localize 'LITM.Actions.clear_action'}}">
+			<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+		</button>
+		{{/if}}
 	</header>
 	{{/if}}
 
@@ -88,8 +95,15 @@
 				{{/each}}
 			</div>
 		</fieldset>
+		<fieldset class="litm--sacrifice-grave-fieldset hidden">
+			<legend>{{localize "LITM.Ui.sacrifice_grave_label"}}</legend>
+			<p class="hint">{{localize "LITM.Ui.sacrifice_grave_status_hint"}}</p>
+			<input type="text" name="sacrificeStatusName" value="{{sacrificeStatusName}}"
+				placeholder="{{localize 'LITM.Ui.sacrifice_grave_default'}}" />
+		</fieldset>
 		<fieldset class="litm--sacrifice-theme-fieldset hidden">
-			<legend>{{localize "LITM.Ui.sacrifice_choose_theme"}}</legend>
+			<legend>{{sacrificeThemeLegend}}</legend>
+			{{#if sacrificeThemeHint}}<p class="hint">{{sacrificeThemeHint}}</p>{{/if}}
 			<div class="litm--sacrifice-theme-grid" role="radiogroup" aria-label="{{localize 'LITM.Ui.sacrifice_choose_theme'}}">
 				{{#each sacrificeThemes as |t|}}
 				<fieldset class="theme-card {{#if t.selected}}is-selected{{/if}}"

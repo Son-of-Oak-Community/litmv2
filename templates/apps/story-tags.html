@@ -38,6 +38,7 @@
 		{{/if}}
 	</span>
 	{{#if editable}}
+	{{#if isGM}}
 	{{#if (eq source "story")}}
 	<button type="button" class="litm--visibility-toggle" data-action="toggle-visibility" data-id="{{tag.id}}"
 		data-type="story_tag" data-tooltip="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}" aria-label="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}">
@@ -48,6 +49,7 @@
 		data-actor-id="{{source}}" data-tooltip="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}" aria-label="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}">
 		<i class="fa-solid {{ifThen tag.hidden 'fa-eye-slash' 'fa-eye'}}" aria-hidden="true"></i>
 	</button>
+	{{/if}}
 	{{/if}}
 	<button type="button" class="litm--tag-action-btn" data-action="remove-tag"
 		data-id="{{tag.id}}" data-type="{{source}}" data-tooltip="{{localize 'LITM.Ui.remove'}}" aria-label="{{localize 'LITM.Ui.remove'}}">

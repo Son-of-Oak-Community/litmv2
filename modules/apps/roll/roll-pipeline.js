@@ -83,6 +83,7 @@ export function executeRoll({
 	tradePower = 0,
 	sacrificeLevel,
 	sacrificeThemeId,
+	sacrificeStatusName,
 	actionUuid = null,
 }) {
 	const {
@@ -173,6 +174,7 @@ export function executeRoll({
 			tradePower: Number(tradePower) || 0,
 			sacrificeLevel,
 			sacrificeThemeId,
+			sacrificeStatusName,
 		},
 	);
 

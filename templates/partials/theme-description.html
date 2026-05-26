@@ -1,0 +1,12 @@
+{{!--
+	Play-mode theme description. Renders a clamped preview with a downward
+	mask-fade so the prose dissolves into the parchment before the cut-off
+	edge. The parent theme card carries the `toggleThemeDescription` action
+	(see `LitmActorSheet`) and the matching tooltip — there is deliberately
+	no inline "Show more" affordance.
+--}}
+{{#if description}}
+<div class="theme-card__description">
+	<div class="theme-card__description-body">{{{ description }}}</div>
+</div>
+{{/if}}

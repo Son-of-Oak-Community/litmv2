@@ -32,8 +32,16 @@ export class PowerTagData extends ScratchableMixin(
 	}
 
 	get allowedStates() {
-		// "negative" is permitted for the rare Narrator override (p.76).
-		return ",positive,negative,scratched";
+		// GM-side cycle. "negative" is permitted for the rare Narrator override
+		// (p.76) — placed last so the natural cycle hits "" → positive →
+		// scratched first and only reaches the inversion on a fourth click.
+		return ",positive,scratched,negative";
+	}
+
+	get playerAllowedStates() {
+		// Players never flip a power tag negative — that's a Narrator-only
+		// override. Their cycle is the natural "" → positive → scratched loop.
+		return ",positive,scratched";
 	}
 
 	get defaultPolarity() {
