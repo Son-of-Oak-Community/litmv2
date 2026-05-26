@@ -20,7 +20,8 @@ const walk = (dir) => {
 		if (ent.name.startsWith(".")) continue;
 		const full = path.join(dir, ent.name);
 		if (ent.isDirectory()) {
-			if (["packs", "foundry", "node_modules"].includes(ent.name)) continue;
+			if (["packs", "foundry", "node_modules", "scripts"].includes(ent.name))
+				continue;
 			walk(full);
 		} else if ([".js", ".html"].includes(path.extname(ent.name))) {
 			files.push(full);
@@ -31,21 +32,25 @@ walk(".");
 
 // Extract localization keys from files with locations
 const keyUsage = new Map(); // key -> [{file, line}]
+const dynamicVarSites = []; // {file, line} — localize(varname) where the key is fully dynamic
 const hardcodedPlaceholders = []; // {file, line, value}
 for (const file of files) {
 	const txt = fs.readFileSync(file, "utf8");
 	const lines = txt.split("\n");
 
 	lines.forEach((line, idx) => {
-		// Match various localization patterns
+		// Match various literal-key localization patterns.
+		// `localize` matches both the imported function and `t` alias (since
+		// the alias is established via `import { localize as t }`); we match
+		// both call names explicitly below.
 		const patterns = [
-			// JS: localize("KEY") or game.i18n.localize("KEY")
-			/localize\s*\(\s*["']([^"']+)["']/g,
-			/i18n\.localize\s*\(\s*["']([^"']+)["']/g,
+			// JS: localize("KEY") / t("KEY") / game.i18n.localize("KEY") / game.i18n.format("KEY", ...)
+			/(?:^|[^\w.])(?:t|localize)\s*\(\s*["']([^"']+)["']/g,
+			/i18n\.(?:localize|format)\s*\(\s*["']([^"']+)["']/g,
 			// Handlebars: {{localize "KEY"}}
 			/\{\{localize\s+["']([^"']+)["']/g,
-			// Template literals and concatenation: `LITM.${...}` or "LITM." + ...
-			/["'`](LITM\.[A-Za-z_]+\.[A-Za-z_]+)["'`]/g,
+			// Quoted full keys in JS: "LITM.X.Y", "LITM.X.Y.Z", "TYPES.Actor.hero", etc.
+			/["'`]((?:LITM|TYPES)\.[A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)+)["'`]/g,
 		];
 
 		for (const pattern of patterns) {
@@ -58,14 +63,16 @@ for (const file of files) {
 			}
 		}
 
-		// Flag hardcoded placeholder attributes in templates
+		// Flag hardcoded placeholder attributes in templates.
+		// Empty placeholders (placeholder="") are intentional no-ops, not localization gaps.
 		const placeholderPatterns = [
-			/placeholder\s*=\s*"([^"]*)"/g,
-			/placeholder\s*=\s*'([^']*)'/g,
+			/placeholder\s*=\s*"([^"]+)"/g,
+			/placeholder\s*=\s*'([^']+)'/g,
 		];
 		for (const pattern of placeholderPatterns) {
 			for (const m of line.matchAll(pattern)) {
 				const value = m[1].trim();
+				if (!value) continue;
 				if (value.includes("{{")) continue;
 				hardcodedPlaceholders.push({
 					file: file.replace(process.cwd() + "/", ""),
@@ -75,51 +82,86 @@ for (const file of files) {
 			}
 		}
 
-		// Also track dynamic key prefixes for heuristics
-		// e.g., {{localize (concat "LITM.Challenges." ...)}} or t(`LITM.Effects.${...}`)
-		const dynamicPatterns = [
-			/\{\{localize\s+\(concat\s+["']([^"']+)/g, // {{localize (concat "PREFIX." ...)}}
-			/localize\s*\(\s*`([^`$]+)\$\{/g, // localize(`PREFIX.${...}`)
-			/i18n\.localize\s*\(\s*`([^`$]+)\$\{/g, // i18n.localize(`PREFIX.${...}`)
+		// Fully-dynamic localize: `{{localize varname}}` or `{{localize obj.prop}}`,
+		// `localize(varname)` / `t(varname)`. We can't know which keys are used,
+		// so just remember that there's an unrecoverable dynamic call site.
+		const fullyDynamicPatterns = [
+			/\{\{localize\s+([a-zA-Z_][\w.]*)\s*\}\}/g, // {{localize foo}} / {{localize foo.bar}}
+			/(?:^|[^\w.])(?:t|localize)\s*\(\s*([a-zA-Z_][\w.]*)\s*[,)]/g, // t(foo)/localize(foo)
 		];
-
-		for (const pattern of dynamicPatterns) {
+		for (const pattern of fullyDynamicPatterns) {
 			for (const m of line.matchAll(pattern)) {
-				const prefix = m[1];
-				if (!keyUsage.has(prefix)) keyUsage.set(prefix, []);
-				keyUsage.get(prefix).push({
+				// Skip if the "variable" is actually a string literal helper name
+				// like "concat", "lookup", "format" — those are paren-call openers
+				// caught by other patterns.
+				const name = m[1];
+				if (["concat", "lookup", "format"].includes(name)) continue;
+				dynamicVarSites.push({
 					file: file.replace(process.cwd() + "/", ""),
 					line: idx + 1,
-					dynamic: true,
+					expr: name,
 				});
 			}
 		}
 	});
+
+	// Dynamic prefix+suffix patterns — run against the whole file text so we
+	// catch multi-line template literals like:
+	//   game.i18n.localize(`LITM.Ui.${
+	//     cond ? "switch_to_play_mode" : "switch_to_edit_mode"
+	//   }`);
+	const fullText = txt;
+	const dynamicPatterns = [
+		// {{localize (concat "PREFIX" var "SUFFIX" ...)}} — capture prefix + optional suffix
+		/\{\{localize\s+\(concat\s+["']([^"']+)["'](?:\s+[\w.[\]]+(?:\s+["']([^"']+)["'])?)?/g,
+		// localize(`PREFIX.${...}SUFFIX`) / t(`PREFIX.${...}SUFFIX`)
+		/(?:^|[^\w.])(?:t|localize)\s*\(\s*`([^`$]+)\$\{[\s\S]+?\}([^`]*)`/g,
+		// i18n.localize(`PREFIX.${...}SUFFIX`) / i18n.format(`PREFIX.${...}SUFFIX`)
+		/i18n\.(?:localize|format)\s*\(\s*`([^`$]+)\$\{[\s\S]+?\}([^`]*)`/g,
+	];
+	for (const pattern of dynamicPatterns) {
+		for (const m of fullText.matchAll(pattern)) {
+			const prefix = m[1];
+			const suffix = m[2] || "";
+			const marker = `${prefix}\x00${suffix}`;
+			if (!keyUsage.has(marker)) keyUsage.set(marker, []);
+			keyUsage.get(marker).push({
+				file: file.replace(process.cwd() + "/", ""),
+				line: fullText.slice(0, m.index).split("\n").length,
+				dynamic: true,
+			});
+		}
+	}
 }
 
-// Find missing keys
-const allReferencedKeys = [...keyUsage.keys()]
-	.filter((k) => k !== "KEY") // Ignore placeholder
-	.filter((k) => k !== "PREFIX.") // Ignore regex pattern example
-	.filter((k) => !k.endsWith("_")) // Ignore incomplete dynamic keys
-	.filter((k) => !(k.endsWith(".") && k.startsWith("LITM."))); // Ignore dynamic prefixes
+// Separate literal-key uses from dynamic prefix+suffix markers.
+const allMarkers = [...keyUsage.keys()];
+const literalReferences = allMarkers.filter((k) => !k.includes("\x00"));
+const dynamicTuples = allMarkers
+	.filter((k) => k.includes("\x00"))
+	.map((k) => {
+		const [prefix, suffix] = k.split("\x00");
+		return { prefix, suffix };
+	});
 
-const missing = allReferencedKeys.filter((k) => !enKeys.has(k)).sort();
+const allReferencedKeys = literalReferences
+	.filter((k) => k !== "KEY") // ignore the regex example string
+	.filter((k) => k !== "PREFIX.")
+	.filter((k) => !k.endsWith("_")) // ignore incomplete dynamic keys
+	.filter((k) => !(k.endsWith(".") && k.startsWith("LITM."))); // ignore dynamic prefixes
+
+// Only flag missing keys under our own namespace — Foundry core keys like
+// "Configure", "TOKEN.Title", "JOURNAL.*" are provided by Foundry, not our en.json.
+const isOurKey = (k) => k.startsWith("LITM.") || k.startsWith("TYPES.");
+const missing = allReferencedKeys
+	.filter(isOurKey)
+	.filter((k) => !enKeys.has(k))
+	.sort();
 
 // Find superfluous keys (in en.json but not used)
 const usedKeys = new Set(allReferencedKeys);
 
-// Collect dynamic prefixes from all detected keys (including the filtered-out ones)
-const allDetectedKeys = [...keyUsage.keys()];
-const dynamicPrefixes = allDetectedKeys
-	.filter((k) => k.endsWith(".") && k.startsWith("LITM."))
-	.concat(
-		allDetectedKeys
-			.filter((k) => keyUsage.get(k)?.some((u) => u.dynamic))
-			.map((k) => (k.endsWith(".") ? k : k + ".")),
-	);
-
-// Add keys that are used dynamically based on patterns
+// Add keys that match a dynamic prefix+suffix tuple
 for (const key of enKeys) {
 	// TYPES.* are used by Foundry core
 	if (key.startsWith("TYPES.")) {
@@ -127,33 +169,23 @@ for (const key of enKeys) {
 		continue;
 	}
 
-	// Check if this key matches any dynamic prefix
-	let matched = false;
-	for (const prefix of dynamicPrefixes) {
-		if (key.startsWith(prefix)) {
-			usedKeys.add(key);
-			matched = true;
-			break;
-		}
+	// Top-level bare keys (no dot) are usually string-table targets for fully-
+	// dynamic `{{localize outcome.label}}`-style call sites. When such sites
+	// exist we can't statically resolve which keys they reach, so exempt them.
+	if (!key.includes(".") && dynamicVarSites.length > 0) {
+		usedKeys.add(key);
+		continue;
 	}
-	if (matched) continue;
 
-	// Legacy heuristics for common patterns
-	if (
-		key.startsWith("LITM.Themes.") &&
-		allReferencedKeys.some((k) => k.startsWith("LITM.Themes."))
-	) {
+	for (const { prefix, suffix } of dynamicTuples) {
+		if (!key.startsWith(prefix)) continue;
+		if (suffix && !key.endsWith(suffix)) continue;
+		// Reject if the middle portion is empty (e.g. prefix="LITM.X.foo_" suffix=""
+		// shouldn't claim "LITM.X.foo_" itself; the variable always supplies content).
+		const middle = key.slice(prefix.length, key.length - suffix.length);
+		if (!middle) continue;
 		usedKeys.add(key);
-	} else if (
-		key.startsWith("LITM.Challenges.") &&
-		allReferencedKeys.some((k) => k.startsWith("LITM.Challenges."))
-	) {
-		usedKeys.add(key);
-	} else if (
-		key.startsWith("LITM.Effects.") &&
-		allReferencedKeys.some((k) => k.startsWith("LITM.Effects."))
-	) {
-		usedKeys.add(key);
+		break;
 	}
 }
 
@@ -186,6 +218,16 @@ if (missing.length > 0) {
 if (superfluous.length > 0) {
 	console.log("⚠️  Keys in en.json but not used anywhere:\n");
 	for (const k of superfluous) console.log(`  - ${k}`);
+	console.log("");
+}
+
+if (dynamicVarSites.length > 0) {
+	console.log(
+		`ℹ️  ${dynamicVarSites.length} fully-dynamic localize call site(s) — key is a runtime variable, so the superfluous-key check cannot see them. Review these manually:\n`,
+	);
+	for (const site of dynamicVarSites) {
+		console.log(`  ${site.file}:${site.line} — localize(${site.expr})`);
+	}
 	console.log("");
 }
 

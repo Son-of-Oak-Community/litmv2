@@ -149,84 +149,25 @@
 			"view_linked_ref_named": "View {name}",
 			"warn_no_character": "Assign a hero to your user first."
 		},
-		"Challenges": {
-			"attacker": "Attacker",
-			"barrier-hazard": "Barrier or Hazard",
-			"charge": "Charge",
-			"countdown": "Countdown",
-			"mystery": "Mystery",
-			"pursuer": "Pursuer",
-			"quarry": "Quarry",
-			"temptation": "Temptation",
-			"watcher": "Watcher"
-		},
 		"Editor": {
 			"ingress": "Ingress"
 		},
 		"Effects": {
-			"advance": {
-				"action": "Increase a progress status 1 Power per tier.",
-				"cost": "1 Power per tier.",
-				"description": "Make progress, get closer, push forward.",
-				"key": "Advance"
-			},
-			"attack": {
-				"action": "Give your target a harmful status.",
-				"cost": "1 Power per tier.",
-				"description": "Slash, punch, lay a curse, shoot.",
-				"key": "Attack"
-			},
-			"bestow": {
-				"action": "Give yourself or an ally new abilities using tags.",
-				"cost": "2 Power per tag.",
-				"description": "Teach, empower, enchant, equip.",
-				"key": "Bestow"
-			},
-			"category_ally": "For Yourself or for an Ally",
-			"category_consequence": "Against a Consequence",
-			"category_other": "Other Effect",
-			"category_process": "On a Process",
-			"category_target": "Against an Opponent or a Target",
 			"create": {
 				"action": "Create a new object or being using tags.",
-				"cost": "2 Power per tag.",
-				"description": "Craft, find, purchase, summon, rally.",
-				"key": "Create"
+				"description": "Craft, find, purchase, summon, rally."
 			},
 			"discover": {
 				"action": "Discover a valuable detail.",
-				"cost": "1 Power per detail.",
-				"description": "Sense, recall, research, converse.",
-				"key": "Discover"
-			},
-			"disrupt": {
-				"action": "Give your target a hindering tag or status.",
-				"cost": "1 Power per tier, 2 Power per tag.",
-				"description": "Blind, confuse, shock, trip, interrupt.",
-				"key": "Disrupt"
-			},
-			"effect": "Effect",
-			"enhance": {
-				"action": "Give yourself or an ally a helpful status.",
-				"cost": "1 Power per tier.",
-				"description": "Assist, aim, boost, take cover.",
-				"key": "Enhance"
+				"description": "Sense, recall, research, converse."
 			},
 			"extra_feat": {
 				"action": "Extra Feat",
-				"cost": "1 Power per additional feature or minor achievement included in the action.",
-				"description": "Add a feature or minor achievement to an action.",
-				"key": "Extra Feat"
+				"description": "Add a feature or minor achievement to an action."
 			},
 			"inflict": {
 				"action": "Inflict Status",
 				"description": "Inflict a status on a target."
-			},
-			"influence": {
-				"action": "Give your target a compelling status.",
-				"cost": "1 Power per tier.",
-				"description": "Convince, threaten, provoke, mind control.",
-				"key": "Influence"
 			},
 			"mitigate": {
 				"action": "Reduce or cancel incoming Effects.",
@@ -238,27 +179,9 @@
 				"action": "Reduce Status",
 				"description": "Reduce a status on yourself or an ally."
 			},
-			"restore": {
-				"action": "Reduce a harmful status or recover a scratched power tag.",
-				"cost": "1 Power per tier 2 Power per tag.",
-				"description": "Heal, repair, rejuvenate, undo.",
-				"key": "Restore"
-			},
 			"scratch": {
 				"action": "Recover a scratched tag",
 				"description": "Recover a scratched tag."
-			},
-			"set_back": {
-				"action": "Decrease a progress status.",
-				"cost": "1 Power per tier.",
-				"description": "Delay, ruin, sabotage, reverse.",
-				"key": "Set Back"
-			},
-			"weaken": {
-				"action": "Remove a target’s useful tag or status.",
-				"cost": "1 Power per tier 2 Power per tag.",
-				"description": "Break, sunder, neutralize, silence.",
-				"key": "Weaken"
 			}
 		},
 		"Hero": {
@@ -314,13 +237,11 @@
 		},
 		"Tags": {
 			"burn": "Scratch",
-			"burnt": "Scratched",
 			"contents": "Contents",
 			"is_burnt": "Scratched",
 			"power": "Power",
 			"power_tags": "Power Tags",
 			"story": "Story",
-			"tags_and_statuses": "Tags & Statuses",
 			"weakness": "Weakness",
 			"weakness_tags": "Weakness Tags"
 		},

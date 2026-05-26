@@ -360,7 +360,16 @@ All user-facing strings use keys from `lang/en.json`. Use the `localize` utility
 import { localize as t } from "../utils.js";
 ```
 
-When adding new keys, add them to all language files (`npm run i18n:diff` or `npm run i18n:check` to find gaps).
+**Only add new keys to `lang/en.json`.** Do NOT add English strings to the other language files (`de.json`, `es.json`, `fr.json`, `cn.json`, `no.json`) — Foundry falls back to `en.json` for any missing key, so leaving a key absent is how translators see what's untranslated. Do not translate strings into other languages yourself; translation is done by native speakers. `npm run i18n:diff` is purely a translator diagnostic — don't act on its gaps.
+
+**Run `npm run i18n:check` after touching UI strings, templates, or `en.json`.** It validates the contract between code and `en.json`:
+
+- **Missing keys** — code references a `LITM.*`/`TYPES.*` key that isn't in `en.json`. Always fix (add the key).
+- **Superfluous keys** — keys in `en.json` that no code path references. Either wire them up or delete; don't leave dead entries.
+- **Hardcoded placeholder strings** — `<input placeholder="...">` with raw text instead of `{{localize 'KEY'}}`. Always fix (move to `en.json`).
+- **Fully-dynamic localize sites** — informational only. `{{localize varname}}` or `localize(varExpr)` resolve at runtime, so the static check can't verify their keys. When refactoring around one, trace the JS source feeding the variable and verify those keys still exist in `en.json`.
+
+The check detects literal keys, `t(...)` / `localize(...)` / `i18n.format(...)` calls, multi-line template literals like `` `LITM.X.${cond ? "a" : "b"}` ``, and `{{localize (concat "PFX_" var "_SFX")}}` patterns. If you add a new dynamic-key pattern the script doesn't recognize, extend the patterns in `scripts/lang-check-keys.js` rather than working around the warning.
 
 ### CSS Class Naming
 

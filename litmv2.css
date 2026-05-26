@@ -2519,21 +2519,7 @@ section.standard-form.litm-actions-app {
 .litm--play-actions::after {
 	content: "";
 	flex: 1;
-	height: 2px;
-}
-.litm--play-actions::before {
-	background-image: linear-gradient(
-		90deg,
-		transparent 0%,
-		var(--color-border) 100%
-	);
-}
-.litm--play-actions::after {
-	background-image: linear-gradient(
-		90deg,
-		var(--color-border) 0%,
-		transparent 100%
-	);
+	border-top: var(--hr-border);
 }
 
 .litm--play-actions__prompt {
