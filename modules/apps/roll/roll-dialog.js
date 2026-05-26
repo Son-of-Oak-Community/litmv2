@@ -47,6 +47,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			"spend-half": LitmRollDialog.#onSpendHalf,
 			viewLinkedRef: viewLinkedRefAction,
 			viewActionCard: LitmRollDialog.#onViewActionCard,
+			clearAction: LitmRollDialog.#onClearAction,
 			toggleRollTag: LitmRollDialog.#onToggleRollTag,
 			selectSacrificeTheme: LitmRollDialog.#onSelectSacrificeTheme,
 			setSacrificeLevel: LitmRollDialog.#onSetSacrificeLevel,
@@ -99,7 +100,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				label.classList.toggle("is-active", label.dataset.level === level);
 			}
 		}
-		this.#toggleSacrificeThemeSelector(this.#sacrificeLevel);
+		this.#toggleSacrificeSubfields(this.#sacrificeLevel);
 		this.#dispatchUpdate();
 	}
 
@@ -150,6 +151,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		}).render(true);
 	}
 
+	/** Detach the linked action from this dialog without rolling. Lets the
+	 *  player back out of an action they opened by mistake, or downgrade to a
+	 *  plain roll without closing the window and losing their tag selections. */
+	static #onClearAction() {
+		if (!this.actionUuid) return;
+		this.setAction(null);
+		this.rollName = "";
+	}
+
 	/**
 	 * Click on a tag's label cycles the embedded super-checkbox; shift-click
 	 * jumps straight to (or out of) the "scratched" state when the tag allows
@@ -178,13 +188,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const {
 			actorId,
 			title,
-			type,
 			modifier,
 			might,
 			tradePower,
 			sacrificeLevel,
 			sacrificeThemeId,
+			sacrificeStatusName,
 		} = data;
+		// Sacrifice hides the type radio bar entirely, so the form yields no
+		// `type` value in that mode. Fall back to the dialog's tracked type
+		// so the resulting payload is always self-describing.
+		const type = data.type || this.type || "quick";
 		const tags = this.#buildTagsFromMap();
 		return {
 			actorId,
@@ -197,6 +211,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			tradePower: Number(tradePower) || 0,
 			sacrificeLevel: type === "sacrifice" ? sacrificeLevel : undefined,
 			sacrificeThemeId: type === "sacrifice" ? sacrificeThemeId : undefined,
+			sacrificeStatusName:
+				type === "sacrifice" && sacrificeLevel === "grave"
+					? sacrificeStatusName
+					: undefined,
 			actionUuid: this.#actionUuid,
 		};
 	}
@@ -226,6 +244,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#tradePower = 0;
 	#sacrificeLevel = "painful";
 	#sacrificeThemeId = null;
+	#sacrificeStatusName = "";
 	#ownerId = null;
 	#cachedTotalPower = null;
 	#actionUuid = null;
@@ -241,6 +260,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#tradePower = options.tradePower || 0;
 		this.#sacrificeLevel = options.sacrificeLevel || "painful";
 		this.#sacrificeThemeId = options.sacrificeThemeId || null;
+		this.#sacrificeStatusName = options.sacrificeStatusName || "";
 		this.#ownerId = options.ownerId || null;
 		this.#actionUuid = options.actionUuid || null;
 
@@ -538,6 +558,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				.filter(Boolean),
 		);
 
+		const isGM = game.user.isGM;
 		const decorateTag = (tag) => {
 			const contributorId = tag.contributorId || null;
 			const isOpposition =
@@ -545,11 +566,19 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// Already-scratched (unavailable) tags cannot be invoked or re-burned;
 			// lock the row so the super-checkbox has no valid transitions.
 			const isUnavailable = tag.system?.isScratched === true;
+			// Narrator-only inversion (Core Book p.76): power/weakness tags
+			// expose a wider cycle for the GM. Players see the natural-polarity
+			// cycle only — `playerAllowedStates` falls back to `allowedStates`
+			// for tag types that aren't restricted.
+			const baseStates =
+				!isGM && tag.system?.playerAllowedStates
+					? tag.system.playerAllowedStates
+					: (tag.system?.allowedStates ?? tag.states ?? ",positive,negative");
 			const states = isUnavailable
 				? ""
 				: isOpposition
 					? ",negative,positive"
-					: (tag.system?.allowedStates ?? tag.states ?? ",positive,negative");
+					: baseStates;
 			const tagId = tag.id ?? tag._id;
 			return {
 				...tag,
@@ -705,6 +734,19 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			})),
 			sacrificeThemeId: this.#sacrificeThemeId,
 			sacrificeThemes: this.#ensureSacrificeThemeSelected(),
+			sacrificeStatusName: this.#sacrificeStatusName,
+			// The theme selector serves a different rhetorical purpose per
+			// level — Painful scratches it, Scarring removes it, Grave only
+			// touches it on Miracle. The legend/hint reflect that intent.
+			sacrificeThemeLegend: t(
+				this.#sacrificeLevel === "grave"
+					? "LITM.Ui.sacrifice_theme_grave_legend"
+					: "LITM.Ui.sacrifice_choose_theme",
+			),
+			sacrificeThemeHint:
+				this.#sacrificeLevel === "grave"
+					? t("LITM.Ui.sacrifice_theme_grave_hint")
+					: "",
 			actionContext,
 		};
 	}
@@ -825,6 +867,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				this.#handleSacrificeLevelChange(target);
 			} else if (target.matches("[data-update='sacrificeThemeId']")) {
 				this.#handleSacrificeThemeChange(target);
+			} else if (target.matches("input[name='sacrificeStatusName']")) {
+				this.#handleSacrificeStatusNameChange(target);
 			} else if (target.matches("input[name='type']")) {
 				this.#handleTypeChange(target);
 			}
@@ -989,6 +1033,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#tradePower = 0;
 		this.#sacrificeLevel = "painful";
 		this.#sacrificeThemeId = null;
+		this.#sacrificeStatusName = "";
 		this.#actionUuid = null;
 		this.#actionDoc = null;
 		this.#sojournBonus = 0;
@@ -1074,12 +1119,27 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// Sacrifice is its own ritual — quick/tracked/mitigate make no sense
 		// during it. Hide the roll-type bar entirely in sacrifice mode.
 		if (typeBar) typeBar.classList.toggle("hidden", isSacrifice);
-		// Also toggle the theme selector based on current level
-		if (isSacrifice) {
-			this.#toggleSacrificeThemeSelector(this.#sacrificeLevel);
-		} else {
-			this.#toggleSacrificeThemeSelector(null);
-		}
+		// Toggle level-specific subfields (theme selector + grave status input)
+		this.#toggleSacrificeSubfields(isSacrifice ? this.#sacrificeLevel : null);
+	}
+
+	#toggleSacrificeSubfields(level) {
+		if (!this.element) return;
+		const themeFieldset = this.element.querySelector(
+			".litm--sacrifice-theme-fieldset",
+		);
+		const graveFieldset = this.element.querySelector(
+			".litm--sacrifice-grave-fieldset",
+		);
+		// Theme selector is shown for every sacrifice level — it represents
+		// the theme that is paid (painful/scarring) or the theme to lose on
+		// Miracle (grave). Hidden only when sacrifice mode itself is off.
+		const showTheme =
+			level === "painful" || level === "scarring" || level === "grave";
+		if (themeFieldset) themeFieldset.classList.toggle("hidden", !showTheme);
+		// Grave-only: status name input for the tier-6 status on fail/snc.
+		if (graveFieldset)
+			graveFieldset.classList.toggle("hidden", level !== "grave");
 	}
 
 	#handleSacrificeLevelChange(target) {
@@ -1094,12 +1154,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				label.classList.toggle("is-active", label.dataset.level === level);
 			}
 		}
-		this.#toggleSacrificeThemeSelector(this.#sacrificeLevel);
+		this.#toggleSacrificeSubfields(this.#sacrificeLevel);
 		this.#dispatchUpdate();
 	}
 
 	#handleSacrificeThemeChange(target) {
 		this.#sacrificeThemeId = target.value || null;
+		this.#dispatchUpdate();
+	}
+
+	#handleSacrificeStatusNameChange(target) {
+		this.#sacrificeStatusName = target.value || "";
 		this.#dispatchUpdate();
 	}
 
@@ -1163,17 +1228,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				selected: theme.id === this.#sacrificeThemeId,
 			};
 		});
-	}
-
-	#toggleSacrificeThemeSelector(level) {
-		if (!this.element) return;
-		const themeFieldset = this.element.querySelector(
-			".litm--sacrifice-theme-fieldset",
-		);
-		if (themeFieldset) {
-			const needsTheme = level === "painful" || level === "scarring";
-			themeFieldset.classList.toggle("hidden", !needsTheme);
-		}
 	}
 
 	#toggleTradePower(isTracked) {
@@ -1282,11 +1336,28 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	async _createModerationRequest(data) {
 		const id = foundry.utils.randomID();
 		const userId = game.user.id;
-		const preview = buildRollPreview({
-			tags: data.tags,
-			modifier: data.modifier,
-			might: data.might,
-		});
+		const type = data.type || "quick";
+		const isSacrifice = type === "sacrifice";
+		// Sacrifice rolls are pure 2d6 — tags and Power don't contribute, so
+		// the tooltip/total-power block is irrelevant on the moderation card.
+		const preview = isSacrifice
+			? null
+			: buildRollPreview({
+					tags: data.tags,
+					modifier: data.modifier,
+					might: data.might,
+				});
+		const actionName =
+			this.rollName || this.actionDoc?.name || data.title || "";
+		const sacrificeLevelLabel =
+			isSacrifice && data.sacrificeLevel
+				? t(`LITM.Ui.sacrifice_${data.sacrificeLevel}`)
+				: "";
+		const themeName =
+			isSacrifice && data.sacrificeThemeId
+				? this.actor?.items?.get(data.sacrificeThemeId)?.name || ""
+				: "";
+		const rollTypeLabel = t(`LITM.Ui.roll_${type}`);
 		await foundry.documents.ChatMessage.create({
 			content: await foundry.applications.handlebars.renderTemplate(
 				"systems/litmv2/templates/chat/moderation.html",
@@ -1294,16 +1365,21 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					title: t("LITM.Ui.roll_moderation"),
 					id: this.actor.id,
 					rollId: id,
-					type: data.type,
+					type,
+					isSacrifice,
+					actionName,
+					rollTypeLabel,
 					sacrificeLevel: data.sacrificeLevel,
+					sacrificeLevelLabel,
 					sacrificeThemeId: data.sacrificeThemeId,
+					themeName,
 					name: this.actor.name,
-					hasTooltipData: preview.hasTooltipData,
-					tooltipData: preview.tooltipData,
-					totalPower: preview.totalPower,
+					hasTooltipData: preview?.hasTooltipData ?? false,
+					tooltipData: preview?.tooltipData ?? {},
+					totalPower: preview?.totalPower ?? 0,
 				},
 			),
-			flags: { litmv2: { id, userId, data } },
+			flags: { litmv2: { id, userId, data: { ...data, type } } },
 		});
 	}
 
@@ -1322,6 +1398,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			tradePower: this.#tradePower,
 			sacrificeLevel: this.#sacrificeLevel,
 			sacrificeThemeId: this.#sacrificeThemeId,
+			sacrificeStatusName: this.#sacrificeStatusName,
 			ownerId: this.ownerId,
 		});
 	}
@@ -1339,6 +1416,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		tradePower,
 		sacrificeLevel,
 		sacrificeThemeId,
+		sacrificeStatusName,
 		ownerId,
 	}) {
 		if (actorId !== this.actorId) return;
@@ -1351,6 +1429,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (sacrificeLevel !== undefined) this.#sacrificeLevel = sacrificeLevel;
 		if (sacrificeThemeId !== undefined)
 			this.#sacrificeThemeId = sacrificeThemeId;
+		if (sacrificeStatusName !== undefined)
+			this.#sacrificeStatusName = sacrificeStatusName;
 		if (ownerId !== undefined) this.ownerId = ownerId;
 
 		// Merge selectionMap: prefer local entries where this user contributed

@@ -15,15 +15,40 @@ import { POWER_TAG_TYPES } from "../config.js";
 import { Sockets } from "../sockets.js";
 
 /**
- * Apply the consequence of a sacrifice roll to a hero's theme.
- * Performs document mutations only; notifications are shown by the caller.
- * @param {Actor} actor - The hero actor
- * @param {string} themeId - The sacrificed theme's ID
- * @param {string} level - "painful" or "scarring"
- * @returns {Promise<{themeName: string}|null>} The theme name for notification, or null if not found
+ * The price of a sacrifice paid on the chat card — for "success" (Miracle)
+ * the price is lessened by one rung; otherwise the level as rolled stands.
+ * Painful lessens to nothing; the caller is responsible for suppressing the
+ * completion step in that case.
+ * @param {"painful"|"scarring"|"grave"} level
+ * @param {"success"|"snc"|"consequences"} outcomeLabel
+ * @returns {"none"|"painful"|"scarring"|"grave"}
  */
-async function applyThemeSacrifice(actor, themeId, level) {
-	const theme = actor.items.get(themeId);
+function effectiveSacrificeLevel(level, outcomeLabel) {
+	if (outcomeLabel !== "success") return level;
+	if (level === "grave") return "scarring";
+	if (level === "scarring") return "painful";
+	return "none";
+}
+
+/**
+ * Apply the consequence of a sacrifice roll to a hero. The price is paid by
+ * a theme for painful/scarring and by a tier-6 status for grave.
+ * Performs document mutations only; notifications are shown by the caller.
+ * @param {Actor} actor
+ * @param {"painful"|"scarring"|"grave"} level - The *effective* price level
+ * @param {object} [opts]
+ * @param {string} [opts.themeId]   Required for painful/scarring
+ * @param {string} [opts.statusName] Required for grave
+ * @returns {Promise<{themeName?: string, statusName?: string}|null>}
+ */
+async function applyThemeSacrifice(actor, level, { themeId, statusName } = {}) {
+	if (level === "grave") {
+		if (!statusName) return null;
+		await actor.system.addStatus(statusName, { tier: 6 });
+		return { statusName };
+	}
+
+	const theme = themeId ? actor.items.get(themeId) : null;
 	if (!theme) return null;
 	const themeName = theme.name;
 
@@ -135,35 +160,32 @@ async function _handleApproveModeration(_target, app) {
 
 async function _handleCompleteSacrifice(target) {
 	const { message, roll } = _getMessageAndRoll(target);
-	const { sacrificeLevel, sacrificeThemeId, actorId } = roll.litm;
+	const { sacrificeLevel, sacrificeThemeId, sacrificeStatusName, actorId } =
+		roll.litm;
 	const actor = game.actors.get(actorId);
 	if (!actor?.isOwner) return;
-	const theme = actor.items?.get(sacrificeThemeId);
-	if (!theme) return;
 
-	const confirmKey =
-		sacrificeLevel === "scarring"
-			? "LITM.Ui.sacrifice_confirm_scarring"
-			: "LITM.Ui.sacrifice_confirm_painful";
+	const outcomeLabel = roll.outcome?.label;
+	const effective = effectiveSacrificeLevel(sacrificeLevel, outcomeLabel);
+	if (effective === "none") return;
 
-	const confirmed = await foundry.applications.api.DialogV2.confirm({
-		window: {
-			title: t("LITM.Ui.sacrifice_confirm_title"),
-		},
-		content: `<p>${game.i18n.format(confirmKey, { theme: theme.name })}</p>`,
-		rejectClose: false,
-		modal: true,
+	const result = await _confirmAndApplySacrifice(actor, {
+		effective,
+		themeId: sacrificeThemeId,
+		statusName: sacrificeStatusName,
 	});
-	if (!confirmed) return;
+	if (!result) return;
 
-	const result = await applyThemeSacrifice(
-		actor,
-		sacrificeThemeId,
-		sacrificeLevel,
-	);
-	if (result) {
+	if (result.statusName) {
+		ui.notifications.info(
+			game.i18n.format("LITM.Ui.sacrifice_status_applied", {
+				actor: actor.name,
+				status: result.statusName,
+			}),
+		);
+	} else if (result.themeName) {
 		const notifKey =
-			sacrificeLevel === "scarring"
+			effective === "scarring"
 				? "LITM.Ui.sacrifice_theme_removed"
 				: "LITM.Ui.sacrifice_theme_scratched";
 		ui.notifications.info(
@@ -174,6 +196,53 @@ async function _handleCompleteSacrifice(target) {
 	// Mark sacrifice as completed so button disappears
 	roll.options.sacrificeCompleted = true;
 	await message.update({ rolls: [roll.toJSON()] });
+}
+
+/**
+ * Confirm with the player and apply the sacrifice consequence. The dialog
+ * pre-collected the theme (always) and status name (grave-only), so this
+ * step is a confirm-or-cancel, not a re-collection.
+ * @param {Actor} actor
+ * @param {object} ctx
+ * @param {"painful"|"scarring"|"grave"} ctx.effective
+ * @param {string} [ctx.themeId]
+ * @param {string} [ctx.statusName]
+ * @returns {Promise<{themeName?: string, statusName?: string}|null>}
+ */
+async function _confirmAndApplySacrifice(
+	actor,
+	{ effective, themeId, statusName },
+) {
+	if (effective === "grave") {
+		const name =
+			(statusName || "").trim() || t("LITM.Ui.sacrifice_grave_default");
+		// Status name is user input from the roll dialog — escape before
+		// interpolating into Dialog HTML, but keep the raw name for addStatus.
+		const safeName = foundry.utils.escapeHTML(name);
+		const confirmed = await foundry.applications.api.DialogV2.confirm({
+			window: { title: t("LITM.Ui.sacrifice_confirm_title") },
+			content: `<p>${game.i18n.format("LITM.Ui.sacrifice_confirm_grave_named", { status: safeName })}</p>`,
+			rejectClose: false,
+			modal: true,
+		});
+		if (!confirmed) return null;
+		return applyThemeSacrifice(actor, "grave", { statusName: name });
+	}
+
+	const theme = themeId ? actor.items.get(themeId) : null;
+	if (!theme) return null;
+	const confirmKey =
+		effective === "scarring"
+			? "LITM.Ui.sacrifice_confirm_scarring"
+			: "LITM.Ui.sacrifice_confirm_painful";
+	const confirmed = await foundry.applications.api.DialogV2.confirm({
+		window: { title: t("LITM.Ui.sacrifice_confirm_title") },
+		content: `<p>${game.i18n.format(confirmKey, { theme: theme.name })}</p>`,
+		rejectClose: false,
+		modal: true,
+	});
+	if (!confirmed) return null;
+	return applyThemeSacrifice(actor, effective, { themeId });
 }
 
 async function _handleRejectModeration(_target, app) {
@@ -546,7 +615,97 @@ function _attachContextMenuToRollMessage() {
 			};
 		};
 
-		options.unshift(...["quick", "tracked", "mitigate"].map(createTypeChange));
+		// Override the modifier and total power on an already-rolled message.
+		// Modifier shifts the dice total (which can flip the outcome bracket);
+		// total power overrides the available spend pool. GM/author only.
+		const changeRollValues = {
+			label: t("LITM.Ui.change_roll_values"),
+			icon: '<i class="fa-solid fa-sliders"></i>',
+			visible: (li) => {
+				if (!li.querySelector(".litm.dice-roll[data-type]")) return false;
+				const message = game.messages.get(li.dataset.messageId);
+				if (!message) return false;
+				return game.user.isGM || message.author?.id === game.user.id;
+			},
+			onClick: async (_event, li) => {
+				const message = game.messages.get(li.dataset.messageId);
+				const roll = message?.rolls?.[0];
+				if (!message || !roll) return;
+				const currentModifier = Number(roll.options.modifier) || 0;
+				const currentTotalPower = Number(roll.options.totalPower) || 0;
+				const result = await foundry.applications.api.DialogV2.input({
+					window: { title: t("LITM.Ui.change_roll_values") },
+					content: `
+						<p class="hint">${t("LITM.Ui.change_roll_values_hint")}</p>
+						<div class="form-group">
+							<label for="litm-modifier">${t("LITM.Ui.modifier")}</label>
+							<input id="litm-modifier" name="modifier" type="number" step="1"
+								value="${currentModifier}" autofocus />
+						</div>
+						<div class="form-group">
+							<label for="litm-total-power">${t("LITM.Ui.total_power")}</label>
+							<input id="litm-total-power" name="totalPower" type="number" step="1"
+								value="${currentTotalPower}" />
+						</div>
+					`,
+					ok: { label: t("LITM.Ui.change") },
+					rejectClose: false,
+				});
+				if (!result) return;
+				const newModifier = Number(result.modifier) || 0;
+				const newTotalPower = Number(result.totalPower) || 0;
+				// Roll terms are evaluated once at construction, so changing
+				// options.modifier doesn't recompute roll.total — shift the
+				// stored total by the delta so the outcome bracket
+				// (success / snc / consequences) re-resolves correctly.
+				const delta = newModifier - currentModifier;
+				roll._total = (Number(roll._total) || 0) + delta;
+				roll.options.modifier = newModifier;
+				roll.options.totalPower = newTotalPower;
+				// Foundry's #renderRollContent skips re-render when message
+				// content already has child elements (which LitmRoll always
+				// produces). Re-render the roll ourselves and overwrite
+				// content so the displayed outcome reflects the new total —
+				// for sacrifice this is what gates the Complete Sacrifice
+				// flow on the re-resolved Miracle/Fate/In-Vain bracket.
+				const content = await roll.render();
+				await message.update({ content, rolls: [roll.toJSON()] });
+				ui.notifications?.info(t("LITM.Ui.change_roll_values_done"));
+			},
+		};
+
+		// Reset spent power on a roll message so the player can re-open Spend
+		// Power on it. Common case: a misclick spent power they didn't mean
+		// to commit; the roll itself is still valid, only the spent flag
+		// needs clearing. GM-only (and message author) — players shouldn't
+		// silently undo each other's choices.
+		const resetSpentPower = {
+			label: t("LITM.Ui.reset_spent_power"),
+			icon: '<i class="fa-solid fa-rotate-left"></i>',
+			visible: (li) => {
+				if (!li.querySelector(".litm.dice-roll[data-type]")) return false;
+				const message = game.messages.get(li.dataset.messageId);
+				if (!message) return false;
+				const spent = message.getFlag("litmv2", "spentPower") ?? 0;
+				if (spent <= 0) return false;
+				return game.user.isGM || message.author?.id === game.user.id;
+			},
+			onClick: async (_event, li) => {
+				const message = game.messages.get(li.dataset.messageId);
+				if (!message) return;
+				await message.update({
+					"flags.litmv2.spentPower": 0,
+					"flags.litmv2.appliedSuccesses": [],
+				});
+				ui.notifications?.info(t("LITM.Ui.reset_spent_power_done"));
+			},
+		};
+
+		options.unshift(
+			...["quick", "tracked", "mitigate"].map(createTypeChange),
+			changeRollValues,
+			resetSpentPower,
+		);
 	};
 	Hooks.on("getChatMessageContextOptions", callback);
 }

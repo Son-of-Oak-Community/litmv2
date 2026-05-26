@@ -172,7 +172,7 @@ export async function renderChallenge(actor) {
 			const rightCol = document.createElement("div");
 			rightCol.appendChild(sectionHeader(t("LITM.Terms.threats_consequences")));
 			for (const v of vignettes) {
-				rightCol.appendChild(renderVignette(v));
+				rightCol.appendChild(await renderVignette(v));
 			}
 			for (const threat of addonThreats) {
 				const mockItem = {
@@ -183,7 +183,7 @@ export async function renderChallenge(actor) {
 						isConsequenceOnly: threat.isConsequenceOnly,
 					},
 				};
-				rightCol.appendChild(renderVignette(mockItem));
+				rightCol.appendChild(await renderVignette(mockItem, actor));
 			}
 			grid.appendChild(rightCol);
 		}

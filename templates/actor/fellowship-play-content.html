@@ -2,7 +2,9 @@
 	<div class="grid-2col">
 		<!-- Fellowship Theme -->
 		{{#if theme}}
-		<fieldset class="theme-card item" data-id="{{theme._id}}">
+		<fieldset class="theme-card item" data-id="{{theme._id}}"
+			data-action="toggleThemeDescription"
+			data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}">
 			{{#if theme.system.themebook}}<legend class="litm-banner theme-card__book">{{theme.system.themebook}}</legend>
 			{{/if}}
 			{{> systems/litmv2/templates/partials/theme-card-header.html theme noBurn=true}}
@@ -17,9 +19,7 @@
 
 			<blockquote class="theme-card__quest">{{theme.system.quest.description}}</blockquote>
 
-			<div>
-				{{{ theme.system.description }}}
-			</div>
+			{{> systems/litmv2/templates/partials/theme-description.html description=theme.system.description id=theme._id}}
 		</fieldset>
 		{{else}}
 		<div class="empty-state" data-tour="fellowship-cta">
@@ -35,7 +35,9 @@
 		{{#if storyThemes.length}}
 		<div class="grid-2col">
 			{{#each storyThemes as |theme|}}
-			<fieldset class="theme-card story-theme-card item" data-id="{{theme._id}}">
+			<fieldset class="theme-card story-theme-card item" data-id="{{theme._id}}"
+				data-action="toggleThemeDescription"
+				data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}">
 				<legend>
 					<span class="litm-banner theme-card__book">{{localize "LITM.Terms.story"}}</span>
 				</legend>
@@ -59,7 +61,7 @@
 					</div>
 				</div>
 
-				<div>{{{ theme.system.description }}}</div>
+				{{> systems/litmv2/templates/partials/theme-description.html description=theme.system.description id=theme._id}}
 			</fieldset>
 			{{/each}}
 		</div>

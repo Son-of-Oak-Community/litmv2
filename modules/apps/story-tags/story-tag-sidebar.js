@@ -1250,12 +1250,14 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	}
 
 	static async #onToggleVisibility(_event, target) {
+		if (!game.user.isGM) return;
 		const { id, type } = target.dataset;
 		if (type === "actor") return this._toggleActorVisibility(id);
 		if (type === "story_tag") return this._toggleTagVisibility(id);
 	}
 
 	static async #onToggleEffectVisibility(_event, target) {
+		if (!game.user.isGM) return;
 		const { id, actorId } = target.dataset;
 		return this._toggleEffectVisibility(id, actorId);
 	}

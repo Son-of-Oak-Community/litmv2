@@ -1989,6 +1989,46 @@ section.standard-form.litm-actions-app {
 	color: var(--color-text-subtle);
 }
 
+.litm .theme-card__description {
+	position: relative;
+	margin-top: var(--spacer-8);
+	font-family: var(--font-serif);
+}
+
+.litm .theme-card__description-body {
+	max-height: calc(3 * 1.5em);
+	overflow: hidden;
+	font-style: italic;
+	color: var(--color-text-secondary);
+	-webkit-mask-image: linear-gradient(to bottom, black 1.5em, transparent 5em);
+	mask-image: linear-gradient(to bottom, black 1.5em, transparent 4em);
+	transition: max-height var(--transition-normal);
+}
+
+.litm .theme-card__description.is-expanded .theme-card__description-body {
+	max-height: 80em;
+	-webkit-mask-image: none;
+	mask-image: none;
+}
+
+/* Card-level affordance: the parchment shows a subtle cursor and tooltip
+   surface, telling the player they can click the card to expand. */
+.litm .theme-card:has(.theme-card__description) {
+	cursor: pointer;
+}
+
+/* Restore the default cursor on nested interactive controls so they don't
+   misrepresent themselves as toggles. */
+.litm .theme-card a,
+.litm .theme-card button,
+.litm .theme-card input,
+.litm .theme-card select,
+.litm .theme-card textarea,
+.litm .theme-card label,
+.litm .theme-card [data-action]:not([data-action="toggleThemeDescription"]) {
+	cursor: revert;
+}
+
 /* Default: single column layout - show HR separators */
 .litm hr.theme-separator {
 	display: block;
@@ -2202,11 +2242,11 @@ section.standard-form.litm-actions-app {
 	flex: 0 1 auto;
 }
 
-/* Selected theme card: soft gold wash + glow do the affordance work; no
-   loud border, the rite around the dialog provides the gravity. */
+/* Selected theme card: soft gold wash + warm border do the affordance work;
+   the rite around the dialog provides the gravity. */
 .litm .theme-card.is-selected {
 	background: var(--color-litm-tag-15);
-	box-shadow: var(--shadow-glow);
+	border-color: var(--color-warm-1);
 }
 
 /* Read-only progress pip used by the sacrifice theme cards to show each
@@ -2479,21 +2519,7 @@ section.standard-form.litm-actions-app {
 .litm--play-actions::after {
 	content: "";
 	flex: 1;
-	height: 2px;
-}
-.litm--play-actions::before {
-	background-image: linear-gradient(
-		90deg,
-		transparent 0%,
-		var(--color-border) 100%
-	);
-}
-.litm--play-actions::after {
-	background-image: linear-gradient(
-		90deg,
-		var(--color-border) 0%,
-		transparent 100%
-	);
+	border-top: var(--hr-border);
 }
 
 .litm--play-actions__prompt {
@@ -6737,6 +6763,21 @@ body.litm--colorblind .themed.theme-dark,
 .litm-camping-scene__activity-card:focus-visible {
 	outline: 1px solid var(--color-warm-1);
 	outline-offset: 2px;
+}
+
+.litm-camping-scene__activity-card:disabled {
+	background: var(--color-text-primary-10);
+	border-color: var(--color-text-primary-15);
+	color: var(--color-text-subtle);
+	cursor: not-allowed;
+	opacity: 0.55;
+	filter: grayscale(1);
+}
+
+.litm-camping-scene__activity-card:disabled:hover {
+	background: var(--color-text-primary-10);
+	border-color: var(--color-text-primary-15);
+	color: var(--color-text-subtle);
 }
 
 .litm-camping-scene__activity-card i {

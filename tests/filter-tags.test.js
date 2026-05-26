@@ -54,6 +54,29 @@ describe("LitmRoll.filterTags", () => {
 		});
 	});
 
+	it("drops scratched tags whose data model says canBurn === false", () => {
+		// Defence-in-depth: even if a fellowship_tag (or other non-burnable
+		// effect) somehow reaches state="scratched" through out-of-spec data,
+		// it must not yield the burn bonus. This prevents the recurring
+		// 'fellowship title tag burnable for +3' regression.
+		const result = LitmRoll.filterTags([
+			tag({
+				type: "fellowship_tag",
+				state: "scratched",
+				system: { canBurn: false },
+				name: "fellowship-title",
+			}),
+			tag({
+				type: "power_tag",
+				state: "scratched",
+				system: { canBurn: true },
+				name: "real-burn",
+			}),
+		]);
+
+		expect(result.scratchedTags.map((t) => t.name)).toEqual(["real-burn"]);
+	});
+
 	it("calculatePower consumes filterTags output without re-shaping", () => {
 		const filtered = LitmRoll.filterTags([
 			tag({ type: "power_tag", state: "positive" }),

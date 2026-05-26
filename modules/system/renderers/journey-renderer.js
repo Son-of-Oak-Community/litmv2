@@ -46,10 +46,11 @@ export async function renderJourney(actor) {
 		: null;
 	if (generalConsequence?.system?.consequences?.length) {
 		container.appendChild(
-			vignetteCard({
+			await vignetteCard({
 				label: t("LITM.Terms.general_consequences"),
 				consequences: generalConsequence.system.consequences,
 				isConsequenceOnly: true,
+				relativeTo: generalConsequence,
 			}),
 		);
 	}
@@ -62,7 +63,7 @@ export async function renderJourney(actor) {
 		const grid = document.createElement("div");
 		grid.classList.add("grid-2col");
 		for (const v of vignettes) {
-			grid.appendChild(renderVignette(v));
+			grid.appendChild(await renderVignette(v));
 		}
 		container.appendChild(grid);
 	}

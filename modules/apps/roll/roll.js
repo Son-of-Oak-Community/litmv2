@@ -136,12 +136,15 @@ export class LitmRoll extends foundry.dice.Roll {
 				(this.litm.type === "tracked" || this.litm.type === "mitigate") &&
 				(this.outcome.label === "success" || this.outcome.label === "snc") &&
 				this.power > 0,
+			// A Miracle on Painful lessens the price to nothing — there is
+			// no completion step to perform, so the button is suppressed.
 			canCompleteSacrifice:
 				this.litm.type === "sacrifice" &&
-				!!this.litm.sacrificeThemeId &&
-				(this.litm.sacrificeLevel === "painful" ||
-					this.litm.sacrificeLevel === "scarring") &&
-				!this.litm.sacrificeCompleted,
+				!this.litm.sacrificeCompleted &&
+				!(
+					this.litm.sacrificeLevel === "painful" &&
+					this.outcome?.label === "success"
+				),
 		};
 
 		return foundry.applications.handlebars.renderTemplate(template, chatData);
@@ -204,7 +207,13 @@ export class LitmRoll extends foundry.dice.Roll {
 	}
 
 	static filterTags(tags) {
-		const scratchedTags = tags.filter((t) => t.state === "scratched");
+		// Defence-in-depth: a tag whose data model declares canBurn === false
+		// must never count as a burn even if its state is "scratched". Prevents
+		// out-of-spec content (e.g. legacy power_tag titles on fellowship
+		// themes) from yielding the burn bonus.
+		const scratchedTags = tags.filter(
+			(t) => t.state === "scratched" && t.system?.canBurn !== false,
+		);
 		const isStatus = (t) => t.type === "status_tag";
 		const powerTags = tags.filter(
 			(t) => !isStatus(t) && t.state === "positive",

@@ -68,6 +68,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 		},
 		actions: {
 			viewLinkedRef: viewLinkedRefAction,
+			toggleThemeDescription: LitmActorSheet.#onToggleThemeDescription,
 		},
 		window: {
 			contentClasses: ["standard-form"],
@@ -533,6 +534,27 @@ export class LitmActorSheet extends LitmSheetMixin(
 	_onClose(options) {
 		clearTimeout(this.#notifyStoryTagsTimer);
 		super._onClose(options);
+	}
+
+	/**
+	 * Expand/collapse the theme description. The action lives on both the
+	 * theme-card fieldset (so a click anywhere on the card flips the preview)
+	 * and the description's own "Show more" affordance. Foundry's
+	 * closest-data-action delegation already routes tag/track clicks to their
+	 * own handlers; we only need to bail when the click lands on a generic
+	 * interactive element inside the description body (links/inputs from the
+	 * stored HTML) so we don't steal that interaction.
+	 * @param {Event} event
+	 * @param {HTMLElement} target  Either the card fieldset or the show-more affordance
+	 * @protected
+	 */
+	static #onToggleThemeDescription(event, target) {
+		if (event.target?.closest?.("a, input, select, textarea")) return;
+		const description =
+			target.closest?.(".theme-card__description") ??
+			target.querySelector?.(".theme-card__description");
+		if (!description) return;
+		description.classList.toggle("is-expanded");
 	}
 
 	/**

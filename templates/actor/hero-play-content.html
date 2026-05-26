@@ -3,7 +3,9 @@
 	{{#if themes.length}}
 	<div class="litm-hero-board__themes">
 		{{#each themes as |theme|}}
-		<fieldset class="theme-card item" data-id="{{theme._id}}">
+		<fieldset class="theme-card item" data-id="{{theme._id}}"
+			data-action="toggleThemeDescription"
+			data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}">
 			<legend class="litm-banner theme-card__book">{{theme.system.themebook}}</legend>
 			{{> systems/litmv2/templates/partials/theme-card-header.html theme}}
 
@@ -13,7 +15,7 @@
 
 			<blockquote class="theme-card__quest">{{theme.system.quest.description}}</blockquote>
 
-			<div>{{{ theme.system.description }}}</div>
+			{{> systems/litmv2/templates/partials/theme-description.html description=theme.system.description id=theme._id}}
 		</fieldset>
 		{{/each}}
 	</div>
@@ -94,7 +96,9 @@
 	<!-- Fellowship + Relationships -->
 	{{#if (and hasFellowship (or relationshipVisible.length fellowship.hasTheme fellowshipActorId))}}
 	<div class="litm-hero-board__fellowship">
-		<fieldset class="theme-card item" data-tour="fellowship-section">
+		<fieldset class="theme-card item" data-tour="fellowship-section"
+			data-action="toggleThemeDescription"
+			data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}">
 			<legend class="litm-banner theme-card__book">{{localize "LITM.Terms.fellowship"}}</legend>
 			{{#if fellowship.hasTheme}}
 			<div data-fellowship-actor-id="{{fellowship.actorId}}" data-item-id="{{fellowship._id}}">
@@ -108,7 +112,7 @@
 
 				<blockquote class="theme-card__quest">{{fellowship.system.quest.description}}</blockquote>
 
-				<div>{{{ fellowship.system.description }}}</div>
+				{{> systems/litmv2/templates/partials/theme-description.html description=fellowship.system.description id=fellowship._id}}
 			</div>
 			{{else}}
 			<p class="hint" style="text-align: center">
@@ -150,7 +154,9 @@
 	<div class="litm-hero-board__story">
 		<div class="litm-hero-board__story-grid">
 		{{#each storyThemes as |theme|}}
-		<fieldset class="theme-card story-theme-card item" data-id="{{theme._id}}">
+		<fieldset class="theme-card story-theme-card item" data-id="{{theme._id}}"
+			data-action="toggleThemeDescription"
+			data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}">
 			<legend class="flexrow gap-xs">
 				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.story"}}</span>
 				{{#unless theme.isFellowship}}
@@ -176,7 +182,7 @@
 				</div>
 			</div>
 
-			<div>{{{ theme.system.description }}}</div>
+			{{> systems/litmv2/templates/partials/theme-description.html description=theme.system.description id=theme._id}}
 		</fieldset>
 		{{/each}}
 		</div>

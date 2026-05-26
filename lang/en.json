@@ -143,89 +143,31 @@
 				"setBack": "Set Back",
 				"weaken": "Weaken"
 			},
+			"clear_action": "Clear this Action",
 			"view_action": "Read this Action",
 			"view_linked_ref": "View linked reference",
 			"view_linked_ref_named": "View {name}",
 			"warn_no_character": "Assign a hero to your user first."
 		},
-		"Challenges": {
-			"attacker": "Attacker",
-			"barrier-hazard": "Barrier or Hazard",
-			"charge": "Charge",
-			"countdown": "Countdown",
-			"mystery": "Mystery",
-			"pursuer": "Pursuer",
-			"quarry": "Quarry",
-			"temptation": "Temptation",
-			"watcher": "Watcher"
-		},
 		"Editor": {
 			"ingress": "Ingress"
 		},
 		"Effects": {
-			"advance": {
-				"action": "Increase a progress status 1 Power per tier.",
-				"cost": "1 Power per tier.",
-				"description": "Make progress, get closer, push forward.",
-				"key": "Advance"
-			},
-			"attack": {
-				"action": "Give your target a harmful status.",
-				"cost": "1 Power per tier.",
-				"description": "Slash, punch, lay a curse, shoot.",
-				"key": "Attack"
-			},
-			"bestow": {
-				"action": "Give yourself or an ally new abilities using tags.",
-				"cost": "2 Power per tag.",
-				"description": "Teach, empower, enchant, equip.",
-				"key": "Bestow"
-			},
-			"category_ally": "For Yourself or for an Ally",
-			"category_consequence": "Against a Consequence",
-			"category_other": "Other Effect",
-			"category_process": "On a Process",
-			"category_target": "Against an Opponent or a Target",
 			"create": {
 				"action": "Create a new object or being using tags.",
-				"cost": "2 Power per tag.",
-				"description": "Craft, find, purchase, summon, rally.",
-				"key": "Create"
+				"description": "Craft, find, purchase, summon, rally."
 			},
 			"discover": {
 				"action": "Discover a valuable detail.",
-				"cost": "1 Power per detail.",
-				"description": "Sense, recall, research, converse.",
-				"key": "Discover"
-			},
-			"disrupt": {
-				"action": "Give your target a hindering tag or status.",
-				"cost": "1 Power per tier, 2 Power per tag.",
-				"description": "Blind, confuse, shock, trip, interrupt.",
-				"key": "Disrupt"
-			},
-			"effect": "Effect",
-			"enhance": {
-				"action": "Give yourself or an ally a helpful status.",
-				"cost": "1 Power per tier.",
-				"description": "Assist, aim, boost, take cover.",
-				"key": "Enhance"
+				"description": "Sense, recall, research, converse."
 			},
 			"extra_feat": {
 				"action": "Extra Feat",
-				"cost": "1 Power per additional feature or minor achievement included in the action.",
-				"description": "Add a feature or minor achievement to an action.",
-				"key": "Extra Feat"
+				"description": "Add a feature or minor achievement to an action."
 			},
 			"inflict": {
 				"action": "Inflict Status",
 				"description": "Inflict a status on a target."
-			},
-			"influence": {
-				"action": "Give your target a compelling status.",
-				"cost": "1 Power per tier.",
-				"description": "Convince, threaten, provoke, mind control.",
-				"key": "Influence"
 			},
 			"mitigate": {
 				"action": "Reduce or cancel incoming Effects.",
@@ -237,27 +179,9 @@
 				"action": "Reduce Status",
 				"description": "Reduce a status on yourself or an ally."
 			},
-			"restore": {
-				"action": "Reduce a harmful status or recover a scratched power tag.",
-				"cost": "1 Power per tier 2 Power per tag.",
-				"description": "Heal, repair, rejuvenate, undo.",
-				"key": "Restore"
-			},
 			"scratch": {
 				"action": "Recover a scratched tag",
 				"description": "Recover a scratched tag."
-			},
-			"set_back": {
-				"action": "Decrease a progress status.",
-				"cost": "1 Power per tier.",
-				"description": "Delay, ruin, sabotage, reverse.",
-				"key": "Set Back"
-			},
-			"weaken": {
-				"action": "Remove a target’s useful tag or status.",
-				"cost": "1 Power per tier 2 Power per tag.",
-				"description": "Break, sunder, neutralize, silence.",
-				"key": "Weaken"
 			}
 		},
 		"Hero": {
@@ -313,13 +237,11 @@
 		},
 		"Tags": {
 			"burn": "Scratch",
-			"burnt": "Scratched",
 			"contents": "Contents",
 			"is_burnt": "Scratched",
 			"power": "Power",
 			"power_tags": "Power Tags",
 			"story": "Story",
-			"tags_and_statuses": "Tags & Statuses",
 			"weakness": "Weakness",
 			"weakness_tags": "Weakness Tags"
 		},
@@ -540,6 +462,9 @@
 			"category_placeholder": "e.g. pursuer",
 			"change": "Change",
 			"change_roll_type": "Change Roll Type",
+			"change_roll_values": "Change Roll Outcome / Power",
+			"change_roll_values_done": "Roll values updated.",
+			"change_roll_values_hint": "Override the modifier (shifts dice total and outcome) and total power (power available to spend) for this roll.",
 			"choose_improvement": "Choose Improvement",
 			"click_open_context_remove": "<span class='reference'>Click</span> to open sheet, <span class='reference'>Right-Click</span> to remove.",
 			"click_open_user_character": "<span class='reference'>Click</span> to open sheet.<hr/>This actor is auto-added because a user is assigned to it.",
@@ -551,6 +476,7 @@
 			"click_to_edit_story_theme": "Click to edit story theme",
 			"click_to_edit_theme": "Click to edit theme",
 			"click_to_join_roll": "Click to join roll",
+			"click_toggle_description": "Click to expand or collapse the description",
 			"click_to_scratch_tag": "<span class='reference'>Click</span> to Scratch/Unscratch",
 			"click_to_toggle_tag": "<span class='reference'>Click</span> to Scratch/Unscratch<br/><span class='reference'>Shift+Click</span> to Activate/Deactivate",
 			"click_to_view_actor": "Click to view actor",
@@ -757,6 +683,9 @@
 			"migration_start": "Migrating world data — please do not close the application.",
 			"moderate_roll_gm": "Moderate Roll",
 			"moderate_roll_gm_hint": "wants to roll with a",
+			"moderate_roll_gm_hint_action": "wants to attempt",
+			"moderate_roll_gm_hint_sacrifice": "wants to make a",
+			"moderate_roll_gm_hint_sacrifice_of": "of",
 			"moderate_roll_player": "Wait for it!",
 			"moderate_roll_player_hint": "The GM is moderating the roll. Please wait for their decision.",
 			"modifier": "Modifier",
@@ -824,6 +753,8 @@
 			"remove_theme": "Remove Theme",
 			"removed": "Removed",
 			"replace_general_consequence_content": "Replace the current general consequence vignette?",
+			"reset_spent_power": "Reset Spent Power",
+			"reset_spent_power_done": "Spent power was reset on this roll.",
 			"replace_general_consequence_title": "Replace General Consequences",
 			"replace_story_theme_content": "Replace the current story theme with the dropped one?",
 			"replace_story_theme_title": "Replace Story Theme",
@@ -859,11 +790,18 @@
 			"sacrifice_choose_theme": "Choose Theme",
 			"sacrifice_complete": "Complete Sacrifice",
 			"sacrifice_completed": "Sacrifice has been completed.",
+			"sacrifice_confirm_grave_named": "This will apply the tier-6 status <strong>{status}</strong> to this character. Proceed?",
 			"sacrifice_confirm_painful": "This will scratch all tags in <strong>{theme}</strong>. This can be undone manually from the character sheet.",
 			"sacrifice_confirm_scarring": "This will permanently remove <strong>{theme}</strong> from your character. This cannot be undone.",
 			"sacrifice_confirm_title": "Complete Sacrifice",
 			"sacrifice_grave": "Grave",
+			"sacrifice_grave_default": "Dead",
+			"sacrifice_grave_label": "Status on Consequence",
 			"sacrifice_grave_price": "Take a tier-6 status (typically death or transformation).",
+			"sacrifice_grave_status_hint": "On a Consequence, this character takes this status at tier 6. On a Miracle, they lose the chosen theme instead.",
+			"sacrifice_status_applied": "{actor} now bears the status: <strong>{status}</strong>.",
+			"sacrifice_theme_grave_hint": "Lost only if you roll a Miracle (the Sacrifice lessens to Scarring).",
+			"sacrifice_theme_grave_legend": "Theme to Lose on Miracle",
 			"sacrifice_level": "Sacrifice Level",
 			"sacrifice_painful": "Painful",
 			"sacrifice_painful_price": "Scratch all tags in a relevant theme.",
