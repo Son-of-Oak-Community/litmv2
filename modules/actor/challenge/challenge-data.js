@@ -178,6 +178,20 @@ export class ChallengeData extends LimitsMixin(
 	}
 
 	/**
+	 * Canonical limits live in `system.limits` (schema field), not in
+	 * `flags.litmv2.limits` like other actor types. The `LimitsMixin` getter
+	 * defines `get limits()` on the prototype without a setter, which causes
+	 * Foundry's DataModel initializer to skip assigning the schema-stored
+	 * value as an own property — so we must override the getter to read from
+	 * source instead.
+	 * @override
+	 * @returns {object[]}
+	 */
+	get limits() {
+		return this._source.limits ?? [];
+	}
+
+	/**
 	 * Persist the canonical `system.limits` array. Callers pass the desired
 	 * state; addon-derived limits (which live on the addon items) should not
 	 * appear here. With `this.limits` left canonical in {@link prepareDerivedData},

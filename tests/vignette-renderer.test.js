@@ -21,7 +21,11 @@ class StubEl {
 		this.children = [];
 		this.classes = new Set();
 		this.classList = {
-			add: (...c) => c.forEach((x) => this.classes.add(x)),
+			add: (...c) => {
+				c.forEach((x) => {
+					this.classes.add(x);
+				});
+			},
 			contains: (c) => this.classes.has(c),
 		};
 		this.textContent = "";
@@ -33,10 +37,7 @@ class StubEl {
 	}
 	find(tag, cls) {
 		for (const c of this.children) {
-			if (
-				c.tagName === tag &&
-				(cls == null || c.classes.has(cls))
-			) {
+			if (c.tagName === tag && (cls == null || c.classes.has(cls))) {
 				return c;
 			}
 			const nested = c.find?.(tag, cls);
@@ -47,10 +48,7 @@ class StubEl {
 	findAll(tag, cls) {
 		const out = [];
 		for (const c of this.children) {
-			if (
-				c.tagName === tag &&
-				(cls == null || c.classes.has(cls))
-			) {
+			if (c.tagName === tag && (cls == null || c.classes.has(cls))) {
 				out.push(c);
 			}
 			if (c.findAll) out.push(...c.findAll(tag, cls));
@@ -114,9 +112,7 @@ describe("vignetteCard", () => {
 
 		const items = card.findAll("li", "consequence-item");
 		expect(items).toHaveLength(2);
-		expect(items[0].innerHTML).toBe(
-			"<p>You are <strong>haunted</strong>.</p>",
-		);
+		expect(items[0].innerHTML).toBe("<p>You are <strong>haunted</strong>.</p>");
 		expect(items[1].innerHTML).toBe("<p>The temperature drops.</p>");
 		for (const li of items) {
 			expect(li.textContent).toBe("");
