@@ -23,7 +23,10 @@ async function collectActorChanges(actor, changes) {
 			entry.toUpdate.push({
 				_id: e._id,
 				type: "status_tag",
-				system: _replace(e.system.toObject() || {}),
+				// `e.system` is already a StatusTagData (LitmActiveEffect.migrateData
+				// renamed the type before validation), so toObject() yields the
+				// migrated status_tag system shape to persist.
+				system: e.system.toObject() || {},
 			});
 		}
 	}

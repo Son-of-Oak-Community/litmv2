@@ -396,15 +396,7 @@ export class WelcomeOverlay {
 
 		const canCreateHero = game.user.can("ACTOR_CREATE");
 
-		const tours = [];
-		for (const [id, tour] of game.tours.entries()) {
-			if (!id.startsWith("litmv2.")) continue;
-			tours.push({
-				id,
-				title: game.i18n.localize(tour.title),
-				description: game.i18n.localize(tour.description),
-			});
-		}
+		const tours = this.#collectTours();
 
 		return {
 			logo: CONFIG.litmv2.assets.logo,
@@ -1233,10 +1225,11 @@ export class WelcomeOverlay {
 	}
 
 	/**
-	 * Build context for the hero-created slide.
-	 * @returns {object}
+	 * Collect the litmv2 guided tours into render-ready entries. Shared by the
+	 * welcome and hero-created slides.
+	 * @returns {Array<{id: string, title: string, description: string}>}
 	 */
-	#prepareHeroCreatedContext() {
+	#collectTours() {
 		const tours = [];
 		for (const [id, tour] of game.tours.entries()) {
 			if (!id.startsWith("litmv2.")) continue;
@@ -1246,6 +1239,15 @@ export class WelcomeOverlay {
 				description: game.i18n.localize(tour.description),
 			});
 		}
+		return tours;
+	}
+
+	/**
+	 * Build context for the hero-created slide.
+	 * @returns {object}
+	 */
+	#prepareHeroCreatedContext() {
+		const tours = this.#collectTours();
 
 		return {
 			logo: CONFIG.litmv2.assets.logo,

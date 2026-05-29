@@ -1,7 +1,7 @@
 import { relationshipTagEffect } from "../../active-effects/effect-factories.js";
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { parseTagStringMatch } from "../../item/action/tag-string.js";
 import { detectTrackCompletion } from "../../system/chat.js";
-import { ContentSources } from "../../system/content-sources.js";
 import { Sockets } from "../../system/sockets.js";
 import { findFellowshipTheme, getStoryTagSidebar } from "../../utils.js";
 import { ensureHeroState } from "./camping-state.js";
@@ -23,11 +23,9 @@ const TRACK_MAX = 3;
  *
  * Returns:
  *   operations: {
- *     sceneTagDeletes:       [effectId],
  *     statusReductions:      [{ effect, amount }],
  *     statusDeletes:         [{ effect }],
  *     unscratches:           [{ effect }],
- *     scratches:             [{ effect }],               // backpack tags not kept
  *     renames:               [{ effect, newName }],
  *     improves:              [{ theme, owner, newValue }],  // camp-mode reflect
  *     improvements:          [{ theme, owner, sourceHero }], // sojourn-mode reflect
@@ -79,11 +77,9 @@ export function buildOperations(state, world) {
 
 function emptyOps() {
 	return {
-		sceneTagDeletes: [],
 		statusReductions: [],
 		statusDeletes: [],
 		unscratches: [],
-		scratches: [],
 		// Backpack tags the hero didn't keep are *deactivated* (Foundry's
 		// disabled flag), not scratched — the effect stays on the bag and
 		// can be re-enabled later instead of consumed.
@@ -132,7 +128,7 @@ export function parseCampsiteEntries(raw) {
 
 function describeCampsiteEntry(entry) {
 	if (entry.type === "status_tag") {
-		const tier = (entry.system?.tiers ?? []).lastIndexOf(true) + 1;
+		const tier = StatusTagData.tierOf(entry.system?.tiers);
 		return tier ? `${entry.name}-${tier}` : entry.name;
 	}
 	return entry.system?.isSingleUse ? `${entry.name}!` : entry.name;
@@ -437,11 +433,6 @@ function buildQualityTimeOps(hero, heroState, world, ops, heroRecap) {
  * parent.
  */
 export async function applyOperations(operations) {
-	// Scene story-tag deletes (via ContentSources)
-	if (operations.sceneTagDeletes.length) {
-		await ContentSources.deleteStoryTags(operations.sceneTagDeletes);
-	}
-
 	// Status reductions — calculate new tier arrays, batch updates and
 	// deletes by parent.
 	const statusUpdatesByParent = new Map();
@@ -469,12 +460,11 @@ export async function applyOperations(operations) {
 		await parent.deleteEmbeddedDocuments("ActiveEffect", ids);
 	}
 
-	// Unscratch + scratch — batch per parent. We bypass the
+	// Unscratch — batch per parent. We bypass the
 	// ScratchableMixin.toggleScratch wrapper because the existing camping
 	// code already wrote system.isScratched directly (no pre/post hooks
 	// were ever fired from here).
 	await applyScratchBatch(operations.unscratches, false);
-	await applyScratchBatch(operations.scratches, true);
 
 	// Disables — backpack tags the hero didn't keep. Foundry's standard
 	// `disabled: true` so the entry stays on the bag and can be re-enabled

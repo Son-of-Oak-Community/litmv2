@@ -2,7 +2,6 @@ import {
 	getDefaultThemeLevel,
 	getThemeLevels,
 	POWER_TAG_TYPES,
-	THEME_TAG_TYPES,
 } from "../../system/config.js";
 
 export class ThemeData extends foundry.abstract.TypeDataModel {
@@ -116,18 +115,6 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 
 	get themeTag() {
 		return [...this.parent.effects].find((e) => e.system.isTitleTag) ?? null;
-	}
-
-	get activatedPowerTags() {
-		return this.powerTags.filter((e) => e.active);
-	}
-
-	get availablePowerTags() {
-		return this.activatedPowerTags;
-	}
-
-	get allTags() {
-		return [...this.parent.effects].filter((e) => THEME_TAG_TYPES.has(e.type));
 	}
 
 	nextAvailableQuestion(tagType, themebook) {

@@ -74,10 +74,6 @@ export class ThemeSheet extends LitmItemSheet {
 		const context = await super._prepareContext(options);
 
 		// Computed properties
-		const levels = getThemeLevels().reduce((acc, level) => {
-			acc[level] = game.i18n.localize(`LITM.Terms.${level}`);
-			return acc;
-		}, {});
 		const levelOptions = getThemeLevels().map((level) => ({
 			value: level,
 			label: game.i18n.localize(`LITM.Terms.${level}`),
@@ -131,7 +127,6 @@ export class ThemeSheet extends LitmItemSheet {
 			// Computed properties
 			powerTags: this.system.powerTags,
 			weaknessTags: this.system.weaknessTags,
-			levels,
 			levelOptions,
 			themebooks,
 			themebookLevels,

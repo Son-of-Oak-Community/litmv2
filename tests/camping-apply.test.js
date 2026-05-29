@@ -55,7 +55,6 @@ describe("buildOperations — backpack scratch", () => {
 		);
 
 		expect(operations.disables).toContainEqual({ effect: fx });
-		expect(operations.scratches).toEqual([]);
 		expect(recap.heroes[0].lines).toContainEqual(
 			expect.objectContaining({
 				kind: "backpack-deactivated",
@@ -910,11 +909,10 @@ describe("buildOperations — place of stay", () => {
 		// Camp clears it), the apply layer must not enqueue duplicate deletes.
 		state.placeOfStay.sceneTagsToExpire = [sceneFx.id];
 
-		const { operations, recap } = buildOperations(
+		const { recap } = buildOperations(
 			state,
 			world({ sceneEffects: [sceneFx] }),
 		);
-		expect(operations.sceneTagDeletes).toEqual([]);
 		expect(recap.placeOfStay).not.toHaveProperty("sceneTagsExpired");
 	});
 
@@ -939,7 +937,7 @@ describe("buildOperations — place of stay", () => {
 				isConsequenceOnly: false,
 			},
 		];
-		const { operations, recap } = buildOperations(
+		const { recap } = buildOperations(
 			state,
 			world({ threatItems }),
 		);
@@ -952,8 +950,6 @@ describe("buildOperations — place of stay", () => {
 				isConsequenceOnly: false,
 			},
 		]);
-		// Threats are narrative — no operations dispatched for them.
-		expect(operations.sceneTagDeletes).toEqual([]);
 	});
 
 	it("no threats → empty recap list", () => {

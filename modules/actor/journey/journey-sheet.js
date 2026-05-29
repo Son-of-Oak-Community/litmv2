@@ -12,8 +12,8 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 		tag: "form",
 		actions: {
 			addVignette: LitmActorSheet._onAddVignette,
-			editVignette: LitmActorSheet._onEditVignette,
-			removeVignette: LitmActorSheet._onRemoveVignette,
+			editVignette: LitmActorSheet._onEditItem,
+			removeVignette: LitmActorSheet._onRemoveItem,
 			clearGeneralConsequence: JourneySheet.#onClearGeneralConsequence,
 		},
 		form: {
@@ -58,11 +58,8 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 
 		// Prepare vignette items
 		const generalConsequenceId = this.system.generalConsequences;
-		const {
-			vignettes,
-			vignettesByType,
-			excluded: generalConsequence,
-		} = await this._prepareVignettes({ excludeId: generalConsequenceId });
+		const { vignettesByType, excluded: generalConsequence } =
+			await this._prepareVignettes({ excludeId: generalConsequenceId });
 
 		return {
 			...context,
@@ -80,8 +77,6 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 			tagsString: this.system.tags || "",
 			generalConsequenceId,
 			generalConsequence,
-			vignettes,
-			vignettesByType,
 			displayVignettes: vignettesByType.flatMap((g) => g.vignettes),
 		};
 	}

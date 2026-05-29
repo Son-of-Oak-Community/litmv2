@@ -240,7 +240,7 @@ export function TagStringSyncMixin(Base) {
 		/* -------------------------------------------- */
 
 		/** @override */
-		async _onChangeSheetMode(_event, _target) {
+		async _onChangeSheetMode() {
 			const wasEditMode = this._isEditMode;
 			await this.submit();
 			if (wasEditMode) {

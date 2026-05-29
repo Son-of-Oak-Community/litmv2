@@ -1,6 +1,7 @@
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { makeTagStringRe } from "../../system/config.js";
 import { parseTagStringMatch } from "./tag-string.js";
-import { getVerbDef, VERB_DEFINITIONS } from "./verb-definitions.js";
+import { getVerbDef } from "./verb-definitions.js";
 
 /**
  * Scan free-text for `[name]` / `[name-N]` / `[name-]` / `[name!]` markup
@@ -20,9 +21,7 @@ export function scanMarkup(text) {
 	for (const match of text.matchAll(re)) {
 		const data = parseTagStringMatch(match);
 		if (data.type === "status_tag") {
-			let tier = 0;
-			const tiers = data.system.tiers || [];
-			for (let i = 0; i < tiers.length; i++) if (tiers[i]) tier = i + 1;
+			const tier = StatusTagData.tierOf(data.system.tiers);
 			tokens.push({
 				type: "status",
 				name: data.name,
@@ -120,14 +119,6 @@ export function getSuccessCost(success) {
 }
 
 /**
- * Sum the cost an extra feat row contributes (1 Power per entry). Free-text
- * extra feats don't carry markup — the cost is flat.
- */
-export function getExtraFeatCost(_text) {
-	return 1;
-}
-
-/**
  * Sum cost across markup tokens. Tag = 2 Power, single-use tag = 1, status
  * at tier N = N, status with no tier = 1 variable token (priced when the
  * user picks a tier in Spend Power).
@@ -178,7 +169,3 @@ export function computePowerBudget(
 	const remaining = Math.max(0, power - spent);
 	return { power, spent, remaining };
 }
-
-// Exposed for code that builds option lists from definitions, e.g. the
-// action sheet's verb dropdown.
-export { VERB_DEFINITIONS };

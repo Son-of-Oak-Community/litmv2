@@ -1,5 +1,6 @@
 import { statusTagEffect } from "../../active-effects/effect-factories.js";
 import { partitionEffects } from "../../active-effects/effect-queries.js";
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
 
 /**
  * Mixin that adds universal tag/status getters to actor data models.
@@ -70,7 +71,7 @@ export function EffectTagsMixin(Base) {
 			{ tier, tiers, img, isHidden = false, limitId = null } = {},
 		) {
 			const markTier =
-				tier ?? (tiers ? Math.max(1, tiers.lastIndexOf(true) + 1) : 1);
+				tier ?? (tiers ? Math.max(1, StatusTagData.tierOf(tiers)) : 1);
 			const lower = name?.toLowerCase();
 			const existing = lower
 				? [...this.parent.allApplicableEffects()].find(

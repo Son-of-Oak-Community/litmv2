@@ -1,5 +1,4 @@
 import { EFFECT_TYPE_COLORS } from "../system/config.js";
-import { localize as t } from "../utils.js";
 
 const { DocumentSheetV2, HandlebarsApplicationMixin } =
 	foundry.applications.api;
@@ -45,8 +44,6 @@ export class LitmActiveEffectSheet extends HandlebarsApplicationMixin(
 			...context,
 			effect,
 			system: effect.system,
-			source: effect.toObject(),
-			typeLabel: t(`TYPES.ActiveEffect.${effect.type}`),
 			accentVar: colorVar,
 			isActive: !effect.disabled,
 			isStoryTag: effect.type === "story_tag",

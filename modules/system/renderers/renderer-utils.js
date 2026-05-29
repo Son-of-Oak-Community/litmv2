@@ -1,3 +1,4 @@
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { parseTagStringMatch } from "../../item/action/tag-string.js";
 import { makeTagStringRe } from "../config.js";
 
@@ -107,29 +108,23 @@ export function proseChipsHtml(text) {
 			out += foundry.utils.escapeHTML(text.slice(lastIndex, start));
 
 		const data = parseTagStringMatch(match);
+		let cls;
+		let label;
 		if (data.type === "status_tag") {
-			const tier = _highestTier(data.system.tiers);
-			const cls = tier > 0 ? "litm-status" : "litm-status litm--variable-tier";
-			const label = tier > 0 ? `${data.name}-${tier}` : data.name;
-			out += `<span class="${cls}" data-text="${foundry.utils.escapeHTML(data.name)}" draggable="true">${foundry.utils.escapeHTML(label)}</span>`;
+			const tier = StatusTagData.tierOf(data.system.tiers);
+			cls = tier > 0 ? "litm-status" : "litm-status litm--variable-tier";
+			label = tier > 0 ? `${data.name}-${tier}` : data.name;
 		} else {
-			const cls = data.system.isSingleUse
+			cls = data.system.isSingleUse
 				? "litm-power_tag litm--single-use"
 				: "litm-power_tag";
-			const label = data.system.isSingleUse ? `${data.name} ✱` : data.name;
-			out += `<span class="${cls}" data-text="${foundry.utils.escapeHTML(data.name)}" draggable="true">${foundry.utils.escapeHTML(label)}</span>`;
+			label = data.system.isSingleUse ? `${data.name} ✱` : data.name;
 		}
+		out += `<span class="${cls}" data-text="${foundry.utils.escapeHTML(data.name)}" draggable="true">${foundry.utils.escapeHTML(label)}</span>`;
 
 		lastIndex = end;
 	}
 	if (lastIndex < text.length)
 		out += foundry.utils.escapeHTML(text.slice(lastIndex));
 	return out;
-}
-
-function _highestTier(tiers) {
-	if (!Array.isArray(tiers)) return 0;
-	let tier = 0;
-	for (let i = 0; i < tiers.length; i++) if (tiers[i]) tier = i + 1;
-	return tier;
 }

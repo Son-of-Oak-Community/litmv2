@@ -3,6 +3,7 @@ import {
 	storyTagEffect,
 } from "../../active-effects/effect-factories.js";
 import { EFFECT_TYPES } from "../../system/config.js";
+import { parseTagStringMatch } from "../action/tag-string.js";
 
 export class VignetteData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
@@ -32,21 +33,14 @@ export class VignetteData extends foundry.abstract.TypeDataModel {
 	 */
 	async syncEffectsFromConsequences() {
 		const doc = this.parent;
-		const matches = this.consequences.flatMap((string) =>
-			Array.from(string.matchAll(CONFIG.litmv2.tagStringRe)),
+		// Parse consequence markup with the canonical tag-string parser so
+		// `[name-N]` yields a status_tag (with a one-hot tiers array) and
+		// `[name]` a story_tag — matching the rest of the system.
+		const desired = this.consequences.flatMap((string) =>
+			Array.from(string.matchAll(CONFIG.litmv2.tagStringRe)).map(
+				parseTagStringMatch,
+			),
 		);
-
-		// Build desired effects list from consequence text
-		const desired = matches.map(([_, name, separator, value]) => {
-			if (separator === "-") {
-				return {
-					name,
-					type: EFFECT_TYPES.status_tag,
-					tierIndex: Number(value),
-				};
-			}
-			return { name, type: EFFECT_TYPES.story_tag, tierIndex: null };
-		});
 
 		// Key existing effects for matching
 		const existing = new Map();
@@ -63,11 +57,8 @@ export class VignetteData extends foundry.abstract.TypeDataModel {
 			const found = existing.get(key);
 			if (found) {
 				matched.add(found.id);
-				if (d.type === EFFECT_TYPES.status_tag && d.tierIndex != null) {
-					const newTiers = Array.from(
-						{ length: 6 },
-						(_, i) => i + 1 === d.tierIndex,
-					);
+				if (d.type === EFFECT_TYPES.status_tag) {
+					const newTiers = d.system.tiers;
 					if (newTiers.some((v, i) => v !== found.system.tiers[i])) {
 						toUpdate.push({ _id: found.id, "system.tiers": newTiers });
 					}
@@ -75,13 +66,7 @@ export class VignetteData extends foundry.abstract.TypeDataModel {
 			} else {
 				const effectData =
 					d.type === EFFECT_TYPES.status_tag
-						? statusTagEffect({
-								name: d.name,
-								tiers: Array.from(
-									{ length: 6 },
-									(_, i) => i + 1 === d.tierIndex,
-								),
-							})
+						? statusTagEffect({ name: d.name, tiers: d.system.tiers })
 						: storyTagEffect({ name: d.name });
 				toCreate.push(effectData);
 			}
