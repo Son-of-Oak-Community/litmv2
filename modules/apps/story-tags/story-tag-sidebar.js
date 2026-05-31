@@ -4,7 +4,10 @@ import {
 	updateEffectsByParent,
 } from "../../active-effects/effect-factories.js";
 import { resolveEffect } from "../../active-effects/effect-queries.js";
-import { parseTagStringMatch } from "../../item/action/tag-string.js";
+import {
+	classifyTagStringMatch,
+	parseTagStringMatch,
+} from "../../item/action/tag-string.js";
 import { error, info } from "../../logger.js";
 import { ACTOR_TAG_TYPES, FLAG_LIMIT_TYPES } from "../../system/config.js";
 import {
@@ -836,8 +839,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const match = [...matches][0];
 		if (!match) return;
 
-		const [, name, separator, value] = match;
-		const isStatus = separator === "-";
+		const { name, isStatus, value } = classifyTagStringMatch(match);
 		const data = {
 			id: foundry.utils.randomID(),
 			name,

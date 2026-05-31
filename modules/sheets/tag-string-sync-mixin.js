@@ -1,3 +1,4 @@
+import { classifyTagStringMatch } from "../item/action/tag-string.js";
 import { ACTOR_TAG_TYPES } from "../system/config.js";
 
 /**
@@ -39,11 +40,7 @@ export function TagStringSyncMixin(Base) {
 			const matches = Array.from(
 				tagsString.matchAll(CONFIG.litmv2.tagStringRe),
 			);
-			const parsed = matches.map(([_, name, separator, value]) => ({
-				name,
-				isStatus: separator === "-",
-				tier: Number.parseInt(value, 10) || 0,
-			}));
+			const parsed = matches.map(classifyTagStringMatch);
 
 			const existing = this.document.effects.filter(
 				(e) => ACTOR_TAG_TYPES.has(e.type) && !e.getFlag("litmv2", "addonId"),

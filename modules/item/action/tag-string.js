@@ -28,6 +28,30 @@
  */
 
 /**
+ * Lightweight classification of a tag-string match, for callers that diff
+ * effects against a string or build drag payloads rather than create full
+ * ActiveEffect data. Mirrors the capture-group order of
+ * `CONFIG.litmv2.tagStringRe`: `[full, name, exclamation, separator, value]`.
+ *
+ * Hand-rolling this destructuring is bug-prone — the `exclamation` group is
+ * easy to forget, which shifts `separator`/`value` by one and silently
+ * downgrades `[name-tier]` statuses to plain story tags. Use this helper
+ * instead of re-destructuring the match.
+ *
+ * @param {RegExpMatchArray} match  A match from CONFIG.litmv2.tagStringRe
+ * @returns {{ name: string, isStatus: boolean, tier: number, value: string|undefined }}
+ */
+export function classifyTagStringMatch(match) {
+	const [, name, , separator, value] = match;
+	return {
+		name,
+		isStatus: separator === "-",
+		tier: Number.parseInt(value, 10) || 0,
+		value,
+	};
+}
+
+/**
  * Convert a tag-string regex match into ActiveEffect creation data.
  * @param {RegExpMatchArray} match  A match from CONFIG.litmv2.tagStringRe
  * @returns {{ name: string, type: string, system: object }}
