@@ -42,30 +42,27 @@ export class LitmTokenHUD extends TokenHUD {
 		const packs = ContentSources.getPacks("statuses");
 		if (!packs.length) return;
 
-		// Build a combined index from all status packs
+		// Cheap staleness check from indices, keyed by slugified id (the same
+		// key CONFIG.statusEffects dedupes on). Deduping here keeps the size
+		// comparison honest when two docs slugify to the same id.
 		const indexIds = new Set();
 		for (const pack of packs) {
 			const index = await pack.getIndex();
-			for (const entry of index) indexIds.add(entry._id);
+			for (const entry of index)
+				indexIds.add(entry.name.slugify({ strict: true }));
 		}
 
-		const currentIds = new Set(CONFIG.statusEffects.map((s) => s._id));
+		// Spread (array iterator) is safe even if the Proxy's ownKeys is
+		// currently corrupt by duplicate ids — Object.values is not.
+		const current = [...CONFIG.statusEffects];
+		const currentIds = new Set(current.map((s) => s.id));
 		const stale =
+			current.length !== currentIds.size || // already corrupt — self-heal
 			currentIds.size !== indexIds.size ||
 			[...indexIds].some((id) => !currentIds.has(id));
 		if (!stale) return;
 
-		const allDocs = [];
-		for (const pack of packs) {
-			const docs = await pack.getDocuments();
-			allDocs.push(...docs);
-		}
-		CONFIG.statusEffects = allDocs.map((doc) => ({
-			id: doc.name.slugify({ strict: true }),
-			_id: doc.id,
-			name: doc.name,
-			img: doc.img,
-		}));
+		CONFIG.statusEffects = await ContentSources.getStatusEffectConfigs(packs);
 	}
 
 	/** @override */
@@ -112,7 +109,11 @@ export class LitmTokenHUD extends TokenHUD {
 	 */
 	_getStatusEffectChoices() {
 		const choices = {};
-		const statuses = Object.values(CONFIG.statusEffects).sort(
+		// Iterate via the array spread, not Object.values: the v14
+		// CONFIG.statusEffects Proxy throws on Object.values if any third-party
+		// pack introduces a duplicate slugified id. choices is keyed by id, so
+		// any positional duplicates collapse harmlessly here.
+		const statuses = [...CONFIG.statusEffects].sort(
 			(a, b) =>
 				(a.order ?? 0) - (b.order ?? 0) ||
 				(a.name ?? "").localeCompare(b.name ?? "", game.i18n.lang),

@@ -2249,6 +2249,24 @@ section.standard-form.litm-actions-app {
 	border-color: var(--color-warm-1);
 }
 
+/* A spent theme has every tag already scratched. Dim it everywhere as a hint;
+   under .painful-mode (where it can't be a target) make it inert too. */
+.litm--sacrifice-theme-grid .theme-card.is-spent {
+	opacity: 0.55;
+}
+.litm--sacrifice-theme-grid.painful-mode .theme-card.is-spent {
+	pointer-events: none;
+	cursor: not-allowed;
+}
+.litm--sacrifice-theme-spent-note {
+	margin-left: auto;
+	font-size: var(--font-size-10);
+	font-variant: small-caps;
+	letter-spacing: 0.04em;
+	color: var(--color-text-secondary);
+	white-space: nowrap;
+}
+
 /* Read-only progress pip used by the sacrifice theme cards to show each
    theme's abandon/improve/milestone state at a glance. The play-mode
    pips inherit their dimensions from <button> chrome — these spans need

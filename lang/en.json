@@ -809,6 +809,7 @@
 			"sacrifice_scarring_price": "Replace a relevant theme entirely.",
 			"sacrifice_theme_removed": "<strong>{theme}</strong> has been removed. You may replace it with a new theme.",
 			"sacrifice_theme_scratched": "All tags in <strong>{theme}</strong> have been scratched.",
+			"sacrifice_theme_spent": "Already scratched",
 			"scene_limits": "Scene Limits",
 			"scene_tag_dialog_hint": "Define tags, statuses, and limits for this scene.",
 			"scene_tag_dialog_title": "Scene Tags",

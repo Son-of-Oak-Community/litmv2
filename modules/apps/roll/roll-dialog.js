@@ -1,6 +1,10 @@
 import { effectToPlain } from "../../active-effects/effect-queries.js";
 import { StatusTagData } from "../../active-effects/status-tag-data.js";
-import { ALL_TAG_TYPES, EFFECT_TAG_ORDER } from "../../system/config.js";
+import {
+	ALL_TAG_TYPES,
+	EFFECT_TAG_ORDER,
+	POWER_TAG_TYPES,
+} from "../../system/config.js";
 import { renderAction } from "../../system/renderers/action-renderer.js";
 import { Sockets } from "../../system/sockets.js";
 import {
@@ -93,38 +97,69 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const level = target?.dataset?.level;
 		if (!level || level === this.#sacrificeLevel) return;
 		this.#sacrificeLevel = level;
-		const root = this.element;
-		if (root) {
-			for (const label of root.querySelectorAll(
-				"[data-action='setSacrificeLevel']",
-			)) {
-				label.classList.toggle("is-active", label.dataset.level === level);
-			}
-		}
+		this.#applySacrificeLevelToDom(level);
 		this.#toggleSacrificeSubfields(this.#sacrificeLevel);
 		this.#dispatchUpdate();
+	}
+
+	/** Reflect the active sacrifice level in the rendered grid: highlight the
+	 *  level chip, mark the theme grid (.painful-mode disables spent cards via
+	 *  CSS), and bump the selection off a now-invalid spent theme. Level
+	 *  changes don't re-render, so this runs by hand; shared by the click and
+	 *  keyboard level handlers. */
+	#applySacrificeLevelToDom(level) {
+		const root = this.element;
+		if (!root) return;
+		for (const label of root.querySelectorAll(
+			"[data-action='setSacrificeLevel']",
+		)) {
+			label.classList.toggle("is-active", label.dataset.level === level);
+		}
+		const isPainful = level === "painful";
+		const grid = root.querySelector(".litm--sacrifice-theme-grid");
+		grid?.classList.toggle("painful-mode", isPainful);
+		if (!isPainful) return;
+		const cards = [
+			...root.querySelectorAll("[data-action='selectSacrificeTheme']"),
+		];
+		const selected = cards.find(
+			(c) => c.dataset.themeId === this.#sacrificeThemeId,
+		);
+		if (selected?.dataset.spent === "true") {
+			const live = cards.find((c) => c.dataset.spent !== "true");
+			if (live) this.#applySacrificeThemeSelection(live.dataset.themeId);
+		}
 	}
 
 	static #onSelectSacrificeTheme(_event, target) {
 		if (!this.isOwner) return;
 		const themeId = target?.dataset?.themeId;
 		if (!themeId || themeId === this.#sacrificeThemeId) return;
+		// A spent theme is not a valid Painful target — nothing left to scratch.
+		if (this.#sacrificeLevel === "painful" && target.dataset.spent === "true")
+			return;
+		this.#applySacrificeThemeSelection(themeId);
+		this.#dispatchUpdate();
+	}
+
+	/** Set the sacrifice theme + reflect it in the rendered card grid and the
+	 *  hidden form input. Shared by the click handler and the level switch
+	 *  (which may need to bump selection off a spent theme). */
+	#applySacrificeThemeSelection(themeId) {
 		this.#sacrificeThemeId = themeId;
 		const root = this.element;
-		if (root) {
-			for (const card of root.querySelectorAll(
-				"[data-action='selectSacrificeTheme']",
-			)) {
-				const isSelected = card.dataset.themeId === themeId;
-				card.classList.toggle("is-selected", isSelected);
-				card.setAttribute("aria-checked", isSelected ? "true" : "false");
-			}
-			const hidden = root.querySelector(
-				"input[type='hidden'][name='sacrificeThemeId']",
-			);
-			if (hidden) hidden.value = themeId;
+		if (!root) return;
+		for (const card of root.querySelectorAll(
+			"[data-action='selectSacrificeTheme']",
+		)) {
+			const isSelected = card.dataset.themeId === themeId;
+			card.classList.toggle("is-selected", isSelected);
+			card.setAttribute("aria-checked", isSelected ? "true" : "false");
 		}
-		this.#dispatchUpdate();
+		const hidden = root.querySelector(
+			"input[type='hidden'][name='sacrificeThemeId']",
+		);
+		if (hidden) hidden.value = themeId;
 	}
 
 	static async #onSpendHalf(_event, _target) {
@@ -186,21 +221,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	extractRollData(formData) {
 		const data = foundry.utils.expandObject(formData.object);
-		const {
-			actorId,
-			title,
-			modifier,
-			might,
-			tradePower,
-			sacrificeLevel,
-			sacrificeThemeId,
-			sacrificeStatusName,
-		} = data;
+		const { actorId, title, modifier, might, tradePower } = data;
 		// Sacrifice hides the type radio bar entirely, so the form yields no
 		// `type` value in that mode. Fall back to the dialog's tracked type
 		// so the resulting payload is always self-describing.
 		const type = data.type || this.type || "quick";
 		const tags = this.#buildTagsFromMap();
+		// Sacrifice fields come from the dialog's tracked state, not the form.
+		// The theme in particular is auto-selected as a render side effect, so
+		// reading it off the hidden input is fragile (it can be empty on the
+		// first render before the user touches a card). The private fields are
+		// the single source of truth — same principle as #selectionMap.
+		const isSacrifice = type === "sacrifice";
 		return {
 			actorId,
 			type,
@@ -210,11 +242,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			modifier,
 			might: Number(might) || 0,
 			tradePower: Number(tradePower) || 0,
-			sacrificeLevel: type === "sacrifice" ? sacrificeLevel : undefined,
-			sacrificeThemeId: type === "sacrifice" ? sacrificeThemeId : undefined,
+			sacrificeLevel: isSacrifice ? this.#sacrificeLevel : undefined,
+			sacrificeThemeId: isSacrifice ? this.#sacrificeThemeId : undefined,
 			sacrificeStatusName:
-				type === "sacrifice" && sacrificeLevel === "grave"
-					? sacrificeStatusName
+				isSacrifice && this.#sacrificeLevel === "grave"
+					? this.#sacrificeStatusName
 					: undefined,
 			actionUuid: this.#actionUuid,
 		};
@@ -698,6 +730,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			}
 		}
 
+		const sacrificeThemes = this.#ensureSacrificeThemeSelected();
+
 		return {
 			actorId: this.actorId,
 			characterTagGroups,
@@ -735,8 +769,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				description: t(`LITM.Ui.sacrifice_${key}_price`),
 				selected: this.#sacrificeLevel === key,
 			})),
+			// Build the theme list first: #ensureSacrificeThemeSelected auto-
+			// selects (and assigns this.#sacrificeThemeId) as a side effect, so
+			// it must run before sacrificeThemeId is captured below — otherwise
+			// the hidden input renders empty on the first pass and the whole
+			// sacrifice (theme name on the card + Complete Sacrifice) no-ops.
+			sacrificeThemes,
 			sacrificeThemeId: this.#sacrificeThemeId,
-			sacrificeThemes: this.#ensureSacrificeThemeSelected(),
 			sacrificeStatusName: this.#sacrificeStatusName,
 			// The theme selector serves a different rhetorical purpose per
 			// level — Painful scratches it, Scarring removes it, Grave only
@@ -1143,14 +1182,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const level = target.value;
 		if (!level || level === this.#sacrificeLevel) return;
 		this.#sacrificeLevel = level;
-		const root = this.element;
-		if (root) {
-			for (const label of root.querySelectorAll(
-				"[data-action='setSacrificeLevel']",
-			)) {
-				label.classList.toggle("is-active", label.dataset.level === level);
-			}
-		}
+		this.#applySacrificeLevelToDom(level);
 		this.#toggleSacrificeSubfields(this.#sacrificeLevel);
 		this.#dispatchUpdate();
 	}
@@ -1158,6 +1190,23 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#handleSacrificeStatusNameChange(target) {
 		this.#sacrificeStatusName = target.value || "";
 		this.#dispatchUpdate();
+	}
+
+	/**
+	 * A theme is "spent" when every (non-disabled) power-type tag on it —
+	 * including the title tag — is already scratched. A Painful sacrifice
+	 * scratches those tags, so a spent theme offers nothing and is not a valid
+	 * Painful target. Scarring/Grave act on the whole theme, so spent-ness is
+	 * irrelevant for them.
+	 * @param {Item} theme
+	 * @returns {boolean}
+	 */
+	#sacrificeThemeSpent(theme) {
+		if (!theme) return false;
+		const powerLike = [...theme.effects].filter(
+			(e) => POWER_TAG_TYPES.has(e.type) && !e.disabled,
+		);
+		return powerLike.length > 0 && powerLike.every((e) => e.system?.isScratched);
 	}
 
 	#ensureSacrificeThemeSelected() {
@@ -1169,9 +1218,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					i.type === "story_theme",
 			)
 			.sort((a, b) => a.sort - b.sort);
-		// Auto-select first theme if none selected
-		if (!this.#sacrificeThemeId && themes.length > 0) {
-			this.#sacrificeThemeId = themes[0].id;
+		// Auto-select. Painful can't target a spent theme, so prefer the first
+		// live one; only fall back to a spent theme if every theme is spent.
+		const isPainful = this.#sacrificeLevel === "painful";
+		const current = themes.find((t) => t.id === this.#sacrificeThemeId);
+		const currentInvalid =
+			!current || (isPainful && this.#sacrificeThemeSpent(current));
+		if (currentInvalid && themes.length > 0) {
+			const firstLive = isPainful
+				? themes.find((t) => !this.#sacrificeThemeSpent(t))
+				: null;
+			this.#sacrificeThemeId = (firstLive ?? themes[0]).id;
 		}
 		const trackPips = (value) =>
 			Array.from({ length: 3 }, (_, i) => ({ filled: i < (value ?? 0) }));
@@ -1185,6 +1242,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 						!e.system?.isTitleTag,
 				)
 				.map((e) => e.name);
+			const spent = this.#sacrificeThemeSpent(theme);
 			const weaknessTags = effects
 				.filter((e) => e.type === "weakness_tag" && !e.disabled)
 				.map((e) => e.name);
@@ -1217,6 +1275,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 						pips: trackPips(theme.system?.quest?.tracks?.milestone?.value),
 					},
 				],
+				spent,
 				selected: theme.id === this.#sacrificeThemeId,
 			};
 		});
