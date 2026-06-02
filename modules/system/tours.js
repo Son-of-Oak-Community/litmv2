@@ -44,6 +44,45 @@ export class LitmTour extends Tour {
 	 */
 	targetActor = null;
 
+	/**
+	 * Whether to drop the fellowship "drop a themebook" step. Snapshotted once
+	 * at start() so mid-tour state changes don't shift step indices.
+	 * @type {boolean}
+	 */
+	#skipSetupTheme = false;
+
+	/** @override */
+	async start() {
+		// The "setup-theme" step points at the fellowship's "drop a themebook"
+		// CTA, which only exists before a theme is in place. Decide once, up
+		// front, whether to include it (#99).
+		this.#skipSetupTheme =
+			this.id === "fellowship" && !!game.litmv2?.fellowship?.system?.theme;
+		return super.start();
+	}
+
+	/** @override */
+	get steps() {
+		const steps = super.steps;
+		if (this.#skipSetupTheme) {
+			return steps.filter((step) => step.id !== "setup-theme");
+		}
+		return steps;
+	}
+
+	/** @override */
+	async _renderStep() {
+		// Some steps target elements that only exist in certain world states. If
+		// the target is missing, skip the step rather than letting Foundry throw
+		// and abort the whole tour (#99).
+		const step = this.currentStep;
+		if (step?.selector && !this.targetElement) {
+			warn(`Tour [${this.id}] target "${step.selector}" missing — skipping step`);
+			return this.hasNext ? this.next() : this.complete();
+		}
+		return super._renderStep();
+	}
+
 	/** @override */
 	async _postStep() {
 		await super._postStep();
@@ -64,30 +103,21 @@ export class LitmTour extends Tour {
 	/** @override */
 	async _preStep() {
 		await super._preStep();
-		const action = this.currentStep?.action;
-		if (!action) return;
 
+		const action = this.currentStep?.action;
 		if (action === "openSampleHero") await this.#openSampleHero();
 		else if (action === "switchToPlayMode") await this.#switchToPlayMode();
-		else if (action === "openFellowshipSheet") {
-			await this.#openFellowshipSheet();
-		} else if (action === "ensureSampleTags") {
-			await this.#ensureSampleTags();
-		} else if (action.startsWith("activateSidebar:")) {
+		else if (action === "openFellowshipSheet") await this.#openFellowshipSheet();
+		else if (action === "ensureSampleTags") await this.#ensureSampleTags();
+		else if (action?.startsWith("activateSidebar:")) {
 			const tab = action.split(":")[1];
 			await ui[tab]?.activate();
 		}
 
-		// If this step has a selector, wait for it to appear in the DOM
+		// Give an async-rendered target a chance to appear before the step shows.
+		// A target that never materialises is skipped in _renderStep (#99).
 		const selector = this.currentStep?.selector;
-		if (selector) {
-			try {
-				await waitForElement(selector);
-			} catch (err) {
-				warn(`${err.message} — skipping step`);
-				if (this.hasNext) return this.next();
-			}
-		}
+		if (selector) await waitForElement(selector).catch((err) => warn(err.message));
 	}
 
 	/**

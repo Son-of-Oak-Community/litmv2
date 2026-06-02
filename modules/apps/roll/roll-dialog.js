@@ -972,12 +972,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			return;
 		}
 
-		// Burn cap: only one tag may be burned per roll (p.158).
+		// Burn cap: only one tag may be burned per roll (p.158). Skip past the
+		// scratched state to "off" instead of reverting — the checkbox cycle is
+		// …→negative→scratched→off, so reverting would trap the user, unable to
+		// cycle a selected tag back off while another tag is burned (#100).
 		if (value === "scratched") {
 			for (const [otherId, entry] of this.#selectionMap) {
 				if (otherId !== id && entry.state === "scratched") {
 					ui.notifications?.warn(t("LITM.Ui.burn_cap_warning"));
-					this.#revertTagChange(target, existingSel.state);
+					target.value = "";
+					this.setSelection(id, "");
+					this.#updateTotalPower();
+					this.#dispatchUpdate();
 					return;
 				}
 			}
