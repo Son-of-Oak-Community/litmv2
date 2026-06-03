@@ -12,9 +12,4 @@ export class BackpackData extends foundry.abstract.TypeDataModel {
 	get tags() {
 		return this.parent.effects.filter((e) => e.type === "story_tag");
 	}
-
-	/** Active, non-scratched tags. */
-	get activeTags() {
-		return this.tags.filter((e) => e.active);
-	}
 }

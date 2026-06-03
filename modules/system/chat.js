@@ -1,4 +1,4 @@
-export const TRACK_ICONS = {
+const TRACK_ICONS = {
 	promise: "fa-sun",
 	improve: "fa-arrow-trend-up",
 	milestone: "fa-mountain-sun",
@@ -6,7 +6,7 @@ export const TRACK_ICONS = {
 	limit: "fa-shield",
 };
 
-export const TRACK_LABEL_KEYS = {
+const TRACK_LABEL_KEYS = {
 	promise: "LITM.Ui.track_complete_promise",
 	improve: "LITM.Ui.track_complete_improve",
 	milestone: "LITM.Ui.track_complete_milestone",

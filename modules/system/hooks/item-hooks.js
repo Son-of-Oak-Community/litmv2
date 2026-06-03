@@ -25,7 +25,7 @@ function _migrateLegacyItemOnCreate() {
 
 function _prepareThemeOnCreate() {
 	Hooks.on("preCreateItem", (item, data) => {
-		if (item.img !== "icons/svg/item-bag.svg") return;
+		if (item.img !== CONFIG.litmv2.assets.icons.default) return;
 
 		const img =
 			getDefaultItemIcon(data.type, data.system) ??

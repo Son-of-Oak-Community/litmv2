@@ -306,24 +306,6 @@ export class HeroData extends LimitsMixin(
 		return scratched;
 	}
 
-	getRollData() {
-		const allThemeTags = [
-			...this.themes.flatMap((g) => g.tags),
-			...this.storyThemes.flatMap((g) => g.tags),
-		];
-		return {
-			promise: this.promise,
-			limit: this.limit.value,
-			limitMax: this.limit.max,
-			power: allThemeTags.filter(
-				(e) => e.type !== EFFECT_TYPES.weakness_tag && e.active,
-			).length,
-			weakness: allThemeTags.filter(
-				(e) => e.type === EFFECT_TYPES.weakness_tag && e.active,
-			).length,
-		};
-	}
-
 	prepareDerivedData() {
 		super.prepareDerivedData();
 		const baseLimit = CONFIG.litmv2?.heroLimit ?? 5;

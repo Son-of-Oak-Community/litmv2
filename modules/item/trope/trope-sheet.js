@@ -1,5 +1,5 @@
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
-import { queryItemsFromPacks } from "../../utils.js";
+import { queryItemsFromPacks, removeAtIndex } from "../../utils.js";
 
 export class TropeSheet extends LitmItemSheet {
 	static DEFAULT_OPTIONS = {
@@ -98,11 +98,7 @@ export class TropeSheet extends LitmItemSheet {
 		const path = target.dataset.path;
 		const index = Number(target.dataset.index);
 		if (!path || Number.isNaN(index)) return;
-
-		const values = foundry.utils.getProperty(this.document, path) || [];
-		const next = [...values];
-		next.splice(index, 1);
-		await this.document.update({ [path]: next });
+		await removeAtIndex(this.document, path, index);
 	}
 
 	async _onDropDocument(event, data) {

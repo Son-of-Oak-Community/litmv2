@@ -10,7 +10,11 @@ import {
 	buildOperations,
 	parseCampsiteEntries,
 } from "./camping-apply.js";
-import { buildContext, getCampingHeroes } from "./camping-context.js";
+import {
+	buildContext,
+	buildThreatsContext,
+	getCampingHeroes,
+} from "./camping-context.js";
 import {
 	adjacentStep,
 	defaultCampingState,
@@ -441,23 +445,11 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		const fellowshipActor = heroes
 			.map((h) => h.system?.fellowshipActor)
 			.find(Boolean);
-		const sidebar = getStoryTagSidebar();
-		const sceneEffects = sidebar?.sceneStoryEffects ?? [];
-		const threatItems = (state.placeOfStay?.threats ?? [])
-			.map((id) => game.items?.get(id))
-			.filter(Boolean)
-			.map((item) => ({
-				id: item.id,
-				name: item.name,
-				threat: item.system?.threat ?? "",
-				consequences: [...(item.system?.consequences ?? [])],
-				isConsequenceOnly: !!item.system?.isConsequenceOnly,
-			}));
+		const threatItems = buildThreatsContext(state);
 
 		const { operations, recap } = buildOperations(state, {
 			heroes,
 			fellowshipActor,
-			sceneEffects,
 			threatItems,
 		});
 
@@ -513,15 +505,10 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		const stamp = { flags: { [FLAG_SCOPE]: { campId } } };
 		const creationData = entries.map((entry) => {
 			if (entry.type === "status_tag") {
-				const tiers = entry.system?.tiers ?? [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-				];
-				return { ...statusTagEffect({ name: entry.name, tiers }), ...stamp };
+				return {
+					...statusTagEffect({ name: entry.name, tiers: entry.system?.tiers }),
+					...stamp,
+				};
 			}
 			return {
 				...storyTagEffect({

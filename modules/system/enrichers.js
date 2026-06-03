@@ -19,10 +19,16 @@ const RENDERERS = {
 	trope: renderTrope,
 };
 
-function _actionAnchor(uuid, display, esc) {
+function htmlToNode(string) {
 	const t = document.createElement("template");
-	t.innerHTML = `<a class="content-link litm--action-link" draggable="true" data-uuid="${uuid}" data-type="Item" data-tooltip="LITM.Actions.open_action"><i class="fa-solid fa-scroll"></i> ${esc(display)}</a>`;
+	t.innerHTML = string.trim();
 	return t.content.firstChild;
+}
+
+function _actionAnchor(uuid, display, esc) {
+	return htmlToNode(
+		`<a class="content-link litm--action-link" draggable="true" data-uuid="${uuid}" data-type="Item" data-tooltip="LITM.Actions.open_action"><i class="fa-solid fa-scroll"></i> ${esc(display)}</a>`,
+	);
 }
 
 let _actionLookup = null;
@@ -122,9 +128,7 @@ export class Enrichers {
 	}
 
 	static #html(string) {
-		const t = document.createElement("template");
-		t.innerHTML = string.trim();
-		return t.content.firstChild;
+		return htmlToNode(string);
 	}
 
 	static #enrichRender() {

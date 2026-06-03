@@ -6,8 +6,8 @@ import {
 } from "../item/action/action-rules.js";
 import { getVerbDef } from "../item/action/verb-definitions.js";
 import { localize as t } from "../utils.js";
-import { adjustCounter } from "./counter-controls.js";
-import { applySpendIntent, stripActorPrefix } from "./spend-power-service.js";
+import { adjustCounter, readVariableTiers } from "./counter-controls.js";
+import { applySpendIntent } from "./spend-power-service.js";
 
 /** Cost calculators by option type. Each receives (li, cost, entriesSection, hasTier). */
 const COST_CALCULATORS = {
@@ -561,17 +561,7 @@ function parseSpendIntent(form, dialog) {
 	for (const li of checkedOptions) {
 		// Action-success rows
 		if (li.dataset.source === "action") {
-			const chosenTiers = [];
-			li.querySelectorAll(".litm-spend-power__var-tier").forEach((row) => {
-				const idx = Number(row.dataset.varIdx);
-				if (!Number.isInteger(idx) || idx < 0) return;
-				const raw = Number(
-					row.querySelector(".litm-spend-power__counter-value")?.textContent ??
-						0,
-				);
-				const val = Number.isFinite(raw) ? raw : 0;
-				chosenTiers[idx] = Math.max(0, Math.min(6, val));
-			});
+			const chosenTiers = readVariableTiers(li);
 			options.push({
 				source: "action",
 				successKey: li.dataset.successKey,
@@ -754,5 +744,3 @@ async function postSpendChat(actor, intent, results) {
 		}
 	}
 }
-
-export { stripActorPrefix };

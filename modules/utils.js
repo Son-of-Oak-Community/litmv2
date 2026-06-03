@@ -276,7 +276,7 @@ export function findFellowshipTheme(actor) {
  * @param {string} uuid
  * @returns {Promise<void>}
  */
-export async function openLinkedRef(uuid) {
+async function openLinkedRef(uuid) {
 	if (!uuid) return;
 	const doc = await foundry.utils.fromUuid(uuid);
 	if (!doc) {

@@ -1,4 +1,5 @@
 import { resolveEffect } from "../active-effects/effect-queries.js";
+import { StatusTagData } from "../active-effects/status-tag-data.js";
 import { getSuccessCost } from "../item/action/action-rules.js";
 import { applySuccess } from "../item/action/chat-actions.js";
 import { error } from "../logger.js";
@@ -147,7 +148,7 @@ async function _applyStatusPicker(actor, opt) {
 		if (!effect) continue;
 		const oldTier = effect.system.currentTier;
 		const newTiers = effect.system.calculateReduction(tiers);
-		const newTier = newTiers.lastIndexOf(true) + 1;
+		const newTier = StatusTagData.tierOf(newTiers);
 		if (newTier <= 0) {
 			await effect.delete();
 		} else {

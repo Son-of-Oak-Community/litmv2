@@ -237,9 +237,6 @@ export class HeroSheet extends LitmActorSheet {
 				}
 			: null;
 
-		const tagEffects = this.system.backpack.filter(
-			(e) => game.user.isGM || !e.system?.isHidden,
-		);
 		const statuses = this.system.statusEffects.filter(
 			(e) => game.user.isGM || !e.system?.isHidden,
 		);
@@ -250,8 +247,6 @@ export class HeroSheet extends LitmActorSheet {
 		const relationshipVisible = relationshipEntries.filter((entry) =>
 			entry.tag.trim(),
 		);
-
-		const { rollTags, scratchedTags } = this.#prepareRollContext();
 
 		const fields = this.document.schema.getField("system");
 
@@ -280,13 +275,10 @@ export class HeroSheet extends LitmActorSheet {
 			fellowshipActorId: hasFellowship ? (fellowshipActor?.id ?? null) : null,
 			storyThemes,
 			backpack,
-			storyTags: tagEffects,
 			statuses,
-			scratchedTags,
 			relationshipEntries,
 			relationshipVisible,
 			...mofContext,
-			rollTags,
 			limit: this.system.limit,
 			showCamping: game.user.isGM && !LitmSettings.useFellowship,
 		};
@@ -406,21 +398,6 @@ export class HeroSheet extends LitmActorSheet {
 			await this._prepareThemeImprovements(theme, themebookCache);
 		if (fellowship.hasTheme)
 			await this._prepareThemeImprovements(fellowship, themebookCache);
-	}
-
-	/**
-	 * Build roll tags and derive scratched subset from dialog state.
-	 * @returns {object}
-	 */
-	#prepareRollContext() {
-		const rollTags = this._buildAllRollTags();
-		const scratchedTags = this.#rollDialog
-			? rollTags.filter((t) => {
-					const sel = this.#rollDialog.getSelection(t.id);
-					return t.system?.isScratched || sel.state === "scratched";
-				})
-			: [];
-		return { rollTags, scratchedTags };
 	}
 
 	/* -------------------------------------------- */

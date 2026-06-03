@@ -4,8 +4,8 @@ import { error } from "../logger.js";
 import { proseChipsHtml } from "../system/renderers/renderer-utils.js";
 import { LitmSettings } from "../system/settings.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
-import { adjustCounter } from "./counter-controls.js";
-import { stripActorPrefix } from "./spend-power.js";
+import { adjustCounter, readVariableTiers } from "./counter-controls.js";
+import { stripActorPrefix } from "./spend-power-service.js";
 
 /**
  * GM-only modal for applying an Action's consequences in one batch.
@@ -174,19 +174,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 			const optionLi = form.querySelector(
 				`.litm-spend-power__option[data-key="${index}"]`,
 			);
-			const chosenTiers = [];
-			optionLi
-				?.querySelectorAll(".litm-spend-power__var-tier")
-				.forEach((row) => {
-					const i = Number(row.dataset.varIdx);
-					if (!Number.isInteger(i) || i < 0) return;
-					const raw = Number(
-						row.querySelector(".litm-spend-power__counter-value")
-							?.textContent ?? 0,
-					);
-					const val = Number.isFinite(raw) ? raw : 0;
-					chosenTiers[i] = Math.max(0, Math.min(6, val));
-				});
+			const chosenTiers = readVariableTiers(optionLi);
 
 			let result;
 			try {

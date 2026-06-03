@@ -29,9 +29,20 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 		return null;
 	}
 
+	/**
+	 * The highest marked tier in a 6-slot boolean `tiers` array (1-based),
+	 * or 0 when nothing is marked / the input isn't an array. This is the
+	 * single source for the `lastIndexOf(true) + 1` primitive reused across
+	 * renderers, chat actions, the roll dialog, camping, and spend-power.
+	 * @param {boolean[]} tiers
+	 * @returns {number}
+	 */
+	static tierOf(tiers) {
+		return Array.isArray(tiers) ? tiers.lastIndexOf(true) + 1 : 0;
+	}
+
 	get currentTier() {
-		const lastIndex = this.tiers.lastIndexOf(true);
-		return lastIndex === -1 ? 0 : lastIndex + 1;
+		return StatusTagData.tierOf(this.tiers);
 	}
 
 	get value() {
@@ -65,8 +76,7 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 				}
 			}
 		}
-		const lastIndex = combined.lastIndexOf(true);
-		return lastIndex === -1 ? 0 : lastIndex + 1;
+		return StatusTagData.tierOf(combined);
 	}
 
 	calculateMark(tier) {

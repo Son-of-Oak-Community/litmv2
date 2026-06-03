@@ -27,3 +27,28 @@ export function adjustCounter(target, { min = 1, max = Infinity } = {}) {
 	valueEl.textContent = next;
 	return next;
 }
+
+/**
+ * Read chosen tiers from a container's variable-tier counter rows into a sparse
+ * array indexed by `data-var-idx`, each clamped to [0, 6]. Shared by the Spend
+ * Power dialog and the Apply Action menu, which both render
+ * `.litm-spend-power__var-tier` rows with a `.litm-spend-power__counter-value`.
+ *
+ * @param {HTMLElement|null|undefined} containerEl  Element wrapping the rows.
+ * @returns {number[]} Sparse tier array.
+ */
+export function readVariableTiers(containerEl) {
+	const chosenTiers = [];
+	containerEl
+		?.querySelectorAll(".litm-spend-power__var-tier")
+		.forEach((row) => {
+			const idx = Number(row.dataset.varIdx);
+			if (!Number.isInteger(idx) || idx < 0) return;
+			const raw = Number(
+				row.querySelector(".litm-spend-power__counter-value")?.textContent ?? 0,
+			);
+			const val = Number.isFinite(raw) ? raw : 0;
+			chosenTiers[idx] = Math.max(0, Math.min(6, val));
+		});
+	return chosenTiers;
+}

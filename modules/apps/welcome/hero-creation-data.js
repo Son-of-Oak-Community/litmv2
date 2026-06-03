@@ -9,7 +9,6 @@ import { levelIcon, localize as t } from "../../utils.js";
 
 const THEME_SLOTS = 4;
 
-const LEVEL_ICONS = new Set(["origin", "adventure", "greatness", "variable"]);
 
 // ---------------------------------------------------------------------------
 // Pure transforms
@@ -171,7 +170,6 @@ export class HeroCreationData {
 					img: entry.img || "",
 					category: entry.system?.category || "",
 					themeLevel: level,
-					themeLevelIcon: HeroCreationData.#levelIcon(level),
 					sourceLabel: pack.metadata?.label || pack.collection,
 					tagTooltip: "",
 				});
@@ -187,7 +185,6 @@ export class HeroCreationData {
 				img: item.img || "",
 				category: item.system?.category || "",
 				themeLevel: lvl,
-				themeLevelIcon: HeroCreationData.#levelIcon(lvl),
 				sourceLabel: "World",
 				tagTooltip: HeroCreationData.buildTagTooltip([...item.effects]),
 			});
@@ -209,7 +206,6 @@ export class HeroCreationData {
 				sourceLabel: entry.sourceLabel,
 				displayLabel: entry.name,
 				themeLevel: entry.themeLevel || "",
-				themeLevelIcon: entry.themeLevelIcon || "",
 				tagTooltip: entry.tagTooltip || "",
 			});
 		}
@@ -254,7 +250,6 @@ export class HeroCreationData {
 				sourceLabel: entry?.sourceLabel || "",
 				displayLabel: entry?.displayLabel || uuid,
 				themeLevel: entry?.themeLevel || "",
-				themeLevelIcon: entry?.themeLevelIcon || "",
 				tagTooltip: entry?.tagTooltip || "",
 			};
 		});
@@ -265,10 +260,6 @@ export class HeroCreationData {
 			if (value) acc[value] = true;
 			return acc;
 		}, {});
-	}
-
-	static #levelIcon(level) {
-		return LEVEL_ICONS.has(level) ? level : "";
 	}
 
 	static buildTagTooltip(effects) {
@@ -485,19 +476,6 @@ export class HeroCreationData {
 	// ---------------------------------------------------------------------------
 	// Validation
 	// ---------------------------------------------------------------------------
-
-	isCustomReady(appState) {
-		const themes = appState.custom.themes;
-		return themes.every((theme) => {
-			if (!theme.method) return false;
-			if (theme.method === "themekit") return Boolean(theme.themekitUuid);
-			if (theme.method === "themebook") {
-				return Boolean(theme.themebookUuid) && Boolean(theme.name);
-			}
-			if (theme.method === "manual") return Boolean(theme.name);
-			return false;
-		});
-	}
 
 	/**
 	 * Validate all custom themes. Returns the index of the first invalid theme,

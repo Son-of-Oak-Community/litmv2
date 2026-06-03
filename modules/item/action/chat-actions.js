@@ -1,5 +1,6 @@
 import { storyTagEffect } from "../../active-effects/effect-factories.js";
 import { findApplicableEffect } from "../../active-effects/effect-queries.js";
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { pickLimit, pickTargetActor } from "../../apps/target-picker.js";
 import { localize as t } from "../../utils.js";
 import { scanMarkup } from "./action-rules.js";
@@ -240,13 +241,6 @@ const SCRATCH_TARGET_TYPES = new Set([
 	"fellowship_tag",
 ]);
 
-function _highestTierIndex(tiers) {
-	if (!Array.isArray(tiers)) return -1;
-	let idx = -1;
-	for (let i = 0; i < tiers.length; i++) if (tiers[i]) idx = i;
-	return idx;
-}
-
 /**
  * Reduce (or delete) a named status_tag on an actor by the given tier.
  * Used by both _applyWeaken and _applyRestore.
@@ -291,7 +285,7 @@ async function _reduceStatusOnActor(
 		return null;
 	}
 	const current = status.system.tiers ?? [];
-	const highestIdx = _highestTierIndex(current);
+	const highestIdx = StatusTagData.tierOf(current) - 1;
 	const shouldDelete = restoreThreshold
 		? highestIdx <= 0 || tier > highestIdx
 		: highestIdx < 0 || tier >= highestIdx + 1;
@@ -479,7 +473,7 @@ export async function applyConsequence({ text, actor, chosenTiers = [] }) {
 	for (const match of matches) {
 		const data = parseTagStringMatch(match);
 		if (data.type === "status_tag") {
-			const parsedTier = data.system.tiers.lastIndexOf(true) + 1;
+			const parsedTier = StatusTagData.tierOf(data.system.tiers);
 			const isVariable = parsedTier === 0;
 			const tier = isVariable
 				? Math.max(0, Math.min(6, Number(chosenTiers?.[varIdx]) || 0))

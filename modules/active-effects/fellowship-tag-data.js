@@ -20,8 +20,4 @@ export class FellowshipTagData extends PowerTagData {
 		// scratched fellowship tags are silently dropped from the roll.
 		return ",positive";
 	}
-
-	toTagString(name) {
-		return `[${name}]`;
-	}
 }

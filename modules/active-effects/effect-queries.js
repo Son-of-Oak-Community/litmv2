@@ -71,16 +71,12 @@ export function findApplicableEffect(actor, predicate) {
  * @returns {ActiveEffect|null}
  */
 export function resolveEffect(effectId, actor, { fellowship = false } = {}) {
-	for (const e of actor.allApplicableEffects()) {
-		if (e.id === effectId) return e;
-	}
+	const byId = (e) => e.id === effectId;
+	const match = findApplicableEffect(actor, byId);
+	if (match) return match;
 	if (fellowship) {
 		const f = actor.system?.fellowshipActor;
-		if (f) {
-			for (const e of f.allApplicableEffects()) {
-				if (e.id === effectId) return e;
-			}
-		}
+		if (f) return findApplicableEffect(f, byId) ?? null;
 	}
 	return null;
 }

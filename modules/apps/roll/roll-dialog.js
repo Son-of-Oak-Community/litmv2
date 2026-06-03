@@ -1,4 +1,5 @@
 import { effectToPlain } from "../../active-effects/effect-queries.js";
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { ALL_TAG_TYPES, EFFECT_TAG_ORDER } from "../../system/config.js";
 import { renderAction } from "../../system/renderers/action-renderer.js";
 import { Sockets } from "../../system/sockets.js";
@@ -420,7 +421,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				return {
 					...tag,
 					type: "status_tag",
-					value: tag.values ? tag.values.lastIndexOf(true) + 1 : 0,
+					value: StatusTagData.tierOf(tag.values),
 					actorName: null,
 					actorImg: null,
 					state: sel.state || "",
@@ -660,10 +661,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		let fellowshipTagGroups = [];
 		let gmViewerTabs = [];
 		if (isGMViewer) {
-			gmViewerTabs = this.#buildGmViewerContext(shared);
+			gmViewerTabs = buildGmViewerContext(this, shared);
 		} else {
-			({ characterTagGroups, fellowshipTagGroups } =
-				this.#buildOwnerContext(shared));
+			({ characterTagGroups, fellowshipTagGroups } = buildOwnerContext(
+				this,
+				shared,
+			));
 		}
 		// Non-owners only see the rolling actor's tags that were selected
 		if (!isOwner) {
@@ -749,19 +752,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					: "",
 			actionContext,
 		};
-	}
-
-	/**
-	 * Build per-actor tabs for GM viewers from the story tag sidebar actors.
-	 * @param {object} shared - Shared context utilities from _prepareContext
-	 * @returns {object[]} gmViewerTabs array
-	 */
-	#buildGmViewerContext(shared) {
-		return buildGmViewerContext(this, shared);
-	}
-
-	#buildOwnerContext(shared) {
-		return buildOwnerContext(this, shared);
 	}
 
 	/**
@@ -865,8 +855,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				this.#handleTradePowerChange(target);
 			} else if (target.matches("input[name='sacrificeLevel']")) {
 				this.#handleSacrificeLevelChange(target);
-			} else if (target.matches("[data-update='sacrificeThemeId']")) {
-				this.#handleSacrificeThemeChange(target);
 			} else if (target.matches("input[name='sacrificeStatusName']")) {
 				this.#handleSacrificeStatusNameChange(target);
 			} else if (target.matches("input[name='type']")) {
@@ -1142,6 +1130,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			graveFieldset.classList.toggle("hidden", level !== "grave");
 	}
 
+	// Mirrors #onSetSacrificeLevel (the data-action click handler) but is the
+	// KEYBOARD path: arrow-key navigation on the sacrificeLevel radio group
+	// fires `change` without a click, so this is not a removable duplicate.
 	#handleSacrificeLevelChange(target) {
 		const level = target.value;
 		if (!level || level === this.#sacrificeLevel) return;
@@ -1155,11 +1146,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			}
 		}
 		this.#toggleSacrificeSubfields(this.#sacrificeLevel);
-		this.#dispatchUpdate();
-	}
-
-	#handleSacrificeThemeChange(target) {
-		this.#sacrificeThemeId = target.value || null;
 		this.#dispatchUpdate();
 	}
 

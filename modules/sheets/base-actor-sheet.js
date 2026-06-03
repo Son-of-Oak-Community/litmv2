@@ -49,7 +49,6 @@ export class LitmActorSheet extends LitmSheetMixin(
 		EDIT: 1,
 	});
 
-	static PORTRAIT_WIDTH = 450;
 	static LANDSCAPE_WIDTH = 800;
 
 	/**
@@ -721,38 +720,10 @@ export class LitmActorSheet extends LitmSheetMixin(
 	}
 
 	/**
-	 * Open an embedded vignette item's sheet for editing.
-	 * @param {Event} _event
-	 * @param {HTMLElement} target
-	 * @protected
-	 */
-	static _onEditVignette(_event, target) {
-		const itemId = target.dataset.itemId;
-		const item = this.document.items.get(itemId);
-		item?.sheet.render(true);
-	}
-
-	/**
-	 * Delete an embedded vignette item after user confirmation.
-	 * @param {Event} _event
-	 * @param {HTMLElement} target
-	 * @protected
-	 */
-	static async _onRemoveVignette(_event, target) {
-		if (!(await confirmDelete("TYPES.Item.vignette"))) return;
-
-		const itemId = target.dataset.itemId;
-		const item = this.document.items.get(itemId);
-		await item?.delete();
-	}
-
-	/**
 	 * Handle the user changing the sheet mode
-	 * @param {Event} event         Triggering click event
-	 * @param {HTMLElement} target  Button that was clicked
 	 * @protected
 	 */
-	async _onChangeSheetMode(event, _target = event.currentTarget) {
+	async _onChangeSheetMode() {
 		// Submit with current mode, then toggle via render option.
 		// Mode is passed as a render option (not set directly) to avoid a race
 		// where the submit-triggered re-render picks up the new mode too early.

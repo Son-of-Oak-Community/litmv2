@@ -26,7 +26,7 @@
  * @param {KeyframeAnimationOptions} options
  * @returns {Promise<void>}
  */
-export function animate(el, keyframes, options) {
+function animate(el, keyframes, options) {
 	return new Promise((resolve) => {
 		const anim = el.animate(keyframes, {
 			fill: "forwards",

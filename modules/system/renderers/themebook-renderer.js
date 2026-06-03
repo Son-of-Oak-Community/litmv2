@@ -11,7 +11,6 @@ function questionList(questions) {
 	ul.classList.add("litm-render--themebook__questions");
 	let letter = 0;
 	for (const q of questions) {
-		if (!q?.trim()) continue;
 		const li = document.createElement("li");
 		const mark = document.createElement("span");
 		mark.classList.add("litm-render--themebook__letter");
@@ -78,14 +77,14 @@ export async function renderThemebook(item) {
 	const powerQs = sys.powerTagQuestions?.filter((q) => q?.trim()) ?? [];
 	if (powerQs.length) {
 		container.appendChild(sectionHeader(t("LITM.Ui.power_tag_questions")));
-		container.appendChild(questionList(sys.powerTagQuestions));
+		container.appendChild(questionList(powerQs));
 	}
 
 	// Weakness Tag Questions
 	const weakQs = sys.weaknessTagQuestions?.filter((q) => q?.trim()) ?? [];
 	if (weakQs.length) {
 		container.appendChild(sectionHeader(t("LITM.Ui.weakness_tag_questions")));
-		container.appendChild(questionList(sys.weaknessTagQuestions));
+		container.appendChild(questionList(weakQs));
 	}
 
 	// Quest Ideas
