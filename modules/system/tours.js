@@ -1,4 +1,4 @@
-import { error, info, warn } from "../logger.js";
+import { error, info } from "../logger.js";
 import { getStoryTagSidebar } from "../utils.js";
 import { createSampleHero } from "./sample-hero.js";
 import { LitmSettings } from "./settings.js";
@@ -77,7 +77,9 @@ export class LitmTour extends Tour {
 		// and abort the whole tour (#99).
 		const step = this.currentStep;
 		if (step?.selector && !this.targetElement) {
-			warn(`Tour [${this.id}] target "${step.selector}" missing — skipping step`);
+			// Foundry already console.warns the missing element; this is just the
+			// handled resolution, so log it at info to avoid a double warning.
+			info(`Tour [${this.id}] target "${step.selector}" missing — skipping step`);
 			return this.hasNext ? this.next() : this.complete();
 		}
 		return super._renderStep();
@@ -115,9 +117,11 @@ export class LitmTour extends Tour {
 		}
 
 		// Give an async-rendered target a chance to appear before the step shows.
-		// A target that never materialises is skipped in _renderStep (#99).
+		// Swallow the timeout silently — a target that never materialises is
+		// logged and skipped in _renderStep (#99), so warning here would just
+		// duplicate that.
 		const selector = this.currentStep?.selector;
-		if (selector) await waitForElement(selector).catch((err) => warn(err.message));
+		if (selector) await waitForElement(selector).catch(() => {});
 	}
 
 	/**

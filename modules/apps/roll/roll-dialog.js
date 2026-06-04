@@ -1,10 +1,6 @@
 import { effectToPlain } from "../../active-effects/effect-queries.js";
 import { StatusTagData } from "../../active-effects/status-tag-data.js";
-import {
-	ALL_TAG_TYPES,
-	EFFECT_TAG_ORDER,
-	POWER_TAG_TYPES,
-} from "../../system/config.js";
+import { ALL_TAG_TYPES, EFFECT_TAG_ORDER } from "../../system/config.js";
 import { renderAction } from "../../system/renderers/action-renderer.js";
 import { Sockets } from "../../system/sockets.js";
 import {
@@ -25,6 +21,7 @@ import {
 	executeRoll,
 	resolveRollDialogOwnership,
 } from "./roll-pipeline.js";
+import { hasPainfulSacrificeTarget, isThemeSpent } from "./sacrifice-rules.js";
 
 export { resolveRollDialogOwnership };
 
@@ -81,15 +78,36 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	static async _onSubmit(_event, _form, formData) {
 		if (!this.isOwner) return;
+		if (this.painfulSacrificeHasNoTarget()) return;
 		return executeRoll(this.extractRollData(formData));
 	}
 
 	static async #onSendToNarrator(_event, _target) {
 		if (!this.isOwner) return;
+		if (this.painfulSacrificeHasNoTarget()) return;
 		const formData = new foundry.applications.ux.FormDataExtended(this.element);
 		const rollData = this.extractRollData(formData);
 		await this._createModerationRequest(rollData);
 		this.close();
+	}
+
+	/**
+	 * Guard against a Painful sacrifice that can't pay its price. Painful
+	 * scratches a theme's power tags, so it needs a theme with something left to
+	 * scratch; when every theme is already spent the sacrifice would cost
+	 * nothing. Warns and nudges the player to a higher tier instead of rolling a
+	 * free Miracle. Returns true (and warns) when the roll should be blocked.
+	 * Public — called from the static submit/narrator handlers, same as
+	 * {@link extractRollData}.
+	 * @returns {boolean}
+	 */
+	painfulSacrificeHasNoTarget() {
+		if (this.type !== "sacrifice" || this.#sacrificeLevel !== "painful")
+			return false;
+		const themes = this.#sacrificeThemeItems();
+		if (themes.length === 0 || hasPainfulSacrificeTarget(themes)) return false;
+		ui.notifications?.warn(t("LITM.Ui.sacrifice_all_spent_warning"));
+		return true;
 	}
 
 	static #onSetSacrificeLevel(_event, target) {
@@ -142,9 +160,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#dispatchUpdate();
 	}
 
-	/** Set the sacrifice theme + reflect it in the rendered card grid and the
-	 *  hidden form input. Shared by the click handler and the level switch
-	 *  (which may need to bump selection off a spent theme). */
+	/** Set the sacrifice theme (the private field is the source of truth, same
+	 *  principle as #selectionMap) and reflect it in the rendered card grid.
+	 *  Shared by the click handler and the level switch (which may need to bump
+	 *  selection off a spent theme). */
 	#applySacrificeThemeSelection(themeId) {
 		this.#sacrificeThemeId = themeId;
 		const root = this.element;
@@ -156,10 +175,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			card.classList.toggle("is-selected", isSelected);
 			card.setAttribute("aria-checked", isSelected ? "true" : "false");
 		}
-		const hidden = root.querySelector(
-			"input[type='hidden'][name='sacrificeThemeId']",
-		);
-		if (hidden) hidden.value = themeId;
 	}
 
 	static async #onSpendHalf(_event, _target) {
@@ -769,13 +784,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				description: t(`LITM.Ui.sacrifice_${key}_price`),
 				selected: this.#sacrificeLevel === key,
 			})),
-			// Build the theme list first: #ensureSacrificeThemeSelected auto-
-			// selects (and assigns this.#sacrificeThemeId) as a side effect, so
-			// it must run before sacrificeThemeId is captured below — otherwise
-			// the hidden input renders empty on the first pass and the whole
-			// sacrifice (theme name on the card + Complete Sacrifice) no-ops.
+			// #ensureSacrificeThemeSelected auto-selects a valid theme (assigning
+			// this.#sacrificeThemeId — the source of truth, read at submit time)
+			// and flags the chosen card via `selected` in its return value.
 			sacrificeThemes,
-			sacrificeThemeId: this.#sacrificeThemeId,
 			sacrificeStatusName: this.#sacrificeStatusName,
 			// The theme selector serves a different rhetorical purpose per
 			// level — Painful scratches it, Scarring removes it, Grave only
@@ -1019,7 +1031,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			for (const [otherId, entry] of this.#selectionMap) {
 				if (otherId !== id && entry.state === "scratched") {
 					ui.notifications?.warn(t("LITM.Ui.burn_cap_warning"));
-					target.value = "";
+					this.#revertTagChange(target, "");
 					this.setSelection(id, "");
 					this.#updateTotalPower();
 					this.#dispatchUpdate();
@@ -1192,41 +1204,28 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#dispatchUpdate();
 	}
 
-	/**
-	 * A theme is "spent" when every (non-disabled) power-type tag on it —
-	 * including the title tag — is already scratched. A Painful sacrifice
-	 * scratches those tags, so a spent theme offers nothing and is not a valid
-	 * Painful target. Scarring/Grave act on the whole theme, so spent-ness is
-	 * irrelevant for them.
-	 * @param {Item} theme
-	 * @returns {boolean}
-	 */
-	#sacrificeThemeSpent(theme) {
-		if (!theme) return false;
-		const powerLike = [...theme.effects].filter(
-			(e) => POWER_TAG_TYPES.has(e.type) && !e.disabled,
+	/** The hero's sacrificeable themes (its own themes + story themes, never the
+	 *  fellowship theme), unsorted. Spent-ness is computed by {@link isThemeSpent}. */
+	#sacrificeThemeItems() {
+		if (!this.actor) return [];
+		return this.actor.items.filter(
+			(i) =>
+				(i.type === "theme" && !i.system.isFellowship) ||
+				i.type === "story_theme",
 		);
-		return powerLike.length > 0 && powerLike.every((e) => e.system?.isScratched);
 	}
 
 	#ensureSacrificeThemeSelected() {
-		if (!this.actor) return [];
-		const themes = this.actor.items
-			.filter(
-				(i) =>
-					(i.type === "theme" && !i.system.isFellowship) ||
-					i.type === "story_theme",
-			)
-			.sort((a, b) => a.sort - b.sort);
+		const themes = this.#sacrificeThemeItems().sort((a, b) => a.sort - b.sort);
+		if (themes.length === 0) return [];
 		// Auto-select. Painful can't target a spent theme, so prefer the first
 		// live one; only fall back to a spent theme if every theme is spent.
 		const isPainful = this.#sacrificeLevel === "painful";
 		const current = themes.find((t) => t.id === this.#sacrificeThemeId);
-		const currentInvalid =
-			!current || (isPainful && this.#sacrificeThemeSpent(current));
-		if (currentInvalid && themes.length > 0) {
+		const currentInvalid = !current || (isPainful && isThemeSpent(current));
+		if (currentInvalid) {
 			const firstLive = isPainful
-				? themes.find((t) => !this.#sacrificeThemeSpent(t))
+				? themes.find((t) => !isThemeSpent(t))
 				: null;
 			this.#sacrificeThemeId = (firstLive ?? themes[0]).id;
 		}
@@ -1242,7 +1241,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 						!e.system?.isTitleTag,
 				)
 				.map((e) => e.name);
-			const spent = this.#sacrificeThemeSpent(theme);
+			const spent = isThemeSpent(theme);
 			const weaknessTags = effects
 				.filter((e) => e.type === "weakness_tag" && !e.disabled)
 				.map((e) => e.name);

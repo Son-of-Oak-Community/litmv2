@@ -786,6 +786,7 @@
 			"roll_title_placeholder": "Name your action...",
 			"roll_tracked": "Detailed",
 			"roll_tracked_success": "You may Push Your Luck: accept consequences in exchange for 1 extra Power to spend on effects.",
+			"sacrifice_all_spent_warning": "Every theme is already spent — choose a Scarring or Grave sacrifice instead.",
 			"sacrifice_banner_message": "{name} prepares to Sacrifice.",
 			"sacrifice_choose_theme": "Choose Theme",
 			"sacrifice_complete": "Complete Sacrifice",
