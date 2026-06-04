@@ -11,6 +11,8 @@ export class ChallengeData extends LimitsMixin(
 			category: new fields.StringField({
 				initial: "",
 			}),
+			concealName: new fields.BooleanField({ initial: false }),
+			alias: new fields.StringField({ initial: "" }),
 			rating: new fields.NumberField({
 				required: true,
 				initial: 1,
@@ -175,6 +177,31 @@ export class ChallengeData extends LimitsMixin(
 	 */
 	get challenges() {
 		return CONFIG.litmv2.challenge_types;
+	}
+
+	/**
+	 * The name shown when this challenge's identity is concealed: the
+	 * GM-authored alias, or a localized "Unknown Challenge" fallback.
+	 * Viewer-independent — use for persisted strings (chat summaries) that
+	 * are generated once on one client and shown to everyone, where the
+	 * real name must never be baked in even when the GM generates them.
+	 * @returns {string}
+	 */
+	get publicName() {
+		if (!this.concealName) return this.parent.name;
+		return this.alias?.trim() || game.i18n.localize("LITM.Ui.unknown_challenge");
+	}
+
+	/**
+	 * The concealed name for the current viewer, or `null` when the viewer
+	 * may see the real name (GM, owner, or concealment off). Callers fall
+	 * back with `actor.system.maskedName ?? actor.name`, which is also safe
+	 * on actor types that don't define this getter.
+	 * @returns {string|null}
+	 */
+	get maskedName() {
+		if (!this.concealName || game.user.isGM || this.parent.isOwner) return null;
+		return this.publicName;
 	}
 
 	/**

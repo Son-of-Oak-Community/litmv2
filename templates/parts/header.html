@@ -2,8 +2,23 @@
 	<img src="{{document.img}}" alt="{{document.name}}" data-edit="img" data-action="editImage" role="button" tabindex="0"
 		data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}" style="width: 100px; height: 100px; border-radius: 4px; object-fit: cover" />
 	<div class="flexcol flex1">
+		{{#if conceal}}
+		<div class="flexrow gap-sm litm--conceal-name-row">
+			<input type="text" name="name" value="{{document.name}}" required
+				placeholder="{{namePlaceholder}}" />
+			<label class="litm--conceal-toggle noflex" data-tooltip="{{localize 'LITM.Ui.conceal_name'}}">
+				<input type="checkbox" name="system.concealName" {{#if conceal.enabled}}checked{{/if}}
+					aria-label="{{localize 'LITM.Ui.conceal_name'}}" />
+			</label>
+		</div>
+		<input type="text" name="system.alias" value="{{conceal.alias}}"
+			placeholder="{{localize 'LITM.Ui.conceal_alias_placeholder'}}"
+			data-tooltip="{{localize 'LITM.Ui.conceal_name_hint'}}"
+			aria-label="{{localize 'LITM.Ui.conceal_alias'}}" />
+		{{else}}
 		<input type="text" name="name" value="{{document.name}}" required
 			placeholder="{{namePlaceholder}}" />
+		{{/if}}
 		{{#if headerFields.length}}
 		<div class="form-fields">
 			{{#each headerFields}}

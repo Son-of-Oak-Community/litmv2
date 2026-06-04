@@ -2,7 +2,12 @@
 	{{> systems/litmv2/templates/partials/play-profile-img.html}}
 
 	<div class="flex1 flexcol gap-sm">
-		<h1 {{#if (eq type "hero")}}class="litm--hero-name"{{/if}}>{{document.name}}</h1>
+		<h1 {{#if (eq type "hero")}}class="litm--hero-name"{{/if}}>{{#if concealed}}{{concealed.alias}}{{else}}{{document.name}}{{/if}}</h1>
+		{{#if concealed.realName}}
+		<span class="litm--conceal-real-name" data-tooltip="{{localize 'LITM.Ui.conceal_hidden_from_players'}}">
+			<i class="fa-solid fa-eye-slash" aria-hidden="true"></i> {{concealed.realName}}
+		</span>
+		{{/if}}
 		{{#if (eq type "hero")}}
 		<div class="flexrow gap-xs">
 			<h2 class="flex0" style="font-size: var(--font-size-24); margin: 0">{{localize "LITM.Hero.promise"}}</h2>

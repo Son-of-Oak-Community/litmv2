@@ -71,7 +71,8 @@ export function makeActorCard(actor, typeClass) {
 
 	const title = document.createElement("h3");
 	title.classList.add("litm-render__title");
-	title.textContent = actor.name;
+	// Concealed challenges show their alias to non-GM viewers
+	title.textContent = actor.system.maskedName ?? actor.name;
 	headerText.appendChild(title);
 
 	header.appendChild(headerText);

@@ -297,7 +297,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				})
 				.filter(Boolean)
 				.map(({ uuid, actor, tokenDoc }) => ({
-					name: tokenDoc?.name ?? actor.name,
+					// Concealed challenges show their alias to non-GM viewers
+					name: actor.system.maskedName ?? tokenDoc?.name ?? actor.name,
 					type: actor.type,
 					img:
 						tokenDoc?.texture?.src ||

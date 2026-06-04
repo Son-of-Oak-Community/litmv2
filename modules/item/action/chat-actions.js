@@ -8,6 +8,15 @@ import { parseTagStringMatch } from "./tag-string.js";
 import { getVerbDef } from "./verb-definitions.js";
 
 /**
+ * Target name for chat summaries and notifications. Challenges concealed
+ * via `system.concealName` resolve to their public alias so stored chat
+ * text never reveals the real name — even when the GM generates it.
+ * @param {Actor} actor
+ * @returns {string}
+ */
+const publicName = (actor) => actor.system?.publicName ?? actor.name;
+
+/**
  * Resolve a status token's tier, honoring the player's pick for `[name-]`.
  * Returns 0 for a variable token whose `chosenTiers` slot is missing or zero,
  * which the appliers interpret as "skip this token" — supports successes that
@@ -103,7 +112,7 @@ export async function applySuccess({ success, actor, chosenTiers = [] }) {
 	if (!targetActor?.isOwner && !game.user.isGM) {
 		ui.notifications.warn(
 			game.i18n.format("LITM.Actions.apply_no_target_permission", {
-				name: targetActor?.name ?? "",
+				name: targetActor ? publicName(targetActor) : "",
 			}),
 		);
 		return null;
@@ -140,7 +149,7 @@ async function _applyCreateOrTag({ success, actor, chosenTiers }) {
 			);
 			summaries.push(
 				game.i18n.format("LITM.Actions.applied_create_tag", {
-					actor: actor.name,
+					actor: publicName(actor),
 					name: tok.name,
 				}),
 			);
@@ -154,7 +163,7 @@ async function _applyCreateOrTag({ success, actor, chosenTiers }) {
 		await actor.system.addStatus(tok.name, { tier, isHidden: false });
 		summaries.push(
 			game.i18n.format("LITM.Actions.applied_create_status", {
-				actor: actor.name,
+				actor: publicName(actor),
 				name: tok.name,
 				tier,
 			}),
@@ -191,9 +200,9 @@ async function _applyWeaken({ success, actor, chosenTiers }) {
 
 			const summary = await _reduceStatusOnActor(actor, tok.name, tier, {
 				notFoundKey: "LITM.Actions.apply_weaken_no_match",
-				notFoundArgs: { actor: actor.name },
+				notFoundArgs: { actor: publicName(actor) },
 				removedKey: "LITM.Actions.applied_weaken_status",
-				removedArgs: { actor: actor.name },
+				removedArgs: { actor: publicName(actor) },
 			});
 			if (!summary) continue;
 			summaries.push(summary);
@@ -212,7 +221,7 @@ async function _applyWeaken({ success, actor, chosenTiers }) {
 			ui.notifications.info(
 				game.i18n.format("LITM.Actions.apply_weaken_no_match", {
 					name: tok.name,
-					actor: actor.name,
+					actor: publicName(actor),
 				}),
 			);
 			continue;
@@ -224,7 +233,7 @@ async function _applyWeaken({ success, actor, chosenTiers }) {
 		}
 		summaries.push(
 			game.i18n.format("LITM.Actions.applied_weaken_tag", {
-				actor: actor.name,
+				actor: publicName(actor),
 				name: tok.name,
 			}),
 		);
@@ -278,7 +287,7 @@ async function _reduceStatusOnActor(
 		ui.notifications.info(
 			game.i18n.format(notFoundKey, {
 				name,
-				actor: actor.name,
+				actor: publicName(actor),
 				...notFoundArgs,
 			}),
 		);
@@ -293,7 +302,7 @@ async function _reduceStatusOnActor(
 		await status.delete();
 		return game.i18n.format(removedKey, {
 			name,
-			actor: actor.name,
+			actor: publicName(actor),
 			...removedArgs,
 		});
 	}
@@ -348,7 +357,7 @@ async function _applyProcess({ success, limitInfo, chosenTiers }) {
 		success.verb === "advance" ? "applied_advance" : "applied_setback";
 	return {
 		appliedSummary: game.i18n.format(`LITM.Actions.${verbKey}`, {
-			actor: actor.name,
+			actor: publicName(actor),
 			name: result.limit.label || t("LITM.Terms.limit"),
 			value: result.value,
 			max: result.max,
