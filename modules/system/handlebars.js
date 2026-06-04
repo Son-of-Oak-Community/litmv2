@@ -37,6 +37,12 @@ export class HandlebarsHelpers {
 		});
 
 		Handlebars.registerHelper("sum", (a, b) => a + b);
+
+		// Improve marks needed to advance a theme (world-configurable).
+		Handlebars.registerHelper(
+			"improve-threshold",
+			() => CONFIG.litmv2?.improveThreshold ?? 3,
+		);
 	}
 }
 

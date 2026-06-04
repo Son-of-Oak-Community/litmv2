@@ -1967,6 +1967,23 @@ section.standard-form.litm-actions-app {
 	min-width: 0;
 }
 
+/* Long tracks (configurable Improve threshold): pips keep their natural
+   size and wrap onto a new row when the track column runs out of width,
+   instead of shrinking. */
+.litm .theme-card-track .progress-display {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+/* Tighter vertical envelope (20px box, 2px block padding) so wrapped
+   rows sit close together; the glyph stays 16px either way. */
+.litm .theme-card-track .progress-box {
+	flex: none;
+	--button-size: 20px;
+	padding-block: 2px;
+}
+
 .litm .theme-card-track label {
 	font-size: var(--font-size-11);
 	text-align: center;

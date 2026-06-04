@@ -1,4 +1,5 @@
 import { ContentSourcesConfig } from "../apps/content-sources-config.js";
+import { LitmConfig } from "./config.js";
 
 export class LitmSettings {
 	static get popoutTagsSidebar() {
@@ -55,6 +56,14 @@ export class LitmSettings {
 
 	static get themeLimit() {
 		return game.settings.get("litmv2", "theme_limit");
+	}
+
+	static get improveThreshold() {
+		return game.settings.get("litmv2", "improve_threshold");
+	}
+
+	static get autoMarkImprove() {
+		return game.settings.get("litmv2", "auto_mark_improve");
 	}
 
 	static get useFellowship() {
@@ -189,6 +198,35 @@ export class LitmSettings {
 			onChange: (value) => {
 				CONFIG.litmv2.themeLimit = value;
 			},
+		});
+		game.settings.register("litmv2", "improve_threshold", {
+			name: "LITM.Settings.improve_threshold",
+			hint: "LITM.Settings.improve_threshold_hint",
+			scope: "world",
+			config: true,
+			type: Number,
+			default: 3,
+			range: { min: 1, max: 6, step: 1 },
+			requiresReload: true,
+			onChange: (value) => {
+				CONFIG.litmv2.improveThreshold = value;
+			},
+		});
+		// The ThemeData schema reads this for the improve track's `max` when it
+		// is first built (during setup, before ready) — mirror it now rather
+		// than in ready-hooks like heroLimit/themeLimit.
+		LitmConfig.improveThreshold = game.settings.get(
+			"litmv2",
+			"improve_threshold",
+		);
+		game.settings.register("litmv2", "auto_mark_improve", {
+			name: "LITM.Settings.auto_mark_improve",
+			hint: "LITM.Settings.auto_mark_improve_hint",
+			scope: "world",
+			config: true,
+			type: Boolean,
+			default: true,
+			requiresReload: true,
 		});
 		game.settings.register("litmv2", "use_fellowship", {
 			name: "LITM.Settings.use_fellowship",

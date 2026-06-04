@@ -202,5 +202,9 @@ globalThis.CONFIG = {
 	Actor: {},
 	Item: {},
 	ActiveEffect: {},
-	litmv2: { tagStringRe: null, roll: { formula: null, resolver: null } },
+	litmv2: {
+		tagStringRe: null,
+		roll: { formula: null, resolver: null },
+		improveThreshold: 3,
+	},
 };

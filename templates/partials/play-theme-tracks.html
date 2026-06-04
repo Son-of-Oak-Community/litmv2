@@ -18,7 +18,7 @@
 		<label>{{localize "LITM.Themes.abandon"}}</label>
 	</div>
 	<div class="theme-card-track">
-		{{#if (eq system.improve.value 3)}}
+		{{#if (eq system.improve.value (improve-threshold))}}
 		<button type="button" class="litm--track-action" data-action="openThemeAdvancement" data-item-id="{{_id}}"
 			data-tooltip="{{localize 'LITM.Ui.choose_improvement'}}" aria-label="{{localize 'LITM.Ui.choose_improvement'}}">
 			<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
@@ -26,7 +26,7 @@
 		{{/if}}
 		<div class="progress-display" data-id="system.improve.value" role="group"
 			aria-label="{{localize 'LITM.Ui.improve'}}">
-			{{#progress-buttons system.improve.value 3}}
+			{{#progress-buttons system.improve.value (improve-threshold)}}
 			<button type="button" class="progress-box {{#if @checked}}checked{{/if}}" data-action="adjustProgress"
 				data-index="{{@index}}" aria-pressed="{{#if @checked}}true{{else}}false{{/if}}">
 				<img src="systems/litmv2/assets/media/checkbox{{ifThen @checked '-c' ''}}.svg" alt="" aria-hidden="true" />

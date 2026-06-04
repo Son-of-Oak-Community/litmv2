@@ -9,9 +9,10 @@ import {
 	getSuccessCost,
 } from "../../item/action/action-rules.js";
 import { getVerbDef } from "../../item/action/verb-definitions.js";
+import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { localize as t, viewLinkedRefAction } from "../../utils.js";
 import { buildTrackCompleteContent } from "../chat.js";
-import { POWER_TAG_TYPES } from "../config.js";
+import { IMPROVE_MARKING_TAG_TYPES, POWER_TAG_TYPES } from "../config.js";
 import { Sockets } from "../sockets.js";
 
 /**
@@ -128,6 +129,37 @@ async function _handlePushRoll(target) {
 	const { message, roll } = _getMessageAndRoll(target);
 	if (!message.isAuthor && !game.user.isGM) return;
 	roll.options.pushed = true;
+	await message.update({ rolls: [roll.toJSON()] });
+}
+
+/**
+ * Manual counterpart of the automatic post-roll Improve marking, shown on
+ * the chat card when the `auto_mark_improve` world setting is off. Marks
+ * the same tags the auto path would have, then latches `gainedExp` so the
+ * button disappears on re-render.
+ */
+async function _handleMarkImprove(target) {
+	const { message, roll } = _getMessageAndRoll(target);
+	if (!message.isAuthor && !game.user.isGM) return;
+	if (roll.options.gainedExp) return;
+
+	const actor = game.actors.get(roll.litm?.actorId);
+	if (!actor) return;
+
+	const tags = (roll.litm.weaknessTags ?? []).filter((tag) =>
+		IMPROVE_MARKING_TAG_TYPES.has(tag.type),
+	);
+	for (const tag of tags) {
+		const trackInfo = await gainImprovement(actor, tag);
+		if (trackInfo) {
+			await foundry.documents.ChatMessage.create({
+				content: await buildTrackCompleteContent(trackInfo),
+				speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
+			});
+		}
+	}
+
+	roll.options.gainedExp = true;
 	await message.update({ rolls: [roll.toJSON()] });
 }
 
@@ -331,6 +363,7 @@ async function _handleTakeRollRequest(_target, app) {
 const CLICK_HANDLERS = {
 	"spend-power": _handleSpendPower,
 	"push-roll": _handlePushRoll,
+	"mark-improve": _handleMarkImprove,
 	"approve-moderation": _handleApproveModeration,
 	"complete-sacrifice": _handleCompleteSacrifice,
 	"reject-moderation": _handleRejectModeration,
