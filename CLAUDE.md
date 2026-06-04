@@ -134,7 +134,7 @@ The dialog's `#selectionMap` is the source of truth for tag selections, not form
 
 ### Sockets
 
-Namespace `system.litmv2`. Events: roll dialog sync (`updateRollDialog`, `requestRollDialogSync`, `resetRollDialog`, `closeRollDialog`), GM moderation (`rollDice`, `rejectRoll`), story tags (`storyTagsUpdate`, `storyTagsRender`), camping (`campingOpen`, `campingSaveOp`, `campingEnd`). Definitions in `modules/system/sockets.js`.
+Namespace `system.litmv2`. Events: roll dialog sync (`updateRollDialog`, `requestRollDialogSync`, `resetRollDialog`, `closeRollDialog`), GM moderation (`rollDice`, `rejectRoll`), GM-applied ally-tag scratch (`scratchEffect`), story tags (`storyTagsUpdate`, `storyTagsRender`), camping (`campingOpen`, `campingSaveOp`, `campingEnd`). Definitions in `modules/system/sockets.js`.
 
 ## Active Effects: the canonical tag store
 

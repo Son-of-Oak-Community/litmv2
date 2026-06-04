@@ -178,6 +178,90 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 	return { characterTagGroups, fellowshipTagGroups };
 }
 
+/** Sidebar actor types whose tags belong to the Story/Scene surface. */
+const STORY_ACTOR_TYPES = new Set(["challenge", "journey", "story_theme"]);
+const HERO_ACTOR_TYPES = new Set(["hero"]);
+
+/**
+ * Build per-actor tag groups from the story-tag sidebar for the given actor
+ * types. The shared core behind {@link buildAllyTagGroups} (fellowship
+ * heroes → Allies tab) and {@link buildSceneActorTagGroups}
+ * (challenges/journeys/story themes → Scene tab).
+ *
+ * Visibility piggybacks on the sidebar's own filtering: hidden actors and
+ * hidden effects are already excluded for non-GM users by the sidebar's
+ * `actors` getter (concealed challenges arrive pre-masked the same way).
+ * Tags whose selection entry carries `contributorActorId` are skipped here —
+ * those render in the contributed-tags section instead, attributed to the
+ * helping player. Non-owner viewers only see selected tags, and never their
+ * own character's (their contribution panel already lists those).
+ *
+ * `actorType` rides along on each tag so `decorateTag` can apply the
+ * opposition cycle (negative-first, no burn) to challenge/journey tags.
+ *
+ * @param {LitmRollDialog} dialog
+ * @param {object} shared
+ * @param {Function} shared.decorateTag
+ * @param {object}   shared.tagTypeOrder
+ * @param {boolean}  shared.isOwner
+ * @param {Set<string>} types  Sidebar actor types to include
+ * @returns {object[]} array of { actorName, actorImg, tags }
+ */
+function buildSidebarActorTagGroups(
+	dialog,
+	{ decorateTag, tagTypeOrder, isOwner },
+	types,
+) {
+	const groups = [];
+	const sidebarActors = dialog.storyTagSidebar.actors ?? [];
+	const ownCharacterUuid = !isOwner ? game.user.character?.uuid : null;
+	for (const sidebarActor of sidebarActors) {
+		if (!types.has(sidebarActor.type)) continue;
+		if (sidebarActor.id === dialog.actor?.uuid) continue;
+		if (ownCharacterUuid && sidebarActor.id === ownCharacterUuid) continue;
+		const tags = (sidebarActor.tags ?? [])
+			.map((tag) => {
+				const sel = dialog.getSelection(tag.uuid);
+				if (sel.contributorActorId) return null;
+				if (!isOwner && !sel.state) return null;
+				return decorateTag({
+					...tag,
+					actorType: sidebarActor.type,
+					state: sel.state,
+					contributorId: sel.contributorId,
+				});
+			})
+			.filter(Boolean);
+		if (!tags.length) continue;
+		groups.push({
+			actorName: sidebarActor.name,
+			actorImg: sidebarActor.img,
+			tags: sortByTypeThenName(tags, tagTypeOrder),
+		});
+	}
+	return groups;
+}
+
+/**
+ * Per-hero tag groups for the other fellowship heroes — the ally backpack
+ * story tags and statuses visible in the story-tag sidebar. Lets the
+ * rolling player invoke an ally's tag directly (e.g. burn a friend's
+ * signal arrow, or lean on their status) without waiting for that player
+ * to contribute it themselves.
+ */
+export function buildAllyTagGroups(dialog, shared) {
+	return buildSidebarActorTagGroups(dialog, shared, HERO_ACTOR_TYPES);
+}
+
+/**
+ * Per-actor tag groups for the scene opposition — sidebar-visible
+ * challenges, journeys, and story themes — so players can pull a
+ * challenge's tags/statuses into their roll from the Scene tab.
+ */
+export function buildSceneActorTagGroups(dialog, shared) {
+	return buildSidebarActorTagGroups(dialog, shared, STORY_ACTOR_TYPES);
+}
+
 /**
  * Build per-actor tabs for GM viewers from the story tag sidebar actors.
  *
@@ -194,7 +278,6 @@ export function buildGmViewerContext(
 	dialog,
 	{ decorateTag, tagTypeOrder, allStoryItems, sceneStoryItems, isOwner },
 ) {
-	const STORY_ACTOR_TYPES = new Set(["challenge", "journey", "story_theme"]);
 	const gmViewerTabs = [];
 	const storyGroups = [];
 	const sidebarActors = dialog.storyTagSidebar.actors ?? [];

@@ -487,7 +487,7 @@
 			"collapse": "Toggle Section",
 			"conceal_alias": "Alias",
 			"conceal_alias_placeholder": "Give your Challenge a descriptive name",
-			"conceal_hidden_from_players": "The real name — hidden from players",
+			"conceal_hidden_from_players": "The true name is hidden from players",
 			"conceal_name": "Conceal name from players",
 			"conceal_name_hint": "Players see the alias instead of this Challenge's name — on its token, in Tags & Statuses, and in chat. Leave the alias empty to show \"???\".",
 			"confirm": "Confirm",

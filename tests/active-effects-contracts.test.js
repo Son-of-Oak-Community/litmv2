@@ -128,8 +128,8 @@ describe("StatusTagData contracts", () => {
 		expect(make(StatusTagData).canBurn).toBe(false);
 	});
 
-	it("allows positive and negative", () => {
-		expect(make(StatusTagData).allowedStates).toBe(",positive,negative");
+	it("cycles negative-first (statuses are usually hindrances)", () => {
+		expect(make(StatusTagData).allowedStates).toBe(",negative,positive");
 	});
 
 	it("defaultPolarity is null (context-dependent)", () => {

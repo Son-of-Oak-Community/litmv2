@@ -613,6 +613,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			true,
 		);
 
+		// Tag name sizer — mirror the value so the chip grows while typing
+		this.element.addEventListener("input", (event) => {
+			const input = event.target.closest(".litm--tag-item-name");
+			const sizer = input?.closest(".litm--tag-name-sizer");
+			if (sizer) sizer.dataset.value = input.value;
+		});
+
 		// Double-click row to edit tag name
 		this.element.addEventListener("dblclick", (event) => {
 			// Tag items

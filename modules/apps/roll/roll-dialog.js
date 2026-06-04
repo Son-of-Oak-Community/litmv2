@@ -12,8 +12,10 @@ import { LitmEmbedPopout } from "../embed-popout.js";
 import { LitmRoll } from "./roll.js";
 import {
 	buildActionContext,
+	buildAllyTagGroups,
 	buildGmViewerContext,
 	buildOwnerContext,
+	buildSceneActorTagGroups,
 	sortByTypeThenName,
 } from "./roll-dialog-context.js";
 import {
@@ -473,7 +475,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					actorImg: null,
 					state: sel.state || "",
 					contributorId: sel.contributorId || null,
-					states: ",positive,negative",
+					states: ",negative,positive",
 				};
 			});
 		return sceneStatuses;
@@ -706,6 +708,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 		let characterTagGroups = [];
 		let fellowshipTagGroups = [];
+		let allyTagGroups = [];
+		let sceneActorTagGroups = [];
 		let gmViewerTabs = [];
 		if (isGMViewer) {
 			gmViewerTabs = buildGmViewerContext(this, shared);
@@ -714,6 +718,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				this,
 				shared,
 			));
+			// Player-facing equivalent of the GM's per-actor tag access: the
+			// other fellowship heroes' sidebar-visible tags join the Allies
+			// tab, and the scene opposition's join the Scene tab. GM-owned
+			// rolls skip both — gmTagGroups already lists every sidebar actor
+			// in the Scene tab.
+			if (!game.user.isGM) {
+				allyTagGroups = buildAllyTagGroups(this, shared);
+				sceneActorTagGroups = buildSceneActorTagGroups(this, shared);
+			}
 		}
 		// Non-owners only see the rolling actor's tags that were selected
 		if (!isOwner) {
@@ -753,6 +766,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			fellowshipName:
 				game.litmv2?.fellowship?.name ?? t("LITM.Terms.fellowship"),
 			fellowshipTagGroups,
+			allyTagGroups,
+			sceneActorTagGroups,
 			contributedTagGroups,
 			ownerTabs,
 			rollTypes: {

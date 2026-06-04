@@ -7,8 +7,10 @@
 		data-tooltip="{{localize (ifThen (eq tag.type 'status_tag') 'LITM.Terms.status' 'LITM.Terms.tag')}}: {{tag.name}}{{#if (and (eq tag.type 'status_tag') tag.value)}}{{concat '-' tag.value}}{{/if}}">
 		<input type="hidden" name="{{formKey}}.{{tag.id}}.tagType" value="{{tag.type}}" />
 		<input type="hidden" name="{{formKey}}.{{tag.id}}.limitId" value="{{tag.limitId}}" />
-		<input class="litm--tag-item-name {{ifThen editable 'litm--locked' ''}}" data-focus="select"
-			name="{{formKey}}.{{tag.id}}.name" value="{{tag.name}}" {{ifThen editable "" "readonly"}} />
+		<span class="litm--tag-name-sizer" data-value="{{tag.name}}">
+			<input class="litm--tag-item-name {{ifThen editable 'litm--locked' ''}}" data-focus="select"
+				name="{{formKey}}.{{tag.id}}.name" value="{{tag.name}}" {{ifThen editable "" "readonly"}} />
+		</span>
 		{{#if (and (eq tag.type "status_tag") tag.value)}}
 		<span class="litm--tag-item-tier" aria-hidden="true">-{{tag.value}}</span>
 		{{/if}}

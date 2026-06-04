@@ -4506,16 +4506,41 @@ section.standard-form.litm-actions-app {
 	}
 }
 
-/* Status tier suffix — "-3" rendered flush against the name so the chip
-   reads "wounded-3" at a glance instead of leaving the tier inferable only
-   from the filled pips. `field-sizing: content` collapses the input to its
-   value width so the suffix sits immediately after; without it, the input's
-   default size=20 leaves a long gap before the suffix. */
-.litm--status .litm--tag-item-name {
+/* Name sizer — grid wrapper whose hidden ::after replicates the input's
+   value, sizing the cell to the text. Cross-browser replacement for
+   `field-sizing: content` (unsupported in Firefox), so the status tier
+   suffix ("-3") sits flush against the name and the chip reads "wounded-3"
+   at a glance. The input renders at the cell width (width: 0 keeps its
+   default size=20 from inflating the track). */
+.litm--tag-name-sizer {
+	display: inline-grid;
+	align-items: center;
+	flex: 1;
+	min-width: 6rem;
+}
+
+.litm--tag-name-sizer::after {
+	content: attr(data-value);
+	visibility: hidden;
+	white-space: pre;
+	grid-area: 1 / 1;
+	min-width: 1ch;
+	font: inherit;
+	line-height: var(--line-height-normal);
+}
+
+.litm--tag-name-sizer > .litm--tag-item-name {
+	grid-area: 1 / 1;
+	flex: none;
+	width: 0;
+	min-width: 100%;
+}
+
+/* Status chips collapse the sizer to the text width; other tags keep the
+   full-width input. */
+.litm--status .litm--tag-name-sizer {
 	flex: 0 1 auto;
 	min-width: 0;
-	width: auto;
-	field-sizing: content;
 }
 
 .litm--tag-item-tier {
