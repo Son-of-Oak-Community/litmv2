@@ -87,7 +87,14 @@ export class ContentSources {
 		}
 
 		const selected = LitmSettings.getCompendiumSetting(category);
-		const allPacks = game.packs.filter((p) => p.documentName === docType);
+		let allPacks = game.packs.filter((p) => p.documentName === docType);
+
+		// The story-tags pack is also an ActiveEffect pack, but it holds story
+		// tags, not statuses — never treat it as a status source. Letting it
+		// through pollutes the status palette and risks duplicate slugified ids
+		// in CONFIG.statusEffects (whose v14 Proxy throws on duplicate keys).
+		if (category === "statuses")
+			allPacks = allPacks.filter((p) => p.collection !== WORLD_STORY_TAG_PACK_ID);
 
 		if (!selected?.length) return allPacks;
 
@@ -121,20 +128,32 @@ export class ContentSources {
 	static async loadStatusCompendium() {
 		const packs = ContentSources.getPacks("statuses");
 		if (!packs.length) return;
-		const allDocs = [];
+		const configs = await ContentSources.getStatusEffectConfigs(packs);
+		CONFIG.statusEffects = configs;
+		info(
+			`Loaded ${configs.length} statuses from ${packs.length} compendium pack(s)`,
+		);
+	}
+
+	/**
+	 * Build the `CONFIG.statusEffects` config objects from status packs,
+	 * deduplicated by slugified id. The v14 `CONFIG.statusEffects` Proxy keys
+	 * on `id` and its `ownKeys` trap throws on duplicate keys, so two docs that
+	 * slugify to the same id (within or across packs) would otherwise corrupt
+	 * the global — last one wins here.
+	 * @param {CompendiumCollection[]} [packs] - Defaults to the status packs.
+	 * @returns {Promise<object[]>}
+	 */
+	static async getStatusEffectConfigs(packs = ContentSources.getPacks("statuses")) {
+		const byId = new Map();
 		for (const pack of packs) {
 			const docs = await pack.getDocuments();
-			allDocs.push(...docs);
+			for (const doc of docs) {
+				const id = doc.name.slugify({ strict: true });
+				byId.set(id, { id, _id: doc.id, name: doc.name, img: doc.img });
+			}
 		}
-		CONFIG.statusEffects = allDocs.map((doc) => ({
-			id: doc.name.slugify({ strict: true }),
-			_id: doc.id,
-			name: doc.name,
-			img: doc.img,
-		}));
-		info(
-			`Loaded ${allDocs.length} statuses from ${packs.length} compendium pack(s)`,
-		);
+		return [...byId.values()];
 	}
 
 	/**

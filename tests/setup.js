@@ -8,6 +8,28 @@
 
 import { vi } from "vitest";
 
+// --- String.prototype.slugify ---
+// Faithful-enough port of Foundry's slugify for tests: lowercase, collapse
+// whitespace/replacement runs to the replacement, and (strict) drop anything
+// non-alphanumeric. The full Latin/Cyrillic CHAR_MAP is omitted — tests use
+// ASCII names, which is all the status-effect dedup logic keys on.
+if (!String.prototype.slugify) {
+	Object.defineProperty(String.prototype, "slugify", {
+		value: function ({
+			replacement = "-",
+			strict = false,
+			lowercase = true,
+		} = {}) {
+			let slug = this.trim();
+			if (lowercase) slug = slug.toLowerCase();
+			slug = slug.replace(new RegExp(`[\\s${replacement}]+`, "g"), replacement);
+			if (strict)
+				slug = slug.replace(new RegExp(`[^a-zA-Z0-9${replacement}]`, "g"), "");
+			return slug;
+		},
+	});
+}
+
 // --- foundry.utils ---
 // Real enough setProperty for nested form-key parsing.
 const setProperty = (obj, path, value) => {

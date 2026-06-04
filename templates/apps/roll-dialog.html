@@ -104,11 +104,12 @@
 		<fieldset class="litm--sacrifice-theme-fieldset hidden">
 			<legend>{{sacrificeThemeLegend}}</legend>
 			{{#if sacrificeThemeHint}}<p class="hint">{{sacrificeThemeHint}}</p>{{/if}}
-			<div class="litm--sacrifice-theme-grid" role="radiogroup" aria-label="{{localize 'LITM.Ui.sacrifice_choose_theme'}}">
+			<div class="litm--sacrifice-theme-grid {{#if (eq sacrificeLevel 'painful')}}painful-mode{{/if}}" role="radiogroup" aria-label="{{localize 'LITM.Ui.sacrifice_choose_theme'}}">
 				{{#each sacrificeThemes as |t|}}
-				<fieldset class="theme-card {{#if t.selected}}is-selected{{/if}}"
+				<fieldset class="theme-card {{#if t.selected}}is-selected{{/if}} {{#if t.spent}}is-spent{{/if}}"
 					data-action="selectSacrificeTheme"
 					data-theme-id="{{t.id}}"
+					data-spent="{{#if t.spent}}true{{else}}false{{/if}}"
 					role="radio"
 					tabindex="0"
 					aria-checked="{{#if t.selected}}true{{else}}false{{/if}}">
@@ -121,6 +122,7 @@
 							{{/if}}
 							<span class="litm-power_tag litm-title_tag" data-text="{{t.name}}">{{t.name}}</span>
 						</div>
+						{{#if t.spent}}<span class="litm--sacrifice-theme-spent-note">{{localize 'LITM.Ui.sacrifice_theme_spent'}}</span>{{/if}}
 					</div>
 					{{#if t.hasTags}}
 					<div class="theme-card-tags">
@@ -157,7 +159,6 @@
 				</fieldset>
 				{{/each}}
 			</div>
-			<input type="hidden" name="sacrificeThemeId" value="{{sacrificeThemeId}}" />
 		</fieldset>
 
 		<!-- Modifiers: Might, Modifier stepper, and Trade Power -->
