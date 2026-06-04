@@ -3,7 +3,9 @@ import { scratchTag as applyScratch } from "../../active-effects/scratchable-mix
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { warn } from "../../logger.js";
 import { buildTrackCompleteContent } from "../../system/chat.js";
+import { IMPROVE_MARKING_TAG_TYPES } from "../../system/config.js";
 import { ContentSources } from "../../system/content-sources.js";
+import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import { LitmRoll } from "./roll.js";
 
@@ -220,29 +222,46 @@ export async function processPostRollEffects({
 				await applyScratch(actor, effect);
 				return;
 			}
-			// Diagnostic: a tag came back from the dialog but resolveEffect
-			// couldn't locate the live document — this is the path the
-			// fellowship-title-tag bug report hits. Logging the shape lets a
-			// repro session show whether the tag is missing an id/uuid, the
-			// fellowship lookup is short-circuiting, or allApplicableEffects
-			// just isn't yielding it.
-			warn("post-roll scratchTag: effect not resolved", {
-				tagId: tag.id,
-				tagUuid: tag.uuid,
-				tagType: tag.type,
-				tagName: tag.name,
-				actorId: actor.id,
-				fellowshipId: actor.system?.fellowshipActor?.id ?? null,
-			});
 		}
-		if (tag.uuid) {
-			const parsed = foundry.utils.parseUuid(tag.uuid);
-			if (parsed?.collection) {
-				await ContentSources.updateStoryTags([
-					{ _id: tag._id, "system.isScratched": true },
-				]);
-			}
+		// Scene tags live in the world story-tag pack. Players can't write
+		// to the pack, so they route through the GM-mediated sidebar socket.
+		if (tag.uuid?.startsWith("Compendium.")) {
+			const update = [{ _id: tag._id, "system.isScratched": true }];
+			if (game.user.isGM) await ContentSources.updateStoryTags(update);
+			else
+				Sockets.dispatch("storyTagsUpdate", {
+					operation: "updateTags",
+					data: update,
+				});
+			return;
 		}
+		// Ally tags — owner-picked from the Allies tab or helper-contributed —
+		// live on another hero. Scratch directly when this client owns the
+		// parent document; otherwise ask the active GM via socket.
+		const effect = tag.uuid ? foundry.utils.fromUuidSync(tag.uuid) : null;
+		if (effect) {
+			const targetActor =
+				effect.parent?.documentName === "Item"
+					? effect.parent.parent
+					: effect.parent;
+			if (effect.isOwner) await applyScratch(targetActor, effect);
+			else Sockets.dispatch("scratchEffect", { uuid: tag.uuid });
+			return;
+		}
+		// Diagnostic: a tag came back from the dialog but neither the rolling
+		// actor/fellowship lookup nor the uuid path could locate the live
+		// document — this is the path the fellowship-title-tag bug report
+		// hits. Logging the shape lets a repro session show whether the tag
+		// is missing an id/uuid, the fellowship lookup is short-circuiting,
+		// or allApplicableEffects just isn't yielding it.
+		warn("post-roll scratchTag: effect not resolved", {
+			tagId: tag.id,
+			tagUuid: tag.uuid,
+			tagType: tag.type,
+			tagName: tag.name,
+			actorId: actor?.id ?? null,
+			fellowshipId: actor?.system?.fellowshipActor?.id ?? null,
+		});
 	};
 
 	if (!actor?.system) return;
@@ -260,9 +279,13 @@ export async function processPostRollEffects({
 	}
 	roll.options.isScratched = true;
 
-	const realWeaknessTags = weaknessTags.filter(
-		(t) => t.type === "weakness_tag" || t.type === "relationship_tag",
-	);
+	// World setting: tables that house-rule when Improve is marked can turn
+	// off the automatic marking for invoked weakness/relationship tags. The
+	// chat card then offers a manual "Mark Improve" button instead — see
+	// `canMarkImprove` in LitmRoll#render and `_handleMarkImprove`.
+	const realWeaknessTags = LitmSettings.autoMarkImprove
+		? weaknessTags.filter((t) => IMPROVE_MARKING_TAG_TYPES.has(t.type))
+		: [];
 	for (const tag of realWeaknessTags) {
 		const trackInfo = await gainImprovement(actor, tag);
 		if (trackInfo) {
@@ -272,7 +295,7 @@ export async function processPostRollEffects({
 			});
 		}
 	}
-	roll.options.gainedExp = true;
+	roll.options.gainedExp = LitmSettings.autoMarkImprove;
 
 	if (scratchedTags.length > 0 || realWeaknessTags.length > 0) {
 		await res.update({ rolls: [roll.toJSON()] });

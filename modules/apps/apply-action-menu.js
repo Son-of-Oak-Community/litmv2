@@ -106,7 +106,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 			.filter((a, i, arr) => a && arr.indexOf(a) === i);
 		const targets = placedActors.map((a) => ({
 			id: a.id,
-			name: a.name,
+			name: a.system.maskedName ?? a.name,
 			img: a.img,
 			selected: a.id === rollingActorId,
 		}));
@@ -203,9 +203,14 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 					"systems/litmv2/templates/chat/action-applied.html",
 					{
 						actorImg: actor?.img,
-						actorName: actor?.name,
+						// publicName so the stored card never reveals a concealed
+						// challenge's real name, even when the GM generates it
+						actorName: actor?.system.publicName ?? actor?.name,
 						label: t("LITM.Terms.consequences"),
-						summary: stripActorPrefix(result.appliedSummary, actor?.name),
+						summary: stripActorPrefix(
+							result.appliedSummary,
+							actor?.system.publicName ?? actor?.name,
+						),
 						footer: action.name,
 						reactActorId: actor?.id ?? null,
 					},

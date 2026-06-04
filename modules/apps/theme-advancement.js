@@ -152,7 +152,7 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			weaknessQuestionOptions,
 			powerQuestionTexts,
 			weaknessQuestionTexts,
-			canSelect: improveValue >= 3,
+			canSelect: improveValue >= CONFIG.litmv2.improveThreshold,
 			nascentImprovements,
 			restrictedToPowerTag: nascentImprovements > 0,
 		};
@@ -170,7 +170,11 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 	 */
 	static #getAdvancableTheme() {
 		const theme = ThemeAdvancementApp.#getTheme.call(this);
-		if (!theme || (theme.system?.improve?.value || 0) < 3) return null;
+		if (
+			!theme ||
+			(theme.system?.improve?.value || 0) < CONFIG.litmv2.improveThreshold
+		)
+			return null;
 		return theme;
 	}
 

@@ -66,6 +66,11 @@
 			<i class="fas fa-hand-holding-heart" aria-hidden="true"></i> {{localize 'LITM.Ui.sacrifice_complete'}}
 		</button>
 		{{/if}}
+		{{#if canMarkImprove}}
+		<button type="button" class="noflex" data-click="mark-improve">
+			<i class="fas fa-arrow-trend-up" aria-hidden="true"></i> {{localize 'LITM.Ui.mark_improve'}}
+		</button>
+		{{/if}}
 	</footer>
 	{{/if}}
 </div>

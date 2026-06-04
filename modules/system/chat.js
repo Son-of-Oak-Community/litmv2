@@ -42,8 +42,11 @@ export function detectTrackCompletion(attrib, newValue, doc, actor) {
 		? game.i18n.format("LITM.Ui.fellowship_theme_label", { theme: doc.name })
 		: doc.name;
 
-	// Improve (max 3)
-	if (attrib === "system.improve.value" && newValue === 3) {
+	// Improve (max = configured threshold, default 3)
+	if (
+		attrib === "system.improve.value" &&
+		newValue === CONFIG.litmv2.improveThreshold
+	) {
 		return {
 			text: game.i18n.format("LITM.Ui.improve_complete", {
 				actor: actor.name,

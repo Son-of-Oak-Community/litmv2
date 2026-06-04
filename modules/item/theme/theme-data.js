@@ -1,6 +1,7 @@
 import {
 	getDefaultThemeLevel,
 	getThemeLevels,
+	LitmConfig,
 	POWER_TAG_TYPES,
 } from "../../system/config.js";
 
@@ -29,8 +30,11 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 			improve: new fields.SchemaField({
 				value: new fields.NumberField({
 					initial: 0,
+					// Resolved when the schema is first built (post-init, so the
+					// improve_threshold setting is already mirrored). The setting
+					// is requiresReload, which rebuilds the schema on change.
+					max: LitmConfig.improveThreshold,
 					min: 0,
-					max: 3,
 					integer: true,
 				}),
 			}),

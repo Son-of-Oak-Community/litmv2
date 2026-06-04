@@ -26,7 +26,7 @@ export async function pickTargetActor({
 			targets
 				.map((tk) => ({
 					id: tk.actor?.id ?? tk.id,
-					label: tk.actor?.name ?? tk.name,
+					label: tk.actor?.system?.maskedName ?? tk.actor?.name ?? tk.name,
 					img: tk.actor?.img ?? tk.document?.texture?.src,
 					actor: tk.actor,
 				}))
@@ -39,7 +39,7 @@ export async function pickTargetActor({
 	const candidates = tokens
 		.map((tk) => ({
 			id: tk.actor?.id ?? tk.id,
-			label: tk.actor?.name ?? tk.name,
+			label: tk.actor?.system?.maskedName ?? tk.actor?.name ?? tk.name,
 			img: tk.actor?.img ?? tk.document?.texture?.src,
 			actor: tk.actor,
 		}))
@@ -64,7 +64,7 @@ export async function pickTargetActor({
 			.filter((a) => allowSelf || a !== exclude)
 			.map((a) => ({
 				id: a.id,
-				label: a.name,
+				label: a.system.maskedName ?? a.name,
 				img: a.img,
 				actor: a,
 			}));
@@ -107,7 +107,7 @@ export async function pickLimit() {
 				: "flag";
 			candidates.push({
 				id: `${actor.id}::${l.id}`,
-				label: `${actor.name} — ${l.label || t("LITM.Terms.limit")} (${l.value ?? 0}/${l.max ?? "—"})`,
+				label: `${actor.system.maskedName ?? actor.name} — ${l.label || t("LITM.Terms.limit")} (${l.value ?? 0}/${l.max ?? "—"})`,
 				img: actor.img,
 				actor,
 				limit: l,

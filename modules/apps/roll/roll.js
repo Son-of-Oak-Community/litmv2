@@ -1,4 +1,9 @@
-import { BURN_POWER, ROLL_TYPES } from "../../system/config.js";
+import {
+	BURN_POWER,
+	IMPROVE_MARKING_TAG_TYPES,
+	ROLL_TYPES,
+} from "../../system/config.js";
+import { LitmSettings } from "../../system/settings.js";
 import { localize as t } from "../../utils.js";
 
 export class LitmRoll extends foundry.dice.Roll {
@@ -136,6 +141,16 @@ export class LitmRoll extends foundry.dice.Roll {
 				(this.litm.type === "tracked" || this.litm.type === "mitigate") &&
 				(this.outcome.label === "success" || this.outcome.label === "snc") &&
 				this.power > 0,
+			// With automatic Improve marking disabled, offer the manual button
+			// for rolls that invoked a weakness/relationship tag. `gainedExp`
+			// doubles as the already-marked latch: the auto path persists it
+			// as true, and the button's click handler sets it on use.
+			canMarkImprove:
+				!LitmSettings.autoMarkImprove &&
+				!this.litm.gainedExp &&
+				(this.litm.weaknessTags ?? []).some((tag) =>
+					IMPROVE_MARKING_TAG_TYPES.has(tag.type),
+				),
 			// A Miracle on Painful lessens the price to nothing — there is
 			// no completion step to perform, so the button is suppressed.
 			canCompleteSacrifice:

@@ -6,11 +6,17 @@ import { Sockets } from "../../system/sockets.js";
 import { findFellowshipTheme, getStoryTagSidebar } from "../../utils.js";
 import { ensureHeroState } from "./camping-state.js";
 
-// Max value of a theme's Improve / Milestone / Abandon tracks. The third
+// Max value of a theme's Milestone / Abandon quest tracks. The final
 // mark fires `detectTrackCompletion` and reveals the track-complete chat
 // card; further marks during the same pack-up are dropped (the standing
-// card must be resolved first).
+// card must be resolved first). The Improve track uses the configurable
+// `CONFIG.litmv2.improveThreshold` instead — see `trackMax()`.
 const TRACK_MAX = 3;
+
+/** Effective max for a theme track — Improve is world-configurable. */
+function trackMax(track) {
+	return track === "improve" ? CONFIG.litmv2.improveThreshold : TRACK_MAX;
+}
 
 /**
  * Build the operation plan and recap from final camping state and a small
@@ -272,20 +278,21 @@ function resolveReflectTheme(themeId, hero, world) {
  * theme, only that hero can target it, so there's no stacking — but we
  * still register via the accumulator so it stays uniform.
  *
- * Clamp at TRACK_MAX so the third mark always lands on the completion
+ * Clamp at the track max so the final mark always lands on the completion
  * boundary that `detectTrackCompletion` watches. Any extra marks that
- * would push past 3 in the same pack-up are lost; the standing chat
+ * would push past the max in the same pack-up are lost; the standing chat
  * card must be resolved before more marks can land.
  */
 function bumpTrack(track, theme, owner, accum, ops, sourceHero) {
+	const max = trackMax(track);
 	const map = accum[track];
 	const key = `${owner.id}::${theme.id}`;
 	const existing = map.get(key);
 	if (existing) {
-		existing.newValue = Math.min(existing.newValue + 1, TRACK_MAX);
+		existing.newValue = Math.min(existing.newValue + 1, max);
 		return existing.newValue;
 	}
-	const newValue = Math.min((theme.system?.[track]?.value ?? 0) + 1, TRACK_MAX);
+	const newValue = Math.min((theme.system?.[track]?.value ?? 0) + 1, max);
 	if (track === "improve") {
 		const entry = { theme, owner, newValue };
 		map.set(key, entry);
@@ -545,7 +552,7 @@ export async function applyOperations(operations) {
 		}
 	}
 
-	// Sojourn-mode Improvements — set the improve track to 3 and fire
+	// Sojourn-mode Improvements — fill the improve track and fire
 	// `litm.trackCompleted` so the standard "Choose Improvement" chat
 	// card opens ThemeAdvancementApp for the player. Per Core Book p.181
 	// each hero's sojourn-Reflect grants an independent improvement, so
@@ -555,20 +562,21 @@ export async function applyOperations(operations) {
 	// Known limitation: if two heroes both target the SAME fellowship
 	// theme on a sojourn, two chat cards are emitted but only the first
 	// player to click the wizard can resolve theirs — the wizard's
-	// `canSelect` gate is `improve.value >= 3`, and the first resolution
-	// resets the track to 0. A proper fix would track pending
+	// `canSelect` gate is the configured improve threshold, and the first
+	// resolution resets the track to 0. A proper fix would track pending
 	// improvements per-theme so the second player can also pick. For
 	// now the rare double-target case requires GM coordination.
+	const improveMax = trackMax("improve");
 	for (const { theme, owner, sourceHero } of operations.improvements) {
 		const current = theme.system?.improve?.value ?? 0;
-		if (current < 3) {
+		if (current < improveMax) {
 			await owner.updateEmbeddedDocuments("Item", [
-				{ _id: theme.id, "system.improve.value": 3 },
+				{ _id: theme.id, "system.improve.value": improveMax },
 			]);
 		}
 		const trackInfo = detectTrackCompletion(
 			"system.improve.value",
-			3,
+			improveMax,
 			theme,
 			owner,
 		);

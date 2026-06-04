@@ -1,3 +1,4 @@
+import { scratchTag } from "../active-effects/scratchable-mixin.js";
 import { LitmRollDialog } from "../apps/roll/roll-dialog.js";
 import { error, warn } from "../logger.js";
 import { getStoryTagSidebar } from "../utils.js";
@@ -82,6 +83,20 @@ export class Sockets {
 			if (!actor?.sheet?.hasRollDialog) return;
 			const dialog = actor.sheet.rollDialogInstance;
 			if (dialog?.rendered) dialog.close();
+		});
+
+		// Post-roll bookkeeping for ally tags: the rolling client can't
+		// update an effect on an actor it doesn't own, so it asks the
+		// active GM to apply the scratch (burn / single-use consumption).
+		Sockets.on("scratchEffect", async ({ data: { uuid } }) => {
+			if (game.user !== game.users.activeGM) return;
+			const effect = await foundry.utils.fromUuid(uuid);
+			if (!effect || effect.system?.isScratched) return;
+			const targetActor =
+				effect.parent?.documentName === "Item"
+					? effect.parent.parent
+					: effect.parent;
+			await scratchTag(targetActor, effect);
 		});
 	}
 

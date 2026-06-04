@@ -378,6 +378,22 @@
 				</div>
 				{{/if}}
 
+				{{!-- Other fellowship heroes' sidebar-visible tags — the roller
+				     can invoke an ally's backpack tag or status directly. --}}
+				{{#each allyTagGroups as |group|}}
+				<div class="litm--roll-dialog-section-break">
+					<p class="litm--roll-dialog-actor-label">
+						{{#if group.actorImg}}<img src="{{group.actorImg}}" alt="{{group.actorName}}" />{{/if}}
+						<span>{{group.actorName}}</span>
+					</p>
+					<ul class="plain litm--roll-dialog-tags-summary">
+						{{#each group.tags as |tag|}}
+						{{> tag tag=tag}}
+						{{/each}}
+					</ul>
+				</div>
+				{{/each}}
+
 				{{#each contributedTagGroups as |contributor|}}
 				<div class="litm--roll-dialog-section-break">
 					<p class="litm--roll-dialog-actor-label">
@@ -398,7 +414,7 @@
 				</div>
 				{{/each}}
 
-				{{#unless (or fellowshipTagGroups.length contributedTagGroups.length)}}
+				{{#unless (or fellowshipTagGroups.length allyTagGroups.length contributedTagGroups.length)}}
 				<p class="hint">{{localize "LITM.Ui.roll_tab_empty_allies"}}</p>
 				{{/unless}}
 			</section>
@@ -426,6 +442,22 @@
 				</div>
 				{{/each}}
 
+				{{!-- Sidebar-visible challenges/journeys/story themes — players
+				     can pull the opposition's tags and statuses into the roll. --}}
+				{{#each sceneActorTagGroups as |group|}}
+				<div class="litm--roll-dialog-section-break">
+					<p class="litm--roll-dialog-actor-label">
+						{{#if group.actorImg}}<img src="{{group.actorImg}}" alt="{{group.actorName}}" />{{/if}}
+						<span>{{group.actorName}}</span>
+					</p>
+					<ul class="plain litm--roll-dialog-tags-summary">
+						{{#each group.tags as |tag|}}
+						{{> tag tag=tag}}
+						{{/each}}
+					</ul>
+				</div>
+				{{/each}}
+
 				{{#if isGM}}
 				{{#each gmTagGroups as |group|}}
 				<div class="litm--roll-dialog-section-break">
@@ -442,7 +474,7 @@
 				{{/each}}
 				{{/if}}
 
-				{{#unless (or storyTagGroups.length gmTagGroups.length)}}
+				{{#unless (or storyTagGroups.length sceneActorTagGroups.length gmTagGroups.length)}}
 				<p class="hint">{{localize "LITM.Ui.roll_tab_empty_scene"}}</p>
 				{{/unless}}
 			</section>
@@ -511,6 +543,22 @@
 			</div>
 			{{/each}}
 
+			{{!-- Ally tags the owner selected from other heroes (selected-only
+			     for viewers; the contributor's own tags render above). --}}
+			{{#each allyTagGroups as |group|}}
+			<div class="litm--roll-dialog-section-break">
+				<p class="litm--roll-dialog-actor-label">
+					{{#if group.actorImg}}<img src="{{group.actorImg}}" alt="{{group.actorName}}" />{{/if}}
+					<span>{{group.actorName}}</span>
+				</p>
+				<ul class="plain litm--roll-dialog-tags-summary">
+					{{#each group.tags as |tag|}}
+					{{> tag tag=tag}}
+					{{/each}}
+				</ul>
+			</div>
+			{{/each}}
+
 			{{#each storyTagGroups as |group|}}
 			<div class="litm--roll-dialog-section-break">
 				{{#if group.actorName}}
@@ -524,6 +572,21 @@
 					<span>{{localize "LITM.Tags.story"}}</span>
 				</p>
 				{{/if}}
+				<ul class="plain litm--roll-dialog-tags-summary">
+					{{#each group.tags as |tag|}}
+					{{> tag tag=tag}}
+					{{/each}}
+				</ul>
+			</div>
+			{{/each}}
+
+			{{!-- Scene-actor tags the owner selected (selected-only for viewers). --}}
+			{{#each sceneActorTagGroups as |group|}}
+			<div class="litm--roll-dialog-section-break">
+				<p class="litm--roll-dialog-actor-label">
+					{{#if group.actorImg}}<img src="{{group.actorImg}}" alt="{{group.actorName}}" />{{/if}}
+					<span>{{group.actorName}}</span>
+				</p>
 				<ul class="plain litm--roll-dialog-tags-summary">
 					{{#each group.tags as |tag|}}
 					{{> tag tag=tag}}

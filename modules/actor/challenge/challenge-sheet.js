@@ -62,6 +62,15 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 	static PLAY_CONTENT_TEMPLATE =
 		"systems/litmv2/templates/actor/challenge-play-content.html";
 
+	/**
+	 * Mask the window title for viewers who may not learn the challenge's
+	 * identity (non-owner observers); GM and owners see the real name.
+	 * @override
+	 */
+	get title() {
+		return this.document.system.maskedName ?? super.title;
+	}
+
 	/* -------------------------------------------- */
 	/*  Rendering                                   */
 	/* -------------------------------------------- */
@@ -120,6 +129,25 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 					step: "1",
 				},
 			],
+			// Edit-mode only — the conceal toggle is sheet chrome, not play UI
+			conceal: isPlay
+				? null
+				: {
+						enabled: this.document._source.system.concealName,
+						alias: this.document._source.system.alias,
+					},
+			// Play mode shows the alias as the title; GM/owners additionally get
+			// the real name beneath it
+			concealed:
+				isPlay && sys.concealName
+					? {
+							alias: sys.publicName,
+							realName:
+								game.user.isGM || this.document.isOwner
+									? this.document.name
+									: null,
+						}
+					: null,
 			enriched,
 			tagsString: sys.tags || "",
 			vignettes,

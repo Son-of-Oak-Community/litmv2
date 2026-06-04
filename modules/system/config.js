@@ -11,6 +11,15 @@ export const POWER_TAG_TYPES = new Set(["power_tag", "fellowship_tag"]);
 /** Effect types that live directly on actors (not on theme items). */
 export const ACTOR_TAG_TYPES = new Set(["story_tag", "status_tag"]);
 
+/**
+ * Tag types whose invocation in a roll marks Improve on the owning theme
+ * (weakness on its own theme, relationship on the fellowship theme).
+ */
+export const IMPROVE_MARKING_TAG_TYPES = new Set([
+	"weakness_tag",
+	"relationship_tag",
+]);
+
 /** Effect types that support the ScratchableMixin. */
 export const SCRATCHABLE_TAG_TYPES = new Set([
 	"power_tag",
@@ -208,6 +217,13 @@ export const LitmConfig = {
 
 	/** Maximum non-fellowship themes a hero can have. Mirrored from the world setting at ready. */
 	themeLimit: 4,
+
+	/**
+	 * Improve marks needed before a theme can choose an advancement.
+	 * Mirrored from the world setting at registration time (init) — the
+	 * ThemeData schema reads it for the track's `max` before `ready`.
+	 */
+	improveThreshold: 3,
 
 	challenge_types: [
 		"attacker",

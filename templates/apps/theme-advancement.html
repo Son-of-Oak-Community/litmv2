@@ -51,7 +51,7 @@
 		<p class="hint">{{localize "LITM.Ui.no_themebook_improvements"}}</p>
 		{{/if}}
 		{{else}}
-		<p class="hint">{{localize "LITM.Ui.improve_needed"}}</p>
+		<p class="hint">{{localize "LITM.Ui.improve_needed" count=(improve-threshold)}}</p>
 		{{/if}}
 	</fieldset>
 
@@ -82,7 +82,7 @@
 			</button>
 		</div>
 		{{else}}
-		<p class="hint">{{localize "LITM.Ui.improve_needed"}}</p>
+		<p class="hint">{{localize "LITM.Ui.improve_needed" count=(improve-threshold)}}</p>
 		{{/if}}
 	</fieldset>
 
@@ -113,7 +113,7 @@
 			</button>
 		</div>
 		{{else}}
-		<p class="hint">{{localize "LITM.Ui.improve_needed"}}</p>
+		<p class="hint">{{localize "LITM.Ui.improve_needed" count=(improve-threshold)}}</p>
 		{{/if}}
 	</fieldset>
 </section>

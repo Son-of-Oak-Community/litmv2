@@ -21,8 +21,11 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 		return false;
 	}
 
+	// Negative-first: statuses are usually hindrances (wounded, exhausted),
+	// so the first click selects the hindering polarity everywhere a status
+	// chip is cycled — roll dialog, hero sheet, ally and scene groups alike.
 	get allowedStates() {
-		return ",positive,negative";
+		return ",negative,positive";
 	}
 
 	get defaultPolarity() {

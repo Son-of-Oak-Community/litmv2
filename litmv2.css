@@ -1967,6 +1967,23 @@ section.standard-form.litm-actions-app {
 	min-width: 0;
 }
 
+/* Long tracks (configurable Improve threshold): pips keep their natural
+   size and wrap onto a new row when the track column runs out of width,
+   instead of shrinking. */
+.litm .theme-card-track .progress-display {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+/* Tighter vertical envelope (20px box, 2px block padding) so wrapped
+   rows sit close together; the glyph stays 16px either way. */
+.litm .theme-card-track .progress-box {
+	flex: none;
+	--button-size: 20px;
+	padding-block: 2px;
+}
+
 .litm .theme-card-track label {
 	font-size: var(--font-size-11);
 	text-align: center;
@@ -2083,6 +2100,29 @@ section.standard-form.litm-actions-app {
 	font-size: var(--font-size-16);
 }
 
+/* Conceal-name toggle sits on the name row; centered against the name input,
+   which carries a bottom margin the checkbox must mirror */
+.litm-actor [data-application-part="header"].img-name .litm--conceal-toggle {
+	align-items: center;
+	display: flex;
+	margin-bottom: var(--spacer-8);
+}
+
+/* The header part intentionally skips incremental re-renders in edit mode
+   (EDITOR_PARTS), so the alias input is always in the DOM and revealed by
+   the checkbox state alone */
+.litm-actor
+	.litm--conceal-name-row:not(:has(input[name="system.concealName"]:checked))
+	+ input[name="system.alias"] {
+	display: none;
+}
+
+.litm-actor [data-application-part="header"].img-name input[name="system.alias"] {
+	font-size: var(--font-size-16);
+	font-style: italic;
+	margin-bottom: var(--spacer-8);
+}
+
 .litm-actor fieldset > .litm-banner {
 	font-size: var(--font-size-11);
 }
@@ -2111,6 +2151,14 @@ section.standard-form.litm-actions-app {
 
 .litm--play-header {
 	padding-top: var(--spacer-8);
+}
+
+/* GM/owner-only real name beneath a concealed challenge's alias title */
+.litm--play-header .litm--conceal-real-name {
+	font-family: var(--font-blockquote);
+	font-style: italic;
+	font-size: var(--font-size-14);
+	opacity: 0.75;
 }
 
 /* Sacrifice trigger — warm/dire styling on the Roll-adjacent button.
@@ -4458,16 +4506,41 @@ section.standard-form.litm-actions-app {
 	}
 }
 
-/* Status tier suffix — "-3" rendered flush against the name so the chip
-   reads "wounded-3" at a glance instead of leaving the tier inferable only
-   from the filled pips. `field-sizing: content` collapses the input to its
-   value width so the suffix sits immediately after; without it, the input's
-   default size=20 leaves a long gap before the suffix. */
-.litm--status .litm--tag-item-name {
+/* Name sizer — grid wrapper whose hidden ::after replicates the input's
+   value, sizing the cell to the text. Cross-browser replacement for
+   `field-sizing: content` (unsupported in Firefox), so the status tier
+   suffix ("-3") sits flush against the name and the chip reads "wounded-3"
+   at a glance. The input renders at the cell width (width: 0 keeps its
+   default size=20 from inflating the track). */
+.litm--tag-name-sizer {
+	display: inline-grid;
+	align-items: center;
+	flex: 1;
+	min-width: 6rem;
+}
+
+.litm--tag-name-sizer::after {
+	content: attr(data-value);
+	visibility: hidden;
+	white-space: pre;
+	grid-area: 1 / 1;
+	min-width: 1ch;
+	font: inherit;
+	line-height: var(--line-height-normal);
+}
+
+.litm--tag-name-sizer > .litm--tag-item-name {
+	grid-area: 1 / 1;
+	flex: none;
+	width: 0;
+	min-width: 100%;
+}
+
+/* Status chips collapse the sizer to the text width; other tags keep the
+   full-width input. */
+.litm--status .litm--tag-name-sizer {
 	flex: 0 1 auto;
 	min-width: 0;
-	width: auto;
-	field-sizing: content;
 }
 
 .litm--tag-item-tier {
