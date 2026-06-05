@@ -4194,6 +4194,147 @@ section.standard-form.litm-actions-app {
 	outline-offset: 2px;
 }
 
+/* Camping recap chat card — stage-ordered summary posted at Pack Up. Mirrors
+   the camp scene's own flow: header (type + place + campsite chips), then
+   Periods → Quality Time → Pack Up with per-hero rows. Tag/status chips reuse
+   the global tag chrome; text sticks to chat-safe tokens (--color-text-primary
+   tints and --color-litm-*-text accents). */
+.litm-camping-recap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-8);
+	padding: var(--spacer-8) var(--spacer-12) var(--spacer-12);
+}
+
+.litm-camping-recap__header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+}
+
+.litm-camping-recap__title {
+	margin: 0;
+	border: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacer-8);
+	font-family: var(--font-h2);
+	font-size: var(--font-size-20);
+	/* Foundry's h2 default (--color-text-emphatic) is unreliable inside
+	   .chat-log — pin to the chat-safe primary. */
+	color: var(--color-text-primary);
+}
+
+.litm-camping-recap__title i {
+	font-size: var(--font-size-14);
+}
+
+.litm-camping-recap .litm--ingress {
+	margin: 0;
+	text-align: center;
+}
+
+.litm-camping-recap__campsite {
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacer-4) var(--spacer-12);
+}
+
+.litm-camping-recap__threats {
+	margin-top: var(--spacer-4);
+}
+
+.litm-camping-recap__stage {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+}
+
+.litm-camping-recap__stage-number {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.5em;
+	height: 1.5em;
+	border: 1px solid currentcolor;
+	border-radius: var(--radius-circle);
+	font-size: var(--font-size-11);
+	font-weight: 700;
+}
+
+.litm-camping-recap__hero {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-2);
+}
+
+.litm-camping-recap__hero-head {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+}
+
+.litm-camping-recap__avatar {
+	width: 24px;
+	height: 24px;
+	object-fit: cover;
+	border: none;
+	border-radius: var(--radius-sm);
+	flex: none;
+}
+
+.litm-camping-recap__hero-name {
+	font-weight: 700;
+}
+
+.litm-camping-recap__activity {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	margin-left: auto;
+	padding: 0 var(--spacer-8);
+	border: 1px solid var(--color-text-primary-15);
+	border-radius: var(--radius-pill);
+	font-size: var(--font-size-12);
+	white-space: nowrap;
+}
+
+.litm-camping-recap__activity--rest i {
+	color: var(--color-litm-status-text);
+}
+
+.litm-camping-recap__activity--reflect i {
+	color: var(--color-litm-tag-text);
+}
+
+.litm-camping-recap__activity--campAction i {
+	color: var(--color-litm-weakness-text);
+}
+
+.litm-camping-recap__lines {
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-2);
+	/* Indent past the avatar so effects hang under the hero's name. */
+	padding: 0 0 0 calc(24px + var(--spacer-8));
+	font-size: var(--font-size-13);
+}
+
+.litm-camping-recap__kept {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: var(--spacer-4) var(--spacer-12);
+}
+
+.litm-camping-recap__none {
+	font-style: italic;
+	opacity: 0.7;
+}
+
 /* ========================================
   12. Story Tags Manager
    Tag items, burn indicators, tier boxes, visibility toggles.

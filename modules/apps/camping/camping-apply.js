@@ -38,7 +38,11 @@ function trackMax(track) {
  *     questMarks:            [{ theme, owner, track, newValue, sourceHero }],
  *     relationshipCreations: [{ heroActor, targetId, name }],
  *   }
- *   recap: { ... }
+ *   recap: mirrors the camp scene's own flow — Periods, then Quality Time,
+ *   then Pack Up — so the chat card reads in the order the camp played out.
+ *   Each stage holds per-hero entries: `{ id, name, img, activity, lines }`
+ *   for periods/quality time, `{ id, name, img, kept }` for pack up (the
+ *   backpack tags carried into the next adventure). Empty stages are dropped.
  */
 export function buildOperations(state, world) {
 	const ops = emptyOps();
@@ -47,11 +51,13 @@ export function buildOperations(state, world) {
 		sojournDuration: state.sojournDuration,
 		placeOfStay: {
 			name: state.placeOfStay?.name ?? "",
+			// Each entry: { name, isStatus, tier, isSingleUse } — typed so the
+			// recap can render proper tag/status chips.
 			campsiteTags: [],
 			// Each entry: { id, name, threat, consequences[], isConsequenceOnly }
 			threats: [],
 		},
-		heroes: [],
+		stages: [],
 	};
 
 	buildPlaceOfStayOps(state, world, recap);
@@ -67,18 +73,37 @@ export function buildOperations(state, world) {
 		milestone: new Map(),
 	};
 
+	// Stage skeletons in camp-flow order; label keys match the scene's own
+	// timeline so the recap and the live UI speak the same language.
+	const stages = {
+		period1: stageSkeleton("period1", "LITM.Ui.camping_step_period_one", 1),
+		period2: stageSkeleton("period2", "LITM.Ui.camping_step_period_two", 2),
+		period3: stageSkeleton("period3", "LITM.Ui.camping_step_period_three", 3),
+		qualityTime: stageSkeleton(
+			"qualityTime",
+			"LITM.Ui.camping_step_quality_time",
+		),
+		packUp: stageSkeleton("packUp", "LITM.Ui.camping_step_pack_up"),
+	};
+
 	for (const hero of world.heroes ?? []) {
 		const heroState = ensureHeroState(state, hero.id);
-		const heroRecap = { id: hero.id, name: hero.name, lines: [] };
-
-		buildBackpackOps(hero, heroState, ops, heroRecap);
-		buildActivityOps(hero, heroState, state, world, trackAccum, ops, heroRecap);
-		buildQualityTimeOps(hero, heroState, world, ops, heroRecap);
-
-		recap.heroes.push(heroRecap);
+		buildActivityOps(hero, heroState, state, world, trackAccum, ops, stages);
+		buildQualityTimeOps(hero, heroState, world, ops, stages.qualityTime);
+		buildBackpackOps(hero, heroState, ops, stages.packUp);
 	}
 
+	recap.stages = Object.values(stages).filter((s) => s.heroes.length);
 	return { operations: ops, recap };
+}
+
+function stageSkeleton(key, labelKey, number = null) {
+	return { key, labelKey, number, heroes: [] };
+}
+
+/** Identity slice of a hero for a recap stage entry. */
+function heroRef(hero) {
+	return { id: hero.id, name: hero.name, img: hero.img ?? null };
 }
 
 function emptyOps() {
@@ -133,11 +158,13 @@ export function parseCampsiteEntries(raw) {
 }
 
 function describeCampsiteEntry(entry) {
-	if (entry.type === "status_tag") {
-		const tier = StatusTagData.tierOf(entry.system?.tiers);
-		return tier ? `${entry.name}-${tier}` : entry.name;
-	}
-	return entry.system?.isSingleUse ? `${entry.name}!` : entry.name;
+	const isStatus = entry.type === "status_tag";
+	return {
+		name: entry.name,
+		isStatus,
+		tier: isStatus ? StatusTagData.tierOf(entry.system?.tiers) : 0,
+		isSingleUse: !isStatus && !!entry.system?.isSingleUse,
+	};
 }
 
 function buildPlaceOfStayOps(state, world, recap) {
@@ -164,31 +191,32 @@ function buildPlaceOfStayOps(state, world, recap) {
 	}
 }
 
-function buildBackpackOps(hero, heroState, ops, heroRecap) {
+function buildBackpackOps(hero, heroState, ops, packStage) {
 	const backpack = hero.system?.backpackItem ?? null;
 	if (!backpack) return;
 	const keptSet = new Set(heroState.backpackKept);
-	const deactivated = [];
-	const reactivated = [];
+	// The recap lists what the hero packed — the tags active after Pack Up.
+	// Everything else is history; no "deactivated/re-enabled" bookkeeping
+	// prose (issue #104).
+	const kept = [];
 	for (const effect of backpack.effects) {
 		if (effect.type !== "story_tag") continue;
-		const kept = keptSet.has(effect.id);
+		const isKept = keptSet.has(effect.id);
 		// Active + not kept → disable. Disabled + kept → re-enable. The
 		// other two combinations leave the effect alone.
-		if (!effect.disabled && !kept) {
+		if (!effect.disabled && !isKept) {
 			ops.disables.push({ effect });
-			deactivated.push(effect.name);
-		} else if (effect.disabled && kept) {
+		} else if (effect.disabled && isKept) {
 			ops.enables.push({ effect });
-			reactivated.push(effect.name);
+		}
+		if (isKept) {
+			kept.push({
+				name: effect.name,
+				isSingleUse: !!effect.system?.isSingleUse,
+			});
 		}
 	}
-	if (deactivated.length) {
-		heroRecap.lines.push({ kind: "backpack-deactivated", names: deactivated });
-	}
-	if (reactivated.length) {
-		heroRecap.lines.push({ kind: "backpack-reactivated", names: reactivated });
-	}
+	packStage.heroes.push({ ...heroRef(hero), kept });
 }
 
 function buildActivityOps(
@@ -198,38 +226,55 @@ function buildActivityOps(
 	world,
 	trackAccum,
 	ops,
-	heroRecap,
+	stages,
 ) {
 	const periodCount = heroState.thirdPeriodActive ? 3 : 2;
 	const allFx = collectEffects(hero);
 	for (let p = 0; p < periodCount; p++) {
 		const act = heroState.activities[p];
 		if (!act?.activity) continue;
-		if (act.activity === "rest") buildRestOps(act, allFx, ops, heroRecap);
+		const entry = { ...heroRef(hero), activity: act.activity, lines: [] };
+		if (act.activity === "rest") buildRestOps(act, allFx, ops, entry.lines);
 		else if (act.activity === "reflect")
-			buildReflectOps(act, hero, state, world, trackAccum, ops, heroRecap);
+			buildReflectOps(act, hero, state, world, trackAccum, ops, entry.lines);
 		else if (act.activity === "campAction") {
-			heroRecap.lines.push({
+			entry.lines.push({
 				kind: "campAction",
 				detail: act.campActionDetail ?? "",
 			});
 		}
+		stages[`period${p + 1}`].heroes.push(entry);
 	}
 }
 
-function buildRestOps(act, allFx, ops, heroRecap) {
-	const restLine = { kind: "rest", changes: [] };
+function buildRestOps(act, allFx, ops, lines) {
 	for (const [statusId, choice] of Object.entries(act.restChoices ?? {})) {
 		const effect = allFx.find((e) => e.id === statusId);
 		if (!effect) continue;
 		if (choice.action === "remove") {
 			ops.statusDeletes.push({ effect });
-			restLine.changes.push({ action: "remove", name: effect.name });
+			lines.push({
+				kind: "status-cleared",
+				name: effect.name,
+				tier: effect.system?.currentTier ?? 0,
+			});
 		} else if (choice.action === "reduce") {
 			const cap = effect.system?.currentTier ?? 0;
 			const amount = Math.max(1, Math.min(choice.amount ?? 1, cap || 6));
 			ops.statusReductions.push({ effect, amount });
-			restLine.changes.push({ action: "reduce", name: effect.name, amount });
+			// A reduction down to 0 deletes the status at apply time — recap
+			// it as cleared rather than "becomes name-0".
+			const to = cap - amount;
+			if (cap > 0 && to > 0) {
+				lines.push({
+					kind: "status-reduced",
+					name: effect.name,
+					from: cap,
+					to,
+				});
+			} else {
+				lines.push({ kind: "status-cleared", name: effect.name, tier: cap });
+			}
 		}
 	}
 	for (const recoverId of act.restRecoverTagIds ?? []) {
@@ -240,10 +285,9 @@ function buildRestOps(act, allFx, ops, heroRecap) {
 		// stale client can't unilaterally restore a shared resource.
 		if (effect && effect.type === "power_tag") {
 			ops.unscratches.push({ effect });
-			restLine.changes.push({ action: "recover", name: effect.name });
+			lines.push({ kind: "tag-recovered", name: effect.name });
 		}
 	}
-	heroRecap.lines.push(restLine);
 }
 
 /**
@@ -305,7 +349,7 @@ function bumpTrack(track, theme, owner, accum, ops, sourceHero) {
 	return newValue;
 }
 
-function buildReflectOps(act, hero, state, world, trackAccum, ops, heroRecap) {
+function buildReflectOps(act, hero, state, world, trackAccum, ops, lines) {
 	// Core Book p.181:
 	//   Camp     → Mark Improve on the chosen theme.
 	//   Sojourn  → Gain an improvement directly. Drive the existing
@@ -319,7 +363,7 @@ function buildReflectOps(act, hero, state, world, trackAccum, ops, heroRecap) {
 			: theme.name;
 		if (state.type === "sojourn") {
 			ops.improvements.push({ theme, owner, sourceHero: hero });
-			heroRecap.lines.push({ kind: "reflect-improvement", themeName });
+			lines.push({ kind: "reflect-improvement", themeName });
 		} else {
 			const newValue = bumpTrack(
 				"improve",
@@ -329,7 +373,7 @@ function buildReflectOps(act, hero, state, world, trackAccum, ops, heroRecap) {
 				ops,
 				hero,
 			);
-			heroRecap.lines.push({ kind: "reflect", themeName, newValue });
+			lines.push({ kind: "reflect", themeName, newValue });
 		}
 	}
 
@@ -350,7 +394,7 @@ function buildReflectOps(act, hero, state, world, trackAccum, ops, heroRecap) {
 			? `${owner.name}: ${theme.name}`
 			: theme.name;
 		const newValue = bumpTrack(track, theme, owner, trackAccum, ops, hero);
-		heroRecap.lines.push({
+		lines.push({
 			kind: "reflect-quest-mark",
 			track,
 			themeName,
@@ -366,10 +410,11 @@ function buildReflectOps(act, hero, state, world, trackAccum, ops, heroRecap) {
  * fellowship tag. Invalid / unmatched selections (e.g. stale ids after the
  * fellowship theme changed) are silently dropped.
  */
-function buildQualityTimeOps(hero, heroState, world, ops, heroRecap) {
+function buildQualityTimeOps(hero, heroState, world, ops, qtStage) {
 	const quality = heroState.qualityTime ?? null;
 	if (!quality?.action) return;
 	const allFx = collectEffects(hero);
+	const lines = [];
 
 	if (quality.action === "recoverFellowship") {
 		const effect = allFx.find(
@@ -378,59 +423,52 @@ function buildQualityTimeOps(hero, heroState, world, ops, heroRecap) {
 				e.type === "fellowship_tag" &&
 				e.system?.isScratched,
 		);
-		if (!effect) return;
-		ops.unscratches.push({ effect });
-		heroRecap.lines.push({
-			kind: "fellowship-tag-recovered",
-			name: effect.name,
-		});
-		return;
-	}
-
-	if (quality.action === "rephraseRelationship") {
+		if (effect) {
+			ops.unscratches.push({ effect });
+			lines.push({ kind: "fellowship-tag-recovered", name: effect.name });
+		}
+	} else if (quality.action === "rephraseRelationship") {
 		const effect = allFx.find(
 			(e) =>
 				e.id === quality.relationshipEffectId && e.type === "relationship_tag",
 		);
-		if (!effect) return;
-		// Unscratch is a no-op for an already-fresh relationship
-		// (applyScratchBatch short-circuits when current === target).
-		ops.unscratches.push({ effect });
-		const next = quality.relationshipRephrase?.trim();
-		if (next && next !== effect.name) {
-			ops.renames.push({ effect, newName: next });
-			heroRecap.lines.push({
-				kind: "relationship-rephrased",
-				from: effect.name,
-				to: next,
-			});
-		} else {
-			heroRecap.lines.push({
-				kind: "relationship-renewed",
-				name: effect.name,
-			});
+		if (effect) {
+			// Unscratch is a no-op for an already-fresh relationship
+			// (applyScratchBatch short-circuits when current === target).
+			ops.unscratches.push({ effect });
+			const next = quality.relationshipRephrase?.trim();
+			if (next && next !== effect.name) {
+				ops.renames.push({ effect, newName: next });
+				lines.push({
+					kind: "relationship-rephrased",
+					from: effect.name,
+					to: next,
+				});
+			} else {
+				lines.push({ kind: "relationship-renewed", name: effect.name });
+			}
 		}
-		return;
-	}
-
-	if (quality.action === "newRelationship") {
+	} else if (quality.action === "newRelationship") {
 		const allHeroes = world.heroes ?? [];
 		const targetId = quality.newRelationshipTargetId;
 		const name = quality.newRelationshipName?.trim();
-		if (!targetId || !name) return;
-		const targetHero = allHeroes.find((h) => h.id === targetId);
-		if (!targetHero) return;
+		const targetHero = targetId
+			? allHeroes.find((h) => h.id === targetId)
+			: null;
 		const already = allFx.some(
 			(e) => e.type === "relationship_tag" && e.system?.targetId === targetId,
 		);
-		if (already) return;
-		ops.relationshipCreations.push({ heroActor: hero, targetId, name });
-		heroRecap.lines.push({
-			kind: "relationship-created",
-			name,
-			partnerName: targetHero.name,
-		});
+		if (targetHero && name && !already) {
+			ops.relationshipCreations.push({ heroActor: hero, targetId, name });
+			lines.push({
+				kind: "relationship-created",
+				name,
+				partnerName: targetHero.name,
+			});
+		}
 	}
+
+	if (lines.length) qtStage.heroes.push({ ...heroRef(hero), lines });
 }
 
 /**

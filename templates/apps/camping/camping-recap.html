@@ -1,67 +1,102 @@
 <div class="litm-render litm-render--card litm-camping-recap">
-	<h2 class="litm-render__title">
-		{{#if (eq type "sojourn")}}
-		{{localize "LITM.Ui.camping_recap_sojourn"}} — {{localize (concat "LITM.Ui.camping_duration_" sojournDuration)}}
-		{{else}}
-		{{localize "LITM.Ui.camping_recap_camp"}}
+	<header class="litm-camping-recap__header">
+		<h2 class="litm-camping-recap__title">
+			<i class="fa-solid {{#if (eq type "sojourn")}}fa-route{{else}}fa-campground{{/if}}" aria-hidden="true"></i>
+			{{#if (eq type "sojourn")}}
+			{{localize "LITM.Ui.camping_recap_sojourn"}} — {{localize (concat "LITM.Ui.camping_duration_" sojournDuration)}}
+			{{else}}
+			{{localize "LITM.Ui.camping_recap_camp"}}
+			{{/if}}
+		</h2>
+		{{#if placeOfStay.name}}
+		<p class="litm--ingress">{{placeOfStay.name}}</p>
 		{{/if}}
-	</h2>
-	{{#if placeOfStay.name}}
-	<p class="litm--ingress">{{placeOfStay.name}}</p>
-	{{/if}}
-	{{#if placeOfStay.threats.length}}
-	<div class="litm-camping-recap__threats">
-		<p class="hint">{{localize "LITM.Ui.camping_recap_threats"}}</p>
-		<ul class="plain">
-			{{#each placeOfStay.threats}}
-			<li>
-				<strong>{{name}}</strong>{{#if threat}} — <em>{{threat}}</em>{{/if}}
-			</li>
+		{{#if placeOfStay.campsiteTags.length}}
+		<p class="litm-camping-recap__campsite">
+			{{#each placeOfStay.campsiteTags}}
+			{{#if isStatus}}
+			<span class="litm-status" data-text="{{name}}" draggable="true">{{name}}{{#if tier}}-{{tier}}{{/if}}</span>
+			{{else}}
+			<span class="litm-tag" data-text="{{name}}" draggable="true">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
+			{{/if}}
 			{{/each}}
-		</ul>
-	</div>
-	{{/if}}
-	{{#each heroes}}
-	<section>
-		<h3 class="litm-render__section-header">{{name}}</h3>
-		<ul class="plain">
-			{{#each lines}}
-			<li>
-				{{#if (eq kind "backpack-deactivated")}}
-				{{localize "LITM.Ui.camping_recap_backpack_deactivated"}}: {{join names ", "}}
-				{{else if (eq kind "backpack-reactivated")}}
-				{{localize "LITM.Ui.camping_recap_backpack_reactivated"}}: {{join names ", "}}
-				{{else if (eq kind "rest")}}
-				{{localize "LITM.Ui.camping_recap_rest"}}
-				{{#if changes.length}}
-				—
-				{{#each changes}}
-				{{#if (eq action "reduce")}}reduced {{name}} by {{amount}}{{/if}}
-				{{#if (eq action "remove")}}removed {{name}}{{/if}}
-				{{#if (eq action "recover")}}recovered {{name}}{{/if}}
-				{{#unless @last}}, {{/unless}}
+		</p>
+		{{/if}}
+		{{#if placeOfStay.threats.length}}
+		<div class="litm-camping-recap__threats">
+			<p class="hint">{{localize "LITM.Ui.camping_recap_threats"}}</p>
+			<ul class="plain">
+				{{#each placeOfStay.threats}}
+				<li>
+					<strong>{{name}}</strong>{{#if threat}} — <em>{{threat}}</em>{{/if}}
+				</li>
 				{{/each}}
+			</ul>
+		</div>
+		{{/if}}
+	</header>
+	{{#each stages}}
+	<section class="litm-camping-recap__stage">
+		<h3 class="litm-render__section-header">
+			{{#if number}}<span class="litm-camping-recap__stage-number">{{number}}</span>{{/if}}
+			{{localize labelKey}}
+		</h3>
+		{{#each heroes}}
+		<div class="litm-camping-recap__hero">
+			<div class="litm-camping-recap__hero-head">
+				{{#if img}}<img class="litm-camping-recap__avatar" src="{{img}}" alt="" />{{/if}}
+				<span class="litm-camping-recap__hero-name">{{name}}</span>
+				{{#if activity}}
+				<span class="litm-camping-recap__activity litm-camping-recap__activity--{{activity}}">
+					{{#if (eq activity "rest")}}<i class="fa-solid fa-leaf" aria-hidden="true"></i> {{localize "LITM.Ui.camping_rest"}}{{/if}}
+					{{#if (eq activity "reflect")}}<i class="fa-solid fa-book-open" aria-hidden="true"></i> {{localize "LITM.Ui.camping_reflect"}}{{/if}}
+					{{#if (eq activity "campAction")}}<i class="fa-solid fa-fire" aria-hidden="true"></i> {{localize "LITM.Ui.camping_camp_action"}}{{/if}}
+				</span>
 				{{/if}}
-				{{else if (eq kind "reflect")}}
-				{{localize "LITM.Ui.camping_recap_reflect"}} — {{themeName}}
-				{{else if (eq kind "reflect-improvement")}}
-				{{localize "LITM.Ui.camping_recap_reflect_improvement"}} — {{themeName}}
-				{{else if (eq kind "reflect-quest-mark")}}
-				{{#if (eq track "milestone")}}{{localize "LITM.Ui.camping_recap_milestone"}}{{else}}{{localize "LITM.Ui.camping_recap_abandon"}}{{/if}} — {{themeName}}
-				{{else if (eq kind "campAction")}}
-				{{localize "LITM.Ui.camping_recap_camp_action"}}: <em>{{detail}}</em>
-				{{else if (eq kind "fellowship-tag-recovered")}}
-				{{localize "LITM.Ui.camping_recap_fellowship_recovered"}}: {{name}}
-				{{else if (eq kind "relationship-renewed")}}
-				{{localize "LITM.Ui.camping_recap_relationship_renewed"}}: {{name}}
-				{{else if (eq kind "relationship-rephrased")}}
-				{{localize "LITM.Ui.camping_recap_relationship_rephrased"}}: {{from}} → {{to}}
-				{{else if (eq kind "relationship-created")}}
-				{{localize "LITM.Ui.camping_recap_relationship_created"}}: {{name}} → {{partnerName}}
-				{{/if}}
-			</li>
-			{{/each}}
-		</ul>
+			</div>
+			{{#if (eq ../key "packUp")}}
+			<p class="litm-camping-recap__lines litm-camping-recap__kept">
+				{{#each kept}}
+				<span class="litm-tag" data-text="{{name}}" draggable="true">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
+				{{else}}
+				<span class="litm-camping-recap__none">{{localize "LITM.Ui.camping_recap_packed_nothing"}}</span>
+				{{/each}}
+			</p>
+			{{else}}
+			{{#if lines.length}}
+			<ul class="litm-camping-recap__lines plain">
+				{{#each lines}}
+				<li>
+					{{#if (eq kind "status-cleared")}}
+					<span class="litm-status" data-text="{{name}}">{{name}}{{#if tier}}-{{tier}}{{/if}}</span> {{localize "LITM.Ui.camping_recap_cleared"}}
+					{{else if (eq kind "status-reduced")}}
+					<span class="litm-status" data-text="{{name}}">{{name}}-{{from}}</span> {{localize "LITM.Ui.camping_recap_becomes"}} <span class="litm-status" data-text="{{name}}">{{name}}-{{to}}</span>
+					{{else if (eq kind "tag-recovered")}}
+					<span class="litm-power_tag" data-text="{{name}}">{{name}}</span> {{localize "LITM.Ui.camping_recap_recovered"}}
+					{{else if (eq kind "reflect")}}
+					<em>{{themeName}}</em> — {{localize "LITM.Ui.camping_recap_improve_marked"}}
+					{{else if (eq kind "reflect-improvement")}}
+					<em>{{themeName}}</em> — {{localize "LITM.Ui.camping_recap_reflect_improvement"}}
+					{{else if (eq kind "reflect-quest-mark")}}
+					<em>{{themeName}}</em> — {{#if (eq track "milestone")}}{{localize "LITM.Ui.camping_recap_milestone"}}{{else}}{{localize "LITM.Ui.camping_recap_abandon"}}{{/if}}
+					{{else if (eq kind "campAction")}}
+					<em>{{detail}}</em>
+					{{else if (eq kind "fellowship-tag-recovered")}}
+					<span class="litm-fellowship_tag" data-text="{{name}}">{{name}}</span> {{localize "LITM.Ui.camping_recap_recovered"}}
+					{{else if (eq kind "relationship-renewed")}}
+					<span class="litm-relationship_tag" data-text="{{name}}">{{name}}</span> {{localize "LITM.Ui.camping_recap_renewed"}}
+					{{else if (eq kind "relationship-rephrased")}}
+					<span class="litm-relationship_tag" data-text="{{from}}">{{from}}</span> {{localize "LITM.Ui.camping_recap_becomes"}} <span class="litm-relationship_tag" data-text="{{to}}">{{to}}</span>
+					{{else if (eq kind "relationship-created")}}
+					{{localize "LITM.Ui.camping_recap_relationship_created"}}: <span class="litm-relationship_tag" data-text="{{name}}">{{name}}</span> — {{partnerName}}
+					{{/if}}
+				</li>
+				{{/each}}
+			</ul>
+			{{/if}}
+			{{/if}}
+		</div>
+		{{/each}}
 	</section>
 	{{/each}}
 </div>
