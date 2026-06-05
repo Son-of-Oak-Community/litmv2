@@ -103,38 +103,62 @@ export function getAllowedVerbs(roll) {
  * `successes[]` (verb=extraFeat) we still cost it at 1 Power.
  *
  * @param {object|null|undefined} success
- * @returns {{ fixed: number, variableTokens: number }}
+ * @returns {{ fixed: number, variableTokens: number, tagCosts: number[] }}
  */
 export function getSuccessCost(success) {
-	if (!success) return { fixed: 0, variableTokens: 0 };
+	if (!success) return { fixed: 0, variableTokens: 0, tagCosts: [] };
 
 	const def = getVerbDef(success.verb);
-	if (!def) return { fixed: 0, variableTokens: 0 };
+	if (!def) return { fixed: 0, variableTokens: 0, tagCosts: [] };
 
-	if (def.kind === "narrative") return { fixed: 0, variableTokens: 0 };
-	if (def.kind === "extraFeat") return { fixed: 1, variableTokens: 0 };
-	if (def.kind === "discover") return { fixed: 1, variableTokens: 0 };
+	if (def.kind === "narrative")
+		return { fixed: 0, variableTokens: 0, tagCosts: [] };
+	if (def.kind === "extraFeat")
+		return { fixed: 1, variableTokens: 0, tagCosts: [] };
+	if (def.kind === "discover")
+		return { fixed: 1, variableTokens: 0, tagCosts: [] };
 
 	return _costFromMarkup(success.text || "");
 }
 
 /**
+ * Minimum Power a success can be applied for. With one tag (or none) this is
+ * the fixed cost. With 2+ tag tokens the player chooses which tags to apply
+ * in Spend Power ("either or both" successes), so only the cheapest tag
+ * counts toward affordability.
+ *
+ * @param {{ fixed: number, tagCosts?: number[] }} cost  From getSuccessCost.
+ * @returns {number}
+ */
+export function getMinSuccessCost(cost) {
+	const tagCosts = cost.tagCosts ?? [];
+	if (tagCosts.length < 2) return cost.fixed;
+	const tagSum = tagCosts.reduce((a, b) => a + b, 0);
+	return cost.fixed - tagSum + Math.min(...tagCosts);
+}
+
+/**
  * Sum cost across markup tokens. Tag = 2 Power, single-use tag = 1, status
  * at tier N = N, status with no tier = 1 variable token (priced when the
- * user picks a tier in Spend Power).
+ * user picks a tier in Spend Power). Individual tag costs are also returned
+ * in scan order so Spend Power can offer "either or both" tag selection on
+ * successes that list several tags.
  */
 function _costFromMarkup(text) {
 	let fixed = 0;
 	let variableTokens = 0;
+	const tagCosts = [];
 	for (const tok of scanMarkup(text)) {
 		if (tok.type === "tag") {
-			fixed += tok.isSingleUse ? 1 : 2;
+			const cost = tok.isSingleUse ? 1 : 2;
+			fixed += cost;
+			tagCosts.push(cost);
 		} else if (tok.type === "status") {
 			if (tok.isVariable) variableTokens += 1;
 			else fixed += tok.tier;
 		}
 	}
-	return { fixed, variableTokens };
+	return { fixed, variableTokens, tagCosts };
 }
 
 /**

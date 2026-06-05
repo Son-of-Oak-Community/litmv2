@@ -56,8 +56,12 @@ function substituteVariableTiers(text, chosenTiers) {
  * Resolve the target actor (or limit) for an success. Returns either an
  * actor reference or `{actor, limitInfo}` for process verbs. Returns `null`
  * if the user cancelled the picker.
+ *
+ * `presetTarget` is the actor picked on the Spend Power dialog's target
+ * chip row — when set, actor-targeted successes use it directly instead of
+ * prompting. Process verbs always prompt: limits aren't actors.
  */
-async function _resolveTarget({ def, success, actor }) {
+async function _resolveTarget({ def, success, actor, presetTarget = null }) {
 	const declaredTarget = success.payload?.target ?? "self";
 
 	if (def.target === "process" || declaredTarget === "process") {
@@ -66,18 +70,31 @@ async function _resolveTarget({ def, success, actor }) {
 		return { actor: limitInfo.actor, limitInfo };
 	}
 	if (def.target === "opponent" || declaredTarget === "opponent") {
+		if (presetTarget && presetTarget !== actor) return { actor: presetTarget };
 		const target = await pickTargetActor({ exclude: actor });
 		return target ? { actor: target } : null;
 	}
 	if (declaredTarget === "ally") {
+		if (presetTarget) return { actor: presetTarget };
 		const target = await pickTargetActor({ allowSelf: true, exclude: null });
 		return target ? { actor: target } : null;
 	}
 	if (declaredTarget === "prompt") {
+		if (presetTarget) return { actor: presetTarget };
 		const target = await pickTargetActor({ allowSelf: true });
 		return target ? { actor: target } : null;
 	}
 	return { actor };
+}
+
+/**
+ * A tag token is applied unless the player explicitly deselected its chip in
+ * Spend Power. `chosenTags` is a sparse boolean array in tag-scan order;
+ * absent (null/undefined) means "apply everything" — the path taken by
+ * single-tag successes and the GM consequence menu.
+ */
+function isTagChosen(chosenTags, tagIdx) {
+	return !chosenTags || chosenTags[tagIdx] !== false;
 }
 
 /**
@@ -91,9 +108,19 @@ async function _resolveTarget({ def, success, actor }) {
  * @param {Actor} args.actor               The rolling actor (default target for self verbs)
  * @param {number[]} [args.chosenTiers]    Tiers picked at apply time for `[name-]` variable tokens,
  *                                         in scan order. Unset/undefined falls back to tier 1.
+ * @param {boolean[]|null} [args.chosenTags]  Tag picks for successes listing several `[tag]`
+ *                                         tokens, in scan order. Null applies all tags.
+ * @param {Actor|null} [args.presetTarget] Target picked in the Spend Power dialog; skips
+ *                                         the post-submit target picker when set.
  * @returns {Promise<{appliedSummary: string}|null>}
  */
-export async function applySuccess({ success, actor, chosenTiers = [] }) {
+export async function applySuccess({
+	success,
+	actor,
+	chosenTiers = [],
+	chosenTags = null,
+	presetTarget = null,
+}) {
 	const def = getVerbDef(success.verb);
 	if (def?.kind === "unsupported") {
 		ui.notifications.info(t(def.unsupportedMessageKey));
@@ -104,6 +131,7 @@ export async function applySuccess({ success, actor, chosenTiers = [] }) {
 		def: def ?? { target: "self" },
 		success,
 		actor,
+		presetTarget,
 	});
 	if (!resolved) return null;
 	const targetActor = resolved.actor;
@@ -125,6 +153,7 @@ export async function applySuccess({ success, actor, chosenTiers = [] }) {
 		actor: targetActor,
 		limitInfo,
 		chosenTiers,
+		chosenTags,
 	});
 }
 
@@ -133,7 +162,7 @@ export async function applySuccess({ success, actor, chosenTiers = [] }) {
  * create the named tag or status on the target. Statuses stack via
  * calculateMark when same-named effects already exist.
  */
-async function _applyCreateOrTag({ success, actor, chosenTiers }) {
+async function _applyCreateOrTag({ success, actor, chosenTiers, chosenTags }) {
 	const tokens = scanMarkup(success.text);
 	// No markup → narrative-only Create; emit the prose so the chat card
 	// still announces it. Mirrors _applyNarrative / _applyExtraFeat.
@@ -141,9 +170,13 @@ async function _applyCreateOrTag({ success, actor, chosenTiers }) {
 
 	const summaries = [];
 	let varIdx = 0;
+	let tagIdx = 0;
 
 	for (const tok of tokens) {
 		if (tok.type === "tag") {
+			const chosen = isTagChosen(chosenTags, tagIdx);
+			tagIdx++;
+			if (!chosen) continue;
 			await actor.system.addStoryTag(
 				storyTagEffect({ name: tok.name, isSingleUse: tok.isSingleUse }),
 			);
@@ -180,7 +213,7 @@ async function _applyCreateOrTag({ success, actor, chosenTiers }) {
  * tier is specified / tier matches). Tags: scratch the first unscratched
  * same-named tag.
  */
-async function _applyWeaken({ success, actor, chosenTiers }) {
+async function _applyWeaken({ success, actor, chosenTiers, chosenTags }) {
 	const tokens = scanMarkup(success.text);
 	if (!tokens.length) {
 		ui.notifications.warn(t("LITM.Actions.apply_weaken_needs_name"));
@@ -189,6 +222,7 @@ async function _applyWeaken({ success, actor, chosenTiers }) {
 
 	const summaries = [];
 	let varIdx = 0;
+	let tagIdx = 0;
 	let appliedAny = false;
 
 	for (const tok of tokens) {
@@ -209,6 +243,10 @@ async function _applyWeaken({ success, actor, chosenTiers }) {
 			appliedAny = true;
 			continue;
 		}
+
+		const chosen = isTagChosen(chosenTags, tagIdx);
+		tagIdx++;
+		if (!chosen) continue;
 
 		const tag = findApplicableEffect(
 			actor,
@@ -370,7 +408,7 @@ async function _applyProcess({ success, limitInfo, chosenTiers }) {
  * parsed tier (deleting it if the reduction takes it past tier 1) or
  * unscratch a same-named tag.
  */
-async function _applyRestore({ success, actor, chosenTiers }) {
+async function _applyRestore({ success, actor, chosenTiers, chosenTags }) {
 	const tokens = scanMarkup(success.text);
 	if (!tokens.length) {
 		ui.notifications.warn(t("LITM.Actions.apply_restore_needs_name"));
@@ -379,6 +417,7 @@ async function _applyRestore({ success, actor, chosenTiers }) {
 
 	const summaries = [];
 	let varIdx = 0;
+	let tagIdx = 0;
 	let appliedAny = false;
 
 	for (const tok of tokens) {
@@ -398,6 +437,10 @@ async function _applyRestore({ success, actor, chosenTiers }) {
 			appliedAny = true;
 			continue;
 		}
+
+		const chosen = isTagChosen(chosenTags, tagIdx);
+		tagIdx++;
+		if (!chosen) continue;
 
 		const tag = findApplicableEffect(
 			actor,
@@ -436,14 +479,14 @@ function _applyDiscover({ success, chosenTiers }) {
 }
 
 /** Extra feat (legacy verb-success): apply text markup as Create-style. */
-async function _applyExtraFeat({ success, actor, chosenTiers }) {
+async function _applyExtraFeat({ success, actor, chosenTiers, chosenTags }) {
 	const tokens = scanMarkup(success.text);
 	if (!tokens.length) {
 		return {
 			appliedSummary: success.text || t("LITM.Actions.verbs.extraFeat"),
 		};
 	}
-	return _applyCreateOrTag({ success, actor, chosenTiers });
+	return _applyCreateOrTag({ success, actor, chosenTiers, chosenTags });
 }
 
 /** Narrative-only verbs (Quick): no mechanical change, just emit the prose. */

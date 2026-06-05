@@ -598,35 +598,9 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	border-radius: var(--border-radius);
 }
 
-/* Chat — Apply Consequences button injected into the existing .dice-footer
-   (alongside Push Your Luck / Spend Power). Inherits the .litm.dice-roll
-   button cascade. We only style the small unapplied-count badge here. */
-.litm--chat-action-count {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 1.5em;
-	height: 1.5em;
-	margin-left: 0.25em;
-	padding: 0 0.4em;
-	border-radius: var(--radius-pill);
-	background: var(--color-warm-1-25);
-	color: var(--color-text-primary);
-	font-size: var(--font-size-11);
-	font-weight: 700;
-}
-
 /* Action-applied chat cards reuse the .litm-spend-chat chrome (avatar +
    actor name + action label + body + footer line) — see Spend Power Chat
    Cards section below. No bespoke styling needed here. */
-
-/* Apply-Action menu — re-show the checkboxes hidden by spend-power's row-click
-   pattern. Spend Power has a JS handler that toggles options on whole-row
-   click; this menu uses native checkbox semantics instead, so visible boxes
-   are the entire affordance. */
-#litm-apply-action .litm-spend-power__option-label input[type="checkbox"] {
-	display: inline-block;
-}
 
 /* Apply-Action menu — verb label inside option rows. Verb leads, free-form
    label follows in italic; verb-kind tinting tells you whether the option
@@ -651,8 +625,14 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 .litm-spend-power__option .litm--chat-action-label {
 	font-style: italic;
 }
-.litm-spend-power__option.is-applied {
-	opacity: 0.6;
+/* Check marker on consequence entries applied earlier. The entry itself stays
+   fully interactive — consequences are options, and the same one may be dealt
+   to another hero — so no dimming, just the marker. */
+.litm-spend-power__option .litm--applied-check {
+	flex: none;
+	margin-left: 0.35em;
+	font-size: var(--font-size-12);
+	color: var(--color-litm-status-text);
 }
 .litm--chat-action-consequence-row {
 	align-items: flex-start;
@@ -4145,9 +4125,12 @@ section.standard-form.litm-actions-app {
 	width: 100%;
 }
 
-/* Apply-action menu: target chip row. The label wraps a hidden radio + small
-   actor portrait + name, so the whole chip is the hit target. Selected chip
-   warms its background to mirror the option-row `:has(input:checked)` cue. */
+/* Target chip row — shared by the Apply Consequences menu (multi-select
+   checkboxes) and the Spend Power dialog (single radio). The label wraps a
+   hidden input + small actor portrait + name, so the whole chip is the hit
+   target. Chips keep their natural width — no .flexrow here, its flex:1
+   children stretched chips into uneven slabs and wrapped names mid-chip.
+   Selection warms the background, mirroring option-row `:has(input:checked)`. */
 .litm--apply-target-row {
 	margin-bottom: var(--spacer-8);
 }
@@ -4156,13 +4139,16 @@ section.standard-form.litm-actions-app {
 	list-style: none;
 	padding: 0;
 	margin: 0;
+	display: flex;
 	flex-wrap: wrap;
+	gap: var(--spacer-4) var(--spacer-8);
 }
 
 .litm--apply-target-chip > label {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacer-4);
+	max-width: 16rem;
 	padding: var(--spacer-2) var(--spacer-8) var(--spacer-2) var(--spacer-2);
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-pill);
@@ -4176,7 +4162,7 @@ section.standard-form.litm-actions-app {
 	border-color: var(--color-warm-2);
 }
 
-.litm--apply-target-chip input[type="radio"] {
+.litm--apply-target-chip input {
 	position: absolute;
 	opacity: 0;
 	pointer-events: none;
@@ -4190,9 +4176,22 @@ section.standard-form.litm-actions-app {
 	flex: none;
 }
 
+.litm--apply-target-chip span {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .litm--apply-target-chip:has(input:checked) > label {
-	background: var(--table-row-color-even);
+	background: var(--color-warm-1-25);
 	border-color: var(--color-warm-3);
+}
+
+/* Keyboard path — the input itself is invisible, so surface its focus on
+   the chip. Matches the system-wide gold focus indicator. */
+.litm--apply-target-chip:has(input:focus-visible) > label {
+	outline: 2px solid var(--color-litm-tag);
+	outline-offset: 2px;
 }
 
 /* ========================================
@@ -5146,8 +5145,12 @@ input[type="text"].litm--quick-add-input,
 	font-weight: bold;
 }
 
+/* The checkbox is the selection affordance — visible on purpose. It used to
+   be hidden in favor of a row tint alone, which players reliably missed
+   (issue #103: counters nudged, row never selected, Spend stayed disabled). */
 .litm-spend-power .litm-spend-power__option-label input[type="checkbox"] {
-	display: none;
+	flex: none;
+	margin: 0;
 }
 
 .litm-spend-power .litm-spend-power__cost {
@@ -5253,15 +5256,19 @@ input[type="text"].litm--quick-add-input,
 }
 
 .litm-spend-power .litm-spend-power__counter-value {
-	font-size: var(--font-size-18);
-	font-weight: bold;
-	min-width: 2rem;
+	flex: none;
+	font-size: var(--font-size-14);
+	font-weight: 600;
+	min-width: 1.5rem;
 	text-align: center;
 }
 
+/* Compact, quiet stepper — flex:none so .flexrow containers (status-reduce,
+   discover counter) can't stretch the buttons into slabs. */
 .litm-spend-power .litm-spend-power__counter-btn {
-	width: 1.75rem;
-	height: 1.75rem;
+	flex: none;
+	width: 1.5rem;
+	height: 1.5rem;
 	padding: 0;
 	display: flex;
 	align-items: center;
@@ -5269,12 +5276,31 @@ input[type="text"].litm--quick-add-input,
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius);
 	background: var(--background-color);
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-11);
 	cursor: pointer;
 }
 
 .litm-spend-power .litm-spend-power__counter-btn:hover {
 	border-color: var(--color-warm-2);
 	color: var(--color-text-primary);
+}
+
+/* Variable-tier rows — status chip + stepper per `[name-]` token. Own flex
+   layout for the same reason as the target chips: utility .flexrow stretched
+   every child to fill the row. */
+.litm-spend-power .litm-spend-power__var-tiers {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacer-4) var(--spacer-16);
+	padding: var(--spacer-2) 0;
+}
+
+.litm-spend-power .litm-spend-power__var-tier {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-4);
 }
 
 /* --- Tag chips & status pickers --- */

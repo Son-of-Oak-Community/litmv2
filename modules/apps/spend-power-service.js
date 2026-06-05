@@ -13,19 +13,30 @@ import { localize as t } from "../utils.js";
  * @param {object[]} intent.options  Checked option descriptors
  * @param {number} intent.totalCost  Pre-computed total power cost
  * @param {string|null} intent.messageId  Originating roll message id
- * @param {number} intent.alreadySpent    Power already spent on this message
+ * @param {number} intent.alreadySpent    Generic Power already spent on this
+ *   message (the spentPower flag; applied action successes are tracked
+ *   separately in appliedSuccessCosts)
+ * @param {string|null} [intent.targetActorId]  Actor picked on the dialog's
+ *   target chip row; pre-resolves the target for actor-targeted successes.
  * @returns {Promise<{ results: object[], totalSpent: number }>}
  */
 export async function applySpendIntent(actor, intent) {
-	const { options, messageId, alreadySpent } = intent;
+	const { options, messageId, alreadySpent, targetActorId } = intent;
+	const presetTarget = targetActorId ? game.actors.get(targetActorId) : null;
 	const results = [];
-	let totalSpent = 0;
+	let actionSpent = 0;
+	let genericSpent = 0;
 
 	// Apply action-success rows first
 	for (const opt of options) {
 		if (opt.source !== "action") continue;
-		const spent = await _applyActionSuccessOption(opt, actor, messageId);
-		totalSpent += spent;
+		const spent = await _applyActionSuccessOption(
+			opt,
+			actor,
+			messageId,
+			presetTarget,
+		);
+		actionSpent += spent;
 		results.push({ source: "action", key: opt.successKey, spent });
 	}
 
@@ -36,7 +47,7 @@ export async function applySpendIntent(actor, intent) {
 		switch (opt.kind) {
 			case "statusPicker": {
 				const { power, bodyLines } = await _applyStatusPicker(actor, opt);
-				totalSpent += power;
+				genericSpent += power;
 				results.push({
 					kind: "statusPicker",
 					optionId: opt.optionId,
@@ -47,7 +58,7 @@ export async function applySpendIntent(actor, intent) {
 			}
 			case "counter": {
 				const { power } = _applyCounter(opt);
-				totalSpent += power;
+				genericSpent += power;
 				results.push({
 					kind: "counter",
 					optionId: opt.optionId,
@@ -58,33 +69,36 @@ export async function applySpendIntent(actor, intent) {
 			}
 			case "picker": {
 				const { power, names } = await _applyPicker(actor, opt);
-				totalSpent += power;
+				genericSpent += power;
 				results.push({ kind: "picker", optionId: opt.optionId, power, names });
 				break;
 			}
 			default: {
 				const { power, body } = _applyDefault(opt);
-				totalSpent += power;
+				genericSpent += power;
 				results.push({ kind: "default", optionId: opt.optionId, power, body });
 				break;
 			}
 		}
 	}
 
-	// Persist spent power on the originating roll message
-	if (messageId && totalSpent > 0) {
+	// Persist generic spends on the originating roll message. Action-success
+	// costs are deliberately not added: they are already tracked per-success
+	// in the appliedSuccessCosts flag, and the Spend Power budget subtracts
+	// both flags — folding them into spentPower too would double-count.
+	if (messageId && genericSpent > 0) {
 		const message = game.messages.get(messageId);
-		await message?.setFlag("litmv2", "spentPower", alreadySpent + totalSpent);
+		await message?.setFlag("litmv2", "spentPower", alreadySpent + genericSpent);
 	}
 
-	return { results, totalSpent };
+	return { results, totalSpent: actionSpent + genericSpent };
 }
 
 // ---------------------------------------------------------------------------
 // Private helpers — one per option kind
 // ---------------------------------------------------------------------------
 
-async function _applyActionSuccessOption(opt, actor, messageId) {
+async function _applyActionSuccessOption(opt, actor, messageId, presetTarget) {
 	const message = messageId ? game.messages.get(messageId) : null;
 	const actionUuid = message?.getFlag("litmv2", "actionUuid");
 	if (!actionUuid) return 0;
@@ -106,6 +120,8 @@ async function _applyActionSuccessOption(opt, actor, messageId) {
 			success,
 			actor,
 			chosenTiers: opt.chosenTiers,
+			chosenTags: opt.chosenTags ?? null,
+			presetTarget,
 		});
 	} catch (err) {
 		error("Failed to apply action success:", err);
@@ -114,10 +130,31 @@ async function _applyActionSuccessOption(opt, actor, messageId) {
 	}
 	if (!result) return 0;
 
+	// Actual cost paid: the non-tag fixed part, plus only the tags the player
+	// kept selected, plus the tiers they picked for variable statuses.
+	const c = getSuccessCost(success);
+	const tagCosts = c.tagCosts ?? [];
+	const allTagsCost = tagCosts.reduce((sum, n) => sum + n, 0);
+	const tagSpent = tagCosts.reduce(
+		(sum, n, i) => sum + (opt.chosenTags?.[i] !== false ? n : 0),
+		0,
+	);
+	const variableSpent = (opt.chosenTiers ?? [])
+		.filter((n) => Number.isFinite(n))
+		.reduce((sum, n) => sum + n, 0);
+	const spent = c.fixed - allTagsCost + tagSpent + variableSpent;
+
 	await message.setFlag("litmv2", "appliedSuccesses", [
 		...appliedNow,
 		opt.successKey,
 	]);
+	// Persist what was actually paid so reopened dialogs and the power budget
+	// don't have to guess tier/tag choices from the action definition.
+	const appliedCosts = message.getFlag("litmv2", "appliedSuccessCosts") ?? {};
+	await message.setFlag("litmv2", "appliedSuccessCosts", {
+		...appliedCosts,
+		[opt.successKey]: spent,
+	});
 	await foundry.documents.ChatMessage.create({
 		speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
 		content: await foundry.applications.handlebars.renderTemplate(
@@ -132,11 +169,7 @@ async function _applyActionSuccessOption(opt, actor, messageId) {
 		),
 	});
 
-	const c = getSuccessCost(success);
-	const variableSpent = (opt.chosenTiers ?? [])
-		.filter((n) => Number.isFinite(n))
-		.reduce((sum, n) => sum + n, 0);
-	return c.fixed + variableSpent;
+	return spent;
 }
 
 async function _applyStatusPicker(actor, opt) {

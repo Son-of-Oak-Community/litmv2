@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	computePowerBudget,
 	getAllowedVerbs,
+	getMinSuccessCost,
 	getSuccessCost,
 } from "../modules/item/action/action-rules.js";
 
@@ -68,10 +69,15 @@ describe("getSuccessCost", () => {
 	const cost = (verb, text = "") => getSuccessCost({ verb, text });
 
 	it("returns 0 fixed / 0 variable for null or unknown verbs", () => {
-		expect(getSuccessCost(null)).toEqual({ fixed: 0, variableTokens: 0 });
+		expect(getSuccessCost(null)).toEqual({
+			fixed: 0,
+			variableTokens: 0,
+			tagCosts: [],
+		});
 		expect(getSuccessCost({ verb: "not-a-verb" })).toEqual({
 			fixed: 0,
 			variableTokens: 0,
+			tagCosts: [],
 		});
 	});
 
@@ -79,6 +85,7 @@ describe("getSuccessCost", () => {
 		expect(cost("quick", "Find a hidden path")).toEqual({
 			fixed: 0,
 			variableTokens: 0,
+			tagCosts: [],
 		});
 	});
 
@@ -86,18 +93,28 @@ describe("getSuccessCost", () => {
 		expect(cost("discover", "Find their true name")).toEqual({
 			fixed: 1,
 			variableTokens: 0,
+			tagCosts: [],
 		});
-		expect(cost("discover", "")).toEqual({ fixed: 1, variableTokens: 0 });
+		expect(cost("discover", "")).toEqual({
+			fixed: 1,
+			variableTokens: 0,
+			tagCosts: [],
+		});
 	});
 
 	it("ExtraFeat is a flat 1 Power", () => {
-		expect(cost("extraFeat", "")).toEqual({ fixed: 1, variableTokens: 0 });
+		expect(cost("extraFeat", "")).toEqual({
+			fixed: 1,
+			variableTokens: 0,
+			tagCosts: [],
+		});
 	});
 
 	it("Create + [name] = 2 Power (regular story tag)", () => {
 		expect(cost("create", "Get a [map] of the area.")).toEqual({
 			fixed: 2,
 			variableTokens: 0,
+			tagCosts: [2],
 		});
 	});
 
@@ -105,6 +122,7 @@ describe("getSuccessCost", () => {
 		expect(cost("create", "Stash a [smoke bomb!] for later.")).toEqual({
 			fixed: 1,
 			variableTokens: 0,
+			tagCosts: [1],
 		});
 	});
 
@@ -112,10 +130,12 @@ describe("getSuccessCost", () => {
 		expect(cost("attack", "Inflict [wounded-2] on the foe.")).toEqual({
 			fixed: 2,
 			variableTokens: 0,
+			tagCosts: [],
 		});
 		expect(cost("attack", "[bleeding-3]")).toEqual({
 			fixed: 3,
 			variableTokens: 0,
+			tagCosts: [],
 		});
 	});
 
@@ -123,19 +143,21 @@ describe("getSuccessCost", () => {
 		expect(cost("attack", "Cause [bleeding-]")).toEqual({
 			fixed: 0,
 			variableTokens: 1,
+			tagCosts: [],
 		});
 	});
 
 	it("sums multiple tokens in one text", () => {
-		// Bestow + two tags = 4 Power.
+		// Bestow + two tags = 4 Power, each tag surfaced for chip selection.
 		expect(
 			cost("bestow", "Grant [basic spear training] and [parrying stance]"),
-		).toEqual({ fixed: 4, variableTokens: 0 });
+		).toEqual({ fixed: 4, variableTokens: 0, tagCosts: [2, 2] });
 
 		// Mixed concrete and variable.
 		expect(cost("attack", "[wounded-2] and [shaken-]")).toEqual({
 			fixed: 2,
 			variableTokens: 1,
+			tagCosts: [],
 		});
 	});
 
@@ -143,6 +165,7 @@ describe("getSuccessCost", () => {
 		expect(cost("create", "Set the scene mood")).toEqual({
 			fixed: 0,
 			variableTokens: 0,
+			tagCosts: [],
 		});
 	});
 
@@ -150,6 +173,7 @@ describe("getSuccessCost", () => {
 		expect(cost("weaken", "Knock away their [shield]")).toEqual({
 			fixed: 2,
 			variableTokens: 0,
+			tagCosts: [2],
 		});
 	});
 
@@ -157,7 +181,34 @@ describe("getSuccessCost", () => {
 		expect(cost("weaken", "Reduce their [enraged-1]")).toEqual({
 			fixed: 1,
 			variableTokens: 0,
+			tagCosts: [],
 		});
+	});
+});
+
+describe("getMinSuccessCost", () => {
+	const min = (verb, text) => getMinSuccessCost(getSuccessCost({ verb, text }));
+
+	it("equals the fixed cost when there are no tags", () => {
+		expect(min("attack", "[wounded-2]")).toBe(2);
+		expect(min("attack", "[bleeding-]")).toBe(0);
+		expect(min("quick", "Find a hidden path")).toBe(0);
+	});
+
+	it("equals the fixed cost for a single tag (nothing to deselect)", () => {
+		expect(min("create", "Get a [map] of the area.")).toBe(2);
+	});
+
+	it("counts only the cheapest tag when 2+ tags are selectable", () => {
+		// "either or both" — 2 tags at 2 Power each → floor is one tag.
+		expect(min("create", "Get a [hunting bow], a [short blade]")).toBe(2);
+		// A single-use tag is the cheapest pick.
+		expect(min("create", "Get a [hunting bow], a [torch!]")).toBe(1);
+	});
+
+	it("keeps non-tag fixed costs in the floor", () => {
+		// Two selectable tags + a concrete status: floor = status + cheapest tag.
+		expect(min("attack", "[net] [harpoon] and [snared-2]")).toBe(4);
 	});
 });
 

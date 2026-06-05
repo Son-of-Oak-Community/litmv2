@@ -9,6 +9,26 @@
 
 	<div class="litm-spend-power__body">
 	{{#if actionSuccesses.length}}
+	{{#if targets.length}}
+	<!-- Target for actor-targeted successes (Attack, Weaken, …). Mirrors the
+	     Apply Consequences menu so the player sees who they're hitting before
+	     they spend. Self-targeted successes ignore it. -->
+	<fieldset class="litm--apply-target-row">
+		<legend>{{localize "LITM.Actions.pick_target"}}</legend>
+		<p class="hint">{{localize "LITM.Actions.success_target_hint"}}</p>
+		<ul class="litm--apply-target-chips">
+			{{#each targets}}
+			<li class="litm--apply-target-chip">
+				<label>
+					<input type="radio" name="success-target" value="{{id}}" {{#if selected}}checked{{/if}} />
+					{{#if img}}<img src="{{img}}" alt="" />{{/if}}
+					<span>{{name}}</span>
+				</label>
+			</li>
+			{{/each}}
+		</ul>
+	</fieldset>
+	{{/if}}
 	<!-- Action-specific successes — populated when this Spend Power dialog is
 	     opened on a chat message that originated from an Action item. They sit
 	     above the generic options because they're the suggested first move. -->
@@ -20,24 +40,36 @@
 				{{#unless item.disabled}}data-action="toggle-option"{{/unless}}
 				data-source="action"
 				data-success-key="{{item.key}}"
-				data-cost="{{item.cost}}"
+				data-cost="{{item.staticCost}}"
 				data-fixed-cost="{{item.fixedCost}}"
 				data-verb-kind="{{item.verbKind}}"
-				{{#if item.hasVariableTier}}data-variable-tier="true"{{/if}}>
+				{{#if item.hasVariableTier}}data-variable-tier="true"{{/if}}
+				{{#if item.hasSelectableTags}}data-selectable-tags="true"{{/if}}>
 				<div class="litm-spend-power__option-row">
 					<label class="litm-spend-power__option-label">
 						<input type="checkbox" data-option-check
 							{{#if item.disabled}}disabled{{/if}} />
 						<span><span class="litm--chat-action-verb">{{item.verbLabel}}</span>{{#if item.text}} <span class="litm--chat-action-text">{{prose-chips item.text}}</span>{{/if}}</span>
 					</label>
-					{{#if item.cost}}<span class="litm-spend-power__cost" data-action-success-cost>{{item.cost}} {{localize "LITM.Tags.power"}}</span>{{/if}}
+					{{#if item.costLabel}}<span class="litm-spend-power__cost" data-action-success-cost>{{item.costLabel}}</span>{{/if}}
 				</div>
+				{{#if item.hasSelectableTags}}
+				<p class="hint">{{localize "LITM.Actions.selectable_tags_hint"}}</p>
+				<ul class="litm-spend-power__tag-chip-list">
+					{{#each item.tagTokens}}
+					<li class="litm-spend-power__tag-chip is-selected" data-action="toggle-chip"
+						data-tag-idx="{{idx}}" data-tag-cost="{{cost}}">
+						<span class="litm-tag" data-text="{{name}}">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
+					</li>
+					{{/each}}
+				</ul>
+				{{/if}}
 				{{#if item.hasVariableTier}}
 				<p class="hint">{{localize "LITM.Actions.variable_tier_hint"}}</p>
-				<div class="litm-spend-power__var-tiers flexrow gap-sm">
+				<div class="litm-spend-power__var-tiers">
 					{{#each item.varTokens}}
-					<div class="litm-spend-power__var-tier flexrow gap-sm" data-var-idx="{{idx}}" data-var-name="{{name}}">
-						<span class="litm-spend-power__var-name">{{name}}-</span>
+					<div class="litm-spend-power__var-tier" data-var-idx="{{idx}}" data-var-name="{{name}}">
+						<span class="litm-status litm--variable-tier" data-text="{{name}}">{{name}}</span>
 						<button type="button" class="litm-spend-power__counter-btn" data-action="counter-dec"
 							aria-label="{{localize "LITM.Ui.decrease"}}">
 							<i class="fas fa-minus" aria-hidden="true"></i>
@@ -134,9 +166,10 @@
 	</fieldset>
 	</div>
 
-	<!-- Footer -->
+	<!-- Footer — starts disabled; #updatePower enables it once an option is
+	     checked and the selection fits the budget. -->
 	<div class="form-footer">
-		<button type="submit" class="bright">
+		<button type="submit" class="bright" disabled>
 			<i class="fas fa-bolt" aria-hidden="true"></i> {{localize "LITM.Ui.spend"}}
 		</button>
 	</div>

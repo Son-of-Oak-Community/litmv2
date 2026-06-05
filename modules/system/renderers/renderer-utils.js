@@ -1,4 +1,5 @@
 import { StatusTagData } from "../../active-effects/status-tag-data.js";
+import { getMinSuccessCost } from "../../item/action/action-rules.js";
 import { parseTagStringMatch } from "../../item/action/tag-string.js";
 import { makeTagStringRe } from "../config.js";
 
@@ -128,4 +129,33 @@ export function proseChipsHtml(text) {
 	if (lastIndex < text.length)
 		out += foundry.utils.escapeHTML(text.slice(lastIndex));
 	return out;
+}
+
+/**
+ * Inline cost indicator for an action success — "2 Power", "2+ Power",
+ * "1 Power per tier", or "" when free. Shared by the chat-card success list
+ * and the Spend Power dialog so both surfaces show the same answer.
+ *
+ * Narrative (Quick) verbs are free → no label. Successes whose final cost is
+ * picked in Spend Power (variable-tier statuses, or 2+ selectable tags) show
+ * their minimum with a "+"; when nothing is mandatory ([name-] only), the
+ * label spells out the per-tier price instead of a confusing "0+".
+ *
+ * @param {{ fixed: number, variableTokens: number, tagCosts?: number[] }} cost
+ *   From getSuccessCost.
+ * @param {object|null} def  Verb definition from getVerbDef.
+ * @returns {string}
+ */
+export function formatCostLabel(cost, def) {
+	if (!def || def.kind === "narrative") return "";
+	const variable = cost.variableTokens ?? 0;
+	const selectableTags = (cost.tagCosts?.length ?? 0) >= 2;
+	if (variable > 0 || selectableTags) {
+		const min = getMinSuccessCost(cost);
+		if (min > 0)
+			return game.i18n.format("LITM.Actions.cost_variable", { n: min });
+		return game.i18n.localize("LITM.Actions.cost_per_tier");
+	}
+	if ((cost.fixed ?? 0) <= 0) return "";
+	return game.i18n.format("LITM.Actions.cost", { n: cost.fixed });
 }

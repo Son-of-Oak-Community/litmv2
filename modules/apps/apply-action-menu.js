@@ -6,6 +6,7 @@ import { LitmSettings } from "../system/settings.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
 import { adjustCounter, readVariableTiers } from "./counter-controls.js";
 import { stripActorPrefix } from "./spend-power-service.js";
+import { getTargetCandidates } from "./target-picker.js";
 
 /**
  * GM-only modal for applying an Action's consequences in one batch.
@@ -86,29 +87,32 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 					v++;
 				}
 			}
+			// Applied entries stay enabled — consequences are options, and the
+			// Narrator may deal the same one to another hero. The `applied`
+			// flag only drives the ✓ marker. Pushed rolls still lock after
+			// their single consequence.
 			return {
 				key: String(index),
 				text: proseChipsHtml(text),
 				varTokens,
 				hasVariableTier: varTokens.length > 0,
 				applied: applied.has(index),
-				disabled: applied.has(index) || pushedLocked,
+				disabled: pushedLocked,
 			};
 		});
 
-		// Scene actors as one-click target chips. Rolling actor is the default
-		// pick so the common "consequences for the player who rolled" case
-		// works without an extra click.
+		// Scene actors as one-click target chips — token-less, theatre-of-mind
+		// scenes fall back to observable sidebar actors (same candidate list
+		// as the Spend Power target row). Rolling actor is the default pick so
+		// the common "consequences for the player who rolled" case works
+		// without an extra click.
 		const rollingActorId =
 			message.rolls?.[0]?.litm?.actorId ?? message.speaker?.actor ?? null;
-		const placedActors = (canvas.tokens?.placeables ?? [])
-			.map((t) => t.actor)
-			.filter((a, i, arr) => a && arr.indexOf(a) === i);
-		const targets = placedActors.map((a) => ({
-			id: a.id,
-			name: a.system.maskedName ?? a.name,
-			img: a.img,
-			selected: a.id === rollingActorId,
+		const targets = getTargetCandidates({ allowSelf: true }).map((c) => ({
+			id: c.id,
+			name: c.label,
+			img: c.img,
+			selected: c.id === rollingActorId,
 		}));
 
 		return {
@@ -151,16 +155,16 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		// bypassed (eg. by browser DOM tampering or a re-render race).
 		if (isPushed) checkedKeys = checkedKeys.slice(0, 1);
 
-		// Target chip picks the actor; falls back to the rolling actor if no
-		// chip is selected. Pre-selection in the template already defaults
-		// to the rolling actor.
-		const selectedTarget = form.querySelector(
-			"input[name='target']:checked",
-		)?.value;
+		// Target chips pick the actors — every checked chip suffers each
+		// checked consequence. Falls back to the rolling actor when no chip
+		// is selected; pre-selection in the template already defaults to them.
+		const selectedIds = Array.from(
+			form.querySelectorAll("input[name='target']:checked"),
+		).map((el) => el.value);
 		const fallbackId =
 			message.rolls?.[0]?.litm?.actorId ?? message.speaker?.actor ?? null;
-		const actorId = selectedTarget || fallbackId;
-		const actor = actorId ? game.actors.get(actorId) : null;
+		const targetIds = selectedIds.length ? selectedIds : [fallbackId];
+		const actors = targetIds.map((id) => (id ? game.actors.get(id) : null));
 
 		for (const key of checkedKeys) {
 			const index = Number(key);
@@ -168,54 +172,58 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 			const text = (action.system.consequences ?? [])[index];
 			if (!text) continue;
 
-			const appliedNow = message.getFlag("litmv2", "appliedConsequences") ?? [];
-			if (appliedNow.includes(index)) continue;
-
 			const optionLi = form.querySelector(
 				`.litm-spend-power__option[data-key="${index}"]`,
 			);
 			const chosenTiers = readVariableTiers(optionLi);
 
-			let result;
-			try {
-				result = await applyConsequence({ text, actor, chosenTiers });
-			} catch (err) {
-				error("Failed to apply consequence:", err);
-				ui.notifications.error(t("LITM.Actions.apply_failed"));
-				continue;
+			let appliedAny = false;
+			for (const actor of actors) {
+				let result;
+				try {
+					result = await applyConsequence({ text, actor, chosenTiers });
+				} catch (err) {
+					error("Failed to apply consequence:", err);
+					ui.notifications.error(t("LITM.Actions.apply_failed"));
+					continue;
+				}
+				if (!result) continue;
+				appliedAny = true;
+
+				// Ensure the target lives in the story-tag sidebar so the GM can
+				// see the freshly-applied tag/status there. Heroes and the
+				// fellowship singleton are added automatically; placed-token
+				// challenges and journeys are not, and the rote consequence is
+				// most often what first puts a status on them.
+				if (actor) await ApplyActionMenuApp.#ensureActorInSidebar(actor);
+
+				await foundry.documents.ChatMessage.create({
+					speaker: { alias: game.user.name },
+					content: await foundry.applications.handlebars.renderTemplate(
+						"systems/litmv2/templates/chat/action-applied.html",
+						{
+							actorImg: actor?.img,
+							// publicName so the stored card never reveals a concealed
+							// challenge's real name, even when the GM generates it
+							actorName: actor?.system.publicName ?? actor?.name,
+							label: t("LITM.Terms.consequences"),
+							summary: stripActorPrefix(
+								result.appliedSummary,
+								actor?.system.publicName ?? actor?.name,
+							),
+							footer: action.name,
+							reactActorId: actor?.id ?? null,
+						},
+					),
+				});
 			}
-			if (!result) continue;
+			if (!appliedAny) continue;
 
-			// Ensure the target lives in the story-tag sidebar so the GM can
-			// see the freshly-applied tag/status there. Heroes and the
-			// fellowship singleton are added automatically; placed-token
-			// challenges and journeys are not, and the rote consequence is
-			// most often what first puts a status on them.
-			if (actor) await ApplyActionMenuApp.#ensureActorInSidebar(actor);
-
+			// Record for the ✓ marker; dedupe since re-application is allowed.
+			const appliedNow = message.getFlag("litmv2", "appliedConsequences") ?? [];
 			await message.setFlag("litmv2", "appliedConsequences", [
-				...appliedNow,
-				index,
+				...new Set([...appliedNow, index]),
 			]);
-			await foundry.documents.ChatMessage.create({
-				speaker: { alias: game.user.name },
-				content: await foundry.applications.handlebars.renderTemplate(
-					"systems/litmv2/templates/chat/action-applied.html",
-					{
-						actorImg: actor?.img,
-						// publicName so the stored card never reveals a concealed
-						// challenge's real name, even when the GM generates it
-						actorName: actor?.system.publicName ?? actor?.name,
-						label: t("LITM.Terms.consequences"),
-						summary: stripActorPrefix(
-							result.appliedSummary,
-							actor?.system.publicName ?? actor?.name,
-						),
-						footer: action.name,
-						reactActorId: actor?.id ?? null,
-					},
-				),
-			});
 		}
 	}
 
