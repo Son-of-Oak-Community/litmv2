@@ -199,7 +199,7 @@ export const ROLL_TYPES = {
 	},
 };
 
-const TAG_STRING_RE_SOURCE = String.raw`(?!\b|\s)(?:\[|\{)([^^\d[\]{}!]+?)(!)?(?:([-:])(\d+)?)?(?:\}|\])`;
+const TAG_STRING_RE_SOURCE = String.raw`(?!\b|\s)\[([^^\d[\]{}!]+?)(!)?(?:([-:])(\d+)?)?\]`;
 const TAG_STRING_RE_FLAGS = "gi";
 
 /** Create a fresh tag-string regex (g flag requires new instance per use). */

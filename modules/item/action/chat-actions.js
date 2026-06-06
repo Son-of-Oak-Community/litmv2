@@ -4,8 +4,8 @@ import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { pickLimit, pickTargetActor } from "../../apps/target-picker.js";
 import { localize as t } from "../../utils.js";
 import { scanMarkup } from "./action-rules.js";
-import { parseTagStringMatch } from "./tag-string.js";
-import { getVerbDef } from "./verb-definitions.js";
+import { classifyTagStringMatch } from "./tag-string.js";
+import { getVerbDef, successTargetMode } from "./verb-definitions.js";
 
 /**
  * Target name for chat summaries and notifications. Challenges concealed
@@ -42,13 +42,14 @@ function substituteVariableTiers(text, chosenTiers) {
 	const re = CONFIG.litmv2.tagStringRe;
 	if (!re) return text;
 	let varIdx = 0;
-	return text.replace(re, (match, name, _exclamation, separator, value) => {
-		if (separator !== "-" || value) return match;
+	return text.replace(re, (...args) => {
+		const c = classifyTagStringMatch(args);
+		if (c.kind !== "status" || c.value) return args[0];
 		const raw = Number(chosenTiers?.[varIdx]);
 		varIdx++;
-		if (!Number.isFinite(raw) || raw <= 0) return match;
+		if (!Number.isFinite(raw) || raw <= 0) return args[0];
 		const tier = Math.min(6, raw);
-		return `[${name}-${tier}]`;
+		return `[${c.name}-${tier}]`;
 	});
 }
 
@@ -62,29 +63,31 @@ function substituteVariableTiers(text, chosenTiers) {
  * prompting. Process verbs always prompt: limits aren't actors.
  */
 async function _resolveTarget({ def, success, actor, presetTarget = null }) {
-	const declaredTarget = success.payload?.target ?? "self";
-
-	if (def.target === "process" || declaredTarget === "process") {
-		const limitInfo = await pickLimit();
-		if (!limitInfo) return null;
-		return { actor: limitInfo.actor, limitInfo };
+	switch (successTargetMode(def, success)) {
+		case "process": {
+			const limitInfo = await pickLimit();
+			if (!limitInfo) return null;
+			return { actor: limitInfo.actor, limitInfo };
+		}
+		case "opponent": {
+			if (presetTarget && presetTarget !== actor)
+				return { actor: presetTarget };
+			const target = await pickTargetActor({ exclude: actor });
+			return target ? { actor: target } : null;
+		}
+		case "ally": {
+			if (presetTarget) return { actor: presetTarget };
+			const target = await pickTargetActor({ allowSelf: true, exclude: null });
+			return target ? { actor: target } : null;
+		}
+		case "prompt": {
+			if (presetTarget) return { actor: presetTarget };
+			const target = await pickTargetActor({ allowSelf: true });
+			return target ? { actor: target } : null;
+		}
+		default:
+			return { actor };
 	}
-	if (def.target === "opponent" || declaredTarget === "opponent") {
-		if (presetTarget && presetTarget !== actor) return { actor: presetTarget };
-		const target = await pickTargetActor({ exclude: actor });
-		return target ? { actor: target } : null;
-	}
-	if (declaredTarget === "ally") {
-		if (presetTarget) return { actor: presetTarget };
-		const target = await pickTargetActor({ allowSelf: true, exclude: null });
-		return target ? { actor: target } : null;
-	}
-	if (declaredTarget === "prompt") {
-		if (presetTarget) return { actor: presetTarget };
-		const target = await pickTargetActor({ allowSelf: true });
-		return target ? { actor: target } : null;
-	}
-	return { actor };
 }
 
 /**
@@ -523,20 +526,21 @@ export async function applyConsequence({ text, actor, chosenTiers = [] }) {
 	const created = [];
 	let varIdx = 0;
 	for (const match of matches) {
-		const data = parseTagStringMatch(match);
-		if (data.type === "status_tag") {
-			const parsedTier = StatusTagData.tierOf(data.system.tiers);
-			const isVariable = parsedTier === 0;
+		const c = classifyTagStringMatch(match);
+		if (c.kind === "status") {
+			const isVariable = c.tier === 0;
 			const tier = isVariable
 				? Math.max(0, Math.min(6, Number(chosenTiers?.[varIdx]) || 0))
-				: parsedTier;
+				: c.tier;
 			if (isVariable) varIdx++;
 			if (tier <= 0) continue;
-			await actor.system.addStatus(data.name, { tier, isHidden: false });
-			created.push(`[${data.name}-${tier}]`);
-		} else {
-			await actor.system.addStoryTag(storyTagEffect({ name: data.name }));
-			created.push(`[${data.name}]`);
+			await actor.system.addStatus(c.name, { tier, isHidden: false });
+			created.push(`[${c.name}-${tier}]`);
+		} else if (c.kind === "story") {
+			await actor.system.addStoryTag(
+				storyTagEffect({ name: c.name, isSingleUse: c.isSingleUse }),
+			);
+			created.push(c.isSingleUse ? `[${c.name}!]` : `[${c.name}]`);
 		}
 	}
 	if (!created.length) return null;

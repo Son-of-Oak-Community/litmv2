@@ -166,6 +166,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		const targetIds = selectedIds.length ? selectedIds : [fallbackId];
 		const actors = targetIds.map((id) => (id ? game.actors.get(id) : null));
 
+		const newlyApplied = [];
 		for (const key of checkedKeys) {
 			const index = Number(key);
 			if (!Number.isFinite(index)) continue;
@@ -217,12 +218,15 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 					),
 				});
 			}
-			if (!appliedAny) continue;
+			if (appliedAny) newlyApplied.push(index);
+		}
 
-			// Record for the ✓ marker; dedupe since re-application is allowed.
+		// Record for the ✓ marker in one write after the loop; dedupe since
+		// re-application is allowed.
+		if (newlyApplied.length) {
 			const appliedNow = message.getFlag("litmv2", "appliedConsequences") ?? [];
 			await message.setFlag("litmv2", "appliedConsequences", [
-				...new Set([...appliedNow, index]),
+				...new Set([...appliedNow, ...newlyApplied]),
 			]);
 		}
 	}

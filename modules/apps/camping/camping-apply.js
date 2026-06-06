@@ -1,6 +1,6 @@
 import { relationshipTagEffect } from "../../active-effects/effect-factories.js";
 import { StatusTagData } from "../../active-effects/status-tag-data.js";
-import { parseTagStringMatch } from "../../item/action/tag-string.js";
+import { parseTagString } from "../../item/action/tag-string.js";
 import { detectTrackCompletion } from "../../system/chat.js";
 import { Sockets } from "../../system/sockets.js";
 import { findFellowshipTheme, getStoryTagSidebar } from "../../utils.js";
@@ -73,12 +73,13 @@ export function buildOperations(state, world) {
 		milestone: new Map(),
 	};
 
-	// Stage skeletons in camp-flow order; label keys match the scene's own
-	// timeline so the recap and the live UI speak the same language.
+	// Stage skeletons in camp-flow order. Periods use a generic "Period" label
+	// — the circled `number` carries the count, so a numbered label would read
+	// "① Period 1". Quality Time / Pack Up keep their full timeline labels.
 	const stages = {
-		period1: stageSkeleton("period1", "LITM.Ui.camping_step_period_one", 1),
-		period2: stageSkeleton("period2", "LITM.Ui.camping_step_period_two", 2),
-		period3: stageSkeleton("period3", "LITM.Ui.camping_step_period_three", 3),
+		period1: stageSkeleton("period1", "LITM.Ui.camping_recap_period", 1),
+		period2: stageSkeleton("period2", "LITM.Ui.camping_recap_period", 2),
+		period3: stageSkeleton("period3", "LITM.Ui.camping_recap_period", 3),
 		qualityTime: stageSkeleton(
 			"qualityTime",
 			"LITM.Ui.camping_step_quality_time",
@@ -136,25 +137,17 @@ function collectEffects(actor) {
 }
 
 /**
- * Parse the campsite-tags string with `CONFIG.litmv2.tagStringRe` +
- * `parseTagStringMatch`. Core Book p.179 lists positive tags, negative
- * tags, AND statuses as legitimate place-of-stay attachments — `[name-tier]`
- * covers statuses, `[name]` covers tags, `[name!]` covers single-use tags.
+ * Parse the campsite-tags string with the canonical `parseTagString`.
+ * Core Book p.179 lists positive tags, negative tags, AND statuses as
+ * legitimate place-of-stay attachments — `[name-tier]` covers statuses,
+ * `[name]` covers tags, `[name!]` covers single-use tags.
  *
  * Exported so the camping-scene module can call it at Begin Camp time to
  * materialize the campsite into real scene effects (so heroes can invoke
  * them in their camp action rolls).
  */
 export function parseCampsiteEntries(raw) {
-	const text = (typeof raw === "string" ? raw : "").trim();
-	if (!text) return [];
-	const re = globalThis.CONFIG?.litmv2?.tagStringRe;
-	if (!re) return [];
-	const out = [];
-	for (const match of text.matchAll(re)) {
-		out.push(parseTagStringMatch(match));
-	}
-	return out;
+	return parseTagString(typeof raw === "string" ? raw.trim() : "");
 }
 
 function describeCampsiteEntry(entry) {

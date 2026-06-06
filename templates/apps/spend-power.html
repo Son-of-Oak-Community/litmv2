@@ -59,7 +59,7 @@
 					{{#each item.tagTokens}}
 					<li class="litm-spend-power__tag-chip is-selected" data-action="toggle-chip"
 						data-tag-idx="{{idx}}" data-tag-cost="{{cost}}">
-						<span class="litm-tag" data-text="{{name}}">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
+						<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}" data-text="{{name}}">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
 					</li>
 					{{/each}}
 				</ul>

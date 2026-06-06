@@ -1,4 +1,4 @@
-import { parseTagStringMatch } from "../../item/action/tag-string.js";
+import { parseTagString } from "../../item/action/tag-string.js";
 import { LitmItem } from "../../item/litm-item.js";
 import { getDefaultItemIcon, levelIcon } from "../../utils.js";
 
@@ -106,16 +106,11 @@ function _cleanupAddonEffectsOnDelete() {
  * @param {Item} addonItem    The addon item whose tags to sync
  */
 export async function syncAddonEffects(actor, addonItem) {
-	const tags = addonItem.system.tags;
-	if (!tags) return;
-
-	const matches = Array.from(tags.matchAll(CONFIG.litmv2.tagStringRe));
-	if (!matches.length) return;
-
-	const effects = matches.map((match) => ({
-		...parseTagStringMatch(match),
+	const effects = parseTagString(addonItem.system.tags).map((data) => ({
+		...data,
 		flags: { litmv2: { addonId: addonItem.id } },
 	}));
+	if (!effects.length) return;
 
 	await actor.createEmbeddedDocuments("ActiveEffect", effects);
 }

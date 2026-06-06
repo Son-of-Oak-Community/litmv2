@@ -1,3 +1,4 @@
+import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
@@ -5,11 +6,11 @@ import { ThemeAdvancementApp } from "../../apps/theme-advancement.js";
 import { ThemeEvolutionWizard } from "../../apps/theme-evolution.js";
 import { WelcomeOverlay } from "../../apps/welcome/welcome-overlay.js";
 import {
+	computePowerBudget,
 	getAllowedVerbs,
 	getSuccessCost,
 } from "../../item/action/action-rules.js";
 import { getVerbDef } from "../../item/action/verb-definitions.js";
-import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { localize as t, viewLinkedRefAction } from "../../utils.js";
 import { buildTrackCompleteContent } from "../chat.js";
 import { IMPROVE_MARKING_TAG_TYPES, POWER_TAG_TYPES } from "../config.js";
@@ -487,6 +488,36 @@ async function _renderActionPanel(app, element) {
 	}
 }
 
+/**
+ * Hide the spend-power button once all power has been spent. spentPower
+ * holds generic spends only; applied action successes count via
+ * computePowerBudget — the single accountant, which reads the actual costs
+ * paid from appliedSuccessCosts and recomputes from the action definition
+ * for messages from before that flag existed (hence the async action fetch).
+ */
+async function _hideSpendButtonIfExhausted(app, element) {
+	const spendBtn = element.querySelector("[data-click='spend-power']");
+	if (!spendBtn) return;
+	const roll = app.rolls?.[0];
+	if (!roll) return;
+
+	const spentPower = app.getFlag("litmv2", "spentPower") ?? 0;
+	const appliedKeys = app.getFlag("litmv2", "appliedSuccesses") ?? [];
+	let actionSystem = null;
+	if (appliedKeys.length) {
+		const actionUuid = app.getFlag("litmv2", "actionUuid");
+		const action = actionUuid ? await foundry.utils.fromUuid(actionUuid) : null;
+		actionSystem = action?.system ?? null;
+	}
+	const { spent: actionSpent } = computePowerBudget(
+		roll,
+		actionSystem,
+		appliedKeys,
+		app.getFlag("litmv2", "appliedSuccessCosts") ?? {},
+	);
+	if (spentPower + actionSpent >= roll.power) spendBtn.remove();
+}
+
 function onRenderChatMessage(app, html, _data) {
 	const element = html;
 
@@ -505,23 +536,9 @@ function onRenderChatMessage(app, html, _data) {
 		element.classList.add("litm-dice-roll-message");
 	}
 
-	// Hide spend-power button if all power has been spent. spentPower holds
-	// generic spends only; applied action successes record their actual cost
-	// in appliedSuccessCosts — both count toward exhaustion.
-	const spendBtn = element.querySelector("[data-click='spend-power']");
-	if (spendBtn) {
-		const spentPower = app.getFlag("litmv2", "spentPower") ?? 0;
-		const appliedKeys = app.getFlag("litmv2", "appliedSuccesses") ?? [];
-		const appliedCosts = app.getFlag("litmv2", "appliedSuccessCosts") ?? {};
-		const actionSpent = appliedKeys.reduce(
-			(sum, key) => sum + (appliedCosts[key] ?? 0),
-			0,
-		);
-		const roll = app.rolls?.[0];
-		if (roll && spentPower + actionSpent >= roll.power) {
-			spendBtn.remove();
-		}
-	}
+	_hideSpendButtonIfExhausted(app, element).catch((e) =>
+		console.error("LITM spend-power exhaustion check failed:", e),
+	);
 
 	// Hide complete-sacrifice button if already completed
 	const sacrificeBtn = element.querySelector(

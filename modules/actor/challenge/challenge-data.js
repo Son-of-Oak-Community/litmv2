@@ -189,7 +189,9 @@ export class ChallengeData extends LimitsMixin(
 	 */
 	get publicName() {
 		if (!this.concealName) return this.parent.name;
-		return this.alias?.trim() || game.i18n.localize("LITM.Ui.unknown_challenge");
+		return (
+			this.alias?.trim() || game.i18n.localize("LITM.Ui.unknown_challenge")
+		);
 	}
 
 	/**

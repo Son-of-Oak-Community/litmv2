@@ -94,7 +94,9 @@ export class ContentSources {
 		// through pollutes the status palette and risks duplicate slugified ids
 		// in CONFIG.statusEffects (whose v14 Proxy throws on duplicate keys).
 		if (category === "statuses")
-			allPacks = allPacks.filter((p) => p.collection !== WORLD_STORY_TAG_PACK_ID);
+			allPacks = allPacks.filter(
+				(p) => p.collection !== WORLD_STORY_TAG_PACK_ID,
+			);
 
 		if (!selected?.length) return allPacks;
 
@@ -144,7 +146,9 @@ export class ContentSources {
 	 * @param {CompendiumCollection[]} [packs] - Defaults to the status packs.
 	 * @returns {Promise<object[]>}
 	 */
-	static async getStatusEffectConfigs(packs = ContentSources.getPacks("statuses")) {
+	static async getStatusEffectConfigs(
+		packs = ContentSources.getPacks("statuses"),
+	) {
 		const byId = new Map();
 		for (const pack of packs) {
 			const docs = await pack.getDocuments();

@@ -1099,7 +1099,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#sojournBonus = 0;
 		this.rollName = "";
 		this.type = "quick";
-		if (this.rendered) this.close();
+		// reset() is state-only — it must NOT close the dialog. Closing is
+		// owned by `closeOnSubmit` on the owner's client and by the
+		// `closeRollDialog` socket on viewers (broadcast from the owner's
+		// close()). This reset runs inside the awaited submit handler (via the
+		// roll pipeline), i.e. *before* closeOnSubmit — so a close here fired a
+		// SECOND close per submit. Render and close share one Semaphore, so a
+		// "Roll this action" click landing between the two closes had its
+		// reopen render torn down by the trailing close: the dialog silently
+		// stayed shut and the button appeared to do nothing until retried.
 		if (this.actor?.sheet?.rendered) this.actor.sheet.render(true);
 	}
 
@@ -1239,9 +1247,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const current = themes.find((t) => t.id === this.#sacrificeThemeId);
 		const currentInvalid = !current || (isPainful && isThemeSpent(current));
 		if (currentInvalid) {
-			const firstLive = isPainful
-				? themes.find((t) => !isThemeSpent(t))
-				: null;
+			const firstLive = isPainful ? themes.find((t) => !isThemeSpent(t)) : null;
 			this.#sacrificeThemeId = (firstLive ?? themes[0]).id;
 		}
 		const trackPips = (value) =>

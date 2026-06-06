@@ -78,3 +78,26 @@ export const SUCCESS_VERBS = Object.freeze(Object.keys(VERB_DEFINITIONS));
 export function getVerbDef(verb) {
 	return VERB_DEFINITIONS[verb] ?? null;
 }
+
+/**
+ * Resolve how a success picks its target. The single encoding of the
+ * def-vs-payload precedence — `_resolveTarget` (chat-actions.js) dispatches
+ * on it and the Spend Power dialog uses it to decide whether to show the
+ * target chip row, so the two can't drift.
+ *
+ * "process" and "opponent" on the verb definition override the payload
+ * (an Attack stays an attack no matter what the payload declares); the
+ * softer "ally"/"prompt" modes come from the payload.
+ *
+ * @param {VerbDef|null} def      From getVerbDef.
+ * @param {object} [success]      The success whose payload may declare a target.
+ * @returns {"self"|"ally"|"opponent"|"prompt"|"process"}
+ */
+export function successTargetMode(def, success) {
+	const declared = success?.payload?.target ?? "self";
+	if (def?.target === "process" || declared === "process") return "process";
+	if (def?.target === "opponent" || declared === "opponent") return "opponent";
+	if (def?.target === "ally" || declared === "ally") return "ally";
+	if (declared === "prompt") return "prompt";
+	return "self";
+}

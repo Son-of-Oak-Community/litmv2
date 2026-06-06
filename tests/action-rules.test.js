@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
 	computePowerBudget,
+	computeSuccessSpend,
 	getAllowedVerbs,
 	getMinSuccessCost,
 	getSuccessCost,
 } from "../modules/item/action/action-rules.js";
+import { successTargetMode } from "../modules/item/action/verb-definitions.js";
 
 const rollOf = (type, outcomeLabel = "success") => ({
 	outcome: { label: outcomeLabel },
@@ -209,6 +211,78 @@ describe("getMinSuccessCost", () => {
 	it("keeps non-tag fixed costs in the floor", () => {
 		// Two selectable tags + a concrete status: floor = status + cheapest tag.
 		expect(min("attack", "[net] [harpoon] and [snared-2]")).toBe(4);
+	});
+});
+
+describe("computeSuccessSpend", () => {
+	const spend = (verb, text, choices) =>
+		computeSuccessSpend(getSuccessCost({ verb, text }), choices);
+
+	it("charges the full fixed cost when no choices are made", () => {
+		expect(spend("create", "Get a [map] of the area.")).toBe(2);
+		expect(spend("create", "Get a [hunting bow], a [short blade]")).toBe(4);
+	});
+
+	it("drops deselected tag chips from the bill", () => {
+		expect(
+			spend("create", "Get a [hunting bow], a [short blade]", {
+				chosenTags: [true, false],
+			}),
+		).toBe(2);
+		// Sparse array — only explicit false drops a tag.
+		expect(
+			spend("create", "Get a [hunting bow], a [short blade]", {
+				chosenTags: [],
+			}),
+		).toBe(4);
+	});
+
+	it("adds the tiers picked for variable-status tokens", () => {
+		expect(spend("attack", "[wounded-]", { chosenTiers: [3] })).toBe(3);
+		// Tier 0 / skipped tokens add nothing.
+		expect(spend("attack", "[wounded-]", { chosenTiers: [0] })).toBe(0);
+	});
+
+	it("combines fixed, dropped tags, and chosen tiers", () => {
+		expect(
+			spend("attack", "[net] [harpoon] and [snared-]", {
+				chosenTags: [false, true],
+				chosenTiers: [2],
+			}),
+		).toBe(4); // harpoon 2 + tier 2
+	});
+});
+
+describe("successTargetMode", () => {
+	const def = (target) => ({ target });
+
+	it("defaults to self", () => {
+		expect(successTargetMode(def("self"), {})).toBe("self");
+		expect(successTargetMode(null, {})).toBe("self");
+	});
+
+	it("verb-level process/opponent override the payload", () => {
+		expect(
+			successTargetMode(def("opponent"), { payload: { target: "ally" } }),
+		).toBe("opponent");
+		expect(
+			successTargetMode(def("process"), { payload: { target: "self" } }),
+		).toBe("process");
+	});
+
+	it("payload escalates a self verb to opponent/ally/prompt/process", () => {
+		expect(
+			successTargetMode(def("self"), { payload: { target: "opponent" } }),
+		).toBe("opponent");
+		expect(
+			successTargetMode(def("self"), { payload: { target: "ally" } }),
+		).toBe("ally");
+		expect(
+			successTargetMode(def("self"), { payload: { target: "prompt" } }),
+		).toBe("prompt");
+		expect(
+			successTargetMode(def("self"), { payload: { target: "process" } }),
+		).toBe("process");
 	});
 });
 

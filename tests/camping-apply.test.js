@@ -950,10 +950,7 @@ describe("buildOperations — place of stay", () => {
 				isConsequenceOnly: false,
 			},
 		];
-		const { recap } = buildOperations(
-			state,
-			world({ threatItems }),
-		);
+		const { recap } = buildOperations(state, world({ threatItems }));
 		expect(recap.placeOfStay.threats).toEqual([
 			{
 				id: "vignette-1",

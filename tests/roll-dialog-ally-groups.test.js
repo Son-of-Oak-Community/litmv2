@@ -233,9 +233,7 @@ describe("buildSceneActorTagGroups", () => {
 			"The Long Road",
 		]);
 		// actorType drives decorateTag's opposition cycle downstream
-		expect(groups[0].tags.every((t) => t.actorType === "challenge")).toBe(
-			true,
-		);
+		expect(groups[0].tags.every((t) => t.actorType === "challenge")).toBe(true);
 	});
 
 	it("non-owner viewers only see selected tags", () => {

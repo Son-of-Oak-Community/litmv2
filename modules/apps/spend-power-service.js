@@ -1,6 +1,9 @@
 import { resolveEffect } from "../active-effects/effect-queries.js";
 import { StatusTagData } from "../active-effects/status-tag-data.js";
-import { getSuccessCost } from "../item/action/action-rules.js";
+import {
+	computeSuccessSpend,
+	getSuccessCost,
+} from "../item/action/action-rules.js";
 import { applySuccess } from "../item/action/chat-actions.js";
 import { error } from "../logger.js";
 import { localize as t } from "../utils.js";
@@ -132,28 +135,21 @@ async function _applyActionSuccessOption(opt, actor, messageId, presetTarget) {
 
 	// Actual cost paid: the non-tag fixed part, plus only the tags the player
 	// kept selected, plus the tiers they picked for variable statuses.
-	const c = getSuccessCost(success);
-	const tagCosts = c.tagCosts ?? [];
-	const allTagsCost = tagCosts.reduce((sum, n) => sum + n, 0);
-	const tagSpent = tagCosts.reduce(
-		(sum, n, i) => sum + (opt.chosenTags?.[i] !== false ? n : 0),
-		0,
-	);
-	const variableSpent = (opt.chosenTiers ?? [])
-		.filter((n) => Number.isFinite(n))
-		.reduce((sum, n) => sum + n, 0);
-	const spent = c.fixed - allTagsCost + tagSpent + variableSpent;
+	const spent = computeSuccessSpend(getSuccessCost(success), {
+		chosenTags: opt.chosenTags,
+		chosenTiers: opt.chosenTiers,
+	});
 
-	await message.setFlag("litmv2", "appliedSuccesses", [
-		...appliedNow,
-		opt.successKey,
-	]);
 	// Persist what was actually paid so reopened dialogs and the power budget
-	// don't have to guess tier/tag choices from the action definition.
+	// don't have to guess tier/tag choices from the action definition. One
+	// update for both flags — they must stay in sync.
 	const appliedCosts = message.getFlag("litmv2", "appliedSuccessCosts") ?? {};
-	await message.setFlag("litmv2", "appliedSuccessCosts", {
-		...appliedCosts,
-		[opt.successKey]: spent,
+	await message.update({
+		"flags.litmv2.appliedSuccesses": [...appliedNow, opt.successKey],
+		"flags.litmv2.appliedSuccessCosts": {
+			...appliedCosts,
+			[opt.successKey]: spent,
+		},
 	});
 	await foundry.documents.ChatMessage.create({
 		speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
@@ -219,9 +215,9 @@ function _applyDefault(opt) {
 	if (entries.length > 0) {
 		const tags = entries.map(({ name, tier, isSingleUse }) => {
 			const escaped = foundry.utils.escapeHTML(name);
-			if (hasTier) return `{${escaped}-${Math.max(tier, 1)}}`;
+			if (hasTier) return `[${escaped}-${Math.max(tier, 1)}]`;
 			if (draggable) {
-				return isSingleUse ? `{${escaped}:1}` : `{${escaped}}`;
+				return isSingleUse ? `[${escaped}!]` : `[${escaped}]`;
 			}
 			return `<em>${escaped}</em>`;
 		});

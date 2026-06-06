@@ -15,9 +15,9 @@
 		<p class="litm-camping-recap__campsite">
 			{{#each placeOfStay.campsiteTags}}
 			{{#if isStatus}}
-			<span class="litm-status" data-text="{{name}}" draggable="true">{{name}}{{#if tier}}-{{tier}}{{/if}}</span>
+			<span class="litm-status" data-text="{{name}}{{#if tier}}-{{tier}}{{/if}}" draggable="true">{{name}}{{#if tier}}-{{tier}}{{/if}}</span>
 			{{else}}
-			<span class="litm-tag" data-text="{{name}}" draggable="true">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
+			<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}" data-text="{{name}}" draggable="true">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
 			{{/if}}
 			{{/each}}
 		</p>
@@ -57,7 +57,7 @@
 			{{#if (eq ../key "packUp")}}
 			<p class="litm-camping-recap__lines litm-camping-recap__kept">
 				{{#each kept}}
-				<span class="litm-tag" data-text="{{name}}" draggable="true">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
+				<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}" data-text="{{name}}" draggable="true">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
 				{{else}}
 				<span class="litm-camping-recap__none">{{localize "LITM.Ui.camping_recap_packed_nothing"}}</span>
 				{{/each}}

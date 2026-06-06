@@ -1,11 +1,15 @@
 import {
 	computePowerBudget,
+	computeSuccessSpend,
 	getAllowedVerbs,
 	getMinSuccessCost,
 	getSuccessCost,
 	scanMarkup,
 } from "../item/action/action-rules.js";
-import { getVerbDef } from "../item/action/verb-definitions.js";
+import {
+	getVerbDef,
+	successTargetMode,
+} from "../item/action/verb-definitions.js";
 import { formatCostLabel } from "../system/renderers/renderer-utils.js";
 import { localize as t } from "../utils.js";
 import { adjustCounter, readVariableTiers } from "./counter-controls.js";
@@ -193,24 +197,18 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 
 		// Power displayed at the top must account for BOTH the generic options
 		// already spent (spentPower flag) and the action successes already
-		// applied (appliedSuccesses flag). Two flags, one budget. Actual costs
-		// paid (tier/tag picks included) live in the appliedSuccessCosts flag;
-		// the per-success recomputation is only a fallback for messages from
-		// before that flag existed.
+		// applied (appliedSuccesses flag). Two flags, one budget —
+		// computePowerBudget is the single accountant (it reads the actual
+		// costs paid from appliedSuccessCosts, recomputing only for messages
+		// from before that flag existed).
 		const message = this.messageId ? game.messages.get(this.messageId) : null;
 		const action = await this.#getAction();
-		const appliedKeys = message?.getFlag("litmv2", "appliedSuccesses") ?? [];
-		const appliedCosts =
-			message?.getFlag("litmv2", "appliedSuccessCosts") ?? {};
-		const appliedSuccessesCost = action
-			? appliedKeys.reduce((sum, key) => {
-					if (key in appliedCosts) return sum + appliedCosts[key];
-					const s = (action.system.successes ?? []).find((o) => o.id === key);
-					if (!s) return sum;
-					const c = getSuccessCost(s);
-					return sum + c.fixed + c.variableTokens;
-				}, 0)
-			: 0;
+		const { spent: appliedSuccessesCost } = computePowerBudget(
+			message?.rolls?.[0],
+			action?.system,
+			message?.getFlag("litmv2", "appliedSuccesses") ?? [],
+			message?.getFlag("litmv2", "appliedSuccessCosts") ?? {},
+		);
 		this.power = this.totalPower - this.alreadySpent - appliedSuccessesCost;
 
 		// Target chip row — only when a listed success targets another actor
@@ -259,8 +257,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		const applied = new Set(
 			message.getFlag("litmv2", "appliedSuccesses") ?? [],
 		);
-		const appliedCosts =
-			message.getFlag("litmv2", "appliedSuccessCosts") ?? {};
+		const appliedCosts = message.getFlag("litmv2", "appliedSuccessCosts") ?? {};
 		const roll = message.rolls?.[0];
 		const allowedVerbs = getAllowedVerbs(roll);
 		// Affordability uses the combined remaining (action-aware budget minus
@@ -300,16 +297,20 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				// Successes listing 2+ tags ("gain a [bow], a [knife]") render
 				// each tag as a deselectable chip — the prose usually means
 				// "either or both", so the player picks and pays per tag.
-				const tagTokens = scanMarkup(s.text)
-					.filter((tok) => tok.type === "tag")
-					.map((tok, idx) => ({
-						idx,
-						name: tok.name,
-						isSingleUse: tok.isSingleUse,
-						cost: tok.isSingleUse ? 1 : 2,
-					}));
-				const hasSelectableTags = tagTokens.length >= 2;
-				const tagCostSum = (cost.tagCosts ?? []).reduce((a, b) => a + b, 0);
+				// Chips only exist where the cost model prices tags
+				// individually (cost.tagCosts) — flat-rate verbs like Extra
+				// Feat apply all their tags for one fixed price, no chips.
+				const hasSelectableTags = (cost.tagCosts ?? []).length >= 2;
+				const tagTokens = hasSelectableTags
+					? scanMarkup(s.text)
+							.filter((tok) => tok.type === "tag")
+							.map((tok, idx) => ({
+								idx,
+								name: tok.name,
+								isSingleUse: tok.isSingleUse,
+								cost: cost.tagCosts[idx],
+							}))
+					: [];
 
 				return {
 					key: s.id,
@@ -318,20 +319,22 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 					text: s.text,
 					costLabel: formatCostLabel(cost, def),
 					// The static part of the live cost: everything that isn't a
-					// counter or a chip. Chips default to selected, so the
-					// initial computed total equals the full fixed cost.
-					fixedCost: hasSelectableTags ? cost.fixed - tagCostSum : cost.fixed,
+					// counter or a chip (= the spend with every chip dropped).
+					// Chips default to selected, so the initial computed total
+					// equals the full fixed cost.
+					fixedCost: hasSelectableTags
+						? computeSuccessSpend(cost, {
+								chosenTags: tagTokens.map(() => false),
+							})
+						: cost.fixed,
 					staticCost: cost.fixed,
 					varTokens,
 					hasVariableTier: varTokens.length > 0,
-					tagTokens: hasSelectableTags ? tagTokens : [],
+					tagTokens,
 					hasSelectableTags,
-					needsActorTarget:
-						def?.target === "opponent" ||
-						def?.target === "ally" ||
-						["opponent", "ally", "prompt"].includes(
-							s.payload?.target ?? "self",
-						),
+					needsActorTarget: ["opponent", "ally", "prompt"].includes(
+						successTargetMode(def, s),
+					),
 					disabled: isUnsupported || cantAfford,
 					reasonKey: isUnsupported
 						? def.unsupportedMessageKey
@@ -780,8 +783,7 @@ function parseSpendIntent(form, dialog) {
 	return {
 		options,
 		targetActorId:
-			form.querySelector("input[name='success-target']:checked")?.value ??
-			null,
+			form.querySelector("input[name='success-target']:checked")?.value ?? null,
 		messageId: dialog.messageId,
 		alreadySpent: dialog.alreadySpent,
 	};

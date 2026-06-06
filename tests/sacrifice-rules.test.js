@@ -55,9 +55,9 @@ describe("isThemeSpent", () => {
 	});
 
 	it("treats fellowship_tag as power-like", () => {
-		expect(isThemeSpent(theme(tag("fellowship_tag", { scratched: true })))).toBe(
-			true,
-		);
+		expect(
+			isThemeSpent(theme(tag("fellowship_tag", { scratched: true }))),
+		).toBe(true);
 		expect(
 			isThemeSpent(theme(tag("fellowship_tag", { scratched: false }))),
 		).toBe(false);
@@ -85,9 +85,9 @@ describe("isThemeSpent", () => {
 	});
 
 	it("is false for a theme with no power-like tags (nothing to scratch)", () => {
-		expect(
-			isThemeSpent(theme(tag("weakness_tag", { scratched: true }))),
-		).toBe(false);
+		expect(isThemeSpent(theme(tag("weakness_tag", { scratched: true })))).toBe(
+			false,
+		);
 		expect(isThemeSpent(theme())).toBe(false);
 	});
 

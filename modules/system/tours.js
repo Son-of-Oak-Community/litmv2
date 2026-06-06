@@ -79,7 +79,9 @@ export class LitmTour extends Tour {
 		if (step?.selector && !this.targetElement) {
 			// Foundry already console.warns the missing element; this is just the
 			// handled resolution, so log it at info to avoid a double warning.
-			info(`Tour [${this.id}] target "${step.selector}" missing — skipping step`);
+			info(
+				`Tour [${this.id}] target "${step.selector}" missing — skipping step`,
+			);
 			return this.hasNext ? this.next() : this.complete();
 		}
 		return super._renderStep();
@@ -109,7 +111,8 @@ export class LitmTour extends Tour {
 		const action = this.currentStep?.action;
 		if (action === "openSampleHero") await this.#openSampleHero();
 		else if (action === "switchToPlayMode") await this.#switchToPlayMode();
-		else if (action === "openFellowshipSheet") await this.#openFellowshipSheet();
+		else if (action === "openFellowshipSheet")
+			await this.#openFellowshipSheet();
 		else if (action === "ensureSampleTags") await this.#ensureSampleTags();
 		else if (action?.startsWith("activateSidebar:")) {
 			const tab = action.split(":")[1];
