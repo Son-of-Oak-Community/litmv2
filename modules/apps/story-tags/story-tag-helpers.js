@@ -1,4 +1,5 @@
 import { StatusTagData } from "../../active-effects/index.js";
+import { classifyTagString } from "../../item/action/tag-string.js";
 
 /**
  * Validate and normalize a raw story-tags config object.
@@ -85,33 +86,77 @@ export function toTiers(values = []) {
 }
 
 /**
- * Parse a quick-add input string into a structured descriptor.
+ * Parse a quick-add input string into a structured descriptor. The input is
+ * the bracket tag-string syntax minus the brackets, so parsing wraps the raw
+ * text in `[…]` and delegates to the canonical classifier — quick-add and
+ * bracket markup can't drift apart.
  * - "name:N" or "name:" -> limit with optional max
- * - "name-N" (1-6) -> status_tag with tier
+ * - "name-N" -> status_tag with tier (out-of-range tier -> tier-less status)
+ * - "name!" -> single-use story_tag
  * - plain text -> story_tag
  * @param {string} raw  The raw input string (already trimmed)
- * @returns {{ type: "limit"|"status_tag"|"story_tag", name: string, tier?: number, limitMax?: number|null }|null}
+ * @returns {{ type: "limit"|"status_tag"|"story_tag", name: string, tier?: number, limitMax?: number|null, isSingleUse?: boolean }|null}
  *   null if the input is empty
  */
 export function parseQuickAddInput(raw) {
 	if (!raw) return null;
 
-	const limitMatch = raw.match(/^(.+):(\d*)$/);
-	if (limitMatch) {
-		const name = limitMatch[1].trim();
-		const max = limitMatch[2] ? Number(limitMatch[2]) : null;
-		return { type: "limit", name, limitMax: max };
+	// Brackets in the input would make the wrapped string parse as a shorter
+	// token than what the user typed — treat such input as a literal name.
+	const [c] = /[[\]]/.test(raw) ? [] : classifyTagString(`[${raw}]`);
+	switch (c?.kind) {
+		case "limit":
+			return {
+				type: "limit",
+				name: c.name.trim(),
+				limitMax: c.value ? Number(c.value) : null,
+			};
+		case "status":
+			return { type: "status_tag", name: c.name.trim(), tier: c.tier };
+		case "story":
+			return {
+				type: "story_tag",
+				name: c.name.trim(),
+				isSingleUse: c.isSingleUse,
+			};
+		default:
+			// Weakness markup ("-name") and names the bracket grammar can't
+			// express land here.
+			return parseUnbracketableInput(raw);
 	}
+}
 
-	const statusMatch = raw.match(/^(.+)-([1-6])$/);
-	if (statusMatch) {
+/**
+ * Fallback for quick-add input the bracket grammar rejects — chiefly names
+ * containing digits: the canonical regex bans digits in names (that's what
+ * splits `[wounded-3]` into name + tier), so `[room 2:4]` never matches. But
+ * quick-add has no such parsing constraint — "room 2:4" is a fine limit name.
+ * Mirror the canonical suffix semantics on the raw text, conservatively:
+ * status tiers stay 1–6 here ("level 2-9" is a name, not a status).
+ * Weakness markup ("-name") also falls through to the literal story tag —
+ * quick-add can't create weakness effects.
+ */
+function parseUnbracketableInput(raw) {
+	const limit = raw.match(/^(.+):(\d*)$/);
+	if (limit) {
 		return {
-			type: "status_tag",
-			name: statusMatch[1].trim(),
-			tier: Number.parseInt(statusMatch[2], 10),
+			type: "limit",
+			name: limit[1].trim(),
+			limitMax: limit[2] ? Number(limit[2]) : null,
 		};
 	}
-
+	const status = raw.match(/^(.+)-([1-6])$/);
+	if (status) {
+		return {
+			type: "status_tag",
+			name: status[1].trim(),
+			tier: Number.parseInt(status[2], 10),
+		};
+	}
+	const singleUse = raw.match(/^(.+)!$/);
+	if (singleUse) {
+		return { type: "story_tag", name: singleUse[1].trim(), isSingleUse: true };
+	}
 	return { type: "story_tag", name: raw };
 }
 

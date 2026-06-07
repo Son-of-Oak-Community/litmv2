@@ -50,7 +50,7 @@
 			<p class="litm-camping-scene__active-tags">
 				{{~#each sceneStoryTags~}}
 					{{~#unless @first}}, {{/unless~}}
-					<span class="litm-tag {{#if isStatus}}litm-status_tag{{/if}}">{{name}}{{#if isStatus}} {{currentTier}}{{/if}}{{#if isSingleUse}}!{{/if}}</span>
+					<span class="litm-tag {{#if isStatus}}litm-status_tag{{/if}}{{#if isSingleUse}} litm--single-use{{/if}}">{{name}}{{#if isStatus}} {{currentTier}}{{/if}}{{#if isSingleUse}} ✱{{/if}}</span>
 				{{~/each~}}
 			</p>
 			{{/if}}

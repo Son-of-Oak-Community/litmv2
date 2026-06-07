@@ -6,7 +6,8 @@ import {
 import { resolveEffect } from "../../active-effects/effect-queries.js";
 import {
 	classifyTagStringMatch,
-	parseTagStringMatch,
+	parseTagString,
+	tagDragData,
 } from "../../item/action/tag-string.js";
 import { error, info } from "../../logger.js";
 import { ACTOR_TAG_TYPES, FLAG_LIMIT_TYPES } from "../../system/config.js";
@@ -843,23 +844,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const text = target.dataset.text;
 		if (!text) return;
 
-		const matches = `{${text}}`.matchAll(CONFIG.litmv2.tagStringRe);
-		const match = [...matches][0];
+		const match = [...`[${text}]`.matchAll(CONFIG.litmv2.tagStringRe)][0];
 		if (!match) return;
 
-		const { name, isStatus, value } = classifyTagStringMatch(match);
-		const data = {
-			id: foundry.utils.randomID(),
-			name,
-			type: isStatus ? "status_tag" : "story_tag",
-			values: Array(6)
-				.fill(null)
-				.map((_, i) => (Number.parseInt(value, 10) === i + 1 ? value : null)),
-			isScratched: false,
-			value,
+		const data = tagDragData(classifyTagStringMatch(match), {
 			sourceId: target.dataset.id,
 			sourceContainer: target.dataset.type,
-		};
+		});
 		event.dataTransfer.setData("text/plain", JSON.stringify(data));
 	}
 
@@ -1068,12 +1059,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			actor.effects.size === 0 &&
 			actor.system.tags.length
 		) {
-			const tags = Array.from(
-				actor.system.tags.matchAll(CONFIG.litmv2.tagStringRe),
-			);
 			await actor.createEmbeddedDocuments(
 				"ActiveEffect",
-				tags.map(parseTagStringMatch),
+				parseTagString(actor.system.tags),
 			);
 		}
 
@@ -1147,7 +1135,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	/**
 	 * Parse the quick-add input value and create the appropriate tag, status, or limit.
-	 * Plain text → tag. Suffix -N (1-6) → status with tiers 1-N. Suffix :N → limit with max N.
+	 * Plain text → tag. Suffix -N → status (out-of-range N → tier-less status).
+	 * Suffix :N → limit with max N. Suffix ! → single-use tag.
 	 */
 	async #quickAddFromInput(input, sectionId) {
 		const parsed = parseQuickAddInput(input.value.trim());
@@ -1221,7 +1210,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			values,
 			type: isStatus ? "status_tag" : "story_tag",
 			isScratched: false,
-			isSingleUse: false,
+			isSingleUse: parsed.isSingleUse ?? false,
 			hidden: game.user.isGM,
 			id: foundry.utils.randomID(),
 		};

@@ -1,5 +1,5 @@
-import { StatusTagData } from "../../active-effects/status-tag-data.js";
-import { parseTagStringMatch } from "../../item/action/tag-string.js";
+import { getMinSuccessCost } from "../../item/action/action-rules.js";
+import { classifyTagStringMatch } from "../../item/action/tag-string.js";
 import { makeTagStringRe } from "../config.js";
 
 /**
@@ -82,17 +82,79 @@ export function makeActorCard(actor, typeClass) {
 }
 
 /**
- * Replace `[name]` / `[name-N]` / `[name-]` / `[name!]` bracket markup in free
- * text with inline colored chips — yellow for story tags, green for statuses,
- * matching the Action Grimoire's visual convention. Returns escaped-HTML
- * suitable for direct insertion (via Handlebars SafeString or innerHTML).
+ * Render one tag classification (from `classifyTagStringMatch`) as canonical
+ * chip HTML. The single source of truth for chip markup — used by the text
+ * enricher and `proseChipsHtml` so every surface draws the same chips.
  *
- *   [map]        → <span class="litm-power_tag">map</span>
- *   [map!]       → <span class="litm-power_tag litm--single-use">map ✱</span>
- *   [wounded-2]  → <span class="litm-status">wounded-2</span>
- *   [wounded-]   → <span class="litm-status litm--variable-tier">wounded</span>
+ *   story    → <span class="litm-tag">name</span>
+ *   story!   → <span class="litm-tag litm--single-use">name ✱</span>
+ *   status   → <span class="litm-status">name-N</span>
+ *              ([name-] → litm--variable-tier, no tier suffix)
+ *   limit    → <span class="litm-limit">name <N badge></span>
+ *   weakness → <span class="litm-weakness_tag">name <chevron></span>
  *
- * Non-markup text is HTML-escaped.
+ * `data-text` doubles as the CSS text-stroke underlay (`content:
+ * attr(data-text)`) and the dragstart re-parse source, so it always matches
+ * the stroked part of the label; suffixes (✱, limit badge, chevron) render
+ * unstroked after it. Kind information the bare name can't carry is encoded
+ * in the classes instead (`litm--single-use`, `litm-limit`,
+ * `litm-weakness_tag`, `litm-status`) plus `data-value` for a limit's max —
+ * the dragstart handler reads those back.
+ *
+ * @param {ReturnType<typeof classifyTagStringMatch>} c
+ * @param {object} [opts]
+ * @param {string} [opts.tooltip]  data-tooltip text
+ * @param {string} [opts.chevron]  Pre-rendered weakness chevron SVG markup
+ * @returns {string}
+ */
+export function tagChipHtml(c, { tooltip = "", chevron = "" } = {}) {
+	const esc = foundry.utils.escapeHTML;
+	const tip = tooltip ? ` data-tooltip="${esc(tooltip)}"` : "";
+	switch (c.kind) {
+		case "weakness":
+			return `<span class="litm-weakness_tag" draggable="true"${tip} data-text="${esc(
+				c.name,
+			)}">${esc(c.name)}${chevron ? ` ${chevron}` : ""}</span>`;
+		case "limit": {
+			const valueHtml = c.value
+				? `<img src="systems/litmv2/assets/media/icons/limit.svg"
+						style="height:1.4em;width:1.4em;position:absolute;right:-0.5em;top:-0.05em;z-index:-1;" /> <span
+						style="font-style:normal;font-size:inherit;font-weight:600;color:var(--color-light-2);position:relative;top:-0.13em;right:-0.1em;">${esc(
+							c.value,
+						)}</span>`
+				: "";
+			// data-value lets the dragstart handler recover the max — data-text
+			// must stay the bare name (it underlays the CSS text stroke).
+			const value = c.value ? ` data-value="${esc(c.value)}"` : "";
+			return `<span class="litm-limit" draggable="true"${tip} data-text="${esc(
+				c.name,
+			)}"${value}>${esc(c.name)}${valueHtml}</span>`;
+		}
+		case "status": {
+			// c.tier is the normalized tier (0 = variable or out-of-range), so
+			// [guard-7] renders as a variable-tier chip rather than a
+			// definite-looking "guard-7" that no mechanic backs.
+			const label = c.tier ? `${c.name}-${c.tier}` : c.name;
+			const cls = c.tier ? "litm-status" : "litm-status litm--variable-tier";
+			return `<span class="${cls}" draggable="true"${tip} data-text="${esc(
+				label,
+			)}">${esc(label)}</span>`;
+		}
+		default: {
+			const cls = c.isSingleUse ? "litm-tag litm--single-use" : "litm-tag";
+			const label = c.isSingleUse ? `${c.name} ✱` : c.name;
+			return `<span class="${cls}" draggable="true"${tip} data-text="${esc(
+				c.name,
+			)}">${esc(label)}</span>`;
+		}
+	}
+}
+
+/**
+ * Replace `[name]` / `[name!]` / `[name-N]` / `[name:N]` / `[-name]` bracket
+ * markup in free text with inline colored chips via `tagChipHtml`. Returns
+ * escaped-HTML suitable for direct insertion (via Handlebars SafeString or
+ * innerHTML). Non-markup text is HTML-escaped.
  *
  * @param {string} text
  * @returns {string}
@@ -104,28 +166,41 @@ export function proseChipsHtml(text) {
 	let lastIndex = 0;
 	for (const match of text.matchAll(re)) {
 		const start = match.index;
-		const end = start + match[0].length;
 		if (start > lastIndex)
 			out += foundry.utils.escapeHTML(text.slice(lastIndex, start));
-
-		const data = parseTagStringMatch(match);
-		let cls;
-		let label;
-		if (data.type === "status_tag") {
-			const tier = StatusTagData.tierOf(data.system.tiers);
-			cls = tier > 0 ? "litm-status" : "litm-status litm--variable-tier";
-			label = tier > 0 ? `${data.name}-${tier}` : data.name;
-		} else {
-			cls = data.system.isSingleUse
-				? "litm-power_tag litm--single-use"
-				: "litm-power_tag";
-			label = data.system.isSingleUse ? `${data.name} ✱` : data.name;
-		}
-		out += `<span class="${cls}" data-text="${foundry.utils.escapeHTML(data.name)}" draggable="true">${foundry.utils.escapeHTML(label)}</span>`;
-
-		lastIndex = end;
+		out += tagChipHtml(classifyTagStringMatch(match));
+		lastIndex = start + match[0].length;
 	}
 	if (lastIndex < text.length)
 		out += foundry.utils.escapeHTML(text.slice(lastIndex));
 	return out;
+}
+
+/**
+ * Inline cost indicator for an action success — "2 Power", "2+ Power",
+ * "1 Power per tier", or "" when free. Shared by the chat-card success list
+ * and the Spend Power dialog so both surfaces show the same answer.
+ *
+ * Narrative (Quick) verbs are free → no label. Successes whose final cost is
+ * picked in Spend Power (variable-tier statuses, or 2+ selectable tags) show
+ * their minimum with a "+"; when nothing is mandatory ([name-] only), the
+ * label spells out the per-tier price instead of a confusing "0+".
+ *
+ * @param {{ fixed: number, variableTokens: number, tagCosts?: number[] }} cost
+ *   From getSuccessCost.
+ * @param {object|null} def  Verb definition from getVerbDef.
+ * @returns {string}
+ */
+export function formatCostLabel(cost, def) {
+	if (!def || def.kind === "narrative") return "";
+	const variable = cost.variableTokens ?? 0;
+	const selectableTags = (cost.tagCosts?.length ?? 0) >= 2;
+	if (variable > 0 || selectableTags) {
+		const min = getMinSuccessCost(cost);
+		if (min > 0)
+			return game.i18n.format("LITM.Actions.cost_variable", { n: min });
+		return game.i18n.localize("LITM.Actions.cost_per_tier");
+	}
+	if ((cost.fixed ?? 0) <= 0) return "";
+	return game.i18n.format("LITM.Actions.cost", { n: cost.fixed });
 }

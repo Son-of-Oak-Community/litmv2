@@ -598,35 +598,9 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	border-radius: var(--border-radius);
 }
 
-/* Chat — Apply Consequences button injected into the existing .dice-footer
-   (alongside Push Your Luck / Spend Power). Inherits the .litm.dice-roll
-   button cascade. We only style the small unapplied-count badge here. */
-.litm--chat-action-count {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 1.5em;
-	height: 1.5em;
-	margin-left: 0.25em;
-	padding: 0 0.4em;
-	border-radius: var(--radius-pill);
-	background: var(--color-warm-1-25);
-	color: var(--color-text-primary);
-	font-size: var(--font-size-11);
-	font-weight: 700;
-}
-
 /* Action-applied chat cards reuse the .litm-spend-chat chrome (avatar +
    actor name + action label + body + footer line) — see Spend Power Chat
    Cards section below. No bespoke styling needed here. */
-
-/* Apply-Action menu — re-show the checkboxes hidden by spend-power's row-click
-   pattern. Spend Power has a JS handler that toggles options on whole-row
-   click; this menu uses native checkbox semantics instead, so visible boxes
-   are the entire affordance. */
-#litm-apply-action .litm-spend-power__option-label input[type="checkbox"] {
-	display: inline-block;
-}
 
 /* Apply-Action menu — verb label inside option rows. Verb leads, free-form
    label follows in italic; verb-kind tinting tells you whether the option
@@ -651,8 +625,14 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 .litm-spend-power__option .litm--chat-action-label {
 	font-style: italic;
 }
-.litm-spend-power__option.is-applied {
-	opacity: 0.6;
+/* Check marker on consequence entries applied earlier. The entry itself stays
+   fully interactive — consequences are options, and the same one may be dealt
+   to another hero — so no dimming, just the marker. */
+.litm-spend-power__option .litm--applied-check {
+	flex: none;
+	margin-left: 0.35em;
+	font-size: var(--font-size-12);
+	color: var(--color-litm-status-text);
 }
 .litm--chat-action-consequence-row {
 	align-items: flex-start;
@@ -2111,13 +2091,16 @@ section.standard-form.litm-actions-app {
 /* The header part intentionally skips incremental re-renders in edit mode
    (EDITOR_PARTS), so the alias input is always in the DOM and revealed by
    the checkbox state alone */
-.litm-actor
-	.litm--conceal-name-row:not(:has(input[name="system.concealName"]:checked))
+.litm-actor .litm--conceal-name-row:not(
+		:has(input[name="system.concealName"]:checked)
+	)
 	+ input[name="system.alias"] {
 	display: none;
 }
 
-.litm-actor [data-application-part="header"].img-name input[name="system.alias"] {
+.litm-actor
+	[data-application-part="header"].img-name
+	input[name="system.alias"] {
 	font-size: var(--font-size-16);
 	font-style: italic;
 	margin-bottom: var(--spacer-8);
@@ -4145,9 +4128,12 @@ section.standard-form.litm-actions-app {
 	width: 100%;
 }
 
-/* Apply-action menu: target chip row. The label wraps a hidden radio + small
-   actor portrait + name, so the whole chip is the hit target. Selected chip
-   warms its background to mirror the option-row `:has(input:checked)` cue. */
+/* Target chip row — shared by the Apply Consequences menu (multi-select
+   checkboxes) and the Spend Power dialog (single radio). The label wraps a
+   hidden input + small actor portrait + name, so the whole chip is the hit
+   target. Chips keep their natural width — no .flexrow here, its flex:1
+   children stretched chips into uneven slabs and wrapped names mid-chip.
+   Selection warms the background, mirroring option-row `:has(input:checked)`. */
 .litm--apply-target-row {
 	margin-bottom: var(--spacer-8);
 }
@@ -4156,13 +4142,16 @@ section.standard-form.litm-actions-app {
 	list-style: none;
 	padding: 0;
 	margin: 0;
+	display: flex;
 	flex-wrap: wrap;
+	gap: var(--spacer-4) var(--spacer-8);
 }
 
 .litm--apply-target-chip > label {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacer-4);
+	max-width: 16rem;
 	padding: var(--spacer-2) var(--spacer-8) var(--spacer-2) var(--spacer-2);
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-pill);
@@ -4176,7 +4165,7 @@ section.standard-form.litm-actions-app {
 	border-color: var(--color-warm-2);
 }
 
-.litm--apply-target-chip input[type="radio"] {
+.litm--apply-target-chip input {
 	position: absolute;
 	opacity: 0;
 	pointer-events: none;
@@ -4190,9 +4179,166 @@ section.standard-form.litm-actions-app {
 	flex: none;
 }
 
+.litm--apply-target-chip span {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .litm--apply-target-chip:has(input:checked) > label {
-	background: var(--table-row-color-even);
+	background: var(--color-warm-1-25);
 	border-color: var(--color-warm-3);
+}
+
+/* Keyboard path — the input itself is invisible, so surface its focus on
+   the chip. Matches the system-wide gold focus indicator. */
+.litm--apply-target-chip:has(input:focus-visible) > label {
+	outline: 2px solid var(--color-litm-tag);
+	outline-offset: 2px;
+}
+
+/* Camping recap chat card — stage-ordered summary posted at Pack Up. Mirrors
+   the camp scene's own flow: header (type + place + campsite chips), then
+   Periods → Quality Time → Pack Up with per-hero rows. Tag/status chips reuse
+   the global tag chrome; text sticks to chat-safe tokens (--color-text-primary
+   tints and --color-litm-*-text accents). */
+.litm-camping-recap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-8);
+	padding: var(--spacer-8) var(--spacer-12) var(--spacer-12);
+}
+
+.litm-camping-recap__header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+}
+
+.litm-camping-recap__title {
+	margin: 0;
+	border: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacer-8);
+	font-family: var(--font-h2);
+	font-size: var(--font-size-20);
+	/* Foundry's h2 default (--color-text-emphatic) is unreliable inside
+	   .chat-log — pin to the chat-safe primary. */
+	color: var(--color-text-primary);
+}
+
+.litm-camping-recap__title i {
+	font-size: var(--font-size-14);
+}
+
+.litm-camping-recap .litm--ingress {
+	margin: 0;
+	text-align: center;
+}
+
+.litm-camping-recap__campsite {
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacer-4) var(--spacer-12);
+}
+
+.litm-camping-recap__threats {
+	margin-top: var(--spacer-4);
+}
+
+.litm-camping-recap__stage {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+}
+
+.litm-camping-recap__stage-number {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.5em;
+	height: 1.5em;
+	border: 1px solid currentcolor;
+	border-radius: var(--radius-circle);
+	font-size: var(--font-size-11);
+	font-weight: 700;
+	/* Pull the stage label toward the badge — the section-header flex gap
+	   (--spacer-12) is too wide for a number↔word pair. Nets ~--spacer-4. */
+	margin-right: calc(var(--spacer-4) - var(--spacer-12));
+}
+
+.litm-camping-recap__hero {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-2);
+}
+
+.litm-camping-recap__hero-head {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+}
+
+.litm-camping-recap__avatar {
+	width: 24px;
+	height: 24px;
+	object-fit: cover;
+	border: none;
+	border-radius: var(--radius-sm);
+	flex: none;
+}
+
+.litm-camping-recap__hero-name {
+	font-weight: 700;
+}
+
+.litm-camping-recap__activity {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	margin-left: auto;
+	padding: 0 var(--spacer-8);
+	border: 1px solid var(--color-text-primary-15);
+	border-radius: var(--radius-pill);
+	font-size: var(--font-size-12);
+	white-space: nowrap;
+}
+
+.litm-camping-recap__activity--rest i {
+	color: var(--color-litm-status-text);
+}
+
+.litm-camping-recap__activity--reflect i {
+	color: var(--color-litm-tag-text);
+}
+
+.litm-camping-recap__activity--campAction i {
+	color: var(--color-litm-weakness-text);
+}
+
+.litm-camping-recap__lines {
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-2);
+	/* Indent past the avatar so effects hang under the hero's name. */
+	padding: 0 0 0 calc(24px + var(--spacer-8));
+	font-size: var(--font-size-13);
+}
+
+.litm-camping-recap__kept {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: var(--spacer-4) var(--spacer-12);
+}
+
+.litm-camping-recap__none {
+	font-style: italic;
+	opacity: 0.7;
 }
 
 /* ========================================
@@ -4969,7 +5115,10 @@ input[type="text"].litm--quick-add-input,
 	color: var(--color-text-primary);
 }
 
-.litm--single-use {
+/* Scoped to input: the same class on a chip span (`.litm-tag.litm--single-use`,
+   from tagChipHtml) is a visual modifier, not a hidden checkbox — an unscoped
+   selector here collapses those chips to an invisible 0×0 clipped box. */
+input.litm--single-use {
 	position: absolute;
 	width: 0;
 	height: 0;
@@ -4981,8 +5130,8 @@ input[type="text"].litm--quick-add-input,
 	border: 0;
 }
 
-.litm--single-use::before,
-.litm--single-use::after {
+input.litm--single-use::before,
+input.litm--single-use::after {
 	display: none;
 }
 
@@ -5146,8 +5295,12 @@ input[type="text"].litm--quick-add-input,
 	font-weight: bold;
 }
 
+/* The checkbox is the selection affordance — visible on purpose. It used to
+   be hidden in favor of a row tint alone, which players reliably missed
+   (issue #103: counters nudged, row never selected, Spend stayed disabled). */
 .litm-spend-power .litm-spend-power__option-label input[type="checkbox"] {
-	display: none;
+	flex: none;
+	margin: 0;
 }
 
 .litm-spend-power .litm-spend-power__cost {
@@ -5253,15 +5406,19 @@ input[type="text"].litm--quick-add-input,
 }
 
 .litm-spend-power .litm-spend-power__counter-value {
-	font-size: var(--font-size-18);
-	font-weight: bold;
-	min-width: 2rem;
+	flex: none;
+	font-size: var(--font-size-14);
+	font-weight: 600;
+	min-width: 1.5rem;
 	text-align: center;
 }
 
+/* Compact, quiet stepper — flex:none so .flexrow containers (status-reduce,
+   discover counter) can't stretch the buttons into slabs. */
 .litm-spend-power .litm-spend-power__counter-btn {
-	width: 1.75rem;
-	height: 1.75rem;
+	flex: none;
+	width: 1.5rem;
+	height: 1.5rem;
 	padding: 0;
 	display: flex;
 	align-items: center;
@@ -5269,12 +5426,31 @@ input[type="text"].litm--quick-add-input,
 	border: 1px solid var(--color-border);
 	border-radius: var(--border-radius);
 	background: var(--background-color);
+	color: var(--color-text-secondary);
+	font-size: var(--font-size-11);
 	cursor: pointer;
 }
 
 .litm-spend-power .litm-spend-power__counter-btn:hover {
 	border-color: var(--color-warm-2);
 	color: var(--color-text-primary);
+}
+
+/* Variable-tier rows — status chip + stepper per `[name-]` token. Own flex
+   layout for the same reason as the target chips: utility .flexrow stretched
+   every child to fill the row. */
+.litm-spend-power .litm-spend-power__var-tiers {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacer-4) var(--spacer-16);
+	padding: var(--spacer-2) 0;
+}
+
+.litm-spend-power .litm-spend-power__var-tier {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-4);
 }
 
 /* --- Tag chips & status pickers --- */

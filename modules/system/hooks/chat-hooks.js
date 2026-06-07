@@ -1,3 +1,4 @@
+import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
@@ -5,14 +6,15 @@ import { ThemeAdvancementApp } from "../../apps/theme-advancement.js";
 import { ThemeEvolutionWizard } from "../../apps/theme-evolution.js";
 import { WelcomeOverlay } from "../../apps/welcome/welcome-overlay.js";
 import {
+	computePowerBudget,
 	getAllowedVerbs,
 	getSuccessCost,
 } from "../../item/action/action-rules.js";
 import { getVerbDef } from "../../item/action/verb-definitions.js";
-import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { localize as t, viewLinkedRefAction } from "../../utils.js";
 import { buildTrackCompleteContent } from "../chat.js";
 import { IMPROVE_MARKING_TAG_TYPES, POWER_TAG_TYPES } from "../config.js";
+import { formatCostLabel } from "../renderers/renderer-utils.js";
 import { Sockets } from "../sockets.js";
 
 /**
@@ -400,7 +402,7 @@ async function _renderActionSuccesses(app, element) {
 			verb: s.verb,
 			verbLabel: t(`LITM.Actions.verbs.${s.verb}`),
 			text: s.text,
-			costLabel: _costLabel(cost, def),
+			costLabel: formatCostLabel(cost, def),
 		};
 	});
 
@@ -423,21 +425,6 @@ async function _renderActionSuccesses(app, element) {
 	}
 }
 
-/**
- * Build the inline cost indicator next to a success on the chat card.
- * Narrative (Quick) verbs are free → no label. Verbs with variable-tier
- * tokens show e.g. "2+ Power" because the tier is picked in Spend Power.
- */
-function _costLabel(cost, def) {
-	if (!def || def.kind === "narrative") return "";
-	const fixed = cost.fixed ?? 0;
-	const variable = cost.variableTokens ?? 0;
-	if (variable > 0)
-		return game.i18n.format("LITM.Actions.cost_variable", { n: fixed });
-	if (fixed <= 0) return "";
-	return game.i18n.format("LITM.Actions.cost", { n: fixed });
-}
-
 async function _renderActionPanel(app, element) {
 	if (!game.user.isGM) return;
 	const actionUuid = app.getFlag("litmv2", "actionUuid");
@@ -456,29 +443,24 @@ async function _renderActionPanel(app, element) {
 	if (!action || action.type !== "action") return;
 
 	const sys = action.system;
-	const totalConsequences = sys.consequences?.length ?? 0;
-	if (totalConsequences === 0) return;
+	if ((sys.consequences?.length ?? 0) === 0) return;
 
-	const appliedConsequences = new Set(
-		app.getFlag("litmv2", "appliedConsequences") ?? [],
-	);
-	const appliedCount = [...appliedConsequences].filter(
-		(i) => i < totalConsequences,
-	).length;
-	// Push Your Luck adds exactly one consequence to a clean Success, no
-	// matter how many entries the action declares (Core Book p.158). Cap
-	// the count badge so the apply panel reflects the rule.
+	// The action's consequence entries are options on a menu, not a queue —
+	// the Narrator applies as many as the fiction demands, including the same
+	// one to several heroes. So the button stays available and carries no
+	// count badge. The one exception is Push Your Luck: it deals exactly one
+	// consequence (Core Book p.158), so once it's been applied the button
+	// disappears.
 	const isPushed = roll?.litm?.pushed === true;
-	const maxToApply = isPushed ? 1 : totalConsequences;
-	const unappliedConsequences = Math.max(0, maxToApply - appliedCount);
-	if (unappliedConsequences === 0) return;
+	const appliedCount = (app.getFlag("litmv2", "appliedConsequences") ?? [])
+		.length;
+	if (isPushed && appliedCount >= 1) return;
 
 	const html = await foundry.applications.handlebars.renderTemplate(
 		"systems/litmv2/templates/partials/action-success-buttons.html",
 		{
 			actionContext: {
 				showApplyConsequences: true,
-				unappliedConsequences,
 			},
 		},
 	);
@@ -506,6 +488,36 @@ async function _renderActionPanel(app, element) {
 	}
 }
 
+/**
+ * Hide the spend-power button once all power has been spent. spentPower
+ * holds generic spends only; applied action successes count via
+ * computePowerBudget — the single accountant, which reads the actual costs
+ * paid from appliedSuccessCosts and recomputes from the action definition
+ * for messages from before that flag existed (hence the async action fetch).
+ */
+async function _hideSpendButtonIfExhausted(app, element) {
+	const spendBtn = element.querySelector("[data-click='spend-power']");
+	if (!spendBtn) return;
+	const roll = app.rolls?.[0];
+	if (!roll) return;
+
+	const spentPower = app.getFlag("litmv2", "spentPower") ?? 0;
+	const appliedKeys = app.getFlag("litmv2", "appliedSuccesses") ?? [];
+	let actionSystem = null;
+	if (appliedKeys.length) {
+		const actionUuid = app.getFlag("litmv2", "actionUuid");
+		const action = actionUuid ? await foundry.utils.fromUuid(actionUuid) : null;
+		actionSystem = action?.system ?? null;
+	}
+	const { spent: actionSpent } = computePowerBudget(
+		roll,
+		actionSystem,
+		appliedKeys,
+		app.getFlag("litmv2", "appliedSuccessCosts") ?? {},
+	);
+	if (spentPower + actionSpent >= roll.power) spendBtn.remove();
+}
+
 function onRenderChatMessage(app, html, _data) {
 	const element = html;
 
@@ -524,15 +536,9 @@ function onRenderChatMessage(app, html, _data) {
 		element.classList.add("litm-dice-roll-message");
 	}
 
-	// Hide spend-power button if all power has been spent
-	const spendBtn = element.querySelector("[data-click='spend-power']");
-	if (spendBtn) {
-		const spentPower = app.getFlag("litmv2", "spentPower") ?? 0;
-		const roll = app.rolls?.[0];
-		if (roll && spentPower >= roll.power) {
-			spendBtn.remove();
-		}
-	}
+	_hideSpendButtonIfExhausted(app, element).catch((e) =>
+		console.error("LITM spend-power exhaustion check failed:", e),
+	);
 
 	// Hide complete-sacrifice button if already completed
 	const sacrificeBtn = element.querySelector(
@@ -720,7 +726,8 @@ function _attachContextMenuToRollMessage() {
 				const message = game.messages.get(li.dataset.messageId);
 				if (!message) return false;
 				const spent = message.getFlag("litmv2", "spentPower") ?? 0;
-				if (spent <= 0) return false;
+				const applied = message.getFlag("litmv2", "appliedSuccesses") ?? [];
+				if (spent <= 0 && applied.length === 0) return false;
 				return game.user.isGM || message.author?.id === game.user.id;
 			},
 			onClick: async (_event, li) => {
@@ -729,6 +736,8 @@ function _attachContextMenuToRollMessage() {
 				await message.update({
 					"flags.litmv2.spentPower": 0,
 					"flags.litmv2.appliedSuccesses": [],
+					"flags.litmv2.appliedSuccessCosts":
+						new foundry.data.operators.ForcedDeletion(),
 				});
 				ui.notifications?.info(t("LITM.Ui.reset_spent_power_done"));
 			},

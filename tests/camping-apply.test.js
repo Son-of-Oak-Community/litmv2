@@ -36,6 +36,12 @@ function world({
 	return { heroes, sceneEffects, fellowshipActor, threatItems };
 }
 
+// The recap is stage-ordered (periods → quality time → pack up); these
+// helpers navigate to a stage's hero entries.
+const stage = (recap, key) => recap.stages.find((s) => s.key === key);
+const stageLines = (recap, key, heroIndex = 0) =>
+	stage(recap, key)?.heroes[heroIndex]?.lines ?? [];
+
 describe("buildOperations — backpack scratch", () => {
 	it("deactivates all backpack story tags by default (none in keep list)", () => {
 		const fx = fakeEffect({
@@ -55,12 +61,8 @@ describe("buildOperations — backpack scratch", () => {
 		);
 
 		expect(operations.disables).toContainEqual({ effect: fx });
-		expect(recap.heroes[0].lines).toContainEqual(
-			expect.objectContaining({
-				kind: "backpack-deactivated",
-				names: ["numbing salve"],
-			}),
-		);
+		// The recap's Pack Up stage lists only what was kept — nothing here.
+		expect(stage(recap, "packUp").heroes[0].kept).toEqual([]);
 	});
 
 	it("does not deactivate tags the player explicitly kept", () => {
@@ -81,9 +83,10 @@ describe("buildOperations — backpack scratch", () => {
 		);
 
 		expect(operations.disables).toEqual([]);
-		expect(recap.heroes[0].lines).not.toContainEqual(
-			expect.objectContaining({ kind: "backpack-deactivated" }),
-		);
+		expect(stage(recap, "packUp").heroes[0].kept).toContainEqual({
+			name: "lucky charm",
+			isSingleUse: false,
+		});
 	});
 
 	it("does not enqueue already-disabled tags (idempotent)", () => {
@@ -104,9 +107,7 @@ describe("buildOperations — backpack scratch", () => {
 
 		expect(operations.disables).toEqual([]);
 		expect(operations.enables).toEqual([]);
-		expect(recap.heroes[0].lines).not.toContainEqual(
-			expect.objectContaining({ kind: "backpack-deactivated" }),
-		);
+		expect(stage(recap, "packUp").heroes[0].kept).toEqual([]);
 	});
 
 	it("ticking a disabled tag enqueues an enable (re-enable at Pack Up)", () => {
@@ -132,12 +133,10 @@ describe("buildOperations — backpack scratch", () => {
 
 		expect(operations.disables).toEqual([]);
 		expect(operations.enables).toContainEqual({ effect: fx });
-		expect(recap.heroes[0].lines).toContainEqual(
-			expect.objectContaining({
-				kind: "backpack-reactivated",
-				names: ["wet match"],
-			}),
-		);
+		expect(stage(recap, "packUp").heroes[0].kept).toContainEqual({
+			name: "wet match",
+			isSingleUse: false,
+		});
 	});
 
 	it("partial keep: only unchecked tags get deactivated", () => {
@@ -190,9 +189,19 @@ describe("buildOperations — rest", () => {
 			amount: 2,
 		});
 		expect(operations.statusDeletes).toContainEqual({ effect: s2 });
-		expect(recap.heroes[0].lines).toContainEqual(
-			expect.objectContaining({ kind: "rest" }),
-		);
+		// The recap files the rest under Period 1 with chip-ready lines.
+		expect(stage(recap, "period1").heroes[0].activity).toBe("rest");
+		expect(stageLines(recap, "period1")).toContainEqual({
+			kind: "status-reduced",
+			name: "tired",
+			from: 3,
+			to: 1,
+		});
+		expect(stageLines(recap, "period1")).toContainEqual({
+			kind: "status-cleared",
+			name: "bruised",
+			tier: 2,
+		});
 	});
 
 	it("clamps reduce amount to the status's currentTier", () => {
@@ -255,7 +264,7 @@ describe("buildOperations — camp-mode reflect", () => {
 			newValue: 2,
 		});
 		expect(operations.improvements).toEqual([]);
-		expect(recap.heroes[0].lines).toContainEqual(
+		expect(stageLines(recap, "period1")).toContainEqual(
 			expect.objectContaining({ kind: "reflect", themeName: theme.name }),
 		);
 	});
@@ -280,7 +289,7 @@ describe("buildOperations — camp-mode reflect", () => {
 			owner: fellowshipActor,
 			newValue: 1,
 		});
-		expect(recap.heroes[0].lines).toContainEqual(
+		expect(stageLines(recap, "period1")).toContainEqual(
 			expect.objectContaining({
 				kind: "reflect",
 				themeName: `${fellowshipActor.name}: ${fwTheme.name}`,
@@ -340,7 +349,7 @@ describe("buildOperations — reflect Quest marks", () => {
 			newValue: 1,
 			sourceHero: hero,
 		});
-		expect(recap.heroes[0].lines).toContainEqual(
+		expect(stageLines(recap, "period1")).toContainEqual(
 			expect.objectContaining({
 				kind: "reflect-quest-mark",
 				track: "abandon",
@@ -560,7 +569,7 @@ describe("buildOperations — sojourn-mode reflect", () => {
 			owner: hero,
 			sourceHero: hero,
 		});
-		expect(recap.heroes[0].lines).toContainEqual(
+		expect(stageLines(recap, "period1")).toContainEqual(
 			expect.objectContaining({
 				kind: "reflect-improvement",
 				themeName: theme.name,
@@ -608,7 +617,8 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 			world({ heroes: [hero] }),
 		);
 		expect(operations.unscratches).not.toContainEqual({ effect: rel });
-		expect(recap.heroes[0].lines).toEqual([]);
+		// No quality-time action → no Quality Time stage at all.
+		expect(stage(recap, "qualityTime")).toBeUndefined();
 	});
 
 	it("recoverFellowship: unscratches the chosen scratched fellowship_tag", () => {
@@ -632,7 +642,7 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 			world({ heroes: [hero], fellowshipActor }),
 		);
 		expect(operations.unscratches).toContainEqual({ effect: fsTag });
-		expect(recap.heroes[0].lines).toContainEqual(
+		expect(stageLines(recap, "qualityTime")).toContainEqual(
 			expect.objectContaining({ kind: "fellowship-tag-recovered" }),
 		);
 	});
@@ -681,7 +691,7 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 		);
 		expect(operations.unscratches).toContainEqual({ effect: rel });
 		expect(operations.renames).toEqual([]);
-		expect(recap.heroes[0].lines).toContainEqual(
+		expect(stageLines(recap, "qualityTime")).toContainEqual(
 			expect.objectContaining({ kind: "relationship-renewed" }),
 		);
 	});
@@ -708,7 +718,7 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 			effect: rel,
 			newName: "uneasy allies",
 		});
-		expect(recap.heroes[0].lines).toContainEqual(
+		expect(stageLines(recap, "qualityTime")).toContainEqual(
 			expect.objectContaining({
 				kind: "relationship-rephrased",
 				from: "rival",
@@ -754,7 +764,7 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 			targetId: heroB.id,
 			name: "comrades",
 		});
-		expect(recap.heroes[0].lines).toContainEqual(
+		expect(stageLines(recap, "qualityTime")).toContainEqual(
 			expect.objectContaining({
 				kind: "relationship-created",
 				name: "comrades",
@@ -899,7 +909,10 @@ describe("buildOperations — place of stay", () => {
 
 		const { recap } = buildOperations(state, world({}));
 		expect(recap.placeOfStay.name).toBe("Old shepherd's hut");
-		expect(recap.placeOfStay.campsiteTags).toEqual(["warm fire", "rainy-2"]);
+		expect(recap.placeOfStay.campsiteTags).toEqual([
+			{ name: "warm fire", isStatus: false, tier: 0, isSingleUse: false },
+			{ name: "rainy", isStatus: true, tier: 2, isSingleUse: false },
+		]);
 	});
 
 	it("does NOT queue scene-tag expiry at Pack Up (expiry happens at Begin Camp now)", () => {
@@ -937,10 +950,7 @@ describe("buildOperations — place of stay", () => {
 				isConsequenceOnly: false,
 			},
 		];
-		const { recap } = buildOperations(
-			state,
-			world({ threatItems }),
-		);
+		const { recap } = buildOperations(state, world({ threatItems }));
 		expect(recap.placeOfStay.threats).toEqual([
 			{
 				id: "vignette-1",

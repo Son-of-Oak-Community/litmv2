@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { makeTagStringRe } from "../modules/system/config.js";
 import { VignetteData } from "../modules/item/vignette/vignette-data.js";
+import { makeTagStringRe } from "../modules/system/config.js";
 
 // In production CONFIG.litmv2.tagStringRe is a getter returning a fresh regex
 // (the global `g` flag needs a new instance per use); the test shim leaves it

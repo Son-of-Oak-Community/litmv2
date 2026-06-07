@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { parseTagStringMatch } from "../modules/item/action/tag-string.js";
+import {
+	parseTagString,
+	parseTagStringMatch,
+} from "../modules/item/action/tag-string.js";
 import { makeTagStringRe } from "../modules/system/config.js";
 
 // parseTagStringMatch consumes the regex-match shape:
 //   [full, name, exclamation, separator, value]
 // These tests pin down behaviour at the awkward boundaries: out-of-range tiers,
-// non-numeric values, names with whitespace, single-use markers.
+// non-numeric values, names with whitespace, single-use markers, and the
+// enricher-only kinds (weakness/limit) that produce no effect data.
 
 describe("parseTagStringMatch edge cases", () => {
 	it("tier 0 produces an all-false tier array (out-of-range)", () => {
@@ -60,33 +64,40 @@ describe("parseTagStringMatch edge cases", () => {
 		expect(story.type).toBe("story_tag");
 	});
 
-	it("treats colon separator as non-status (story tag)", () => {
-		// tagStringRe matches "-" or ":" as a separator, but only "-" is treated
-		// as a status. Anything else is a story tag.
+	it("returns null for limit markup [name:N] — limits are not effects", () => {
 		const data = parseTagStringMatch([
-			"[Limit:3]",
-			"Limit",
+			"[Suspicion:3]",
+			"Suspicion",
 			undefined,
 			":",
 			"3",
 		]);
-		expect(data.type).toBe("story_tag");
-		expect(data.system).toEqual({ isScratched: false, isSingleUse: false });
+		expect(data).toBeNull();
 	});
 
-	it("treats {name:1} as a single-use story tag (legacy p.165 syntax)", () => {
+	it("returns null for legacy [name:1] — no longer a single-use story tag", () => {
 		const data = parseTagStringMatch([
-			"{Lucky Charm:1}",
+			"[Lucky Charm:1]",
 			"Lucky Charm",
 			undefined,
 			":",
 			"1",
 		]);
-		expect(data.type).toBe("story_tag");
-		expect(data.system).toEqual({ isScratched: false, isSingleUse: true });
+		expect(data).toBeNull();
 	});
 
-	it("treats [name!] as a single-use story tag (Action Grimoire syntax)", () => {
+	it("returns null for weakness markup [-name] — weaknesses are not parsed here", () => {
+		const data = parseTagStringMatch([
+			"[-Cowardly]",
+			"-Cowardly",
+			undefined,
+			"",
+			"",
+		]);
+		expect(data).toBeNull();
+	});
+
+	it("treats [name!] as a single-use story tag", () => {
 		const re = makeTagStringRe();
 		const matches = [..."[silver dagger!]".matchAll(re)];
 		expect(matches).toHaveLength(1);
@@ -133,5 +144,36 @@ describe("parseTagStringMatch edge cases", () => {
 		const data = parseTagStringMatch(matches[0]);
 		expect(data.type).toBe("status_tag");
 		expect(data.system.tiers.every((v) => v === false)).toBe(true);
+	});
+});
+
+describe("parseTagString", () => {
+	it("parses every effect-producing token and skips enricher-only kinds", () => {
+		const data = parseTagString(
+			"Gain [aim] and [smoke bomb!], suffer [wounded-2]; [-Cowardly] and [Suspicion:3] render chips only.",
+		);
+		expect(data).toEqual([
+			{
+				name: "aim",
+				type: "story_tag",
+				system: { isScratched: false, isSingleUse: false },
+			},
+			{
+				name: "smoke bomb",
+				type: "story_tag",
+				system: { isScratched: false, isSingleUse: true },
+			},
+			{
+				name: "wounded",
+				type: "status_tag",
+				system: { tiers: [false, true, false, false, false, false] },
+			},
+		]);
+	});
+
+	it("returns [] for empty input and brace-wrapped (unsupported) markup", () => {
+		expect(parseTagString("")).toEqual([]);
+		expect(parseTagString(null)).toEqual([]);
+		expect(parseTagString("{map} {wounded-2}")).toEqual([]);
 	});
 });

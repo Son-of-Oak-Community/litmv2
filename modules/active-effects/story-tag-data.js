@@ -39,6 +39,6 @@ export class StoryTagData extends ScratchableMixin(
 	}
 
 	toTagString(name) {
-		return `[${name}]`;
+		return this.isSingleUse ? `[${name}!]` : `[${name}]`;
 	}
 }

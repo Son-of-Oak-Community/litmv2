@@ -1,5 +1,9 @@
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
 import { SceneTagDialog } from "../../apps/story-tags/scene-tag-dialog.js";
+import {
+	classifyTagStringMatch,
+	tagDragData,
+} from "../../item/action/tag-string.js";
 import { getStoryTagSidebar, localize as t } from "../../utils.js";
 
 export function registerUiHooks() {
@@ -255,40 +259,28 @@ function _listenToTagDragTransfer() {
 			if (!target) return;
 
 			const text = target.dataset.text || target.textContent;
-			const matches = `{${text}}`.matchAll(CONFIG.litmv2.tagStringRe);
-			const match = [...matches][0];
+			const match = [...`[${text}]`.matchAll(CONFIG.litmv2.tagStringRe)][0];
 			if (!match) return;
 
-			const [, name, , separator, value] = match;
-			const isWeakness = target.classList.contains("litm-weakness_tag");
-			const isStatus =
-				separator === "-" && !target.classList.contains("litm-limit");
-			const isLimit =
-				!isWeakness &&
-				(separator === ":" || target.classList.contains("litm-limit"));
-			const cleanName = isWeakness
-				? target.dataset.text || name
-				: name.replace(/^-/, "");
+			const c = classifyTagStringMatch(match);
+			// Chip data-text is the bare name for weakness/limit/single-use
+			// and variable-tier status chips (it doubles as the CSS stroke
+			// underlay), so the chip's classes are the source of truth for
+			// those kinds; a limit's max travels in data-value.
+			const cls = target.classList;
+			if (cls.contains("litm-weakness_tag")) c.kind = "weakness";
+			else if (cls.contains("litm-limit")) {
+				c.kind = "limit";
+				if (target.dataset.value) c.value = target.dataset.value;
+			} else if (cls.contains("litm-status") || cls.contains("litm--status"))
+				c.kind = "status";
+			if (cls.contains("litm--single-use")) c.isSingleUse = true;
+
 			const appEl = target.closest(".sheet");
 			const app = appEl ? foundry.applications.instances.get(appEl.id) : null;
-			const sourceActorId = app?.document?.id ?? null;
-			const data = {
-				id: foundry.utils.randomID(),
-				name: isWeakness || isLimit ? cleanName : name,
-				type: isWeakness
-					? "weakness_tag"
-					: isStatus
-						? "status_tag"
-						: isLimit
-							? "limit"
-							: "story_tag",
-				values: Array(6)
-					.fill(null)
-					.map((_, i) => (Number.parseInt(value, 10) === i + 1 ? value : null)),
-				isScratched: false,
-				value: value,
-				sourceActorId,
-			};
+			const data = tagDragData(c, {
+				sourceActorId: app?.document?.id ?? null,
+			});
 			event.dataTransfer.setData("text/plain", JSON.stringify(data));
 		});
 	});

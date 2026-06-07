@@ -1,5 +1,5 @@
 import { localize as t } from "../../utils.js";
-import { toTiers } from "./story-tag-helpers.js";
+import { parseQuickAddInput, toTiers } from "./story-tag-helpers.js";
 
 export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
@@ -153,19 +153,20 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	async #quickAddFromInput(input) {
-		const raw = input.value.trim();
-		if (!raw) return;
+		const parsed = parseQuickAddInput(input.value.trim());
+		if (!parsed) return;
 
 		const current = this.sceneData;
 
-		// Limit: "name:N"
-		const limitMatch = raw.match(/^(.+):(\d+)$/);
-		if (limitMatch) {
-			const label = limitMatch[1].trim();
-			const max = Number(limitMatch[2]);
+		if (parsed.type === "limit") {
 			const limits = [
 				...current.limits,
-				{ id: foundry.utils.randomID(), label, max, value: 0 },
+				{
+					id: foundry.utils.randomID(),
+					label: parsed.name,
+					max: parsed.limitMax ?? 3,
+					value: 0,
+				},
 			];
 			input.value = "";
 			await this.scene.setFlag("litmv2", "sceneTags", { ...current, limits });
@@ -174,27 +175,15 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 			return;
 		}
 
-		// Status: "name-N" where N is 1-6
-		const statusMatch = raw.match(/^(.+)-([1-6])$/);
-		let name, type, values;
-
-		if (statusMatch) {
-			name = statusMatch[1].trim();
-			type = "status_tag";
-			const tier = Number.parseInt(statusMatch[2], 10);
-			values = Array.from({ length: 6 }, (_, i) => i === tier - 1);
-		} else {
-			name = raw;
-			type = "story_tag";
-			values = Array(6).fill(null);
-		}
-
+		const isStatus = parsed.type === "status_tag";
 		const tag = {
-			name,
-			values,
-			type,
+			name: parsed.name,
+			values: isStatus
+				? Array.from({ length: 6 }, (_, i) => i === parsed.tier - 1)
+				: Array(6).fill(null),
+			type: parsed.type,
 			isScratched: false,
-			isSingleUse: false,
+			isSingleUse: parsed.isSingleUse ?? false,
 			hidden: false,
 			id: foundry.utils.randomID(),
 			limitId: null,

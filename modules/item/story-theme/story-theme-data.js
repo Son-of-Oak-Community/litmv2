@@ -55,5 +55,4 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 	get themeTag() {
 		return [...this.parent.effects].find((e) => e.system.isTitleTag) ?? null;
 	}
-
 }

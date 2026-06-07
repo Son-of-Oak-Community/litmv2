@@ -1,8 +1,10 @@
 import { sendRollRequest } from "../apps/roll/roll-request.js";
+import { classifyTagStringMatch } from "../item/action/tag-string.js";
 import { renderAction } from "./renderers/action-renderer.js";
 import { renderChallenge } from "./renderers/challenge-renderer.js";
 import { renderHero } from "./renderers/hero-renderer.js";
 import { renderJourney } from "./renderers/journey-renderer.js";
+import { tagChipHtml } from "./renderers/renderer-utils.js";
 import { renderTheme } from "./renderers/theme-renderer.js";
 import { renderThemebook } from "./renderers/themebook-renderer.js";
 import { renderTrope } from "./renderers/trope-renderer.js";
@@ -245,7 +247,6 @@ export class Enrichers {
 
 	static #enrichTags() {
 		const tooltip = game.i18n.localize("LITM.Ui.drag_apply");
-		const esc = Enrichers.#esc;
 		// Render the static chevron SVG once; reuse the cached string for every
 		// weakness chip the enricher produces.
 		let chevronPromise = null;
@@ -256,57 +257,10 @@ export class Enrichers {
 			);
 			return chevronPromise;
 		};
-		const enrichTags = async ([
-			_text,
-			name,
-			_exclamation,
-			separator,
-			value,
-		]) => {
-			// Weakness: [-name]
-			if (name.startsWith("-")) {
-				const clean = name.replace(/^-/, "");
-				const chevron = await getChevron();
-				return Enrichers.#html(
-					`<span class="litm-weakness_tag" data-text="${esc(
-						clean,
-					)}" data-tooltip="${tooltip}" draggable="true">${esc(
-						clean,
-					)} ${chevron}</span>`,
-				);
-			}
-			// Limits: [name:N] or [name:]
-			if (separator === ":") {
-				const valueHtml = value
-					? `<img src="systems/litmv2/assets/media/icons/limit.svg"
-							style="height:1.4em;width:1.4em;position:absolute;right:-0.5em;top:-0.05em;z-index:-1;" /> <span
-							style="font-style:normal;font-size:inherit;font-weight:600;color:var(--color-light-2);position:relative;top:-0.13em;right:-0.1em;">${esc(
-								value,
-							)}</span>`
-					: "";
-				return Enrichers.#html(
-					`<span class="litm-limit" data-text="${esc(
-						name,
-					)}" data-tooltip="${tooltip}" draggable="true">${esc(
-						name,
-					)}${valueHtml}</span>`,
-				);
-			}
-			// Statuses: [name-N] or [name-]
-			if (separator === "-") {
-				const cleanStatus = value ? `-${value}` : "";
-				return Enrichers.#html(
-					`<span class="litm-status" draggable="true" data-tooltip="${tooltip}" data-text="${esc(
-						name,
-					)}${esc(cleanStatus)}">${esc(name)}${esc(cleanStatus)}</span>`,
-				);
-			}
-			// Plain tags: [name]
-			return Enrichers.#html(
-				`<span class="litm-tag" draggable="true" data-tooltip="${tooltip}" data-text="${esc(
-					name,
-				)}">${esc(name)}</span>`,
-			);
+		const enrichTags = async (match) => {
+			const c = classifyTagStringMatch(match);
+			const chevron = c.kind === "weakness" ? await getChevron() : "";
+			return Enrichers.#html(tagChipHtml(c, { tooltip, chevron }));
 		};
 		CONFIG.TextEditor.enrichers.push({
 			id: "litm.tag",

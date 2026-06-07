@@ -1,12 +1,10 @@
-import { StatusTagData } from "../../active-effects/status-tag-data.js";
-import { makeTagStringRe } from "../../system/config.js";
-import { parseTagStringMatch } from "./tag-string.js";
+import { classifyTagString } from "./tag-string.js";
 import { getVerbDef } from "./verb-definitions.js";
 
 /**
  * Scan free-text for `[name]` / `[name-N]` / `[name-]` / `[name!]` markup
  * and return a uniform token shape easier for the cost calculator and the
- * appliers to consume than the raw parseTagStringMatch effect data.
+ * appliers to consume than the raw classifyTagString shape.
  *
  *   {type: "tag", name, isSingleUse}
  *   {type: "status", name, tier, isVariable}  // tier=0 when isVariable=true
@@ -15,24 +13,20 @@ import { getVerbDef } from "./verb-definitions.js";
  * @returns {Array<{type: string, name: string, [k: string]: any}>}
  */
 export function scanMarkup(text) {
-	if (!text) return [];
-	const re = makeTagStringRe();
 	const tokens = [];
-	for (const match of text.matchAll(re)) {
-		const data = parseTagStringMatch(match);
-		if (data.type === "status_tag") {
-			const tier = StatusTagData.tierOf(data.system.tiers);
+	for (const c of classifyTagString(text)) {
+		if (c.kind === "status") {
 			tokens.push({
 				type: "status",
-				name: data.name,
-				tier,
-				isVariable: tier === 0,
+				name: c.name,
+				tier: c.tier,
+				isVariable: c.tier === 0,
 			});
-		} else {
+		} else if (c.kind === "story") {
 			tokens.push({
 				type: "tag",
-				name: data.name,
-				isSingleUse: !!data.system.isSingleUse,
+				name: c.name,
+				isSingleUse: c.isSingleUse,
 			});
 		}
 	}
@@ -103,38 +97,92 @@ export function getAllowedVerbs(roll) {
  * `successes[]` (verb=extraFeat) we still cost it at 1 Power.
  *
  * @param {object|null|undefined} success
- * @returns {{ fixed: number, variableTokens: number }}
+ * @returns {{ fixed: number, variableTokens: number, tagCosts: number[] }}
  */
 export function getSuccessCost(success) {
-	if (!success) return { fixed: 0, variableTokens: 0 };
+	if (!success) return { fixed: 0, variableTokens: 0, tagCosts: [] };
 
 	const def = getVerbDef(success.verb);
-	if (!def) return { fixed: 0, variableTokens: 0 };
+	if (!def) return { fixed: 0, variableTokens: 0, tagCosts: [] };
 
-	if (def.kind === "narrative") return { fixed: 0, variableTokens: 0 };
-	if (def.kind === "extraFeat") return { fixed: 1, variableTokens: 0 };
-	if (def.kind === "discover") return { fixed: 1, variableTokens: 0 };
+	if (def.kind === "narrative")
+		return { fixed: 0, variableTokens: 0, tagCosts: [] };
+	if (def.kind === "extraFeat")
+		return { fixed: 1, variableTokens: 0, tagCosts: [] };
+	if (def.kind === "discover")
+		return { fixed: 1, variableTokens: 0, tagCosts: [] };
 
 	return _costFromMarkup(success.text || "");
 }
 
 /**
+ * Minimum Power a success can be applied for. With one tag (or none) this is
+ * the fixed cost. With 2+ tag tokens the player chooses which tags to apply
+ * in Spend Power ("either or both" successes), so only the cheapest tag
+ * counts toward affordability.
+ *
+ * @param {{ fixed: number, tagCosts?: number[] }} cost  From getSuccessCost.
+ * @returns {number}
+ */
+export function getMinSuccessCost(cost) {
+	const tagCosts = cost.tagCosts ?? [];
+	if (tagCosts.length < 2) return cost.fixed;
+	const tagSum = tagCosts.reduce((a, b) => a + b, 0);
+	return cost.fixed - tagSum + Math.min(...tagCosts);
+}
+
+/**
+ * The Power actually paid for an applied success: the fixed part minus any
+ * deselected tag chips, plus the tiers picked for variable-status tokens.
+ * The single encoding of the spend arithmetic — the apply path charges it
+ * and the Spend Power dialog's live total mirrors it.
+ *
+ * @param {{ fixed: number, tagCosts?: number[] }} cost  From getSuccessCost.
+ * @param {object} [choices]
+ * @param {boolean[]|null} [choices.chosenTags]  Sparse boolean array in
+ *   tag-scan order; absent (or any non-false entry) means the tag is applied.
+ * @param {number[]} [choices.chosenTiers]  Tier picked per variable-status
+ *   token, in scan order.
+ * @returns {number}
+ */
+export function computeSuccessSpend(
+	cost,
+	{ chosenTags = null, chosenTiers = [] } = {},
+) {
+	const droppedTags = chosenTags
+		? (cost.tagCosts ?? []).reduce(
+				(sum, n, i) => sum + (chosenTags[i] === false ? n : 0),
+				0,
+			)
+		: 0;
+	const variableSpent = (chosenTiers ?? [])
+		.filter((n) => Number.isFinite(n))
+		.reduce((sum, n) => sum + n, 0);
+	return cost.fixed - droppedTags + variableSpent;
+}
+
+/**
  * Sum cost across markup tokens. Tag = 2 Power, single-use tag = 1, status
  * at tier N = N, status with no tier = 1 variable token (priced when the
- * user picks a tier in Spend Power).
+ * user picks a tier in Spend Power). Individual tag costs are also returned
+ * in scan order so Spend Power can offer "either or both" tag selection on
+ * successes that list several tags.
  */
 function _costFromMarkup(text) {
 	let fixed = 0;
 	let variableTokens = 0;
+	const tagCosts = [];
 	for (const tok of scanMarkup(text)) {
 		if (tok.type === "tag") {
-			fixed += tok.isSingleUse ? 1 : 2;
+			const cost = tok.isSingleUse ? 1 : 2;
+			fixed += cost;
+			tagCosts.push(cost);
 		} else if (tok.type === "status") {
 			if (tok.isVariable) variableTokens += 1;
 			else fixed += tok.tier;
 		}
 	}
-	return { fixed, variableTokens };
+	return { fixed, variableTokens, tagCosts };
 }
 
 /**

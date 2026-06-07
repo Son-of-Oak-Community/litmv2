@@ -3,7 +3,7 @@ import {
 	storyTagEffect,
 } from "../../active-effects/effect-factories.js";
 import { EFFECT_TYPES } from "../../system/config.js";
-import { parseTagStringMatch } from "../action/tag-string.js";
+import { parseTagString } from "../action/tag-string.js";
 
 export class VignetteData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
@@ -36,11 +36,7 @@ export class VignetteData extends foundry.abstract.TypeDataModel {
 		// Parse consequence markup with the canonical tag-string parser so
 		// `[name-N]` yields a status_tag (with a one-hot tiers array) and
 		// `[name]` a story_tag — matching the rest of the system.
-		const desired = this.consequences.flatMap((string) =>
-			Array.from(string.matchAll(CONFIG.litmv2.tagStringRe)).map(
-				parseTagStringMatch,
-			),
-		);
+		const desired = this.consequences.flatMap(parseTagString);
 
 		// Key existing effects for matching
 		const existing = new Map();

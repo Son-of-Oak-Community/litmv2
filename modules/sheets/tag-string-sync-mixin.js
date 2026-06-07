@@ -1,4 +1,4 @@
-import { classifyTagStringMatch } from "../item/action/tag-string.js";
+import { classifyTagString } from "../item/action/tag-string.js";
 import { ACTOR_TAG_TYPES } from "../system/config.js";
 
 /**
@@ -37,10 +37,11 @@ export function TagStringSyncMixin(Base) {
 		}
 
 		async _syncEffectsFromString(tagsString) {
-			const matches = Array.from(
-				tagsString.matchAll(CONFIG.litmv2.tagStringRe),
+			// Weakness/limit markup is enricher-only — only stories and
+			// statuses materialize as effects here.
+			const parsed = classifyTagString(tagsString).filter(
+				(t) => t.kind === "story" || t.kind === "status",
 			);
-			const parsed = matches.map(classifyTagStringMatch);
 
 			const existing = this.document.effects.filter(
 				(e) => ACTOR_TAG_TYPES.has(e.type) && !e.getFlag("litmv2", "addonId"),
@@ -57,7 +58,8 @@ export function TagStringSyncMixin(Base) {
 			const toUpdate = [];
 
 			for (const t of parsed) {
-				const expectedType = t.isStatus ? "status_tag" : "story_tag";
+				const isStatus = t.kind === "status";
+				const expectedType = isStatus ? "status_tag" : "story_tag";
 				const key = keyOf(t.name, expectedType);
 				// Skip duplicate parsed entries so toUpdate/toCreate stay unique.
 				if (seenKeys.has(key)) continue;
@@ -69,7 +71,7 @@ export function TagStringSyncMixin(Base) {
 					const update = { _id: match.id };
 					const newName = t.name.trim();
 					if (match.name !== newName) update.name = newName;
-					if (t.isStatus) {
+					if (isStatus) {
 						const newTiers = Array(6)
 							.fill(false)
 							.map((_, i) => i + 1 === t.tier);
@@ -78,19 +80,21 @@ export function TagStringSyncMixin(Base) {
 							(v, i) => v !== !!currentTiers[i],
 						);
 						if (tiersDiffer) update["system.tiers"] = newTiers;
+					} else if (!!match.system.isSingleUse !== t.isSingleUse) {
+						update["system.isSingleUse"] = t.isSingleUse;
 					}
 					if (Object.keys(update).length > 1) toUpdate.push(update);
 				} else {
 					toCreate.push({
 						name: t.name,
 						type: expectedType,
-						system: t.isStatus
+						system: isStatus
 							? {
 									tiers: Array(6)
 										.fill(false)
 										.map((_, i) => i + 1 === t.tier),
 								}
-							: { isScratched: false, isSingleUse: false },
+							: { isScratched: false, isSingleUse: t.isSingleUse },
 					});
 				}
 			}

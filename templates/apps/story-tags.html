@@ -1,6 +1,6 @@
 {{#*inline 'tagItem' tag source formKey editable isGM}}
 <li class="litm--tag-row{{#if tag.hidden}} litm--tag-hidden{{/if}}{{#if tag.isScratched}} litm--tag-scratched{{/if}}" data-tag-item data-id="{{tag.id}}" data-type="{{source}}"
-	data-text="{{tag.name}}{{#if (eq tag.type 'status_tag')}}-{{tag.value}}{{/if}}">
+	data-text="{{tag.name}}{{#if (eq tag.type 'status_tag')}}-{{tag.value}}{{/if}}{{#if tag.isSingleUse}}!{{/if}}">
 	<span
 		class="litm--tag-item litm--{{ifThen (eq tag.type 'status_tag') 'status' 'tag'}} litm-{{tag.type}}"
 		draggable="true" tabindex="0"

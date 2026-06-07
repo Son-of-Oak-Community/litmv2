@@ -366,10 +366,10 @@ export function setPlaceOfStayName(state, name) {
 
 /**
  * Store the campsite-tags string verbatim. Parsing into effect creation data
- * happens at pack-up time via `CONFIG.litmv2.tagStringRe` + `parseTagStringMatch`,
- * so the same `[name]` / `[name!]` / `[name-N]` syntax used everywhere else
- * works here. Core Book p.179 lists positive tags, negative tags, and statuses
- * all as legitimate place-of-stay attachments.
+ * happens at pack-up time via the canonical `parseTagString`, so the same
+ * `[name]` / `[name!]` / `[name-N]` syntax used everywhere else works here.
+ * Core Book p.179 lists positive tags, negative tags, and statuses all as
+ * legitimate place-of-stay attachments.
  */
 export function setCampsiteTags(state, raw) {
 	state.placeOfStay.campsiteTags = typeof raw === "string" ? raw : "";

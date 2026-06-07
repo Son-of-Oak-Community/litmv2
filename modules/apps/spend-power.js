@@ -1,13 +1,20 @@
 import {
 	computePowerBudget,
+	computeSuccessSpend,
 	getAllowedVerbs,
+	getMinSuccessCost,
 	getSuccessCost,
 	scanMarkup,
 } from "../item/action/action-rules.js";
-import { getVerbDef } from "../item/action/verb-definitions.js";
+import {
+	getVerbDef,
+	successTargetMode,
+} from "../item/action/verb-definitions.js";
+import { formatCostLabel } from "../system/renderers/renderer-utils.js";
 import { localize as t } from "../utils.js";
 import { adjustCounter, readVariableTiers } from "./counter-controls.js";
 import { applySpendIntent } from "./spend-power-service.js";
+import { getTargetCandidates } from "./target-picker.js";
 
 /** Cost calculators by option type. Each receives (li, cost, entriesSection, hasTier). */
 const COST_CALCULATORS = {
@@ -190,25 +197,41 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 
 		// Power displayed at the top must account for BOTH the generic options
 		// already spent (spentPower flag) and the action successes already
-		// applied (appliedSuccesses flag). Two flags, one budget.
+		// applied (appliedSuccesses flag). Two flags, one budget —
+		// computePowerBudget is the single accountant (it reads the actual
+		// costs paid from appliedSuccessCosts, recomputing only for messages
+		// from before that flag existed).
 		const message = this.messageId ? game.messages.get(this.messageId) : null;
 		const action = await this.#getAction();
-		const appliedKeys = message?.getFlag("litmv2", "appliedSuccesses") ?? [];
-		const appliedSuccessesCost = action
-			? appliedKeys.reduce((sum, key) => {
-					const s = (action.system.successes ?? []).find((o) => o.id === key);
-					if (!s) return sum;
-					const c = getSuccessCost(s);
-					return sum + c.fixed + c.variableTokens;
-				}, 0)
-			: 0;
+		const { spent: appliedSuccessesCost } = computePowerBudget(
+			message?.rolls?.[0],
+			action?.system,
+			message?.getFlag("litmv2", "appliedSuccesses") ?? [],
+			message?.getFlag("litmv2", "appliedSuccessCosts") ?? {},
+		);
 		this.power = this.totalPower - this.alreadySpent - appliedSuccessesCost;
+
+		// Target chip row — only when a listed success targets another actor
+		// (Attack, Weaken, Bestow on an ally, …). Mirrors the Apply
+		// Consequences menu so players see who they're hitting before they
+		// spend, instead of being prompted after the fact.
+		let targets = [];
+		if (actionSuccesses.some((s) => s.needsActorTarget)) {
+			const preferredId = [...(game.user.targets ?? [])][0]?.actor?.id ?? null;
+			targets = getTargetCandidates({ allowSelf: true }).map((c) => ({
+				id: c.id,
+				name: c.label,
+				img: c.img,
+				selected: c.id === preferredId,
+			}));
+		}
 
 		return {
 			actorId: this.actorId,
 			power: this.power,
 			options,
 			actionSuccesses,
+			targets,
 		};
 	}
 
@@ -234,13 +257,17 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		const applied = new Set(
 			message.getFlag("litmv2", "appliedSuccesses") ?? [],
 		);
+		const appliedCosts = message.getFlag("litmv2", "appliedSuccessCosts") ?? {};
 		const roll = message.rolls?.[0];
 		const allowedVerbs = getAllowedVerbs(roll);
 		// Affordability uses the combined remaining (action-aware budget minus
 		// generic power already spent on Create/Inflict/etc.).
-		const { remaining: actionRemaining } = computePowerBudget(roll, sys, [
-			...applied,
-		]);
+		const { remaining: actionRemaining } = computePowerBudget(
+			roll,
+			sys,
+			[...applied],
+			appliedCosts,
+		);
 		const remaining = actionRemaining - this.alreadySpent;
 
 		// Hide already-applied successes — their cost is baked into `this.power`,
@@ -253,10 +280,10 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			.map((s) => {
 				const def = getVerbDef(s.verb);
 				const cost = getSuccessCost(s);
-				// Variable tokens default to 0 ("skip") so the floor cost is
-				// the fixed part alone. The badge updates as the player nudges
-				// each [name-] counter upward in #onCounter.
-				const minCost = cost.fixed;
+				// The affordability floor: variable tokens default to 0 ("skip")
+				// and a multi-tag success only needs its cheapest tag, so a
+				// player who can afford *some* of the success may still apply it.
+				const minCost = getMinSuccessCost(cost);
 				const isUnsupported = def?.kind === "unsupported";
 				const cantAfford = minCost > remaining;
 
@@ -267,15 +294,47 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 					.filter((tok) => tok.type === "status" && tok.isVariable)
 					.map((tok, idx) => ({ idx, name: tok.name }));
 
+				// Successes listing 2+ tags ("gain a [bow], a [knife]") render
+				// each tag as a deselectable chip — the prose usually means
+				// "either or both", so the player picks and pays per tag.
+				// Chips only exist where the cost model prices tags
+				// individually (cost.tagCosts) — flat-rate verbs like Extra
+				// Feat apply all their tags for one fixed price, no chips.
+				const hasSelectableTags = (cost.tagCosts ?? []).length >= 2;
+				const tagTokens = hasSelectableTags
+					? scanMarkup(s.text)
+							.filter((tok) => tok.type === "tag")
+							.map((tok, idx) => ({
+								idx,
+								name: tok.name,
+								isSingleUse: tok.isSingleUse,
+								cost: cost.tagCosts[idx],
+							}))
+					: [];
+
 				return {
 					key: s.id,
 					verbLabel: t(`LITM.Actions.verbs.${s.verb}`),
 					verbKind: def?.displayKind ?? "self",
 					text: s.text,
-					cost: minCost,
-					fixedCost: cost.fixed,
+					costLabel: formatCostLabel(cost, def),
+					// The static part of the live cost: everything that isn't a
+					// counter or a chip (= the spend with every chip dropped).
+					// Chips default to selected, so the initial computed total
+					// equals the full fixed cost.
+					fixedCost: hasSelectableTags
+						? computeSuccessSpend(cost, {
+								chosenTags: tagTokens.map(() => false),
+							})
+						: cost.fixed,
+					staticCost: cost.fixed,
 					varTokens,
 					hasVariableTier: varTokens.length > 0,
+					tagTokens,
+					hasSelectableTags,
+					needsActorTarget: ["opponent", "ally", "prompt"].includes(
+						successTargetMode(def, s),
+					),
 					disabled: isUnsupported || cantAfford,
 					reasonKey: isUnsupported
 						? def.unsupportedMessageKey
@@ -332,6 +391,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			if (!checkbox) return;
 			const li = checkbox.closest(".litm-spend-power__option");
 			this.#toggleEntries(li);
+			if (li.dataset.source === "action") this.#updateActionRowCost(li);
 			this.#updatePower(form);
 		});
 	}
@@ -353,17 +413,45 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				: Infinity;
 		adjustCounter(target, { min, max });
 
-		// Live cost label update for action-success rows.
 		if (varTier) {
 			const li = varTier.closest(".litm-spend-power__option");
-			const costEl = li?.querySelector("[data-action-success-cost]");
-			if (li && costEl) {
-				const total = this.#calculateOptionCost(li, Number(li.dataset.cost));
-				costEl.textContent = `${total} ${t("LITM.Tags.power")}`;
+			if (li) {
+				this.#syncActionRowSelection(li);
+				this.#updateActionRowCost(li);
 			}
 		}
 
 		this.#updatePower(this.element);
+	}
+
+	/**
+	 * Nudging a tier counter or toggling a tag chip on an action-success row
+	 * is itself an act of selection — sync the row's checkbox so the player
+	 * isn't required to also click the row. A row whose only costs are
+	 * counters/chips unchecks again when everything is back at zero; a row
+	 * with a fixed part stays checked (the fixed part still applies).
+	 */
+	#syncActionRowSelection(li) {
+		const checkbox = li.querySelector("[data-option-check]");
+		if (!checkbox || checkbox.disabled) return;
+		const anyTier = [
+			...li.querySelectorAll(
+				".litm-spend-power__var-tier .litm-spend-power__counter-value",
+			),
+		].some((el) => Number(el.textContent) > 0);
+		const anyChip = !!li.querySelector(
+			".litm-spend-power__tag-chip.is-selected",
+		);
+		if (anyTier || anyChip) checkbox.checked = true;
+		else if (Number(li.dataset.fixedCost ?? 0) <= 0) checkbox.checked = false;
+	}
+
+	/** Live cost label update for an action-success row. */
+	#updateActionRowCost(li) {
+		const costEl = li.querySelector("[data-action-success-cost]");
+		if (!costEl) return;
+		const total = this.#calculateOptionCost(li, Number(li.dataset.cost));
+		costEl.textContent = `${total} ${t("LITM.Tags.power")}`;
 	}
 
 	/** @this {SpendPowerApp} */
@@ -375,6 +463,11 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	/** @this {SpendPowerApp} */
 	static #onToggleChip(_event, target) {
 		target.classList.toggle("is-selected");
+		const li = target.closest(".litm-spend-power__option");
+		if (li?.dataset.source === "action") {
+			this.#syncActionRowSelection(li);
+			this.#updateActionRowCost(li);
+		}
 		this.#updatePower(this.element);
 	}
 
@@ -400,6 +493,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		const checkbox = target.querySelector("[data-option-check]");
 		checkbox.checked = !checkbox.checked;
 		this.#toggleEntries(target);
+		if (target.dataset.source === "action") this.#updateActionRowCost(target);
 		this.#updatePower(this.element);
 	}
 
@@ -468,10 +562,12 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 
 	#updatePower(form) {
 		let spent = 0;
+		let anyChecked = false;
 
 		form.querySelectorAll(".litm-spend-power__option").forEach((li) => {
 			const checkbox = li.querySelector("[data-option-check]");
 			if (!checkbox.checked) return;
+			anyChecked = true;
 
 			const cost = Number(li.dataset.cost);
 			spent += this.#calculateOptionCost(li, cost);
@@ -483,11 +579,12 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		const remaining = this.power - spent;
 		if (remainingEl) remainingEl.textContent = remaining;
 
-		// Highlight if over budget and disable submit
+		// Highlight if over budget and disable submit. Selection, not cost,
+		// gates the button — a free narrative success is still worth applying.
 		const overBudget = remaining < 0;
 		remainingEl?.classList.toggle("is-over-budget", overBudget);
 		const submitBtn = form.querySelector("[type='submit']");
-		if (submitBtn) submitBtn.disabled = overBudget || spent === 0;
+		if (submitBtn) submitBtn.disabled = overBudget || !anyChecked;
 	}
 
 	/**
@@ -497,24 +594,31 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	 * @returns {number}
 	 */
 	#calculateOptionCost(li, cost) {
-		// Action-success rows: cost = fixed + sum(var-tier counter values).
-		// Counter values default to 0 ("skip"), so the displayed `data-cost`
-		// (min cost) is the fixed part alone until the player nudges a
-		// [name-] counter upward.
-		if (li.dataset.source === "action" && li.dataset.variableTier === "true") {
-			const fixed = Number(li.dataset.fixedCost ?? 0);
-			let varSum = 0;
+		// Action-success rows: cost = static base (data-fixed-cost, the part
+		// that is neither a counter nor a chip) + selected tag chips + var-tier
+		// counter values. Plain rows (no counters, no chips) are just their
+		// full fixed cost.
+		if (li.dataset.source === "action") {
+			const hasVar = li.dataset.variableTier === "true";
+			const hasTags = li.dataset.selectableTags === "true";
+			if (!hasVar && !hasTags) return cost;
+
+			let total = Number(li.dataset.fixedCost ?? 0);
+			li.querySelectorAll(".litm-spend-power__tag-chip.is-selected").forEach(
+				(chip) => {
+					total += Number(chip.dataset.tagCost ?? 0);
+				},
+			);
 			li.querySelectorAll(".litm-spend-power__var-tier").forEach((row) => {
 				const raw = Number(
 					row.querySelector(".litm-spend-power__counter-value")?.textContent ??
 						0,
 				);
 				const val = Number.isFinite(raw) ? raw : 0;
-				varSum += Math.max(0, val);
+				total += Math.max(0, val);
 			});
-			return fixed + varSum;
+			return total;
 		}
-		if (li.dataset.source === "action") return cost;
 
 		const { type, hasTier } = getOptionType(li);
 		const entriesSection = li.querySelector(".litm-spend-power__entries");
@@ -562,10 +666,25 @@ function parseSpendIntent(form, dialog) {
 		// Action-success rows
 		if (li.dataset.source === "action") {
 			const chosenTiers = readVariableTiers(li);
+			// Tag chips (multi-tag successes): sparse boolean array in tag-scan
+			// order. Undefined when the row has no chips — appliers then apply
+			// every tag, the single-tag path.
+			let chosenTags;
+			const chips = li.querySelectorAll(
+				".litm-spend-power__tag-chip[data-tag-idx]",
+			);
+			if (chips.length) {
+				chosenTags = [];
+				chips.forEach((chip) => {
+					chosenTags[Number(chip.dataset.tagIdx)] =
+						chip.classList.contains("is-selected");
+				});
+			}
 			options.push({
 				source: "action",
 				successKey: li.dataset.successKey,
 				chosenTiers,
+				chosenTags,
 			});
 			continue;
 		}
@@ -663,6 +782,8 @@ function parseSpendIntent(form, dialog) {
 
 	return {
 		options,
+		targetActorId:
+			form.querySelector("input[name='success-target']:checked")?.value ?? null,
 		messageId: dialog.messageId,
 		alreadySpent: dialog.alreadySpent,
 	};

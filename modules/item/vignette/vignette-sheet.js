@@ -74,8 +74,12 @@ export class VignetteSheet extends LitmItemSheet {
 		const submitData = formData.object;
 		await this.document.update(submitData);
 
-		// Update tags and statuses from consequences
-		if (submitData.system?.consequences) {
+		// Update tags and statuses from consequences. FormDataExtended
+		// flattens array fields into dotted keys (`system.consequences.0`),
+		// so test key prefixes rather than a nested path.
+		if (
+			Object.keys(submitData).some((k) => k.startsWith("system.consequences"))
+		) {
 			await this.document.system.syncEffectsFromConsequences();
 		}
 	}
@@ -103,5 +107,6 @@ export class VignetteSheet extends LitmItemSheet {
 			"system.consequences",
 			Number(target.dataset.index),
 		);
+		await this.document.system.syncEffectsFromConsequences();
 	}
 }
