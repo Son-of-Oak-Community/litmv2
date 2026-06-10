@@ -147,3 +147,21 @@ describe("StatusTagData#toTagString", () => {
 		expect(status.toTagString("Empty")).toBe("[Empty-0]");
 	});
 });
+
+describe("StatusTagData.oneHot", () => {
+	it("marks exactly the given tier", () => {
+		expect(StatusTagData.oneHot(2)).toEqual([
+			false,
+			true,
+			false,
+			false,
+			false,
+			false,
+		]);
+	});
+
+	it("yields a tier-less array for out-of-range tiers", () => {
+		expect(StatusTagData.oneHot(0)).toEqual(empty());
+		expect(StatusTagData.oneHot(7)).toEqual(empty());
+	});
+});

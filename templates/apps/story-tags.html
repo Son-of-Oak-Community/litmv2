@@ -202,25 +202,25 @@
 	</form>
 
 	{{#if isGM}}
-	<button type="button" class="litm--add-actor-btn" data-action="add-actor"
-		data-tooltip="{{localize 'LITM.Ui.add_actor'}}">
-		<i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{localize "LITM.Ui.add_actor"}}
-	</button>
-	{{#if (or hasSceneTags hasSceneTokens)}}
-	<div class="litm--load-scene-btns flexrow">
-		{{#if hasSceneTags}}
-		<button type="button" class="litm--load-scene-btn" data-action="load-scene-tags"
-			data-tooltip="{{localize 'LITM.Ui.load_scene_tags'}}">
-			<i class="fa-solid fa-tags" aria-hidden="true"></i> {{localize "LITM.Ui.load_scene_tags"}}
+	<div class="litm--load-scene-btns flexcol">
+		<button type="button" class="litm--add-actor-btn" data-action="add-actor"
+			data-tooltip="{{localize 'LITM.Ui.add_actor'}}">
+			<i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{localize "LITM.Ui.add_actor"}}
 		</button>
-		{{/if}}
-		{{#if hasSceneTokens}}
-		<button type="button" class="litm--load-scene-btn" data-action="load-scene-tokens"
-			data-tooltip="{{localize 'LITM.Ui.load_scene_tokens'}}">
-			<i class="fa-solid fa-users" aria-hidden="true"></i> {{localize "LITM.Ui.load_scene_tokens"}}
-		</button>
+		{{#if (or hasSceneTags hasSceneTokens)}}
+			{{#if hasSceneTags}}
+			<button type="button" class="litm--load-scene-btn" data-action="load-scene-tags"
+				data-tooltip="{{localize 'LITM.Ui.load_scene_tags'}}">
+				<i class="fa-solid fa-tags" aria-hidden="true"></i> {{localize "LITM.Ui.load_scene_tags"}}
+			</button>
+			{{/if}}
+			{{#if hasSceneTokens}}
+			<button type="button" class="litm--load-scene-btn" data-action="load-scene-tokens"
+				data-tooltip="{{localize 'LITM.Ui.load_scene_tokens'}}">
+				<i class="fa-solid fa-users" aria-hidden="true"></i> {{localize "LITM.Ui.load_scene_tokens"}}
+			</button>
+			{{/if}}
 		{{/if}}
 	</div>
-	{{/if}}
 	{{/if}}
 </div>

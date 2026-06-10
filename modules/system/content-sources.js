@@ -1,3 +1,4 @@
+import { descriptorToEffectData } from "../item/action/tag-string.js";
 import { error, info } from "../logger.js";
 import { LitmSettings } from "./settings.js";
 
@@ -305,27 +306,7 @@ export class ContentSources {
 	 * @returns {object} ActiveEffect creation data
 	 */
 	static legacyTagToEffectData(tag) {
-		const isStatus = tag.type === "status_tag" || tag.type === "status";
-		return {
-			name: tag.name,
-			type: isStatus ? "status_tag" : "story_tag",
-			img: "systems/litmv2/assets/media/icons/consequences.svg",
-			disabled: false,
-			system: isStatus
-				? {
-						isHidden: tag.hidden ?? false,
-						tiers: (tag.values ?? []).map((v) =>
-							typeof v === "boolean" ? v : v != null,
-						),
-						limitId: tag.limitId ?? null,
-					}
-				: {
-						isScratched: tag.isScratched ?? false,
-						isSingleUse: tag.isSingleUse ?? false,
-						isHidden: tag.hidden ?? false,
-						limitId: tag.limitId ?? null,
-					},
-		};
+		return descriptorToEffectData(tag);
 	}
 }
 

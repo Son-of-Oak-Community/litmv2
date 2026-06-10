@@ -29,7 +29,13 @@
  * `parseTagStringMatch` returns `null` for both.
  */
 
-import { makeTagStringRe } from "../../system/config.js";
+import {
+	reconcileTagEffects,
+	statusTagEffect,
+	storyTagEffect,
+} from "../../active-effects/effect-factories.js";
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
+import { ACTOR_TAG_TYPES, makeTagStringRe } from "../../system/config.js";
 
 /** The world-configurable tag regex, falling back to the built-in source. */
 function tagStringRe() {
@@ -95,9 +101,7 @@ export function parseTagStringMatch(match) {
 			return {
 				name: c.name,
 				type: "status_tag",
-				system: {
-					tiers: Array.from({ length: 6 }, (_, i) => i + 1 === c.tier),
-				},
+				system: { tiers: StatusTagData.oneHot(c.tier) },
 			};
 		case "story":
 			return {
@@ -133,6 +137,22 @@ export function parseTagString(text) {
 	);
 }
 
+/**
+ * Converge a document's story/status effects onto the bracket markup in
+ * `tagsString`. Addon-managed effects (flagged with `litmv2.addonId`) are
+ * never touched. Canonical sync for the Challenge/Journey dual
+ * representation (`system.tags` string ↔ ActiveEffects).
+ * @param {Document} doc      The actor (or item) owning the effects
+ * @param {string} tagsString Bracket tag markup
+ * @returns {Promise<void>}
+ */
+export async function syncTagStringEffects(doc, tagsString) {
+	return reconcileTagEffects(doc, parseTagString(tagsString), {
+		filter: (e) =>
+			ACTOR_TAG_TYPES.has(e.type) && !e.getFlag("litmv2", "addonId"),
+	});
+}
+
 /** Drag-payload `type` per classification kind. */
 const DRAG_TYPES = {
 	story: "story_tag",
@@ -140,6 +160,54 @@ const DRAG_TYPES = {
 	limit: "limit",
 	weakness: "weakness_tag",
 };
+
+/**
+ * Whether a legacy tag descriptor (the drag-payload / scene-tag shape built
+ * by {@link tagDragData}) represents a status. The single place the
+ * values-heuristic lives: a declared status type wins; otherwise any marked
+ * tier value makes it a status. Accepts the pre-normalization short forms
+ * (`status`) alongside the canonical AE type.
+ * @param {object} tag  Descriptor `{ name, type, values, … }`
+ * @returns {boolean}
+ */
+export function isStatusDescriptor(tag) {
+	if (tag.type === "status_tag" || tag.type === "status") return true;
+	return (
+		Array.isArray(tag.values) &&
+		tag.values.some((v) => v !== null && v !== false && v !== "")
+	);
+}
+
+/**
+ * Convert a legacy tag descriptor to ActiveEffect creation data, delegating
+ * to the canonical effect factories. Counterpart of {@link tagDragData} —
+ * the only descriptor→effect conversion in the system.
+ * @param {object} tag  Descriptor `{ id, name, type, values, isScratched, isSingleUse, hidden, limitId }`
+ * @returns {object} ActiveEffect creation data
+ */
+export function descriptorToEffectData(tag) {
+	const base = isStatusDescriptor(tag)
+		? statusTagEffect({
+				name: tag.name,
+				tiers: (tag.values ?? []).map((v) =>
+					typeof v === "boolean" ? v : v != null,
+				),
+				isHidden: tag.hidden ?? false,
+				limitId: tag.limitId ?? null,
+			})
+		: storyTagEffect({
+				name: tag.name,
+				isScratched: tag.isScratched ?? false,
+				isSingleUse: tag.isSingleUse ?? false,
+				isHidden: tag.hidden ?? false,
+				limitId: tag.limitId ?? null,
+			});
+	return {
+		...base,
+		img: "systems/litmv2/assets/media/icons/consequences.svg",
+		disabled: false,
+	};
+}
 
 /**
  * Build the canonical chip drag payload from a classification. Shared by the

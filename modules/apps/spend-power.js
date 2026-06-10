@@ -10,6 +10,7 @@ import {
 	getVerbDef,
 	successTargetMode,
 } from "../item/action/verb-definitions.js";
+import { FLAGS } from "../system/config.js";
 import { formatCostLabel } from "../system/renderers/renderer-utils.js";
 import { localize as t } from "../utils.js";
 import { adjustCounter, readVariableTiers } from "./counter-controls.js";
@@ -237,7 +238,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 
 	async #getAction() {
 		const message = this.messageId ? game.messages.get(this.messageId) : null;
-		const uuid = message?.getFlag("litmv2", "actionUuid");
+		const uuid = message?.getFlag("litmv2", FLAGS.actionUuid);
 		if (!uuid) return null;
 		const a = await foundry.utils.fromUuid(uuid);
 		return a?.type === "action" ? a : null;
@@ -332,8 +333,8 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 					hasVariableTier: varTokens.length > 0,
 					tagTokens,
 					hasSelectableTags,
-					needsActorTarget: ["opponent", "ally", "prompt"].includes(
-						successTargetMode(def, s),
+					needsActorTarget: ["opponent", "ally"].includes(
+						successTargetMode(def),
 					),
 					disabled: isUnsupported || cantAfford,
 					reasonKey: isUnsupported

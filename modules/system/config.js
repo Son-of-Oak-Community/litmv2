@@ -1,3 +1,15 @@
+/**
+ * Cross-module flag keys under the `litmv2` scope. A typo'd `getFlag` key
+ * fails silently, so keys read/written in more than one file go through this
+ * map. (Single-file keys — chat-card bookkeeping, legacy stashes — stay
+ * local literals.)
+ */
+export const FLAGS = Object.freeze({
+	rollDialogOwner: "rollDialogOwner",
+	actionUuid: "actionUuid",
+	sceneTags: "sceneTags",
+});
+
 /** All theme-bound tag effect types (power, weakness, fellowship). */
 export const THEME_TAG_TYPES = new Set([
 	"power_tag",

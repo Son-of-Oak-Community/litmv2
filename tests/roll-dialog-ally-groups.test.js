@@ -1,13 +1,16 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	buildAllyTagGroups,
 	buildSceneActorTagGroups,
 } from "../modules/apps/roll/roll-dialog-context.js";
+import { StoryTagsStore } from "../modules/apps/story-tags/story-tags-store.js";
 
 /**
  * buildAllyTagGroups / buildSceneActorTagGroups — the sidebar-sourced
  * per-actor groups exposing other fellowship heroes' (Allies tab) and the
  * scene opposition's (Scene tab) visible tags and statuses to the roller.
+ * The builders read sidebar actors from StoryTagsStore; tests shadow its
+ * `actors` getter with an own property and remove it again afterEach.
  */
 
 const TAG_TYPE_ORDER = { status_tag: 0, story_tag: 1 };
@@ -20,11 +23,21 @@ const makeTag = (uuid, name, type = "story_tag") => ({
 	system: {},
 });
 
-const makeDialog = ({ actors = [], selections = new Map() } = {}) => ({
-	actor: { uuid: "Actor.rolling" },
-	storyTagSidebar: { actors },
-	getSelection: (uuid) =>
-		selections.get(uuid) ?? { state: "", contributorId: null },
+const makeDialog = ({ actors = [], selections = new Map() } = {}) => {
+	Object.defineProperty(StoryTagsStore, "actors", {
+		configurable: true,
+		get: () => actors,
+	});
+	return {
+		actor: { uuid: "Actor.rolling" },
+		getSelection: (uuid) =>
+			selections.get(uuid) ?? { state: "", contributorId: null },
+	};
+};
+
+afterEach(() => {
+	// Remove the own-property shadow so the prototype getter is restored
+	delete StoryTagsStore.actors;
 });
 
 const shared = (isOwner = true) => ({

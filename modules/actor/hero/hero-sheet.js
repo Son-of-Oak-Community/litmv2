@@ -1,13 +1,13 @@
 import { relationshipTagEffect } from "../../active-effects/effect-factories.js";
 import {
 	effectToPlain,
+	isEffectVisible,
 	resolveEffect,
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ActionsApp } from "../../apps/actions-app.js";
 import { resolveRollDialogOwnership } from "../../apps/roll/roll-dialog.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
-import { detectTrackCompletion } from "../../system/chat.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import { enrichHTML, transferBackpackTags } from "../../utils.js";
@@ -231,15 +231,11 @@ export class HeroSheet extends LitmActorSheet {
 			? {
 					name: backpackItem.name,
 					id: backpackItem.id,
-					tags: backpackItem.system.tags.filter(
-						(e) => game.user.isGM || !e.system?.isHidden,
-					),
+					tags: backpackItem.system.tags.filter(isEffectVisible),
 				}
 			: null;
 
-		const statuses = this.system.statusEffects.filter(
-			(e) => game.user.isGM || !e.system?.isHidden,
-		);
+		const statuses = this.system.statusEffects.filter(isEffectVisible);
 
 		const relationshipEntries = hasFellowship
 			? this._prepareRelationshipEntries()
@@ -502,41 +498,7 @@ export class HeroSheet extends LitmActorSheet {
 	 * @private
 	 */
 	static async #onAddMomentOfFulfillment() {
-		const moments = foundry.utils.deepClone(this.system.mof ?? []);
-		moments.push({ name: "", description: "" });
-
-		// Per Core Book p.193: a Moment of Fulfillment, once resolved, resets
-		// the Promise track to 0 and applies any remaining Promise. Adding
-		// an MoF entry is the act of recording resolution, so it doubles
-		// as the trigger to reset + apply pending. (When promise < 5, this
-		// is just a free narrative record — no math runs.)
-		const update = { "system.mof": moments };
-		const currentPromise = this.system.promise ?? 0;
-		const pending = this.system.pendingPromise ?? 0;
-		if (currentPromise >= 5) {
-			const applied = Math.min(pending, 5);
-			update["system.promise"] = applied;
-			update["system.pendingPromise"] = pending - applied;
-		}
-
-		await this.document.update(update);
-
-		// Cascading MoF: if the applied pending fills another track, fire
-		// trackCompleted so the chat card surfaces the next MoF.
-		if (update["system.promise"] === 5) {
-			const trackInfo = detectTrackCompletion(
-				"system.promise",
-				5,
-				this.document,
-				this.document,
-			);
-			if (trackInfo) {
-				Hooks.callAll("litm.trackCompleted", {
-					actor: this.document,
-					trackInfo,
-				});
-			}
-		}
+		await this.document.system.recordMomentOfFulfillment();
 	}
 
 	/**
@@ -679,17 +641,12 @@ export class HeroSheet extends LitmActorSheet {
 		// Right-click reduces the highest filled tier by 1 (legacy contextmenu behavior).
 		if (event.button === 2) {
 			event.preventDefault();
-			if (!effect.system.tiers.some(Boolean)) return;
-			const newTiers = effect.system.calculateReduction(1);
-			await effect.update({ "system.tiers": newTiers });
-			return;
+			return effect.system.reduceTier(1);
 		}
 
 		const tier = Number.parseInt(target.dataset.tier, 10);
 		if (!Number.isFinite(tier)) return;
-		const newTiers = [...effect.system.tiers];
-		newTiers[tier - 1] = !newTiers[tier - 1];
-		await effect.update({ "system.tiers": newTiers });
+		await effect.system.toggleTier(tier);
 	}
 
 	static #onOpenThemeAdvancement(_event, target) {

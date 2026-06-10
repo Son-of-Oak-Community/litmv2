@@ -3,7 +3,7 @@ import { getDefaultThemeLevel, getThemeLevels } from "../../system/config.js";
 import { createSampleHero } from "../../system/sample-hero.js";
 import { LitmSettings } from "../../system/settings.js";
 import { localize as t, toQuestionOptions } from "../../utils.js";
-import { HeroCreationData } from "./hero-creation-data.js";
+import { cleanQuestions, HeroCreationData } from "./hero-creation-data.js";
 import {
 	animateEnter,
 	animateExit,
@@ -943,18 +943,17 @@ export class WelcomeOverlay {
 			}));
 			theme.selectedPowerTags = [];
 			theme.selectedWeaknessTag = "";
-			// Resolve parent themebook questions
+			// Resolve parent themebook questions (first power question = title tag)
 			const themebookName = themeDoc?.system?.themebook || "";
 			const parentBook = await this._data.getThemebookByName(themebookName);
-			const allPQs = (parentBook?.system?.powerTagQuestions || [])
-				.map((q) => `${q ?? ""}`.trim())
-				.filter(Boolean);
-			theme.powerTagQuestions = allPQs.slice(1);
-			theme.weaknessTagQuestions = (
-				parentBook?.system?.weaknessTagQuestions || []
-			)
-				.map((q) => `${q ?? ""}`.trim())
-				.filter(Boolean);
+			theme.powerTagQuestions = cleanQuestions(
+				parentBook,
+				"powerTagQuestions",
+			).slice(1);
+			theme.weaknessTagQuestions = cleanQuestions(
+				parentBook,
+				"weaknessTagQuestions",
+			);
 		} else {
 			theme.powerTagOptions = [];
 			theme.weaknessTagOptions = [];

@@ -62,8 +62,8 @@ function substituteVariableTiers(text, chosenTiers) {
  * chip row — when set, actor-targeted successes use it directly instead of
  * prompting. Process verbs always prompt: limits aren't actors.
  */
-async function _resolveTarget({ def, success, actor, presetTarget = null }) {
-	switch (successTargetMode(def, success)) {
+async function _resolveTarget({ def, actor, presetTarget = null }) {
+	switch (successTargetMode(def)) {
 		case "process": {
 			const limitInfo = await pickLimit();
 			if (!limitInfo) return null;
@@ -78,11 +78,6 @@ async function _resolveTarget({ def, success, actor, presetTarget = null }) {
 		case "ally": {
 			if (presetTarget) return { actor: presetTarget };
 			const target = await pickTargetActor({ allowSelf: true, exclude: null });
-			return target ? { actor: target } : null;
-		}
-		case "prompt": {
-			if (presetTarget) return { actor: presetTarget };
-			const target = await pickTargetActor({ allowSelf: true });
 			return target ? { actor: target } : null;
 		}
 		default:
@@ -132,7 +127,6 @@ export async function applySuccess({
 
 	const resolved = await _resolveTarget({
 		def: def ?? { target: "self" },
-		success,
 		actor,
 		presetTarget,
 	});
@@ -211,15 +205,46 @@ async function _applyCreateOrTag({ success, actor, chosenTiers, chosenTags }) {
 }
 
 /**
- * Weaken — for each token, remove a same-named beneficial effect on the
- * target. Statuses: reduce by the parsed tier (or delete entirely if no
- * tier is specified / tier matches). Tags: scratch the first unscratched
- * same-named tag.
+ * Shared applier for the two mirrored scratch verbs:
+ * - **Weaken** scratches the first unscratched same-named tag, or reduces a
+ *   same-named status by the parsed tier.
+ * - **Restore / Lessen** unscratches a scratched same-named tag, or reduces a
+ *   status with restore-threshold delete semantics.
+ * The direction config keeps the two verbs structurally identical.
  */
-async function _applyWeaken({ success, actor, chosenTiers, chosenTags }) {
+const SCRATCH_VERB_CONFIGS = {
+	weaken: {
+		targetScratched: true,
+		restoreThreshold: false,
+		needsNameKey: "LITM.Actions.apply_weaken_needs_name",
+		noMatchKey: "LITM.Actions.apply_weaken_no_match",
+		statusRemovedKey: "LITM.Actions.applied_weaken_status",
+		tagSummaryKey: "LITM.Actions.applied_weaken_tag",
+	},
+	restore: {
+		targetScratched: false,
+		restoreThreshold: true,
+		needsNameKey: "LITM.Actions.apply_restore_needs_name",
+		noMatchKey: "LITM.Actions.apply_restore_no_match",
+		statusRemovedKey: "LITM.Actions.applied_removed",
+		tagSummaryKey: "LITM.Actions.applied_unscratched",
+	},
+};
+
+async function _applyScratchToggle(
+	{ success, actor, chosenTiers, chosenTags },
+	{
+		targetScratched,
+		restoreThreshold,
+		needsNameKey,
+		noMatchKey,
+		statusRemovedKey,
+		tagSummaryKey,
+	},
+) {
 	const tokens = scanMarkup(success.text);
 	if (!tokens.length) {
-		ui.notifications.warn(t("LITM.Actions.apply_weaken_needs_name"));
+		ui.notifications.warn(t(needsNameKey));
 		return null;
 	}
 
@@ -236,10 +261,9 @@ async function _applyWeaken({ success, actor, chosenTiers, chosenTags }) {
 			if (tok.isVariable) varIdx++;
 
 			const summary = await _reduceStatusOnActor(actor, tok.name, tier, {
-				notFoundKey: "LITM.Actions.apply_weaken_no_match",
-				notFoundArgs: { actor: publicName(actor) },
-				removedKey: "LITM.Actions.applied_weaken_status",
-				removedArgs: { actor: publicName(actor) },
+				notFoundKey: noMatchKey,
+				removedKey: statusRemovedKey,
+				restoreThreshold,
 			});
 			if (!summary) continue;
 			summaries.push(summary);
@@ -256,24 +280,20 @@ async function _applyWeaken({ success, actor, chosenTiers, chosenTags }) {
 			(e) =>
 				SCRATCH_TARGET_TYPES.has(e.type) &&
 				e.name.toLowerCase() === lower &&
-				!e.system?.isScratched,
+				!!e.system?.isScratched !== targetScratched,
 		);
 		if (!tag) {
 			ui.notifications.info(
-				game.i18n.format("LITM.Actions.apply_weaken_no_match", {
+				game.i18n.format(noMatchKey, {
 					name: tok.name,
 					actor: publicName(actor),
 				}),
 			);
 			continue;
 		}
-		if (typeof tag.system?.toggleScratch === "function") {
-			await tag.system.toggleScratch();
-		} else {
-			await tag.update({ "system.isScratched": true });
-		}
+		await tag.system.setScratched(targetScratched);
 		summaries.push(
-			game.i18n.format("LITM.Actions.applied_weaken_tag", {
+			game.i18n.format(tagSummaryKey, {
 				actor: publicName(actor),
 				name: tok.name,
 			}),
@@ -300,9 +320,7 @@ const SCRATCH_TARGET_TYPES = new Set([
  * @param {number} tier              Amount to reduce by
  * @param {object} opts
  * @param {string} opts.notFoundKey  i18n key for "no match" notification
- * @param {object} [opts.notFoundArgs]  Extra format args merged with {name, actor}
  * @param {string} opts.removedKey   i18n key for "fully removed" summary
- * @param {object} [opts.removedArgs]   Extra format args merged with {name}
  * @param {boolean} [opts.restoreThreshold=false]  When true, use restore
  *   semantics (delete when `tier > highestIdx`, not `tier >= highestIdx + 1`).
  * @returns {Promise<string|null>}  The summary string, or null if not found.
@@ -311,13 +329,7 @@ async function _reduceStatusOnActor(
 	actor,
 	name,
 	tier,
-	{
-		notFoundKey,
-		notFoundArgs = {},
-		removedKey,
-		removedArgs = {},
-		restoreThreshold = false,
-	} = {},
+	{ notFoundKey, removedKey, restoreThreshold = false } = {},
 ) {
 	const lower = name.toLowerCase();
 	const status = findApplicableEffect(
@@ -326,11 +338,7 @@ async function _reduceStatusOnActor(
 	);
 	if (!status) {
 		ui.notifications.info(
-			game.i18n.format(notFoundKey, {
-				name,
-				actor: publicName(actor),
-				...notFoundArgs,
-			}),
+			game.i18n.format(notFoundKey, { name, actor: publicName(actor) }),
 		);
 		return null;
 	}
@@ -344,7 +352,6 @@ async function _reduceStatusOnActor(
 		return game.i18n.format(removedKey, {
 			name,
 			actor: publicName(actor),
-			...removedArgs,
 		});
 	}
 	const newTiers = status.system.calculateReduction(tier);
@@ -406,75 +413,6 @@ async function _applyProcess({ success, limitInfo, chosenTiers }) {
 	};
 }
 
-/**
- * Restore / Lessen — for each token, reduce a same-named status by the
- * parsed tier (deleting it if the reduction takes it past tier 1) or
- * unscratch a same-named tag.
- */
-async function _applyRestore({ success, actor, chosenTiers, chosenTags }) {
-	const tokens = scanMarkup(success.text);
-	if (!tokens.length) {
-		ui.notifications.warn(t("LITM.Actions.apply_restore_needs_name"));
-		return null;
-	}
-
-	const summaries = [];
-	let varIdx = 0;
-	let tagIdx = 0;
-	let appliedAny = false;
-
-	for (const tok of tokens) {
-		const lower = tok.name.toLowerCase();
-
-		if (tok.type === "status") {
-			const tier = resolveTier(tok, chosenTiers, varIdx);
-			if (tok.isVariable) varIdx++;
-
-			const summary = await _reduceStatusOnActor(actor, tok.name, tier, {
-				notFoundKey: "LITM.Actions.apply_restore_no_match",
-				removedKey: "LITM.Actions.applied_removed",
-				restoreThreshold: true,
-			});
-			if (!summary) continue;
-			summaries.push(summary);
-			appliedAny = true;
-			continue;
-		}
-
-		const chosen = isTagChosen(chosenTags, tagIdx);
-		tagIdx++;
-		if (!chosen) continue;
-
-		const tag = findApplicableEffect(
-			actor,
-			(e) =>
-				SCRATCH_TARGET_TYPES.has(e.type) &&
-				e.system?.isScratched &&
-				e.name.toLowerCase() === lower,
-		);
-		if (!tag) {
-			ui.notifications.info(
-				game.i18n.format("LITM.Actions.apply_restore_no_match", {
-					name: tok.name,
-				}),
-			);
-			continue;
-		}
-		if (typeof tag.system?.toggleScratch === "function") {
-			await tag.system.toggleScratch();
-		} else {
-			await tag.update({ "system.isScratched": false });
-		}
-		summaries.push(
-			game.i18n.format("LITM.Actions.applied_unscratched", { name: tok.name }),
-		);
-		appliedAny = true;
-	}
-
-	if (!appliedAny) return null;
-	return { appliedSummary: summaries.join(" · ") };
-}
-
 /** Discover: post a chat note, no mechanical effect. */
 function _applyDiscover({ success, chosenTiers }) {
 	const text = substituteVariableTiers(success.text?.trim(), chosenTiers);
@@ -502,8 +440,8 @@ function _applyNarrative({ success, chosenTiers }) {
 /** Dispatch table keyed by verb-definition `kind`. */
 const APPLIERS = {
 	createOrTag: _applyCreateOrTag,
-	weaken: _applyWeaken,
-	restore: _applyRestore,
+	weaken: (args) => _applyScratchToggle(args, SCRATCH_VERB_CONFIGS.weaken),
+	restore: (args) => _applyScratchToggle(args, SCRATCH_VERB_CONFIGS.restore),
 	process: _applyProcess,
 	discover: _applyDiscover,
 	extraFeat: _applyExtraFeat,

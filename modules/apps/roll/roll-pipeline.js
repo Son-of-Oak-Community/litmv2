@@ -2,8 +2,7 @@ import { resolveEffect } from "../../active-effects/effect-queries.js";
 import { scratchTag as applyScratch } from "../../active-effects/scratchable-mixin.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { warn } from "../../logger.js";
-import { buildTrackCompleteContent } from "../../system/chat.js";
-import { IMPROVE_MARKING_TAG_TYPES } from "../../system/config.js";
+import { FLAGS, IMPROVE_MARKING_TAG_TYPES } from "../../system/config.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
@@ -287,13 +286,7 @@ export async function processPostRollEffects({
 		? weaknessTags.filter((t) => IMPROVE_MARKING_TAG_TYPES.has(t.type))
 		: [];
 	for (const tag of realWeaknessTags) {
-		const trackInfo = await gainImprovement(actor, tag);
-		if (trackInfo) {
-			await foundry.documents.ChatMessage.create({
-				content: await buildTrackCompleteContent(trackInfo),
-				speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
-			});
-		}
+		await gainImprovement(actor, tag);
 	}
 	roll.options.gainedExp = LitmSettings.autoMarkImprove;
 
@@ -313,7 +306,7 @@ export async function processPostRollEffects({
  */
 export function resolveRollDialogOwnership(actor, userId) {
 	const activeOwnerId =
-		actor.getFlag("litmv2", "rollDialogOwner")?.ownerId || null;
+		actor.getFlag("litmv2", FLAGS.rollDialogOwner)?.ownerId || null;
 	const activeOwner = activeOwnerId ? game.users.get(activeOwnerId) : null;
 	const hasActorPermission =
 		game.user.isGM || actor.testUserPermission(game.user, "OWNER");

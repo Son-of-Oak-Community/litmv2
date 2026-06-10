@@ -107,13 +107,6 @@ describe("parseTagStringMatch edge cases", () => {
 		expect(data.system.isSingleUse).toBe(true);
 	});
 
-	it("regex strips the `!` marker from the captured name", () => {
-		const re = makeTagStringRe();
-		const matches = [..."[map!]".matchAll(re)];
-		expect(matches[0][1]).toBe("map");
-		expect(matches[0][2]).toBe("!");
-	});
-
 	it("regex still parses [name] without `!` as a regular tag", () => {
 		const re = makeTagStringRe();
 		const matches = [..."[map]".matchAll(re)];

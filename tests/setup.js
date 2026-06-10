@@ -121,6 +121,7 @@ globalThis.foundry = {
 		fromUuidSync,
 		randomID,
 		escapeHTML,
+		deepClone: (v) => (v === undefined ? v : structuredClone(v)),
 	},
 	abstract: { TypeDataModel: StubDataModel },
 	data: {

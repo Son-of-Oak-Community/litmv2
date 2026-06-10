@@ -1,4 +1,4 @@
-import { detectTrackCompletion } from "../../system/chat.js";
+import { completeTrackUpdate, fireTrackCompletion } from "../../system/chat.js";
 import {
 	ACTOR_TAG_TYPES,
 	ACTOR_TYPES,
@@ -7,6 +7,7 @@ import {
 	THEME_TAG_TYPES,
 } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
+import { findFellowshipTheme } from "../../utils.js";
 import { advanceFlagLimit } from "../mixins/actor-limits.js";
 import { EffectTagsMixin } from "../mixins/effect-tags-mixin.js";
 import { LimitsMixin } from "../mixins/limits-mixin.js";
@@ -51,28 +52,24 @@ export async function createLegacyRelationshipEffects(actor) {
 
 /**
  * Mark improvement on the theme that owns the given tag effect.
+ * Fires `litm.trackCompleted` when the mark fills the track.
  * @param {Actor} actor - The hero actor
  * @param {object} tag - Tag object with uuid and type properties
- * @returns {Promise<{theme: Item, actor: Actor, trackInfo: object}|null>} Track completion data or null
+ * @returns {Promise<object|null>} The fired trackInfo, or null
  */
 export async function gainImprovement(actor, tag) {
 	// Relationship tags always improve the fellowship theme
 	if (tag.type === EFFECT_TYPES.relationship_tag) {
 		const fellowship = actor.system.fellowshipActor;
 		if (!fellowship) return null;
-		const theme = fellowship.items.find(
-			(i) => i.type === ITEM_TYPES.theme && i.system.isFellowship,
-		);
+		const theme = findFellowshipTheme(fellowship);
 		if (!theme) return null;
-		const newValue = theme.system.improve.value + 1;
-		await fellowship.updateEmbeddedDocuments("Item", [
-			{ _id: theme.id, "system.improve.value": newValue },
-		]);
-		return detectTrackCompletion(
-			"system.improve.value",
-			newValue,
+		return completeTrackUpdate(
 			theme,
+			"system.improve.value",
+			theme.system.improve.value + 1,
 			fellowship,
+			actor,
 		);
 	}
 
@@ -84,15 +81,12 @@ export async function gainImprovement(actor, tag) {
 	if (!parentTheme || parentTheme.type !== ITEM_TYPES.theme) return null;
 	const owner = parentTheme.parent;
 	if (!owner) return null;
-	const newValue = parentTheme.system.improve.value + 1;
-	await owner.updateEmbeddedDocuments("Item", [
-		{ _id: parentTheme.id, "system.improve.value": newValue },
-	]);
-	return detectTrackCompletion(
-		"system.improve.value",
-		newValue,
+	return completeTrackUpdate(
 		parentTheme,
+		"system.improve.value",
+		parentTheme.system.improve.value + 1,
 		owner,
+		actor,
 	);
 }
 
@@ -331,6 +325,34 @@ export class HeroData extends LimitsMixin(
 		return backpack.createEmbeddedDocuments("ActiveEffect", [
 			{ ...effectData, transfer: true },
 		]);
+	}
+
+	/**
+	 * Record a Moment of Fulfillment: append an empty MoF entry and, per Core
+	 * Book p.193, when the Promise track is full reset it to 0 and apply any
+	 * banked `pendingPromise` (clamped to 5). Fires `litm.trackCompleted` when
+	 * the applied pending fills another track, cascading the next MoF chat
+	 * card. (When promise < 5 this is just a free narrative record — no math
+	 * runs.)
+	 * @returns {Promise<object|null>} The cascaded trackInfo, or null
+	 */
+	async recordMomentOfFulfillment() {
+		const moments = foundry.utils.deepClone(this.mof ?? []);
+		moments.push({ name: "", description: "" });
+
+		const update = { "system.mof": moments };
+		const currentPromise = this.promise ?? 0;
+		const pending = this.pendingPromise ?? 0;
+		if (currentPromise >= 5) {
+			const applied = Math.min(pending, 5);
+			update["system.promise"] = applied;
+			update["system.pendingPromise"] = pending - applied;
+		}
+
+		await this.parent.update(update);
+
+		if (update["system.promise"] !== 5) return null;
+		return fireTrackCompletion("system.promise", 5, this.parent, this.parent);
 	}
 
 	/**

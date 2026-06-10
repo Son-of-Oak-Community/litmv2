@@ -1,3 +1,4 @@
+import { FLAGS } from "../system/config.js";
 import { localize as t } from "../utils.js";
 
 /**
@@ -33,7 +34,7 @@ export class RollDialogHud {
 		const entries =
 			game.actors
 				?.filter((a) => {
-					const flag = a.getFlag("litmv2", "rollDialogOwner");
+					const flag = a.getFlag("litmv2", FLAGS.rollDialogOwner);
 					if (!flag || flag.ownerId === game.user.id) return false;
 					// Sacrifice rolls get their own dramatic banner — don't
 					// double up by also showing a "click to join" entry.
@@ -41,7 +42,7 @@ export class RollDialogHud {
 					return game.users.get(flag.ownerId)?.active;
 				})
 				.map((a) => {
-					const flag = a.getFlag("litmv2", "rollDialogOwner");
+					const flag = a.getFlag("litmv2", FLAGS.rollDialogOwner);
 					const owner = game.users.get(flag.ownerId);
 					return {
 						actorId: a.id,

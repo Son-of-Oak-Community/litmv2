@@ -4,17 +4,20 @@ import {
 	updateEffectsByParent,
 } from "../../active-effects/effect-factories.js";
 import { resolveEffect } from "../../active-effects/effect-queries.js";
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import {
 	classifyTagStringMatch,
+	isStatusDescriptor,
 	parseTagString,
 	tagDragData,
 } from "../../item/action/tag-string.js";
-import { error, info } from "../../logger.js";
-import { ACTOR_TAG_TYPES, FLAG_LIMIT_TYPES } from "../../system/config.js";
+import { info } from "../../logger.js";
 import {
-	ContentSources,
-	WORLD_STORY_TAG_PACK_ID,
-} from "../../system/content-sources.js";
+	ACTOR_TAG_TYPES,
+	FLAG_LIMIT_TYPES,
+	FLAGS,
+} from "../../system/config.js";
+import { ContentSources } from "../../system/content-sources.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import {
@@ -30,13 +33,11 @@ import {
 	buildStoryTagUpdates,
 } from "./story-tag-form-processor.js";
 import {
-	disambiguateNames,
-	mapEffectForUI,
-	normalizeConfig,
 	parseQuickAddInput,
 	partitionTagsByLimit,
 	toTiers,
 } from "./story-tag-helpers.js";
+import { StoryTagsStore } from "./story-tags-store.js";
 
 const AbstractSidebarTab = foundry.applications.sidebar.AbstractSidebarTab;
 
@@ -50,10 +51,6 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	AbstractSidebarTab,
 ) {
 	#dragDrop = null;
-	#cachedActors = null;
-
-	/** @type {Array<[string, number]>} Hook name/ID pairs registered for cache invalidation */
-	#cacheHookIds = [];
 
 	/** @type {Token[]} Currently highlighted tokens from sidebar hover */
 	_highlighted = [];
@@ -153,35 +150,15 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/* -------------------------------------------- */
 
 	/**
-	 * Gets the story tags configuration, validating and normalizing actor UUIDs.
-	 *
-	 * @returns {Object} The story tags configuration object
-	 * @returns {string[]} config.actors - Array of valid actor UUIDs
-	 * @returns {Object[]} config.limits - Array of tag limits
-	 * @returns {string[]} config.hiddenActors - Array of hidden actor UUIDs
-	 *
-	 * @description
-	 * - Returns default empty config if settings are empty
-	 * - Validates all actor IDs to ensure they are valid Actor UUIDs
-	 * - Normalizes legacy bare actor IDs to full Actor UUIDs (e.g., "abc123" → "Actor.abc123")
-	 * - Persists normalized config to settings if user is GM
-	 * - Filters out invalid actor references before normalization
+	 * The story tags configuration (validated/normalized by the store).
+	 * @see StoryTagsStore#config
 	 */
 	get config() {
-		const raw = LitmSettings.storyTags;
-		if (!raw || foundry.utils.isEmpty(raw)) {
-			return { actors: [], limits: [] };
-		}
-
-		const { config, changed } = normalizeConfig(raw);
-		if (changed && game.user?.isGM && game.ready) {
-			void LitmSettings.setStoryTags(config).catch(error);
-		}
-		return config;
+		return StoryTagsStore.config;
 	}
 
 	invalidateCache() {
-		this.#cachedActors = null;
+		StoryTagsStore.invalidateCache();
 	}
 
 	/** Re-render any open roll dialogs so scene-tag/status changes propagate. */
@@ -195,27 +172,21 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	/** Synchronous pack documents — populated once `loadStoryTags()` has run. */
 	get #packStoryTags() {
-		return game.packs.get(WORLD_STORY_TAG_PACK_ID)?.contents ?? [];
+		return StoryTagsStore.packStoryTags;
 	}
 
 	/** Public read-only accessor over the scene story-tag pack effects.
 	 *  Used by the Camping app to list scene tags eligible for expiry. */
 	get sceneStoryEffects() {
-		return this.#packStoryTags;
+		return StoryTagsStore.sceneStoryEffects;
 	}
 
 	/**
-	 * Ensure the story tag pack documents are loaded. Foundry caches pack
-	 * documents on the CompendiumCollection itself; subsequent reads via
-	 * `#packStoryTags` are synchronous.
-	 * @returns {Promise<ActiveEffect[]>}
+	 * Ensure the story tag pack documents are loaded.
+	 * @see StoryTagsStore#loadStoryTags
 	 */
 	async loadStoryTags() {
-		try {
-			return await ContentSources.getStoryTags();
-		} catch {
-			return [];
-		}
+		return StoryTagsStore.loadStoryTags();
 	}
 
 	/**
@@ -270,72 +241,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		return doc.getActiveTokens();
 	}
 
-	get #userCharacterUuids() {
-		return new Set(
-			game.users
-				.filter((u) => u.active && u.character)
-				.map((u) => u.character.uuid),
-		);
-	}
-
 	get actors() {
-		if (this.#cachedActors) return this.#cachedActors;
-		// Merge stored UUIDs with user-assigned characters and the fellowship so they always appear
-		const storedUuids = this.config.actors ?? [];
-		const userCharacterUuids = this.#userCharacterUuids;
-		const fellowshipUuid = game.litmv2?.fellowship?.uuid;
-		const autoUuids = [...userCharacterUuids];
-		if (fellowshipUuid) autoUuids.push(fellowshipUuid);
-		const mergedUuids = [...new Set([...autoUuids, ...storedUuids])];
-		const result =
-			mergedUuids
-				.map((uuid) => {
-					const doc = foundry.utils.fromUuidSync(uuid, { strict: false });
-					if (!doc) return null;
-					const isToken = doc.documentName === "Token";
-					const actor = isToken ? doc.actor : doc;
-					return actor ? { uuid, actor, tokenDoc: isToken ? doc : null } : null;
-				})
-				.filter(Boolean)
-				.map(({ uuid, actor, tokenDoc }) => ({
-					// Concealed challenges show their alias to non-GM viewers
-					name: actor.system.maskedName ?? tokenDoc?.name ?? actor.name,
-					type: actor.type,
-					img:
-						tokenDoc?.texture?.src ||
-						actor.prototypeToken?.texture?.src ||
-						actor.img,
-					id: uuid,
-					actorId: uuid.replaceAll(".", "__"),
-					isOwner: actor.isOwner,
-					isUserCharacter:
-						userCharacterUuids.has(actor.uuid) || actor.uuid === fellowshipUuid,
-					hidden: (this.config.hiddenActors ?? []).includes(uuid),
-					tags: [
-						...(actor.system.storyTags ?? []),
-						...(actor.system.statusEffects ?? []),
-					]
-						.filter((e) => !e.disabled)
-						.filter((e) => game.user.isGM || !(e.system?.isHidden ?? false))
-						.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
-						.map(mapEffectForUI),
-				}))
-				.filter((actor) => game.user.isGM || !actor.hidden) || [];
-		disambiguateNames(result);
-		this.#cachedActors = result;
-		return result;
+		return StoryTagsStore.actors;
 	}
 
 	get tags() {
-		const effects = this.#packStoryTags;
-		return effects
-			.filter((e) => game.user.isGM || !e.system.isHidden)
-			.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
-			.map(mapEffectForUI);
+		return StoryTagsStore.tags;
 	}
 
 	get storyLimits() {
-		return this.config.limits ?? [];
+		return StoryTagsStore.storyLimits;
 	}
 
 	/* -------------------------------------------- */
@@ -377,12 +292,11 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				};
 
 		if (target === "story") {
-			if (game.user.isGM) {
-				const [created] = await ContentSources.createStoryTags([effectData]);
-				this._editOnRender = created._id;
-				return this.#broadcastRender();
-			}
-			return this.#broadcastUpdate("createTags", [effectData]);
+			return this.#storyTagOp("createTags", [effectData], {
+				beforeRender: ([created]) => {
+					if (created) this._editOnRender = created._id;
+				},
+			});
 		}
 
 		// Actor tags still use the legacy shape for #addTagToActor
@@ -432,7 +346,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		// Scene load button visibility
 		if (game.user.isGM) {
-			const sceneData = canvas.scene?.getFlag("litmv2", "sceneTags");
+			const sceneData = canvas.scene?.getFlag("litmv2", FLAGS.sceneTags);
 			context.hasSceneTags = !!(
 				sceneData?.tags?.length || sceneData?.limits?.length
 			);
@@ -738,23 +652,6 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			},
 			true,
 		);
-
-		// Register cache-busting hooks so the sidebar stays fresh when
-		// actors, effects, or items change without explicit invalidateCache() calls.
-		const invalidate = () => this.invalidateCache();
-		const hooks = [
-			"updateActor",
-			"createActiveEffect",
-			"updateActiveEffect",
-			"deleteActiveEffect",
-			"createItem",
-			"updateItem",
-			"deleteItem",
-		];
-		this.#cacheHookIds = hooks.map((name) => [
-			name,
-			Hooks.on(name, invalidate),
-		]);
 	}
 
 	async _onRender(context, options) {
@@ -819,8 +716,6 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	_onClose(options) {
 		this._flushActiveInput();
-		for (const [name, id] of this.#cacheHookIds) Hooks.off(name, id);
-		this.#cacheHookIds = [];
 		return super._onClose(options);
 	}
 
@@ -865,7 +760,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		if (!["Actor", "story_tag", "status_tag"].includes(data.type)) return;
 
-		if (data.type === "story_tag" || data.type === "status_tag") {
+		if (ACTOR_TAG_TYPES.has(data.type)) {
 			return this.#handleEffectDrop(dragEvent, data);
 		}
 		return this.#handleActorDrop(data);
@@ -926,22 +821,17 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (source === "story") {
 			// Same container — update limitId on existing pack AE
 			if (data.sourceId) {
-				const update = [{ _id: data.sourceId, "system.limitId": limitId }];
-				if (game.user.isGM) await ContentSources.updateStoryTags(update);
-				else this.#broadcastUpdate("updateTags", update);
-				this.#broadcastRender();
-				return;
+				return this.#storyTagOp("updateTags", [
+					{ _id: data.sourceId, "system.limitId": limitId },
+				]);
 			}
 			// External — create new pack AE with limitId
 			const effectData = ContentSources.legacyTagToEffectData({
 				...data,
 				limitId,
 			});
-			if (game.user.isGM) {
-				await ContentSources.createStoryTags([effectData]);
-			} else this.#broadcastUpdate("createTags", [effectData]);
+			await this.#storyTagOp("createTags", [effectData]);
 			if (data.sourceContainer) await this.#removeFromSource(data);
-			this.#broadcastRender();
 			return;
 		}
 
@@ -998,11 +888,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				effect?.system?.limitId &&
 				!dropTarget?.closest(".litm--limit-group")
 			) {
-				const update = [{ _id: data.sourceId, "system.limitId": null }];
-				if (game.user.isGM) await ContentSources.updateStoryTags(update);
-				else this.#broadcastUpdate("updateTags", update);
-				this.#broadcastRender();
-				return;
+				return this.#storyTagOp("updateTags", [
+					{ _id: data.sourceId, "system.limitId": null },
+				]);
 			}
 		}
 		return this.#sortTag(data, dropTarget);
@@ -1025,10 +913,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		}
 
 		const effectData = ContentSources.legacyTagToEffectData(data);
-		if (game.user.isGM) await ContentSources.createStoryTags([effectData]);
-		else this.#broadcastUpdate("createTags", [effectData]);
-		await this.#removeFromSource(data);
-		return this.#broadcastRender();
+		await this.#storyTagOp("createTags", [effectData]);
+		return this.#removeFromSource(data);
 	}
 
 	/**
@@ -1079,7 +965,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/* -------------------------------------------- */
 
 	async onSubmit(_event, _form, formData) {
-		this.#cachedActors = null;
+		this.invalidateCache();
 		const data = foundry.utils.expandObject(formData.object);
 		if (foundry.utils.isEmpty(data)) return;
 
@@ -1200,7 +1086,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		const isStatus = parsed.type === "status_tag";
 		const values = isStatus
-			? Array.from({ length: 6 }, (_, i) => i === parsed.tier - 1)
+			? StatusTagData.oneHot(parsed.tier)
 			: Array(6)
 					.fill()
 					.map(() => null);
@@ -1219,12 +1105,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		if (sectionId === "story") {
 			const effectData = ContentSources.legacyTagToEffectData(tag);
-			if (game.user.isGM) {
-				await ContentSources.createStoryTags([effectData]);
-				this.#broadcastRender();
-			} else {
-				this.#broadcastUpdate("createTags", [effectData]);
-			}
+			await this.#storyTagOp("createTags", [effectData]);
 		} else {
 			await this.#addTagToActor({ id: sectionId, tag });
 		}
@@ -1371,7 +1252,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/* -------------------------------------------- */
 
 	static async #onLoadSceneTags(_event, _target) {
-		const sceneData = canvas.scene?.getFlag("litmv2", "sceneTags");
+		const sceneData = canvas.scene?.getFlag("litmv2", FLAGS.sceneTags);
 		if (!sceneData) return;
 
 		const config = this.config;
@@ -1461,21 +1342,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	async _toggleTagVisibility(id) {
 		const effect = this.#packStoryTags.find((e) => e._id === id);
 		if (!effect) return;
-		const newHidden = !effect.system.isHidden;
-		if (game.user.isGM) {
-			await ContentSources.updateStoryTags([
-				{
-					_id: id,
-					"system.isHidden": newHidden,
-				},
-			]);
-			return this.#broadcastRender();
-		}
-		return this.#broadcastUpdate("updateTags", [
-			{
-				_id: id,
-				"system.isHidden": newHidden,
-			},
+		return this.#storyTagOp("updateTags", [
+			{ _id: id, "system.isHidden": !effect.system.isHidden },
 		]);
 	}
 
@@ -1527,25 +1395,17 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			if (!effect.system.tiers.some(Boolean)) return;
 
 			const newTiers = effect.system.calculateReduction(1);
-			await ContentSources.updateStoryTags([
-				{
-					_id: tagId,
-					"system.tiers": newTiers,
-				},
+			return this.#storyTagOp("updateTags", [
+				{ _id: tagId, "system.tiers": newTiers },
 			]);
-			return this.#broadcastRender();
 		} else {
 			const actor = this.#resolveActor(source);
 			if (!actor?.isOwner) return;
 
 			const effect = resolveEffect(tagId, actor);
 			if (!effect || effect.type !== "status_tag") return;
-			if (!effect.system.tiers.some(Boolean)) return;
 
-			const newTiers = effect.system.calculateReduction(1);
-			await effect.parent.updateEmbeddedDocuments("ActiveEffect", [
-				{ _id: tagId, "system.tiers": newTiers },
-			]);
+			await effect.system.reduceTier(1);
 			await this.#triggerLimitRecalc(source);
 			this.#broadcastRender();
 		}
@@ -1571,9 +1431,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (!data.sourceContainer || !data.sourceId) return;
 
 		if (data.sourceContainer === "story") {
-			if (game.user.isGM) await ContentSources.deleteStoryTags([data.sourceId]);
-			else this.#broadcastUpdate("deleteTags", [data.sourceId]);
-			return this.#broadcastRender();
+			return this.#storyTagOp("deleteTags", [data.sourceId]);
 		}
 
 		const actor = this.#resolveActor(data.sourceContainer);
@@ -1644,11 +1502,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			sort: update.sort,
 		}));
 
-		if (updates.length) {
-			if (game.user.isGM) await ContentSources.updateStoryTags(updates);
-			else this.#broadcastUpdate("updateTags", updates);
-		}
-		return this.#broadcastRender();
+		if (!updates.length) return this.#broadcastRender();
+		return this.#storyTagOp("updateTags", updates);
 	}
 
 	async removeTag(target) {
@@ -1656,11 +1511,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const type = target.dataset.type;
 
 		if (type === "story") {
-			if (game.user.isGM) {
-				await ContentSources.deleteStoryTags([id]);
-				return this.#broadcastRender();
-			}
-			return this.#broadcastUpdate("deleteTags", [id]);
+			return this.#storyTagOp("deleteTags", [id]);
 		}
 		return this.#removeTagFromActor({ actorId: type, id });
 	}
@@ -1668,11 +1519,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	async #removeAllTags() {
 		const tags = this.#packStoryTags;
 		if (!tags.length || !(await confirmDelete())) return;
-		if (game.user.isGM) {
-			await ContentSources.deleteStoryTags(tags.map((t) => t._id));
-			return this.#broadcastRender();
-		}
-		return this.#broadcastUpdate(
+		return this.#storyTagOp(
 			"deleteTags",
 			tags.map((t) => t._id),
 		);
@@ -1691,43 +1538,27 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			});
 		}
 
-		// Determine whether the incoming tag is a status or a story tag
-		const hasValues = Array.isArray(tag.values)
-			? tag.values.some((v) => v !== null && v !== false && v !== "")
-			: false;
-		const isStatus = tag.type === "status_tag" || hasValues;
+		const isStatus = isStatusDescriptor(tag);
 
-		const tiers = toTiers(tag.values);
-
-		const effectData = isStatus
-			? statusTagEffect({
-					name: tag.name,
-					tiers,
+		// Statuses go through the canonical entry so same-name statuses stack
+		// (case-insensitively) instead of duplicating; story tags go through
+		// addStoryTag so heroes route them into the backpack.
+		const created = isStatus
+			? await actor.system.addStatus(tag.name, {
+					tiers: toTiers(tag.values),
 					isHidden: game.user.isGM,
 					limitId: tag.limitId,
 				})
-			: storyTagEffect({
-					name: tag.name,
-					isScratched: tag.isScratched ?? false,
-					isSingleUse: tag.isSingleUse ?? false,
-					isHidden: game.user.isGM,
-					limitId: tag.limitId,
-				});
-
-		// For heroes, addStoryTag routes story tags through the backpack
-		if (!isStatus) {
-			const created = await actor.system.addStoryTag(effectData);
-			if (created?.[0]) this._editOnRender = created[0].id;
-			await this.#triggerLimitRecalc(id);
-			return this.#broadcastRender();
-		}
-
-		// Statuses are always created directly on the actor
-		const maxSort = Math.max(0, ...actor.effects.map((e) => e.sort ?? 0));
-		const [created] = await actor.createEmbeddedDocuments("ActiveEffect", [
-			{ ...effectData, sort: maxSort + 1000 },
-		]);
-		if (created) this._editOnRender = created.id;
+			: await actor.system.addStoryTag(
+					storyTagEffect({
+						name: tag.name,
+						isScratched: tag.isScratched ?? false,
+						isSingleUse: tag.isSingleUse ?? false,
+						isHidden: game.user.isGM,
+						limitId: tag.limitId,
+					}),
+				);
+		if (created?.[0]) this._editOnRender = created[0].id;
 		await this.#triggerLimitRecalc(id);
 		return this.#broadcastRender();
 	}
@@ -1754,7 +1585,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		// User-assigned characters and the fellowship can't be removed from the sidebar
 		const actor = this.#resolveActor(id);
-		if (actor && this.#userCharacterUuids.has(actor.uuid)) {
+		if (actor && StoryTagsStore.userCharacterUuids.has(actor.uuid)) {
 			return ui.notifications.warn("LITM.Ui.warn_user_character", {
 				localize: true,
 			});
@@ -1777,6 +1608,29 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	#broadcastUpdate(operation, data) {
 		return Sockets.dispatch("storyTagsUpdate", { operation, data });
+	}
+
+	/**
+	 * Apply a story-pack operation through the GM/player fork: GMs write the
+	 * pack directly and broadcast a render; players broadcast a socket request
+	 * and the GM client's {@link doUpdate} applies it (and broadcasts the
+	 * render after the write, so a premature local render never shows stale
+	 * pack data). Single entry for every pack mutation.
+	 * @param {"createTags"|"updateTags"|"deleteTags"} operation
+	 * @param {object[]|string[]} data
+	 * @param {object} [options]
+	 * @param {(result: any) => void} [options.beforeRender]
+	 *        GM-side hook between the write and the render (e.g. marking a
+	 *        created tag for auto-focus). Players never see the write result.
+	 */
+	async #storyTagOp(operation, data, { beforeRender } = {}) {
+		if (game.user.isGM) {
+			const result = await STORY_TAG_OPERATIONS[operation](data);
+			beforeRender?.(result);
+			this.#broadcastRender();
+			return result;
+		}
+		return this.#broadcastUpdate(operation, data);
 	}
 
 	#broadcastRender() {

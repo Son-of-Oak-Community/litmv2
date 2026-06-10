@@ -4416,9 +4416,11 @@ section.standard-form.litm-actions-app {
 	border-top: var(--hr-border);
 }
 
-/* Between actors of the same category */
+/* Between actors of the same category — wide enough that a section's
+   trailing quick-add row reads as belonging to the section above it,
+   not to the next header */
 .litm--grid-col section[data-actor-type] + section[data-actor-type] {
-	margin-top: var(--spacer-4);
+	margin-top: var(--spacer-8);
 }
 
 .litm--story-tags .litm--section-header {
@@ -4528,22 +4530,11 @@ section.standard-form.litm-actions-app {
 	}
 }
 
-.litm--story-tags .litm--add-actor-btn {
-	margin: var(--spacer-4) 4px;
-	flex: none;
-	font-size: var(--font-size-11);
-	opacity: 0.75;
-}
-
 .litm--story-tags .litm--add-actor-btn:hover {
 	opacity: 1;
 }
 
 @container (min-width: 480px) {
-	.litm--story-tags .litm--add-actor-btn {
-		margin: var(--spacer-8) var(--spacer-12);
-	}
-
 	.litm--story-tags .litm--quick-add-input {
 		border-radius: var(--border-radius) 0 0 var(--border-radius);
 	}
@@ -4553,20 +4544,13 @@ section.standard-form.litm-actions-app {
 	}
 }
 
-@container (min-width: 720px) {
-	.litm--story-tags .litm--add-actor-btn {
-		width: calc(100% / 3);
-		margin: 0px auto var(--spacer-4);
-	}
-}
-
 .litm--story-tags .litm--load-scene-btns {
 	margin: 0 4px var(--spacer-4);
 	gap: var(--spacer-4);
 	flex: none;
 }
 
-.litm--story-tags .litm--load-scene-btn {
+.litm--story-tags :is(.litm--load-scene-btn, .litm--add-actor-btn) {
 	flex: 1;
 	font-size: var(--font-size-11);
 	opacity: 0.75;
@@ -4578,6 +4562,8 @@ section.standard-form.litm-actions-app {
 
 @container (min-width: 480px) {
 	.litm--story-tags .litm--load-scene-btns {
+		flex-direction: row;
+		align-items: center;
 		margin: 0 var(--spacer-12) var(--spacer-4);
 	}
 }
@@ -4891,12 +4877,14 @@ section.standard-form.litm-actions-app {
 	overflow: hidden;
 }
 
-/* Quick-add row — compact input + button matching old action-button height */
+/* Quick-add row — compact input + button matching old action-button height.
+   Side margins match the tag list so the row indents under its own section
+   header instead of spanning header-width. */
 .litm--section-actions-bottom {
 	display: flex;
 	align-items: stretch;
-	gap: 0;
-	margin-top: 2px;
+	gap: 0px;
+	margin: 2px 0px 0px;
 }
 
 input[type="text"].litm--quick-add-input,
@@ -6451,7 +6439,7 @@ body.litm--colorblind .themed.theme-dark,
 
 .litm--scene-tag-dialog .litm--section-actions-bottom {
 	flex: none;
-	margin-top: var(--spacer-8);
+	margin: var(--spacer-8) 0 0;
 }
 
 .litm--scene-tag-dialog .litm--quick-add-input {

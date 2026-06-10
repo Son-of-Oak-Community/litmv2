@@ -11,6 +11,16 @@ export function ScratchableMixin(Base) {
 		async toggleScratch() {
 			return this.parent.update({ "system.isScratched": !this.isScratched });
 		}
+
+		/**
+		 * Set the scratch state absolutely (no-op when already there). Prefer
+		 * this over toggleScratch when the caller wants a known end state.
+		 * @param {boolean} value
+		 */
+		async setScratched(value) {
+			if (!!this.isScratched === !!value) return;
+			return this.parent.update({ "system.isScratched": !!value });
+		}
 	};
 }
 

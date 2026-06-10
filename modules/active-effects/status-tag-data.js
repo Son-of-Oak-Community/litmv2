@@ -52,6 +52,52 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 		return this.currentTier;
 	}
 
+	/**
+	 * A 6-slot tiers array with exactly the given tier (1-based) marked.
+	 * Out-of-range tiers yield an all-false (tier-less) array.
+	 * @param {number} tier
+	 * @returns {boolean[]}
+	 */
+	static oneHot(tier) {
+		return Array.from({ length: 6 }, (_, i) => i + 1 === tier);
+	}
+
+	/**
+	 * Toggle a single tier box (1-based) and persist to the owning effect.
+	 * @param {number} tier
+	 * @param {object} [options]
+	 * @param {boolean} [options.deleteOnEmpty=false]
+	 *        Delete the effect when no tier remains marked (token HUD /
+	 *        spend-power policy) instead of keeping a tier-less status
+	 *        (sheet / sidebar policy).
+	 * @returns {Promise<ActiveEffect|void>}
+	 */
+	async toggleTier(tier, { deleteOnEmpty = false } = {}) {
+		const index = tier - 1;
+		if (index < 0 || index >= 6) return;
+		const newTiers = [...this.tiers];
+		newTiers[index] = !newTiers[index];
+		return this.#persistTiers(newTiers, deleteOnEmpty);
+	}
+
+	/**
+	 * Reduce all marked tiers by `amount` and persist to the owning effect.
+	 * No-op when nothing is marked.
+	 * @param {number} [amount=1]
+	 * @param {object} [options]
+	 * @param {boolean} [options.deleteOnEmpty=false]  See {@link toggleTier}.
+	 * @returns {Promise<ActiveEffect|void>}
+	 */
+	async reduceTier(amount = 1, { deleteOnEmpty = false } = {}) {
+		if (!this.tiers.some(Boolean)) return;
+		return this.#persistTiers(this.calculateReduction(amount), deleteOnEmpty);
+	}
+
+	async #persistTiers(newTiers, deleteOnEmpty) {
+		if (deleteOnEmpty && !newTiers.some(Boolean)) return this.parent.delete();
+		return this.parent.update({ "system.tiers": newTiers });
+	}
+
 	static markTier(tiers, tier) {
 		const index = tier - 1;
 		if (index < 0 || index >= 6) return [...tiers];

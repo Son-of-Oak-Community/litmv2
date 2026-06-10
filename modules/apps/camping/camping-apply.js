@@ -1,7 +1,7 @@
 import { relationshipTagEffect } from "../../active-effects/effect-factories.js";
 import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { parseTagString } from "../../item/action/tag-string.js";
-import { detectTrackCompletion } from "../../system/chat.js";
+import { completeTrackUpdate, fireTrackCompletion } from "../../system/chat.js";
 import { Sockets } from "../../system/sockets.js";
 import { findFellowshipTheme, getStoryTagSidebar } from "../../utils.js";
 import { ensureHeroState } from "./camping-state.js";
@@ -547,17 +547,7 @@ export async function applyOperations(operations) {
 	// track max, so the third mark lands exactly on the boundary
 	// `detectTrackCompletion` checks.
 	for (const { theme, owner, newValue } of operations.improves) {
-		await owner.updateEmbeddedDocuments("Item", [
-			{ _id: theme.id, "system.improve.value": newValue },
-		]);
-		const trackInfo = detectTrackCompletion(
-			"system.improve.value",
-			newValue,
-			theme,
-			owner,
-		);
-		if (trackInfo)
-			Hooks.callAll("litm.trackCompleted", { actor: owner, trackInfo });
+		await completeTrackUpdate(theme, "system.improve.value", newValue, owner);
 	}
 
 	// Abandon / Milestone Quest marks from Reflect — same clamp +
@@ -570,17 +560,13 @@ export async function applyOperations(operations) {
 		newValue,
 		sourceHero,
 	} of operations.questMarks) {
-		const attrib = `system.${track}.value`;
-		await owner.updateEmbeddedDocuments("Item", [
-			{ _id: theme.id, [attrib]: newValue },
-		]);
-		const trackInfo = detectTrackCompletion(attrib, newValue, theme, owner);
-		if (trackInfo) {
-			Hooks.callAll("litm.trackCompleted", {
-				actor: sourceHero ?? owner,
-				trackInfo,
-			});
-		}
+		await completeTrackUpdate(
+			theme,
+			`system.${track}.value`,
+			newValue,
+			owner,
+			sourceHero,
+		);
 	}
 
 	// Sojourn-mode Improvements — fill the improve track and fire
@@ -601,22 +587,15 @@ export async function applyOperations(operations) {
 	for (const { theme, owner, sourceHero } of operations.improvements) {
 		const current = theme.system?.improve?.value ?? 0;
 		if (current < improveMax) {
-			await owner.updateEmbeddedDocuments("Item", [
-				{ _id: theme.id, "system.improve.value": improveMax },
-			]);
+			await theme.update({ "system.improve.value": improveMax });
 		}
-		const trackInfo = detectTrackCompletion(
+		fireTrackCompletion(
 			"system.improve.value",
 			improveMax,
 			theme,
 			owner,
+			sourceHero,
 		);
-		if (trackInfo) {
-			Hooks.callAll("litm.trackCompleted", {
-				actor: sourceHero ?? owner,
-				trackInfo,
-			});
-		}
 	}
 
 	// Relationship creations — batch per hero actor.

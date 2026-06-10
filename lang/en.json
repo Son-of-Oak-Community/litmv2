@@ -105,6 +105,7 @@
 			"practitioners_hint": "Who can perform this rote (e.g., Sorcerers, Bards).",
 			"practitioners_placeholder": "Sorcerers, Bards, …",
 			"push_consequence_hint": "Push Your Luck deals exactly one consequence. Pick which one applies.",
+			"react_no_hero": "No hero to react with — assign a character to your user first.",
 			"ref_not_found": "Couldn't find the linked reference.",
 			"remove_example": "Remove example",
 			"remove_extra_feat": "Remove Extra Feat",

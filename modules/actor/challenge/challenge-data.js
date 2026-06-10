@@ -1,3 +1,4 @@
+import { syncTagStringEffects } from "../../item/action/tag-string.js";
 import { advanceSystemLimit } from "../mixins/actor-limits.js";
 import { EffectTagsMixin } from "../mixins/effect-tags-mixin.js";
 import { LimitsMixin } from "../mixins/limits-mixin.js";
@@ -244,5 +245,15 @@ export class ChallengeData extends LimitsMixin(
 	 */
 	async advanceLimit(limitId, delta) {
 		return advanceSystemLimit(this.parent, limitId, delta);
+	}
+
+	/**
+	 * Converge this challenge's story/status effects onto bracket tag markup.
+	 * Used by the edit→play mode sync; also callable from macros.
+	 * @param {string} tagsString
+	 * @returns {Promise<void>}
+	 */
+	async syncEffectsFromTagString(tagsString) {
+		return syncTagStringEffects(this.parent, tagsString);
 	}
 }

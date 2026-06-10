@@ -1,4 +1,7 @@
-import { resolveEffect } from "../active-effects/effect-queries.js";
+import {
+	isEffectVisible,
+	resolveEffect,
+} from "../active-effects/effect-queries.js";
 import { ContentSources } from "../system/content-sources.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
 
@@ -30,7 +33,10 @@ export class LitmTokenHUD extends TokenHUD {
 		if (!palette) return;
 		const html = await foundry.applications.handlebars.renderTemplate(
 			"systems/litmv2/templates/hud/token-hud-effects.html",
-			{ statusEffects: context.statusEffects },
+			{
+				statusEffects: context.statusEffects,
+				statusRows: context.statusRows,
+			},
 		);
 		palette.innerHTML = html;
 	}
@@ -77,7 +83,35 @@ export class LitmTokenHUD extends TokenHUD {
 		context.sidebarTooltip = isLocked
 			? t("LITM.Hud.sidebar_locked")
 			: t("LITM.Hud.toggle_sidebar");
+		context.statusRows = this.#getStatusRows();
 		return context;
+	}
+
+	/** All status_tag effects on the actor this user may see. */
+	*#visibleStatusEffects() {
+		if (!this.actor) return;
+		for (const effect of this.actor.allApplicableEffects()) {
+			if (effect.type !== "status_tag") continue;
+			if (!isEffectVisible(effect)) continue;
+			yield effect;
+		}
+	}
+
+	/**
+	 * Tier rows rendered below the icon grid — one per visible active
+	 * status_tag, whether or not its name matches a CONFIG.statusEffects icon.
+	 */
+	#getStatusRows() {
+		const rows = [];
+		for (const effect of this.#visibleStatusEffects()) {
+			rows.push({
+				title: effect.name,
+				effectId: effect.id,
+				tiers: [...effect.system.tiers],
+				currentTier: effect.system.currentTier,
+			});
+		}
+		return rows;
 	}
 
 	#isInSidebar() {
@@ -128,24 +162,17 @@ export class LitmTokenHUD extends TokenHUD {
 				isActive: false,
 				isOverlay: false,
 				cssClass: "",
-				tiers: null,
-				currentTier: 0,
 			};
 		}
 
-		// Match active status_tag effects on the actor by name
-		const activeEffects = this.actor
-			? [...this.actor.allApplicableEffects()]
-			: [];
-		for (const effect of activeEffects) {
-			if (effect.type !== "status_tag") continue;
-			const slug = effect.name.slugify({ strict: true });
-			const status = choices[slug];
+		// Mark grid icons whose name matches a visible active status_tag.
+		// Tier rows are built separately in #getStatusRows — they cover all
+		// statuses, matched or not.
+		for (const effect of this.#visibleStatusEffects()) {
+			const status = choices[effect.name.slugify({ strict: true })];
 			if (!status) continue;
 			status.isActive = true;
 			status.effectId = effect.id;
-			status.tiers = [...effect.system.tiers];
-			status.currentTier = effect.system.currentTier;
 		}
 
 		for (const status of Object.values(choices)) {
@@ -249,23 +276,10 @@ export class LitmTokenHUD extends TokenHUD {
 
 		// Right-click: reduce by 1
 		if (event.button === 2) {
-			if (!effect.system.tiers.some(Boolean)) return;
-			const newTiers = effect.system.calculateReduction(1);
-			if (newTiers.every((t) => !t)) {
-				await this.actor.system.removeStatus(effectId);
-				return;
-			}
-			await effect.update({ "system.tiers": newTiers });
-			return;
+			return effect.system.reduceTier(1, { deleteOnEmpty: true });
 		}
 
 		// Left-click: toggle the individual tier box
-		const newTiers = [...effect.system.tiers];
-		newTiers[tier - 1] = !newTiers[tier - 1];
-		if (newTiers.every((t) => !t)) {
-			await this.actor.system.removeStatus(effectId);
-			return;
-		}
-		await effect.update({ "system.tiers": newTiers });
+		await effect.system.toggleTier(tier, { deleteOnEmpty: true });
 	}
 }
