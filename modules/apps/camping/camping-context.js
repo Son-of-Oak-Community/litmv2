@@ -1,10 +1,7 @@
 import { ACTOR_TYPES } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
-import {
-	findFellowshipTheme,
-	getStoryTagSidebar,
-	localize as t,
-} from "../../utils.js";
+import { findFellowshipTheme, localize as t } from "../../utils.js";
+import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 import { defaultCampingState, ensureHeroState } from "./camping-state.js";
 
 const ONCE_PER_SCENE = new Set(["rest", "reflect"]);
@@ -409,9 +406,7 @@ export function stepIsComplete(stepId, heroes) {
  */
 export function buildSceneStoryTags(campId) {
 	if (!campId) return [];
-	const sidebar = getStoryTagSidebar();
-	const sceneEffects = sidebar?.sceneStoryEffects ?? [];
-	return sceneEffects
+	return StoryTagsStore.sceneStoryEffects
 		.filter((e) => e.getFlag?.("litmv2", "campId") === campId)
 		.map((e) => ({
 			id: e.id,
@@ -435,8 +430,7 @@ export function buildPlaceOfStayContext(state) {
 		threats: [],
 		sceneTagsToExpire: [],
 	};
-	const sidebar = getStoryTagSidebar();
-	const sceneTags = (sidebar?.sceneStoryEffects ?? []).map((e) => ({
+	const sceneTags = StoryTagsStore.sceneStoryEffects.map((e) => ({
 		id: e.id,
 		name: e.name,
 		markedForExpiry: placeOfStay.sceneTagsToExpire.includes(e.id),

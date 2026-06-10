@@ -6,8 +6,7 @@
 		{{#if status.title}}data-tooltip-text="{{status.title}}" alt="{{status.title}}"{{else}}alt=""{{/if}}>
 	{{/each}}
 </div>
-{{#each statusEffects as |status|}}
-{{#if status.isActive}}
+{{#each statusRows as |status|}}
 <span class="litm-status litm-hud-active" data-text="{{status.title}}{{#if status.currentTier}}-{{status.currentTier}}{{/if}}" data-effect-id="{{status.effectId}}">
 	<span>{{status.title}}{{#if status.currentTier}}-{{status.currentTier}}{{/if}}</span>
 	<span class="litm--tag-item-status" data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}">
@@ -18,5 +17,4 @@
 		{{/each}}
 	</span>
 </span>
-{{/if}}
 {{/each}}

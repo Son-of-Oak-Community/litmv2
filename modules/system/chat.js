@@ -82,6 +82,55 @@ export function detectTrackCompletion(attrib, newValue, doc, actor) {
 	return null;
 }
 
+/**
+ * Detect a track completion and fire `litm.trackCompleted` for it.
+ * Use after the track value has already been written (e.g. as part of a
+ * composite update); prefer {@link completeTrackUpdate} when the write is a
+ * plain single-path set.
+ * @param {string} attrib       The attribute path that was updated
+ * @param {number} value        The new value
+ * @param {Document} doc        The document that was updated (actor or theme item)
+ * @param {Actor} owner         The actor owning the track
+ * @param {Actor} [notifyActor] Actor for the hook payload, when the completion
+ *                              should be attributed to someone other than the
+ *                              track owner (e.g. the hero whose Reflect marked
+ *                              a fellowship theme)
+ * @returns {object|null}       The trackInfo that was fired, or null
+ */
+export function fireTrackCompletion(attrib, value, doc, owner, notifyActor) {
+	const trackInfo = detectTrackCompletion(attrib, value, doc, owner);
+	if (trackInfo) {
+		Hooks.callAll("litm.trackCompleted", {
+			actor: notifyActor ?? owner,
+			trackInfo,
+		});
+	}
+	return trackInfo;
+}
+
+/**
+ * Canonical "mark a track" write: set the value, detect completion, fire
+ * `litm.trackCompleted`. Every surface that fills track boxes (sheets,
+ * camping, improvements, macros) should go through this so the completion
+ * chat card semantics live in one place.
+ * @param {Document} doc        The document holding the track (actor or theme item)
+ * @param {string} attrib       The attribute path to set
+ * @param {number} value        The new value
+ * @param {Actor} owner         The actor owning the track
+ * @param {Actor} [notifyActor] See {@link fireTrackCompletion}
+ * @returns {Promise<object|null>} The trackInfo that was fired, or null
+ */
+export async function completeTrackUpdate(
+	doc,
+	attrib,
+	value,
+	owner,
+	notifyActor,
+) {
+	await doc.update({ [attrib]: value });
+	return fireTrackCompletion(attrib, value, doc, owner, notifyActor);
+}
+
 const FOOTER_BY_TYPE = {
 	improve: {
 		click: "open-theme-advancement",

@@ -12,7 +12,11 @@ import {
 	ITEM_TYPES,
 } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
-import { levelIcon, queryItemsFromPacks } from "../../utils.js";
+import {
+	findFellowshipTheme,
+	levelIcon,
+	queryItemsFromPacks,
+} from "../../utils.js";
 
 /**
  * Summary data for each linked hero in the fellowship.
@@ -167,9 +171,7 @@ export class FellowshipSheet extends LitmActorSheet {
 		const enriched = await this._enrichFields("description");
 
 		// Prepare fellowship theme (single theme item with isFellowship)
-		const themeItem = this.document.items.find(
-			(i) => i.type === "theme" && i.system.isFellowship,
-		);
+		const themeItem = findFellowshipTheme(this.document);
 		const theme = themeItem ? this._prepareThemeData(themeItem) : null;
 		if (theme) await this._prepareThemeImprovements(theme);
 

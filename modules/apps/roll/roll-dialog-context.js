@@ -4,9 +4,13 @@
  * the rendered application.
  */
 
-import { effectToPlain } from "../../active-effects/effect-queries.js";
+import {
+	effectToPlain,
+	isEffectVisible,
+} from "../../active-effects/effect-queries.js";
 import { ACTOR_TAG_TYPES, EFFECT_GROUP_LABELS } from "../../system/config.js";
 import { localize as t } from "../../utils.js";
+import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 
 /**
  * Stable sort: tag-type bucket first (per `EFFECT_TAG_ORDER`), then name
@@ -20,6 +24,162 @@ export const sortByTypeThenName = (tags, typeOrder) =>
 		if (typeA !== typeB) return typeA - typeB;
 		return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
 	});
+
+/**
+ * Build the row decorator every tag list shares: selection state, lock
+ * rules, the super-checkbox state cycle, and action-suggestion highlights.
+ *
+ * @param {object} opts
+ * @param {boolean} opts.isOwner   Whether the viewer owns the rolling actor
+ * @param {Set<string>} [opts.positiveSuggestedIds]  Tag ids the linked action suggests as helpful
+ * @param {Set<string>} [opts.negativeSuggestedIds]  Tag ids the linked action suggests as hindering
+ * @returns {(tag: object) => object}
+ */
+export function makeTagDecorator({
+	isOwner,
+	positiveSuggestedIds = new Set(),
+	negativeSuggestedIds = new Set(),
+}) {
+	const currentUserId = game.user.id;
+	const isGM = game.user.isGM;
+	return (tag) => {
+		const contributorId = tag.contributorId || null;
+		const isOpposition =
+			tag.actorType === "challenge" || tag.actorType === "journey";
+		// Already-scratched (unavailable) tags cannot be invoked or re-burned;
+		// lock the row so the super-checkbox has no valid transitions.
+		const isUnavailable = tag.system?.isScratched === true;
+		// Narrator-only inversion (Core Book p.76): power/weakness tags
+		// expose a wider cycle for the GM. Players see the natural-polarity
+		// cycle only — `playerAllowedStates` falls back to `allowedStates`
+		// for tag types that aren't restricted.
+		const baseStates =
+			!isGM && tag.system?.playerAllowedStates
+				? tag.system.playerAllowedStates
+				: (tag.system?.allowedStates ?? tag.states ?? ",positive,negative");
+		const states = isUnavailable
+			? ""
+			: isOpposition
+				? ",negative,positive"
+				: baseStates;
+		const tagId = tag.id ?? tag._id;
+		return {
+			...tag,
+			_id: tag._id ?? tag.id,
+			id: tagId,
+			key: tag.uuid ?? tag.id ?? tag._id,
+			contributorId,
+			displayName: tag.displayName || tag.name,
+			locked:
+				isUnavailable ||
+				(!isOwner && contributorId && contributorId !== currentUserId),
+			isUnavailable,
+			states,
+			value:
+				tag.type === "status_tag"
+					? (tag.system?.currentTier ?? tag.value ?? 0)
+					: undefined,
+			isPositiveSuggestion: positiveSuggestedIds.has(tagId),
+			isNegativeSuggestion: negativeSuggestedIds.has(tagId),
+		};
+	};
+}
+
+/**
+ * Insert a decorated tag into a theme-group map keyed by
+ * `themeId ?? '__' + type` — the grouping shape shared by the contributed
+ * panel and the GM viewer tabs.
+ */
+function pushThemeGroup(themeMap, rawTag, themeImg, tag) {
+	const key = rawTag.themeId ?? `__${rawTag.type}`;
+	const label = rawTag.themeName ?? rawTag.type;
+	if (!themeMap.has(key)) {
+		themeMap.set(key, { themeName: label, themeImg, tags: [] });
+	}
+	themeMap.get(key).tags.push(tag);
+}
+
+/**
+ * Build contributed tag groups from other characters' selections.
+ * Owners see every helper's claimed tags grouped per contributor/theme;
+ * non-owner players see their own character's tags so they can contribute.
+ *
+ * @param {LitmRollDialog} dialog
+ * @param {object} shared  Shared context utilities from _prepareContext
+ * @returns {object[]} contributedTagGroups array
+ */
+export function buildContributedTagGroups(
+	dialog,
+	{ decorateTag, tagTypeOrder, isOwner },
+) {
+	const contributedActorMap = new Map();
+	const ensureActorEntry = (key, name, img) => {
+		if (!contributedActorMap.has(key)) {
+			contributedActorMap.set(key, {
+				actorName: name,
+				actorImg: img,
+				themeMap: new Map(),
+			});
+		}
+		return contributedActorMap.get(key).themeMap;
+	};
+
+	if (isOwner) {
+		for (const [effectId, sel] of dialog.selections) {
+			if (!sel.contributorActorId || !sel.state) continue;
+			const actor = game.actors.get(sel.contributorActorId);
+			if (!actor) continue;
+			const allTags = (actor.system.allRollTags ?? []).map(effectToPlain);
+			const rawTag = allTags.find((t) => t.uuid === effectId);
+			if (!rawTag) continue;
+			const tag = decorateTag({
+				...rawTag,
+				state: sel.state,
+				contributorId: sel.contributorId,
+			});
+			const themeMap = ensureActorEntry(
+				sel.contributorActorId,
+				sel.contributorActorName ?? actor.name,
+				sel.contributorActorImg ?? actor.img,
+			);
+			const themeImg = rawTag.themeId
+				? (actor.items.get(rawTag.themeId)?.img ?? null)
+				: null;
+			pushThemeGroup(themeMap, rawTag, themeImg, tag);
+		}
+	}
+
+	// Non-owners see their own character's tags for contribution
+	if (!isOwner && !game.user.isGM) {
+		const ownCharacter = game.user.character;
+		if (ownCharacter && ownCharacter.id !== dialog.actorId) {
+			const themeMap = ensureActorEntry(
+				ownCharacter.id,
+				ownCharacter.name,
+				ownCharacter.prototypeToken?.texture?.src || ownCharacter.img,
+			);
+			for (const e of ownCharacter.appliedEffects) {
+				const rawTag = effectToPlain(e);
+				const sel = dialog.getSelection(rawTag.uuid);
+				const tag = decorateTag({
+					...rawTag,
+					state: sel.state,
+					contributorId: sel.contributorId,
+				});
+				pushThemeGroup(themeMap, rawTag, e.parent?.img ?? null, tag);
+			}
+		}
+	}
+
+	return [...contributedActorMap.values()].map((entry) => ({
+		actorName: entry.actorName,
+		actorImg: entry.actorImg,
+		themeGroups: [...entry.themeMap.values()].map((g) => ({
+			...g,
+			tags: sortByTypeThenName(g.tags, tagTypeOrder),
+		})),
+	}));
+}
 
 /**
  * Build the compact display context for a linked Action document. Returns
@@ -96,8 +256,7 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 	// Backpack / story tags — use storyTags (allApplicableEffects) to catch
 	// story_tag effects regardless of whether they live on the backpack item
 	// or directly on the actor.
-	const isVisibleTag = (e) =>
-		e.active && (game.user.isGM || !e.system?.isHidden);
+	const isVisibleTag = (e) => e.active && isEffectVisible(e);
 	const backpackTags = (sys.storyTags ?? sys.backpack ?? [])
 		.filter(isVisibleTag)
 		.map(withSelection);
@@ -213,7 +372,7 @@ function buildSidebarActorTagGroups(
 	types,
 ) {
 	const groups = [];
-	const sidebarActors = dialog.storyTagSidebar.actors ?? [];
+	const sidebarActors = StoryTagsStore.actors ?? [];
 	const ownCharacterUuid = !isOwner ? game.user.character?.uuid : null;
 	for (const sidebarActor of sidebarActors) {
 		if (!types.has(sidebarActor.type)) continue;
@@ -280,7 +439,7 @@ export function buildGmViewerContext(
 ) {
 	const gmViewerTabs = [];
 	const storyGroups = [];
-	const sidebarActors = dialog.storyTagSidebar.actors ?? [];
+	const sidebarActors = StoryTagsStore.actors ?? [];
 	const sidebarActorIds = sidebarActors.map((a) => a.id);
 	// Always include the rolling actor so the GM can see their tags
 	const rollingUuid = dialog.actor.uuid;

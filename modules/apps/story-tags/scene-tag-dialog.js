@@ -1,3 +1,4 @@
+import { FLAGS } from "../../system/config.js";
 import { localize as t } from "../../utils.js";
 import { parseQuickAddInput, toTiers } from "./story-tag-helpers.js";
 
@@ -39,7 +40,7 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	get sceneData() {
-		const data = this.scene?.getFlag("litmv2", "sceneTags");
+		const data = this.scene?.getFlag("litmv2", FLAGS.sceneTags);
 		if (!data || foundry.utils.isEmpty(data)) return { tags: [], limits: [] };
 		const tags = (data.tags ?? []).map((tag) =>
 			tag.type === "status"
@@ -145,7 +146,7 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 			}
 		}
 
-		await this.scene.setFlag("litmv2", "sceneTags", {
+		await this.scene.setFlag("litmv2", FLAGS.sceneTags, {
 			tags: updatedTags,
 			limits: updatedLimits,
 		});
@@ -169,7 +170,10 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 				},
 			];
 			input.value = "";
-			await this.scene.setFlag("litmv2", "sceneTags", { ...current, limits });
+			await this.scene.setFlag("litmv2", FLAGS.sceneTags, {
+				...current,
+				limits,
+			});
 			this.render();
 			this.#refocusQuickAdd();
 			return;
@@ -190,7 +194,7 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 		};
 
 		input.value = "";
-		await this.scene.setFlag("litmv2", "sceneTags", {
+		await this.scene.setFlag("litmv2", FLAGS.sceneTags, {
 			...current,
 			tags: [...current.tags, tag],
 		});
@@ -214,7 +218,7 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 	static async #onRemoveTag(_event, target) {
 		const id = target.dataset.id;
 		const current = this.sceneData;
-		await this.scene.setFlag("litmv2", "sceneTags", {
+		await this.scene.setFlag("litmv2", FLAGS.sceneTags, {
 			...current,
 			tags: current.tags.filter((t) => t.id !== id),
 		});
@@ -228,7 +232,7 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 		const tags = current.tags.map((t) =>
 			t.limitId === id ? { ...t, limitId: null } : t,
 		);
-		await this.scene.setFlag("litmv2", "sceneTags", {
+		await this.scene.setFlag("litmv2", FLAGS.sceneTags, {
 			tags,
 			limits: current.limits.filter((l) => l.id !== id),
 		});

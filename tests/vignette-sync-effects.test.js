@@ -78,4 +78,50 @@ describe("VignetteData.syncEffectsFromConsequences", () => {
 			"system.tiers": [false, false, true, false, false, false],
 		});
 	});
+
+	it("updates isSingleUse when [name] markup becomes [name!]", async () => {
+		// Regression: the old vignette-local diff never updated isSingleUse,
+		// so editing [rope] → [rope!] silently kept the old effect's false.
+		const existing = {
+			id: "fx-1",
+			name: "rope",
+			type: "story_tag",
+			system: { isSingleUse: false },
+		};
+		const { doc, promise } = runSync(["A [rope!] dangles down"], [existing]);
+		await promise;
+
+		expect(doc.createEmbeddedDocuments).not.toHaveBeenCalled();
+		const [, updates] = doc.updateEmbeddedDocuments.mock.calls[0];
+		expect(updates[0]).toEqual({ _id: "fx-1", "system.isSingleUse": true });
+	});
+
+	it("matches case-insensitively and updates the stored name", async () => {
+		// Regression: the old vignette-local diff keyed case-sensitively, so
+		// re-casing a tag deleted and recreated it (losing the effect id).
+		const existing = {
+			id: "fx-1",
+			name: "muddy path",
+			type: "story_tag",
+			system: { isSingleUse: false },
+		};
+		const { doc, promise } = runSync(["A [Muddy Path] remains"], [existing]);
+		await promise;
+
+		expect(doc.deleteEmbeddedDocuments).not.toHaveBeenCalled();
+		expect(doc.createEmbeddedDocuments).not.toHaveBeenCalled();
+		const [, updates] = doc.updateEmbeddedDocuments.mock.calls[0];
+		expect(updates[0]).toEqual({ _id: "fx-1", name: "Muddy Path" });
+	});
+
+	it("ignores duplicate markup entries after the first", async () => {
+		const { doc, promise } = runSync([
+			"Heroes wake [drenched-2]",
+			"Still [drenched-2] from the night",
+		]);
+		await promise;
+
+		const [, created] = doc.createEmbeddedDocuments.mock.calls[0];
+		expect(created).toHaveLength(1);
+	});
 });

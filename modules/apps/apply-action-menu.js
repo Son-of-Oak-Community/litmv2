@@ -1,11 +1,13 @@
 import { scanMarkup } from "../item/action/action-rules.js";
 import { applyConsequence } from "../item/action/chat-actions.js";
 import { error } from "../logger.js";
+import { FLAGS } from "../system/config.js";
 import { proseChipsHtml } from "../system/renderers/renderer-utils.js";
 import { LitmSettings } from "../system/settings.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
 import { adjustCounter, readVariableTiers } from "./counter-controls.js";
 import { stripActorPrefix } from "./spend-power-service.js";
+import { StoryTagsStore } from "./story-tags/story-tags-store.js";
 import { getTargetCandidates } from "./target-picker.js";
 
 /**
@@ -57,7 +59,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 
 	async _getAction() {
 		const message = this._getMessage();
-		const uuid = message?.getFlag("litmv2", "actionUuid");
+		const uuid = message?.getFlag("litmv2", FLAGS.actionUuid);
 		if (!uuid) return null;
 		const action = await foundry.utils.fromUuid(uuid);
 		return action?.type === "action" ? action : null;
@@ -102,13 +104,18 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		});
 
 		// Scene actors as one-click target chips — token-less, theatre-of-mind
-		// scenes fall back to observable sidebar actors (same candidate list
-		// as the Spend Power target row). Rolling actor is the default pick so
-		// the common "consequences for the player who rolled" case works
-		// without an extra click.
+		// scenes fall back to observable sidebar actors. Consequences only
+		// land on the player side of the table, so the list is restricted to
+		// heroes, story themes, and the fellowship — challenges and journeys
+		// don't suffer consequences. Rolling actor is the default pick so the
+		// common "consequences for the player who rolled" case works without
+		// an extra click.
 		const rollingActorId =
 			message.rolls?.[0]?.litm?.actorId ?? message.speaker?.actor ?? null;
-		const targets = getTargetCandidates({ allowSelf: true }).map((c) => ({
+		const targets = getTargetCandidates({
+			allowSelf: true,
+			types: ["hero", "story_theme", "fellowship"],
+		}).map((c) => ({
 			id: c.id,
 			name: c.label,
 			img: c.img,
@@ -193,9 +200,9 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 
 				// Ensure the target lives in the story-tag sidebar so the GM can
 				// see the freshly-applied tag/status there. Heroes and the
-				// fellowship singleton are added automatically; placed-token
-				// challenges and journeys are not, and the rote consequence is
-				// most often what first puts a status on them.
+				// fellowship singleton are added automatically; story themes
+				// are not, and the rote consequence is often what first puts a
+				// status on them.
 				if (actor) await ApplyActionMenuApp.#ensureActorInSidebar(actor);
 
 				await foundry.documents.ChatMessage.create({
@@ -238,15 +245,14 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 	 */
 	static async #ensureActorInSidebar(actor) {
 		if (!game.user.isGM) return;
-		const sidebar = getStoryTagSidebar();
-		const config = sidebar?.config ?? LitmSettings.storyTags ?? {};
+		const config = StoryTagsStore.config;
 		const existing = config.actors ?? [];
 		if (existing.includes(actor.uuid)) return;
 		await LitmSettings.setStoryTags({
 			...config,
 			actors: [...existing, actor.uuid],
 		});
-		sidebar?.invalidateCache();
-		sidebar?.render();
+		StoryTagsStore.invalidateCache();
+		getStoryTagSidebar()?.render();
 	}
 }

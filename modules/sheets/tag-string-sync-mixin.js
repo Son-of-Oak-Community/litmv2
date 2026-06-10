@@ -1,4 +1,3 @@
-import { classifyTagString } from "../item/action/tag-string.js";
 import { ACTOR_TAG_TYPES } from "../system/config.js";
 
 /**
@@ -38,81 +37,8 @@ export function TagStringSyncMixin(Base) {
 
 		async _syncEffectsFromString(tagsString) {
 			// Weakness/limit markup is enricher-only — only stories and
-			// statuses materialize as effects here.
-			const parsed = classifyTagString(tagsString).filter(
-				(t) => t.kind === "story" || t.kind === "status",
-			);
-
-			const existing = this.document.effects.filter(
-				(e) => ACTOR_TAG_TYPES.has(e.type) && !e.getFlag("litmv2", "addonId"),
-			);
-			// Key by name + type so a tag and a status of the same name can coexist.
-			const keyOf = (name, type) => `${name.trim().toLowerCase()} ${type}`;
-			const existingByKey = new Map(
-				existing.map((e) => [keyOf(e.name, e.type), e]),
-			);
-
-			const matchedIds = new Set();
-			const seenKeys = new Set();
-			const toCreate = [];
-			const toUpdate = [];
-
-			for (const t of parsed) {
-				const isStatus = t.kind === "status";
-				const expectedType = isStatus ? "status_tag" : "story_tag";
-				const key = keyOf(t.name, expectedType);
-				// Skip duplicate parsed entries so toUpdate/toCreate stay unique.
-				if (seenKeys.has(key)) continue;
-				seenKeys.add(key);
-
-				const match = existingByKey.get(key);
-				if (match) {
-					matchedIds.add(match.id);
-					const update = { _id: match.id };
-					const newName = t.name.trim();
-					if (match.name !== newName) update.name = newName;
-					if (isStatus) {
-						const newTiers = Array(6)
-							.fill(false)
-							.map((_, i) => i + 1 === t.tier);
-						const currentTiers = match.system.tiers ?? [];
-						const tiersDiffer = newTiers.some(
-							(v, i) => v !== !!currentTiers[i],
-						);
-						if (tiersDiffer) update["system.tiers"] = newTiers;
-					} else if (!!match.system.isSingleUse !== t.isSingleUse) {
-						update["system.isSingleUse"] = t.isSingleUse;
-					}
-					if (Object.keys(update).length > 1) toUpdate.push(update);
-				} else {
-					toCreate.push({
-						name: t.name,
-						type: expectedType,
-						system: isStatus
-							? {
-									tiers: Array(6)
-										.fill(false)
-										.map((_, i) => i + 1 === t.tier),
-								}
-							: { isScratched: false, isSingleUse: t.isSingleUse },
-					});
-				}
-			}
-
-			const toDelete = existing
-				.filter((e) => !matchedIds.has(e.id))
-				.map((e) => e.id);
-
-			if (toDelete.length) {
-				await this.document.deleteEmbeddedDocuments("ActiveEffect", toDelete);
-			}
-			if (toUpdate.length) {
-				await this.document.updateEmbeddedDocuments("ActiveEffect", toUpdate);
-			}
-			if (toCreate.length) {
-				await this.document.createEmbeddedDocuments("ActiveEffect", toCreate);
-			}
-
+			// statuses materialize as effects (syncTagStringEffects filters).
+			await this.document.system.syncEffectsFromTagString(tagsString);
 			this._notifyStoryTags();
 		}
 
@@ -170,9 +96,7 @@ export function TagStringSyncMixin(Base) {
 					if (effect.parent !== this.document) return;
 					if (this.#syncing) return;
 					if (!this.document.isOwner) return;
-					if (effect.type !== "story_tag" && effect.type !== "status_tag") {
-						return;
-					}
+					if (!ACTOR_TAG_TYPES.has(effect.type)) return;
 					if (effect.getFlag("litmv2", "addonId")) return;
 					const tag = effect.system.toTagString(effect.name);
 					const current = this.system.tags || "";
@@ -203,9 +127,7 @@ export function TagStringSyncMixin(Base) {
 					if (effect.parent !== this.document) return;
 					if (this.#syncing) return;
 					if (!this.document.isOwner) return;
-					if (effect.type !== "story_tag" && effect.type !== "status_tag") {
-						return;
-					}
+					if (!ACTOR_TAG_TYPES.has(effect.type)) return;
 					if (effect.getFlag("litmv2", "addonId")) return;
 					const name = effect.name;
 					const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

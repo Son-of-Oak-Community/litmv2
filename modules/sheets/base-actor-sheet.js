@@ -3,13 +3,16 @@ import {
 	storyTagEffect,
 	updateEffectsByParent,
 } from "../active-effects/effect-factories.js";
-import { resolveEffect } from "../active-effects/effect-queries.js";
+import {
+	isEffectVisible,
+	resolveEffect,
+} from "../active-effects/effect-queries.js";
 import {
 	mapEffectForUI,
 	toTiers,
 } from "../apps/story-tags/story-tag-helpers.js";
-import { detectTrackCompletion } from "../system/chat.js";
-import { THEME_TAG_TYPES } from "../system/config.js";
+import { completeTrackUpdate } from "../system/chat.js";
+import { ACTOR_TAG_TYPES, THEME_TAG_TYPES } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
 import {
 	availableThemebookImprovements,
@@ -456,12 +459,10 @@ export class LitmActorSheet extends LitmSheetMixin(
 	_prepareStoryTags() {
 		const tags = this.document.system.storyTags ?? [];
 		const statuses = this.document.system.statusEffects ?? [];
-		return [...tags, ...statuses]
-			.filter((e) => game.user.isGM || !(e.system?.isHidden ?? false))
-			.map((e) => ({
-				...mapEffectForUI(e),
-				effectType: e.type,
-			}));
+		return [...tags, ...statuses].filter(isEffectVisible).map((e) => ({
+			...mapEffectForUI(e),
+			effectType: e.type,
+		}));
 	}
 
 	/**
@@ -472,7 +473,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 	async _onDrop(event) {
 		const data =
 			foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
-		if (data.type === "story_tag" || data.type === "status_tag") {
+		if (ACTOR_TAG_TYPES.has(data.type)) {
 			return this._onDropTagOrStatus(event, data);
 		}
 		return super._onDrop(event);
@@ -791,10 +792,12 @@ export class LitmActorSheet extends LitmSheetMixin(
 			if (!effect) return;
 			const currentTiers = foundry.utils.getProperty(effect, "system.tiers");
 			if (!Array.isArray(currentTiers)) return;
-			const isStatus = effect.type === "status_tag";
-			const newTiers = isStatus
-				? currentTiers.map((v, idx) => (idx === boxIndex ? !v : v))
-				: currentTiers.map((_, idx) => idx <= boxIndex);
+			if (effect.type === "status_tag") {
+				await effect.system.toggleTier(boxIndex + 1);
+				return;
+			}
+			// Story tags fill cumulatively up to the clicked box
+			const newTiers = currentTiers.map((_, idx) => idx <= boxIndex);
 			await effect.update({ "system.tiers": newTiers });
 			return;
 		}
@@ -804,22 +807,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const currentValue = foundry.utils.getProperty(doc, attrib);
 		const newValue = boxIndex < currentValue ? boxIndex : boxIndex + 1;
 
-		const updateData = {};
-		foundry.utils.setProperty(updateData, attrib, newValue);
-		await doc.update(updateData);
-
-		// Celebrate when a track reaches its maximum
-		const trackInfo = detectTrackCompletion(
-			attrib,
-			newValue,
-			doc,
-			this.document,
-		);
-		if (trackInfo) {
-			Hooks.callAll("litm.trackCompleted", {
-				actor: this.document,
-				trackInfo,
-			});
-		}
+		// Write + celebrate when a track reaches its maximum
+		await completeTrackUpdate(doc, attrib, newValue, this.document);
 	}
 }

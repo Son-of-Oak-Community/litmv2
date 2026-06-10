@@ -20,6 +20,7 @@ import { LitmRoll } from "./modules/apps/roll/roll.js";
 import { LitmRollDialog } from "./modules/apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "./modules/apps/spend-power.js";
 import { StoryTagSidebar } from "./modules/apps/story-tags/story-tag-sidebar.js";
+import { StoryTagsStore } from "./modules/apps/story-tags/story-tags-store.js";
 import { ThemeAdvancementApp } from "./modules/apps/theme-advancement.js";
 import { ThemeEvolutionWizard } from "./modules/apps/theme-evolution.js";
 import { WelcomeOverlay } from "./modules/apps/welcome/welcome-overlay.js";
@@ -148,6 +149,7 @@ Hooks.once("init", () => {
 	CONFIG.Token.hudClass = LitmTokenHUD;
 
 	StoryTagSidebar.registerSidebarTab();
+	StoryTagsStore.registerInvalidationHooks();
 
 	LitmSheets.register();
 

@@ -10,18 +10,22 @@ const { DialogV2 } = foundry.applications.api;
  * @param {object} [options]
  * @param {boolean} [options.allowSelf=false]   Whether to include the rolling actor.
  * @param {Actor|null} [options.exclude=null]   Actor to exclude from the list.
+ * @param {string[]|null} [options.types=null]  Restrict to these actor types (default: all targetable types).
  * @returns {object[]}  Entries of `{id, label, img, actor}`.
  */
 export function getTargetCandidates({
 	allowSelf = false,
 	exclude = null,
+	types = null,
 } = {}) {
+	const allowedTypes = types ? new Set(types) : null;
 	const seen = new Set();
 	const candidates = [];
 	for (const tk of canvas.tokens?.placeables ?? []) {
 		const a = tk.actor;
 		if (!a || seen.has(a.id)) continue;
 		if (!allowSelf && a === exclude) continue;
+		if (allowedTypes && !allowedTypes.has(a.type)) continue;
 		seen.add(a.id);
 		candidates.push({
 			id: a.id,
@@ -40,7 +44,7 @@ export function getTargetCandidates({
 		"story_theme",
 	]);
 	return (game.actors?.contents ?? [])
-		.filter((a) => TARGETABLE_TYPES.has(a.type))
+		.filter((a) => (allowedTypes ?? TARGETABLE_TYPES).has(a.type))
 		.filter((a) => a.testUserPermission(game.user, "OBSERVER"))
 		.filter((a) => allowSelf || a !== exclude)
 		.map((a) => ({

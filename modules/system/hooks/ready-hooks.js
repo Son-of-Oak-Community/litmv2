@@ -2,6 +2,7 @@ import { WelcomeOverlay } from "../../apps/welcome/welcome-overlay.js";
 import { RollDialogHud } from "../../hud/roll-dialog-hud.js";
 import { error } from "../../logger.js";
 import { getStoryTagSidebar } from "../../utils.js";
+import { FLAGS } from "../config.js";
 import { LitmSettings } from "../settings.js";
 import { registerTours } from "../tours.js";
 import { bootstrapWorldOnFirstLoad } from "../world-setup.js";
@@ -38,12 +39,12 @@ function _setupRollDialogHud() {
 
 		const unsetPromises = [];
 		for (const actor of game.actors) {
-			const flag = actor.getFlag("litmv2", "rollDialogOwner");
+			const flag = actor.getFlag("litmv2", FLAGS.rollDialogOwner);
 			if (!flag) continue;
 			const isOwnFlag = flag.ownerId === game.user.id;
 			const isDisconnectedUser = !game.users.get(flag.ownerId)?.active;
 			if (isOwnFlag || (game.user.isGM && isDisconnectedUser)) {
-				unsetPromises.push(actor.unsetFlag("litmv2", "rollDialogOwner"));
+				unsetPromises.push(actor.unsetFlag("litmv2", FLAGS.rollDialogOwner));
 			}
 		}
 		await Promise.all(unsetPromises);

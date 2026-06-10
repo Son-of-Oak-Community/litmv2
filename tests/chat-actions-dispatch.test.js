@@ -374,6 +374,8 @@ describe("applySuccess — restore", () => {
 			name: "Lantern",
 			system: { isScratched: true },
 		});
+		// Mirror ScratchableMixin#setScratched — the fake system is a plain object
+		tag.system.setScratched = (v) => tag.update({ "system.isScratched": v });
 		const actor = heroActor({ effects: [tag] });
 
 		const result = await applySuccess({

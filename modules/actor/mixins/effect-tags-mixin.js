@@ -86,8 +86,7 @@ export function EffectTagsMixin(Base) {
 			}
 			const data = statusTagEffect({ name, isHidden, limitId });
 			if (tiers) data.system.tiers = tiers;
-			else if (tier)
-				data.system.tiers = Array.from({ length: 6 }, (_, i) => i + 1 === tier);
+			else if (tier) data.system.tiers = StatusTagData.oneHot(tier);
 			if (img) data.img = img;
 			return this.parent.createEmbeddedDocuments("ActiveEffect", [data]);
 		}

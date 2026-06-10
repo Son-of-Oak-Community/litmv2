@@ -24,7 +24,7 @@ import {
 import { error } from "../logger.js";
 import {
 	buildTrackCompleteContent,
-	detectTrackCompletion,
+	fireTrackCompletion,
 } from "../system/chat.js";
 import {
 	getDefaultThemeLevel,
@@ -425,15 +425,7 @@ async function applyPromiseToActor(actor, promiseGained) {
 	await actor.update(actorUpdate);
 
 	if (reachedFulfillment) {
-		const trackInfo = detectTrackCompletion(
-			"system.promise",
-			newPromise,
-			actor,
-			actor,
-		);
-		if (trackInfo) {
-			Hooks.callAll("litm.trackCompleted", { actor, trackInfo });
-		}
+		fireTrackCompletion("system.promise", newPromise, actor, actor);
 	} else if (banked > 0) {
 		// The track was already at the cap when this Promise arrived,
 		// so detectTrackCompletion correctly returns null (no crossing).

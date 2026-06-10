@@ -7,18 +7,14 @@
  *
  * @typedef {object} VerbDef
  * @property {"self"|"ally"|"opponent"|"process"} target
- *   Default target when the success's `payload.target` is not set or is
- *   ambiguous. Drives picker selection in `applySuccess`.
+ *   How the success picks its target actor (or limit, for "process").
+ *   Drives picker selection in `applySuccess`.
  * @property {"createOrTag"|"weaken"|"restore"|"process"|"discover"|"extraFeat"|"unsupported"} kind
  *   Selects which applier function runs in `applySuccess`. Also used by the
  *   cost calculator (`process` → tier, `discover` → 1, etc.).
  * @property {"self"|"opponent"|"process"|"meta"} displayKind
  *   Visual category for the chat success panel — colors the button by the
  *   semantic family ("hurts them / helps us / changes the situation").
- * @property {boolean} [defaultStatus]
- *   When the success's payload has neither tag nor status name (or has
- *   both), should the verb produce a status by default? Used by
- *   `_applyCreateOrTag`. Falls through to "tag" when omitted.
  * @property {string} [unsupportedMessageKey]
  *   Required for `kind: "unsupported"`. The localization key shown when a
  *   user clicks a success with this verb.
@@ -27,30 +23,19 @@
 /** @type {Record<string, VerbDef>} */
 export const VERB_DEFINITIONS = Object.freeze({
 	// Opponent-targeted
-	attack: {
-		target: "opponent",
-		kind: "createOrTag",
-		displayKind: "opponent",
-		defaultStatus: true,
-	},
+	attack: { target: "opponent", kind: "createOrTag", displayKind: "opponent" },
 	disrupt: { target: "opponent", kind: "createOrTag", displayKind: "opponent" },
 	influence: {
 		target: "opponent",
 		kind: "createOrTag",
 		displayKind: "opponent",
-		defaultStatus: true,
 	},
 	weaken: { target: "opponent", kind: "weaken", displayKind: "opponent" },
 
 	// Self/ally-targeted
 	bestow: { target: "self", kind: "createOrTag", displayKind: "self" },
 	create: { target: "self", kind: "createOrTag", displayKind: "self" },
-	enhance: {
-		target: "self",
-		kind: "createOrTag",
-		displayKind: "self",
-		defaultStatus: true,
-	},
+	enhance: { target: "self", kind: "createOrTag", displayKind: "self" },
 	restore: { target: "self", kind: "restore", displayKind: "self" },
 
 	// Process (Limit) verbs
@@ -80,24 +65,14 @@ export function getVerbDef(verb) {
 }
 
 /**
- * Resolve how a success picks its target. The single encoding of the
- * def-vs-payload precedence — `_resolveTarget` (chat-actions.js) dispatches
- * on it and the Spend Power dialog uses it to decide whether to show the
- * target chip row, so the two can't drift.
- *
- * "process" and "opponent" on the verb definition override the payload
- * (an Attack stays an attack no matter what the payload declares); the
- * softer "ally"/"prompt" modes come from the payload.
+ * Resolve how a success picks its target — the verb definition's `target`,
+ * defaulting to "self" for unknown verbs. `_resolveTarget` (chat-actions.js)
+ * dispatches on it and the Spend Power dialog uses it to decide whether to
+ * show the target chip row, so the two can't drift.
  *
  * @param {VerbDef|null} def      From getVerbDef.
- * @param {object} [success]      The success whose payload may declare a target.
- * @returns {"self"|"ally"|"opponent"|"prompt"|"process"}
+ * @returns {"self"|"ally"|"opponent"|"process"}
  */
-export function successTargetMode(def, success) {
-	const declared = success?.payload?.target ?? "self";
-	if (def?.target === "process" || declared === "process") return "process";
-	if (def?.target === "opponent" || declared === "opponent") return "opponent";
-	if (def?.target === "ally" || declared === "ally") return "ally";
-	if (declared === "prompt") return "prompt";
-	return "self";
+export function successTargetMode(def) {
+	return def?.target ?? "self";
 }

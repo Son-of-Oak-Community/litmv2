@@ -254,35 +254,12 @@ describe("computeSuccessSpend", () => {
 });
 
 describe("successTargetMode", () => {
-	const def = (target) => ({ target });
-
-	it("defaults to self", () => {
-		expect(successTargetMode(def("self"), {})).toBe("self");
-		expect(successTargetMode(null, {})).toBe("self");
-	});
-
-	it("verb-level process/opponent override the payload", () => {
-		expect(
-			successTargetMode(def("opponent"), { payload: { target: "ally" } }),
-		).toBe("opponent");
-		expect(
-			successTargetMode(def("process"), { payload: { target: "self" } }),
-		).toBe("process");
-	});
-
-	it("payload escalates a self verb to opponent/ally/prompt/process", () => {
-		expect(
-			successTargetMode(def("self"), { payload: { target: "opponent" } }),
-		).toBe("opponent");
-		expect(
-			successTargetMode(def("self"), { payload: { target: "ally" } }),
-		).toBe("ally");
-		expect(
-			successTargetMode(def("self"), { payload: { target: "prompt" } }),
-		).toBe("prompt");
-		expect(
-			successTargetMode(def("self"), { payload: { target: "process" } }),
-		).toBe("process");
+	it("resolves from the verb definition's target, defaulting to self", () => {
+		expect(successTargetMode({ target: "opponent" })).toBe("opponent");
+		expect(successTargetMode({ target: "process" })).toBe("process");
+		expect(successTargetMode({ target: "ally" })).toBe("ally");
+		expect(successTargetMode({ target: "self" })).toBe("self");
+		expect(successTargetMode(null)).toBe("self");
 	});
 });
 

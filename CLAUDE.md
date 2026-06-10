@@ -209,7 +209,7 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.themeAdvanced` — after theme advancement
 - `litm.trackCompleted` — `{ actor, trackInfo: { text, type, actorId?, themeId? } }`
 - `litm.limitReached` — `{ actor, limit }` where `limit.max` is the effective max
-- `litm.sceneTagsChanged` — after sidebar CRUD on scene tags/statuses/limits; no payload. Roll dialogs listen to refresh contributed-tag groups.
+- `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits); no payload. Roll dialogs listen to refresh contributed-tag groups.
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.
 

@@ -13,7 +13,11 @@ import {
 import { getVerbDef } from "../../item/action/verb-definitions.js";
 import { localize as t, viewLinkedRefAction } from "../../utils.js";
 import { buildTrackCompleteContent } from "../chat.js";
-import { IMPROVE_MARKING_TAG_TYPES, POWER_TAG_TYPES } from "../config.js";
+import {
+	FLAGS,
+	IMPROVE_MARKING_TAG_TYPES,
+	POWER_TAG_TYPES,
+} from "../config.js";
 import { formatCostLabel } from "../renderers/renderer-utils.js";
 import { Sockets } from "../sockets.js";
 
@@ -152,13 +156,7 @@ async function _handleMarkImprove(target) {
 		IMPROVE_MARKING_TAG_TYPES.has(tag.type),
 	);
 	for (const tag of tags) {
-		const trackInfo = await gainImprovement(actor, tag);
-		if (trackInfo) {
-			await foundry.documents.ChatMessage.create({
-				content: await buildTrackCompleteContent(trackInfo),
-				speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
-			});
-		}
+		await gainImprovement(actor, tag);
 	}
 
 	roll.options.gainedExp = true;
@@ -322,12 +320,22 @@ function _handleOpenApplyConsequences(_target, app) {
 async function _handleReact(target) {
 	const actorId = target.dataset.actorId;
 	if (!actorId) return;
-	const actor = game.actors.get(actorId);
+	let actor = game.actors.get(actorId);
 	if (!actor) {
 		ui.notifications.warn(t("LITM.Actions.apply_no_actor"));
 		return;
 	}
-	if (!actor.isOwner && !game.user.isGM) {
+
+	// Story themes and the fellowship can suffer consequences but have no
+	// roll dialog of their own — the reaction is rolled by the player's hero
+	// on their behalf, so ownership of the target doesn't gate it.
+	if (actor.type !== "hero") {
+		actor = _resolveReactingHero();
+		if (!actor) {
+			ui.notifications.warn(t("LITM.Actions.react_no_hero"));
+			return;
+		}
+	} else if (!actor.isOwner && !game.user.isGM) {
 		ui.notifications.warn(t("LITM.Actions.request_not_owner"));
 		return;
 	}
@@ -338,6 +346,15 @@ async function _handleReact(target) {
 	dialog.setType("mitigate");
 	if (typeof sheet.renderRollDialog === "function") sheet.renderRollDialog();
 	else if (!dialog.rendered) dialog.render(true);
+}
+
+/**
+ * The hero that reacts on behalf of a non-rolling actor (story theme,
+ * fellowship): the user's assigned character, if it's a hero.
+ */
+function _resolveReactingHero() {
+	const assigned = game.user.character;
+	return assigned?.type === "hero" ? assigned : null;
 }
 
 async function _handleTakeRollRequest(_target, app) {
@@ -378,7 +395,7 @@ const CLICK_HANDLERS = {
 };
 
 async function _renderActionSuccesses(app, element) {
-	const actionUuid = app.getFlag("litmv2", "actionUuid");
+	const actionUuid = app.getFlag("litmv2", FLAGS.actionUuid);
 	if (!actionUuid) return;
 
 	const roll = app.rolls?.[0];
@@ -427,7 +444,7 @@ async function _renderActionSuccesses(app, element) {
 
 async function _renderActionPanel(app, element) {
 	if (!game.user.isGM) return;
-	const actionUuid = app.getFlag("litmv2", "actionUuid");
+	const actionUuid = app.getFlag("litmv2", FLAGS.actionUuid);
 	if (!actionUuid) return;
 
 	// Consequences are only dealt on Miss or Success-with-Consequences. A
@@ -505,7 +522,7 @@ async function _hideSpendButtonIfExhausted(app, element) {
 	const appliedKeys = app.getFlag("litmv2", "appliedSuccesses") ?? [];
 	let actionSystem = null;
 	if (appliedKeys.length) {
-		const actionUuid = app.getFlag("litmv2", "actionUuid");
+		const actionUuid = app.getFlag("litmv2", FLAGS.actionUuid);
 		const action = actionUuid ? await foundry.utils.fromUuid(actionUuid) : null;
 		actionSystem = action?.system ?? null;
 	}
@@ -567,11 +584,18 @@ function onRenderChatMessage(app, html, _data) {
 		evolveBtn.closest(".litm-track-complete__footer")?.remove();
 	}
 
-	// Hide react button from users who don't own the target actor
+	// Hide react button from users who don't own the target actor. Non-hero
+	// targets (story themes, the fellowship) are reacted-for by the user's
+	// assigned hero, so the button stays for anyone who has one.
 	const reactBtn = element.querySelector("[data-click='react']");
 	if (reactBtn) {
 		const actor = game.actors.get(reactBtn.dataset.actorId);
-		if (!actor || (!actor.isOwner && !game.user.isGM)) {
+		const canReact =
+			actor &&
+			(actor.type !== "hero"
+				? game.user.isGM || !!_resolveReactingHero()
+				: actor.isOwner || game.user.isGM);
+		if (!canReact) {
 			reactBtn.closest(".litm-spend-chat__react")?.remove();
 		}
 	}

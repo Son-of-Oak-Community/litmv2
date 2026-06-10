@@ -1,8 +1,12 @@
 import { createLegacyRelationshipEffects } from "../../actor/hero/hero-data.js";
 import { LitmItem } from "../../item/litm-item.js";
 import { error } from "../../logger.js";
-import { getStoryTagSidebar, localize as t } from "../../utils.js";
-import { ACTOR_TAG_TYPES, THEME_TAG_TYPES } from "../config.js";
+import {
+	findFellowshipTheme,
+	getStoryTagSidebar,
+	localize as t,
+} from "../../utils.js";
+import { ACTOR_TAG_TYPES, FLAGS, THEME_TAG_TYPES } from "../config.js";
 
 export function registerActorHooks() {
 	_prepareCharacterOnCreate();
@@ -71,8 +75,9 @@ function _prepareCharacterOnCreate() {
 		},
 		async hero(actor, options) {
 			if (options?.litm?.skipAutoSetup) return;
+			const themeLimit = CONFIG.litmv2?.themeLimit ?? 4;
 			const missingThemes = Math.max(
-				4 - actor.items.filter((it) => it.type === "theme").length,
+				themeLimit - actor.items.filter((it) => it.type === "theme").length,
 				0,
 			);
 			if (missingThemes > 0) {
@@ -149,9 +154,7 @@ function _validateFellowshipThemes() {
 		const actor = item.parent;
 		if (!actor || actor.type !== "fellowship") return;
 
-		const existingFellowship = actor.items.find(
-			(i) => i.type === "theme" && i.system.isFellowship,
-		);
+		const existingFellowship = findFellowshipTheme(actor);
 
 		if (existingFellowship) {
 			ui.notifications.warn(
@@ -316,9 +319,9 @@ function _flashSacrificeBannerOnUpdate() {
 	const announced = new Map(); // actorId → openedAt last announced
 	Hooks.on("updateActor", (actor, changes) => {
 		if (actor.type !== "hero") return;
-		if (!foundry.utils.hasProperty(changes, "flags.litmv2.rollDialogOwner"))
-			return;
-		const flag = actor.getFlag("litmv2", "rollDialogOwner");
+		const flagPath = `flags.litmv2.${FLAGS.rollDialogOwner}`;
+		if (!foundry.utils.hasProperty(changes, flagPath)) return;
+		const flag = actor.getFlag("litmv2", FLAGS.rollDialogOwner);
 		if (!flag) {
 			announced.delete(actor.id);
 			return;

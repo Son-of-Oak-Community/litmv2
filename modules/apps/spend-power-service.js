@@ -6,6 +6,7 @@ import {
 } from "../item/action/action-rules.js";
 import { applySuccess } from "../item/action/chat-actions.js";
 import { error } from "../logger.js";
+import { FLAGS } from "../system/config.js";
 import { localize as t } from "../utils.js";
 
 /**
@@ -103,7 +104,7 @@ export async function applySpendIntent(actor, intent) {
 
 async function _applyActionSuccessOption(opt, actor, messageId, presetTarget) {
 	const message = messageId ? game.messages.get(messageId) : null;
-	const actionUuid = message?.getFlag("litmv2", "actionUuid");
+	const actionUuid = message?.getFlag("litmv2", FLAGS.actionUuid);
 	if (!actionUuid) return 0;
 	const action = await foundry.utils.fromUuid(actionUuid);
 	if (!action || action.type !== "action") return 0;
@@ -176,13 +177,10 @@ async function _applyStatusPicker(actor, opt) {
 		const effect = resolveEffect(effectId, actor);
 		if (!effect) continue;
 		const oldTier = effect.system.currentTier;
-		const newTiers = effect.system.calculateReduction(tiers);
-		const newTier = StatusTagData.tierOf(newTiers);
-		if (newTier <= 0) {
-			await effect.delete();
-		} else {
-			await effect.update({ "system.tiers": newTiers });
-		}
+		const newTier = StatusTagData.tierOf(
+			effect.system.calculateReduction(tiers),
+		);
+		await effect.system.reduceTier(tiers, { deleteOnEmpty: true });
 		const after =
 			newTier > 0
 				? `<strong>${name}-${newTier}</strong>`
