@@ -256,4 +256,17 @@ export class ChallengeData extends LimitsMixin(
 	async syncEffectsFromTagString(tagsString) {
 		return syncTagStringEffects(this.parent, tagsString);
 	}
+
+	/**
+	 * Challenge vignettes may carry ActiveEffects for consequence markup.
+	 * Exclude those vignette-owned effects from the actor's story/status
+	 * collections so they do not appear in the story-tag sidebar.
+	 */
+	get storyTags() {
+		return super.storyTags.filter((e) => e.parent?.type !== "vignette");
+	}
+
+	get statusEffects() {
+		return super.statusEffects.filter((e) => e.parent?.type !== "vignette");
+	}
 }
