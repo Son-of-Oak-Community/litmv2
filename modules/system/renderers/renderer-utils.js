@@ -105,9 +105,16 @@ export function makeActorCard(actor, typeClass) {
  * @param {object} [opts]
  * @param {string} [opts.tooltip]  data-tooltip text
  * @param {string} [opts.chevron]  Pre-rendered weakness chevron SVG markup
+ * @param {boolean} [opts.scratched]  Story/backpack chip rendered scratched —
+ *        adds the `scratched` class and the scratch glyph. Mirrors play-tag.html
+ *        but chat-safe: a CSS-masked span, not the inline <svg> Foundry strips
+ *        from chat-message content.
  * @returns {string}
  */
-export function tagChipHtml(c, { tooltip = "", chevron = "" } = {}) {
+export function tagChipHtml(
+	c,
+	{ tooltip = "", chevron = "", scratched = false } = {},
+) {
 	const esc = foundry.utils.escapeHTML;
 	const tip = tooltip ? ` data-tooltip="${esc(tooltip)}"` : "";
 	switch (c.kind) {
@@ -141,11 +148,17 @@ export function tagChipHtml(c, { tooltip = "", chevron = "" } = {}) {
 			)}">${esc(label)}</span>`;
 		}
 		default: {
-			const cls = c.isSingleUse ? "litm-tag litm--single-use" : "litm-tag";
+			const base = c.isSingleUse ? "litm-tag litm--single-use" : "litm-tag";
+			const cls = scratched ? `${base} scratched` : base;
 			const label = c.isSingleUse ? `${c.name} ✱` : c.name;
+			// Same scratch glyph the play-tag template draws, but chat-safe: a
+			// CSS-masked span (Foundry strips inline <svg> from chat content).
+			const mark = scratched
+				? ` <span class="litm-tag-scratch" aria-hidden="true"></span>`
+				: "";
 			return `<span class="${cls}" draggable="true"${tip} data-text="${esc(
 				c.name,
-			)}">${esc(label)}</span>`;
+			)}">${esc(label)}${mark}</span>`;
 		}
 	}
 }

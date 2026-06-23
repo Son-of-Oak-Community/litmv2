@@ -1,3 +1,4 @@
+import { isEffectVisible } from "../active-effects/effect-queries.js";
 import {
 	computePowerBudget,
 	computeSuccessSpend,
@@ -11,10 +12,16 @@ import {
 	successTargetMode,
 } from "../item/action/verb-definitions.js";
 import { FLAGS } from "../system/config.js";
-import { formatCostLabel } from "../system/renderers/renderer-utils.js";
+import {
+	formatCostLabel,
+	tagChipHtml,
+} from "../system/renderers/renderer-utils.js";
 import { localize as t } from "../utils.js";
 import { adjustCounter, readVariableTiers } from "./counter-controls.js";
+import { mitigationPreselect } from "./mitigation.js";
+import { collectScratchableTags } from "./scratch-sources.js";
 import { applySpendIntent } from "./spend-power-service.js";
+import { StoryTagsStore } from "./story-tags/story-tags-store.js";
 import { getTargetCandidates } from "./target-picker.js";
 
 /** Cost calculators by option type. Each receives (li, cost, entriesSection, hasTier). */
@@ -46,6 +53,9 @@ const COST_CALCULATORS = {
 		return cost * selected.length;
 	},
 };
+
+// Scratch reuses the picker calculator — both price one unit per selected chip.
+COST_CALCULATORS.scratchPicker = COST_CALCULATORS.picker;
 
 function defaultCostCalculator(li, cost, _entriesSection, hasTier) {
 	const entries = li.querySelectorAll(".litm-spend-power__entry");
@@ -87,6 +97,8 @@ function getOptionType(li) {
 		return { type: "counter", entriesSection, hasTier };
 	if (entriesSection && "picker" in entriesSection.dataset)
 		return { type: "picker", entriesSection, hasTier };
+	if (entriesSection && "scratchPicker" in entriesSection.dataset)
+		return { type: "scratchPicker", entriesSection, hasTier };
 	return { type: "default", entriesSection, hasTier };
 }
 
@@ -142,11 +154,16 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				draggable: true,
 			},
 			{
+				id: "recover_tag",
+				label: "LITM.Effects.recover.action",
+				cost: 2,
+				description: "LITM.Effects.recover.description",
+			},
+			{
 				id: "scratch_tag",
 				label: "LITM.Effects.scratch.action",
 				cost: 2,
 				description: "LITM.Effects.scratch.description",
-				draggable: true,
 			},
 			{
 				id: "inflict_status",
@@ -184,12 +201,33 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		const actor = game.actors.get(this.actorId);
 		const scratchedTags = actor ? this.#getScratchedTags(actor) : [];
 		const statusCards = actor ? this.#getStatusCards(actor) : [];
+		// Scene story tags live in the world pack; ensure it's loaded, then
+		// surface the unscratched, visible ones as a shared scratch group.
+		await StoryTagsStore.loadStoryTags();
+		const sceneTags = StoryTagsStore.packStoryTags
+			.filter(
+				(e) =>
+					e.type === "story_tag" &&
+					!e.system?.isScratched &&
+					!e.disabled &&
+					isEffectVisible(e),
+			)
+			.map((e) => ({ id: e._id ?? e.id, name: e.name }));
+		const scratchGroups = actor
+			? collectScratchableTags(
+					actor,
+					getTargetCandidates({ allowSelf: false }),
+					sceneTags,
+				)
+			: [];
 
 		const options = this.spendingOptions
-			.filter((o) => o.id !== "scratch_tag" || scratchedTags.length > 0)
+			.filter((o) => o.id !== "recover_tag" || scratchedTags.length > 0)
+			.filter((o) => o.id !== "scratch_tag" || scratchGroups.length > 0)
 			.filter((o) => o.id !== "reduce_status" || statusCards.length > 0)
 			.map((o) => {
-				if (o.id === "scratch_tag") return { ...o, scratchedTags };
+				if (o.id === "recover_tag") return { ...o, scratchedTags };
+				if (o.id === "scratch_tag") return { ...o, scratchGroups };
 				if (o.id === "reduce_status") return { ...o, statusCards };
 				return o;
 			});
@@ -203,6 +241,10 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		// costs paid from appliedSuccessCosts, recomputing only for messages
 		// from before that flag existed).
 		const message = this.messageId ? game.messages.get(this.messageId) : null;
+		this._mitigationPreselect = mitigationPreselect(
+			message?.rolls?.[0]?.litm?.mitigation ?? null,
+			this.actorId,
+		);
 		const action = await this.#getAction();
 		const { spent: appliedSuccessesCost } = computePowerBudget(
 			message?.rolls?.[0],
@@ -367,6 +409,64 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		return statuses;
 	}
 
+	/**
+	 * Pre-open and pre-fill the mitigation options when this menu was opened
+	 * from a Reaction: set the inflicted status's reduce counter and select the
+	 * inflicted tag's scratch chip. Matching is by name (+ owner for tags).
+	 */
+	#applyMitigationPreselect(form) {
+		const pre = this._mitigationPreselect;
+		if (!pre) return;
+
+		if (pre.statuses.length) {
+			const li = form.querySelector(
+				'.litm-spend-power__option[data-option-id="reduce_status"]',
+			);
+			if (li) {
+				const checkbox = li.querySelector("[data-option-check]");
+				checkbox.checked = true;
+				this.#toggleEntries(li);
+				for (const { name, tier } of pre.statuses) {
+					const item = [
+						...li.querySelectorAll(".litm-spend-power__status-item"),
+					].find(
+						(el) => el.dataset.statusName?.toLowerCase() === name.toLowerCase(),
+					);
+					if (!item) continue;
+					const max = Number(item.dataset.maxTier);
+					const val = Math.min(tier ?? max, max);
+					const valueEl = item.querySelector(
+						".litm-spend-power__counter-value",
+					);
+					if (valueEl) valueEl.textContent = String(val);
+				}
+			}
+		}
+
+		if (pre.tags.length) {
+			const li = form.querySelector(
+				'.litm-spend-power__option[data-option-id="scratch_tag"]',
+			);
+			if (li) {
+				const checkbox = li.querySelector("[data-option-check]");
+				checkbox.checked = true;
+				this.#toggleEntries(li);
+				for (const name of pre.tags) {
+					const chip = [
+						...li.querySelectorAll(".litm-spend-power__tag-chip"),
+					].find(
+						(c) =>
+							c.dataset.tagName?.toLowerCase() === name.toLowerCase() &&
+							(!pre.tagOwnerId || c.dataset.actorId === pre.tagOwnerId),
+					);
+					if (chip) chip.classList.add("is-selected");
+				}
+			}
+		}
+
+		this.#updatePower(form);
+	}
+
 	_onFirstRender(context, options) {
 		super._onFirstRender(context, options);
 
@@ -395,6 +495,8 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			if (li.dataset.source === "action") this.#updateActionRowCost(li);
 			this.#updatePower(form);
 		});
+
+		this.#applyMitigationPreselect(form);
 	}
 
 	/** @this {SpendPowerApp} */
@@ -504,12 +606,13 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 
 		const checkbox = li.querySelector("[data-option-check]");
 		const isPicker = "picker" in entriesSection.dataset;
+		const isScratchPicker = "scratchPicker" in entriesSection.dataset;
 		const isCounter = "counter" in entriesSection.dataset;
 		const isStatusPicker = "statusPicker" in entriesSection.dataset;
 
 		if (checkbox.checked) {
 			entriesSection.classList.remove("is-hidden");
-			if (!isPicker && !isCounter && !isStatusPicker) {
+			if (!isPicker && !isScratchPicker && !isCounter && !isStatusPicker) {
 				const entryList = entriesSection.querySelector(
 					".litm-spend-power__entry-list",
 				);
@@ -519,7 +622,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			}
 		} else {
 			entriesSection.classList.add("is-hidden");
-			if (isPicker) {
+			if (isPicker || isScratchPicker) {
 				// Deselect all chips when unchecking the option
 				entriesSection
 					.querySelectorAll(".litm-spend-power__tag-chip")
@@ -755,6 +858,28 @@ function parseSpendIntent(form, dialog) {
 			continue;
 		}
 
+		if (type === "scratchPicker") {
+			const chips = [
+				...entriesSection.querySelectorAll(
+					".litm-spend-power__tag-chip.is-selected",
+				),
+			].map((chip) => ({
+				tagId: chip.dataset.tagId,
+				tagName: chip.dataset.tagName,
+				actorId: chip.dataset.actorId,
+				isScene: chip.dataset.sceneTag === "true",
+			}));
+			if (chips.length === 0) continue;
+			options.push({
+				kind: "scratchPicker",
+				optionId,
+				label: option.label,
+				cost: option.cost,
+				chips,
+			});
+			continue;
+		}
+
 		// default
 		const entries = [...li.querySelectorAll(".litm-spend-power__entry")]
 			.map((row) => ({
@@ -835,15 +960,29 @@ async function postSpendChat(actor, intent, results) {
 				});
 				break;
 			}
-			case "picker": {
+			// Recover and scratch both render their tags as chips: recovered ones
+			// are live chips, scratched ones carry the scratch glyph + line-through.
+			// tagChipHtml (not the play-tag partial) because Foundry strips inline
+			// <svg> from chat content — see the scratched glyph note in tagChipHtml.
+			case "picker":
+			case "scratchPicker": {
 				const opt = intent.options.find((o) => o.optionId === result.optionId);
+				const body = (result.tags ?? [])
+					.map((tag) =>
+						tagChipHtml(
+							{ kind: "story", name: tag.name, isSingleUse: false },
+							{ scratched: tag.isScratched },
+						),
+					)
+					.join(" ");
+				// Every tag may have been skipped (owner/effect gone, scene write
+				// undeliverable) — nothing applied, so don't post an empty card.
+				if (!body) break;
 				await foundry.documents.ChatMessage.create({
 					content: await chatCard({
 						actor,
 						action: t(opt.label),
-						body: result.names
-							.map((n) => `<strong>${foundry.utils.escapeHTML(n)}</strong>`)
-							.join(" "),
+						body,
 						power: result.power,
 					}),
 					speaker,

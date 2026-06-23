@@ -60,6 +60,13 @@
 		</div>
 		{{/if}}
 
+		{{#if mitigationBanner}}
+		<div class="litm-banner litm--mitigation-banner">
+			<i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+			<span>{{mitigationBanner}}</span>
+		</div>
+		{{/if}}
+
 		{{#if isGMViewer}}
 		<!-- GM Viewer: tabbed view per actor -->
 		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">

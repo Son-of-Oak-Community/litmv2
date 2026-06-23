@@ -1,0 +1,31 @@
+<li class="litm-spend-power__option {{#if applied}}is-applied{{/if}} {{#if disabled}}is-disabled{{/if}}"
+	data-key="{{key}}" data-conseq-index="{{index}}" data-source-uuid="{{sourceUuid}}"
+	data-source-label="{{sourceLabel}}">
+	<div class="litm-spend-power__option-row">
+		<label class="litm-spend-power__option-label">
+			<input type="{{inputType}}" name="option" value="{{key}}" {{#if disabled}}disabled{{/if}} />
+			<span>{{{text}}}</span>
+			{{#if applied}}<i class="fa-solid fa-check litm--applied-check" aria-hidden="true"
+				data-tooltip="{{localize 'LITM.Actions.consequence_applied'}}"></i>{{/if}}
+		</label>
+	</div>
+	{{#if hasVariableTier}}
+	<p class="hint">{{localize "LITM.Actions.variable_tier_hint"}}</p>
+	<div class="litm-spend-power__var-tiers">
+		{{#each varTokens}}
+		<div class="litm-spend-power__var-tier" data-var-idx="{{idx}}" data-var-name="{{name}}">
+			<span class="litm-status litm--variable-tier" data-text="{{name}}">{{name}}</span>
+			<button type="button" class="litm-spend-power__counter-btn" data-action="counter-dec"
+				aria-label="{{localize "LITM.Ui.decrease"}}">
+				<i class="fas fa-minus" aria-hidden="true"></i>
+			</button>
+			<span class="litm-spend-power__counter-value" aria-live="polite">0</span>
+			<button type="button" class="litm-spend-power__counter-btn" data-action="counter-inc"
+				aria-label="{{localize "LITM.Ui.increase"}}">
+				<i class="fas fa-plus" aria-hidden="true"></i>
+			</button>
+		</div>
+		{{/each}}
+	</div>
+	{{/if}}
+</li>

@@ -120,6 +120,19 @@
 						{{/each}}
 					</ul>
 				</div>
+				{{else if option.scratchGroups}}
+				<div class="litm-spend-power__entries is-hidden" data-scratch-picker="true">
+					{{#each option.scratchGroups as |group|}}
+					<h4 class="litm-render__section-header">{{#if group.isScene}}{{localize "LITM.Ui.story_tags"}}{{else if group.isOwn}}{{localize "LITM.Ui.your_tags"}}{{else}}{{group.ownerName}}{{/if}}</h4>
+					<ul class="litm-spend-power__tag-chip-list">
+						{{#each group.tags as |tag|}}
+						<li class="litm-spend-power__tag-chip" data-action="toggle-chip" data-tag-id="{{tag.id}}" data-tag-name="{{tag.name}}" data-actor-id="{{group.ownerId}}"{{#if group.isScene}} data-scene-tag="true"{{/if}}>
+							<span class="litm-tag" data-text="{{tag.name}}">{{tag.name}}</span>
+						</li>
+						{{/each}}
+					</ul>
+					{{/each}}
+				</div>
 				{{else if option.statusCards}}
 				<div class="litm-spend-power__entries is-hidden" data-status-picker="true">
 					<ul class="litm-spend-power__status-list">

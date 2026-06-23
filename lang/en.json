@@ -50,6 +50,7 @@
 			"consequences_hint": "Free-text Consequences. Wrap tags or statuses in [brackets] to make them applicable.",
 			"consequences_menu_hint": "These are options, not a checklist — apply any that fit the fiction, and the same one can be dealt more than once.",
 			"consequences_menu_title": "Apply Consequences",
+			"contributed_consequences_hint": "Additional consequences from challenges and journeys in play.",
 			"cost": "{n} Power",
 			"cost_per_tier": "1 Power per tier",
 			"cost_variable": "{n}+ Power",
@@ -155,6 +156,8 @@
 			"view_action": "Read this Action",
 			"view_linked_ref": "View linked reference",
 			"view_linked_ref_named": "View {name}",
+			"reacting_to": "Reacting to {effects}",
+			"reacting_from": "(from {source})",
 			"warn_no_character": "Assign a hero to your user first."
 		},
 		"Editor": {
@@ -183,13 +186,17 @@
 				"description": "Block, dodge, shield, absorb.",
 				"key": "Reaction"
 			},
+			"recover": {
+				"action": "Recover a scratched tag",
+				"description": "Recover a scratched tag."
+			},
 			"reduce": {
 				"action": "Reduce Status",
 				"description": "Reduce a status on yourself or an ally."
 			},
 			"scratch": {
-				"action": "Recover a scratched tag",
-				"description": "Recover a scratched tag."
+				"action": "Scratch a tag",
+				"description": "Cross off a story or backpack tag — yours or a target's."
 			}
 		},
 		"Hero": {
@@ -848,7 +855,6 @@
 			"switch_to_play_mode": "Switch to Play Mode",
 			"tag_name": "Tag Name",
 			"tags_format_hint": "Tags: [tag name] — Statuses: [status name-tier]",
-			"tags_statuses": "Tags & Statuses",
 			"theme_advancement_title": "Theme Advancement",
 			"theme_evolution_title": "Theme Evolution",
 			"theme_kits_fixed": "Themekits (Fixed)",
@@ -891,7 +897,6 @@
 			"unknown_user": "Unknown User",
 			"view_image": "View Image",
 			"vignette_description_placeholder": "Describe the threat.",
-			"vignette_generates": "This vignette generates",
 			"vignette_name": "Vignette Name",
 			"warn_backpack_limit": "You already have a backpack. Please remove it before adding another.",
 			"warn_fellowship_limit": "A fellowship can only have one fellowship theme.",
@@ -921,8 +926,10 @@
 			"welcome_popout_tags": "Auto Pop-out Tags",
 			"welcome_popout_tags_hint": "Automatically open the Tags sidebar in a pop-out window on load.",
 			"welcome_settings_heading": "Preferences",
+			"story_tags": "Story Tags",
 			"wrap_tag_markup": "Wrap Tag Markup",
-			"wrap_tag_markup_hint": "Wraps the selected text in a text field with [brackets] to create tag markup."
+			"wrap_tag_markup_hint": "Wraps the selected text in a text field with [brackets] to create tag markup.",
+			"your_tags": "Your Tags"
 		}
 	},
 	"TYPES": {

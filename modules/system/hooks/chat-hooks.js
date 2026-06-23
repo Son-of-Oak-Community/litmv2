@@ -1,7 +1,9 @@
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
+import { collectSourceConsequences } from "../../apps/consequence-sources.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
+import { StoryTagsStore } from "../../apps/story-tags/story-tags-store.js";
 import { ThemeAdvancementApp } from "../../apps/theme-advancement.js";
 import { ThemeEvolutionWizard } from "../../apps/theme-evolution.js";
 import { WelcomeOverlay } from "../../apps/welcome/welcome-overlay.js";
@@ -317,7 +319,7 @@ function _handleOpenApplyConsequences(_target, app) {
 	);
 }
 
-async function _handleReact(target) {
+async function _handleReact(target, message) {
 	const actorId = target.dataset.actorId;
 	if (!actorId) return;
 	let actor = game.actors.get(actorId);
@@ -344,6 +346,11 @@ async function _handleReact(target) {
 	const dialog = sheet?.rollDialogInstance;
 	if (!dialog) return;
 	dialog.setType("mitigate");
+	// Carry the consequence being reacted to (set after setType so it isn't
+	// cleared by the type switch). setMitigation stores it; the render below
+	// surfaces the banner.
+	const context = message?.getFlag?.("litmv2", "consequence") ?? null;
+	if (context) dialog.setMitigation(context);
 	if (typeof sheet.renderRollDialog === "function") sheet.renderRollDialog();
 	else if (!dialog.rendered) dialog.render(true);
 }
@@ -444,23 +451,30 @@ async function _renderActionSuccesses(app, element) {
 
 async function _renderActionPanel(app, element) {
 	if (!game.user.isGM) return;
-	const actionUuid = app.getFlag("litmv2", FLAGS.actionUuid);
-	if (!actionUuid) return;
 
-	// Consequences are only dealt on Miss or Success-with-Consequences. A
-	// clean Success (10+) carries no Consequences — the button shouldn't
-	// appear there (Core Book p.151). Reactions are pre-roll mitigation;
-	// they don't surface the action's own Consequences either.
+	// Consequences are dealt on any Quick or Tracked roll that Misses
+	// ("consequences") or lands a Success-with-Consequences ("snc") — including
+	// a pushed clean Success, which resolves to "snc" (Core Book p.151, p.158).
+	// A clean Success carries none. Reactions are pre-roll mitigation, and
+	// Sacrifice/Camp rolls run their own flows, so none surface this button.
 	const roll = app.rolls?.[0];
+	const type = roll?.litm?.type;
+	if (type !== "quick" && type !== "tracked") return;
 	const outcome = roll?.outcome?.label;
-	if (!outcome || outcome === "success") return;
-	if (roll?.litm?.type === "mitigate") return;
+	if (outcome !== "consequences" && outcome !== "snc") return;
 
-	const action = await foundry.utils.fromUuid(actionUuid);
-	if (!action || action.type !== "action") return;
-
-	const sys = action.system;
-	if ((sys.consequences?.length ?? 0) === 0) return;
+	// Own consequences exist only when the roll came from an action item; the
+	// consequences contributed by every in-play challenge/journey are
+	// roll-independent, so a Quick roll with no action can still apply them.
+	const actionUuid = app.getFlag("litmv2", FLAGS.actionUuid);
+	const action = actionUuid ? await foundry.utils.fromUuid(actionUuid) : null;
+	const hasOwn =
+		action?.type === "action" && (action.system.consequences?.length ?? 0) > 0;
+	const hasContributed =
+		collectSourceConsequences(
+			StoryTagsStore.resolveTrackedActors().map((tracked) => tracked.actor),
+		).length > 0;
+	if (!hasOwn && !hasContributed) return;
 
 	// The action's consequence entries are options on a menu, not a queue —
 	// the Narrator applies as many as the fiction demands, including the same

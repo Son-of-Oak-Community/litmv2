@@ -101,9 +101,16 @@ export class Sockets {
 	}
 
 	static #registerStoryTagsListeners() {
-		Sockets.on("storyTagsUpdate", ({ data: { operation, data } }) => {
-			const sidebar = getStoryTagSidebar();
-			if (sidebar?.rendered) sidebar.doUpdate(operation, data);
+		Sockets.on("storyTagsUpdate", async ({ data: { operation, data } }) => {
+			// Exactly one GM applies the world-pack write — the active GM —
+			// regardless of whether the Tags sidebar is open on any client.
+			// (`doUpdate` self-guards GM and writes through ContentSources; the
+			// sidebar never needed to be rendered.) Mirrors the scratchEffect
+			// handler above. The previous `sidebar?.rendered` gate silently
+			// dropped player edits when the GM's sidebar was closed and
+			// double-applied when multiple GMs had it open.
+			if (game.user !== game.users.activeGM) return;
+			await getStoryTagSidebar()?.doUpdate(operation, data);
 		});
 
 		Sockets.on("storyTagsRender", () => {

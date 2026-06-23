@@ -1,10 +1,12 @@
-import { scanMarkup } from "../item/action/action-rules.js";
 import { applyConsequence } from "../item/action/chat-actions.js";
 import { error } from "../logger.js";
 import { FLAGS } from "../system/config.js";
-import { proseChipsHtml } from "../system/renderers/renderer-utils.js";
 import { LitmSettings } from "../system/settings.js";
-import { getStoryTagSidebar, localize as t } from "../utils.js";
+import { enrichHTML, getStoryTagSidebar, localize as t } from "../utils.js";
+import {
+	buildConsequenceItem,
+	gatherSidebarConsequences,
+} from "./consequence-sources.js";
 import { adjustCounter, readVariableTiers } from "./counter-controls.js";
 import { stripActorPrefix } from "./spend-power-service.js";
 import { StoryTagsStore } from "./story-tags/story-tags-store.js";
@@ -29,7 +31,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		classes: ["litm", "litm-spend-power"],
 		tag: "form",
 		window: { resizable: true },
-		position: { width: 520, height: "auto" },
+		position: { width: 520, height: 600 },
 		form: {
 			handler: ApplyActionMenuApp.#onSubmit,
 			closeOnSubmit: true,
@@ -41,7 +43,10 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 	};
 
 	static PARTS = {
-		form: { template: "systems/litmv2/templates/apps/apply-action-menu.html" },
+		form: {
+			template: "systems/litmv2/templates/apps/apply-action-menu.html",
+			templates: ["systems/litmv2/templates/partials/consequence-option.html"],
+		},
 	};
 
 	constructor(options = {}) {
@@ -67,49 +72,55 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 
 	async _prepareContext(_options) {
 		const message = this._getMessage();
+		if (!message) return { items: [], sources: [], empty: true };
+		// The action is optional: a Quick roll has none, but in-play
+		// challenges/journeys still contribute consequences to apply.
 		const action = await this._getAction();
-		if (!message || !action) return { items: [], empty: true };
 
-		const sys = action.system;
-		const applied = new Set(
-			message.getFlag("litmv2", "appliedConsequences") ?? [],
+		// Stored applied keys may be legacy numeric indices — normalize to
+		// strings so they match the action path's `String(index)` keys.
+		const appliedKeys = new Set(
+			(message.getFlag("litmv2", "appliedConsequences") ?? []).map(String),
 		);
 		// Push Your Luck adds one consequence to a clean Success (Core Book
-		// p.158). Once a consequence has been applied to a pushed roll, the
-		// remaining entries are locked so the GM can't keep adding more.
+		// p.158). Once one has been applied to a pushed roll, the rest lock.
 		const isPushed = message.rolls?.[0]?.litm?.pushed === true;
-		const appliedCount = applied.size;
-		const pushedLocked = isPushed && appliedCount >= 1;
-		const items = (sys.consequences ?? []).map((text, index) => {
-			const varTokens = [];
-			let v = 0;
-			for (const tok of scanMarkup(text)) {
-				if (tok.type === "status" && tok.isVariable) {
-					varTokens.push({ idx: v, name: tok.name });
-					v++;
-				}
-			}
-			// Applied entries stay enabled — consequences are options, and the
-			// Narrator may deal the same one to another hero. The `applied`
-			// flag only drives the ✓ marker. Pushed rolls still lock after
-			// their single consequence.
-			return {
-				key: String(index),
-				text: proseChipsHtml(text),
-				varTokens,
-				hasVariableTier: varTokens.length > 0,
-				applied: applied.has(index),
-				disabled: pushedLocked,
-			};
+		const pushedLocked = isPushed && appliedKeys.size >= 1;
+
+		// Own consequences exist only when the roll came from an action item.
+		// Render prose through the full enricher (bold, tag chips, links) so the
+		// menu matches the challenge sheet and chat cards — proseChipsHtml only
+		// did chips, leaving `**bold**` literal.
+		const items = action
+			? await Promise.all(
+					(action.system.consequences ?? []).map(async (text, index) =>
+						buildConsequenceItem(text, String(index), {
+							index,
+							applied: appliedKeys.has(String(index)),
+							disabled: pushedLocked,
+							sourceUuid: "",
+							sourceLabel: action.name,
+							html: await enrichHTML(text, action),
+						}),
+					),
+				)
+			: [];
+
+		// Contributed consequences: every challenge/journey in the story-tag
+		// sidebar offers its vignettes' consequences, grouped by vignette.
+		const sidebarActors = StoryTagsStore.resolveTrackedActors().map(
+			(tracked) => tracked.actor,
+		);
+		const sources = await gatherSidebarConsequences({
+			actors: sidebarActors,
+			appliedKeys,
+			disabled: pushedLocked,
+			enrich: (text, doc) => enrichHTML(text, doc),
 		});
 
-		// Scene actors as one-click target chips — token-less, theatre-of-mind
-		// scenes fall back to observable sidebar actors. Consequences only
-		// land on the player side of the table, so the list is restricted to
-		// heroes, story themes, and the fellowship — challenges and journeys
-		// don't suffer consequences. Rolling actor is the default pick so the
-		// common "consequences for the player who rolled" case works without
-		// an extra click.
+		// Scene actors as one-click target chips. Consequences land only on the
+		// player side, so the list is heroes / story themes / fellowship. The
+		// rolling actor is pre-selected for the common case.
 		const rollingActorId =
 			message.rolls?.[0]?.litm?.actorId ?? message.speaker?.actor ?? null;
 		const targets = getTargetCandidates({
@@ -123,11 +134,12 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		}));
 
 		return {
-			actionName: action.name,
+			actionName: action?.name ?? "",
 			items,
+			sources,
 			targets,
 			rollingActorId,
-			empty: items.length === 0,
+			empty: items.length === 0 && sources.length === 0,
 			isPushed,
 			pushedLocked,
 			inputType: isPushed ? "radio" : "checkbox",
@@ -144,8 +156,9 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 
 	static async #onSubmit(_event, form, _formData) {
 		const message = this._getMessage();
+		if (!message) return;
+		// Optional: a Quick roll has no action, only contributed consequences.
 		const action = await this._getAction();
-		if (!message || !action) return;
 
 		if (!game.user.isGM) {
 			ui.notifications.info(t("LITM.Actions.gm_only"));
@@ -175,14 +188,30 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 
 		const newlyApplied = [];
 		for (const key of checkedKeys) {
-			const index = Number(key);
+			const optionLi = form.querySelector(
+				`.litm-spend-power__option[data-key="${key}"]`,
+			);
+			if (!optionLi) continue;
+
+			const sourceUuid = optionLi.dataset.sourceUuid || "";
+			const index = Number(optionLi.dataset.conseqIndex);
 			if (!Number.isFinite(index)) continue;
-			const text = (action.system.consequences ?? [])[index];
+
+			// A source uuid → the consequence belongs to a sidebar challenge/
+			// journey vignette; otherwise it's the rolled action's own.
+			let text;
+			if (sourceUuid) {
+				const vignette = await foundry.utils.fromUuid(sourceUuid);
+				text = vignette?.system?.consequences?.[index];
+			} else {
+				text = (action?.system?.consequences ?? [])[index];
+			}
 			if (!text) continue;
 
-			const optionLi = form.querySelector(
-				`.litm-spend-power__option[data-key="${index}"]`,
-			);
+			// Stored card footer names the source. data-source-label is the
+			// viewer-independent public name, so a concealed challenge's real
+			// name never bakes into the broadcast card.
+			const footerLabel = optionLi.dataset.sourceLabel || action?.name || "";
 			const chosenTiers = readVariableTiers(optionLi);
 
 			let appliedAny = false;
@@ -198,11 +227,6 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 				if (!result) continue;
 				appliedAny = true;
 
-				// Ensure the target lives in the story-tag sidebar so the GM can
-				// see the freshly-applied tag/status there. Heroes and the
-				// fellowship singleton are added automatically; story themes
-				// are not, and the rote consequence is often what first puts a
-				// status on them.
 				if (actor) await ApplyActionMenuApp.#ensureActorInSidebar(actor);
 
 				await foundry.documents.ChatMessage.create({
@@ -211,27 +235,40 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 						"systems/litmv2/templates/chat/action-applied.html",
 						{
 							actorImg: actor?.img,
-							// publicName so the stored card never reveals a concealed
-							// challenge's real name, even when the GM generates it
 							actorName: actor?.system.publicName ?? actor?.name,
 							label: t("LITM.Terms.consequences"),
 							summary: stripActorPrefix(
 								result.appliedSummary,
 								actor?.system.publicName ?? actor?.name,
 							),
-							footer: action.name,
+							footer: footerLabel,
 							reactActorId: actor?.id ?? null,
 						},
 					),
+					// Carry the inflicted effects so a Reaction rolled from this
+					// card knows what it's mitigating (banner + spend-menu
+					// pre-target). sourceLabel is the viewer-independent public
+					// name (footerLabel), matching the stored footer.
+					flags: {
+						litmv2: {
+							consequence: {
+								effects: result.applied ?? [],
+								sourceLabel: footerLabel,
+								targetActorId: actor?.id ?? null,
+							},
+						},
+					},
 				});
 			}
-			if (appliedAny) newlyApplied.push(index);
+			if (appliedAny) newlyApplied.push(key);
 		}
 
-		// Record for the ✓ marker in one write after the loop; dedupe since
-		// re-application is allowed.
+		// Record applied keys (strings) in one write; dedupe and normalize any
+		// legacy numeric entries so the ✓ markers stay consistent.
 		if (newlyApplied.length) {
-			const appliedNow = message.getFlag("litmv2", "appliedConsequences") ?? [];
+			const appliedNow = (
+				message.getFlag("litmv2", "appliedConsequences") ?? []
+			).map(String);
 			await message.setFlag("litmv2", "appliedConsequences", [
 				...new Set([...appliedNow, ...newlyApplied]),
 			]);
