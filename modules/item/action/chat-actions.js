@@ -456,12 +456,13 @@ const APPLIERS = {
 export async function applyConsequence({ text, actor, chosenTiers = [] }) {
 	if (!actor) return null;
 	const re = CONFIG.litmv2.tagStringRe;
-	if (!re) return { appliedSummary: text };
+	if (!re) return { appliedSummary: text, applied: [] };
 
 	const matches = Array.from(text.matchAll(re));
-	if (!matches.length) return { appliedSummary: text };
+	if (!matches.length) return { appliedSummary: text, applied: [] };
 
 	const created = [];
+	const applied = [];
 	let varIdx = 0;
 	for (const match of matches) {
 		const c = classifyTagStringMatch(match);
@@ -474,13 +475,15 @@ export async function applyConsequence({ text, actor, chosenTiers = [] }) {
 			if (tier <= 0) continue;
 			await actor.system.addStatus(c.name, { tier, isHidden: false });
 			created.push(`[${c.name}-${tier}]`);
+			applied.push({ kind: "status", name: c.name, tier });
 		} else if (c.kind === "story") {
 			await actor.system.addStoryTag(
 				storyTagEffect({ name: c.name, isSingleUse: c.isSingleUse }),
 			);
 			created.push(c.isSingleUse ? `[${c.name}!]` : `[${c.name}]`);
+			applied.push({ kind: "story", name: c.name });
 		}
 	}
 	if (!created.length) return null;
-	return { appliedSummary: created.join(" ") };
+	return { appliedSummary: created.join(" "), applied };
 }

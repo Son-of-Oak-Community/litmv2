@@ -495,7 +495,7 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	font-weight: 500;
 	font-family: var(--font-serif);
 	color: var(--color-text-primary);
-	gap: 0.3em;
+	gap: 0.2em;
 
 	&::before {
 		content: attr(data-text);
@@ -2355,6 +2355,30 @@ section.standard-form.litm-actions-app {
 	width: 14px;
 	height: 14px;
 	flex-shrink: 0;
+}
+
+/* Scratch glyph inside a tag chip — the same scratch.svg the play-tag template
+   draws, sized to match it (18px) and filled with the chip's own text color via
+   currentColor. A CSS mask (not an inline <svg>, which Foundry strips from chat
+   content) and chip-scoped (not .litm-scoped) so it holds in chat cards too. */
+.litm-tag .litm-tag-scratch {
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+	align-self: center;
+	background-color: currentColor;
+	-webkit-mask:
+		url("assets/media/icons/scratch.svg") center / contain no-repeat;
+	mask: url("assets/media/icons/scratch.svg") center / contain no-repeat;
+}
+
+/* Inline scratch.svg drawn by play-tag.html (play mode, where Foundry keeps the
+   <svg>). Sized to the tag's own font so it tracks text scale; the negative
+   inline margin tucks it tight against the label. */
+.litm-tag-scratch-glyph {
+	width: 1.1em;
+	height: 1.1em;
+	margin-inline: -2px;
 }
 
 .litm i.litm-tag-check {
@@ -5206,6 +5230,22 @@ input.litm--single-use::after {
 	min-height: 0;
 }
 
+/* The scroll lives on .litm-spend-power__body, but .window-content's default
+   16px padding insets it — floating the scrollbar off the window edge and over
+   the fieldset borders. Zero that padding so the scroll body spans edge to edge
+   (scrollbar flush at the window's right edge), and move the spacing inside the
+   body and footer. Scoped so SpendPowerApp is unaffected. */
+#litm-apply-action .window-content {
+	padding: 0;
+}
+#litm-apply-action .litm-spend-power__body {
+	padding: var(--spacer-16);
+	scrollbar-gutter: stable;
+}
+#litm-apply-action .form-footer {
+	padding: var(--spacer-8) var(--spacer-16) var(--spacer-16);
+}
+
 .litm-spend-power .form-footer {
 	flex: none;
 }
@@ -7562,4 +7602,11 @@ body.litm--colorblind .themed.theme-dark,
 	.litm-camping-scene__timeline-label {
 		display: none;
 	}
+}
+
+.litm--mitigation-banner {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	margin-block-end: var(--spacer-8);
 }

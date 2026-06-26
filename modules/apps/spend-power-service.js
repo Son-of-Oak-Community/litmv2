@@ -5,9 +5,10 @@ import {
 	getSuccessCost,
 } from "../item/action/action-rules.js";
 import { applySuccess } from "../item/action/chat-actions.js";
-import { error } from "../logger.js";
+import { error, warn } from "../logger.js";
 import { FLAGS } from "../system/config.js";
-import { localize as t } from "../utils.js";
+import { Sockets } from "../system/sockets.js";
+import { getStoryTagSidebar, localize as t } from "../utils.js";
 
 /**
  * Apply a parsed spend intent to an actor, executing all document mutations.
@@ -72,9 +73,20 @@ export async function applySpendIntent(actor, intent) {
 				break;
 			}
 			case "picker": {
-				const { power, names } = await _applyPicker(actor, opt);
+				const { power, tags } = await _applyPicker(actor, opt);
 				genericSpent += power;
-				results.push({ kind: "picker", optionId: opt.optionId, power, names });
+				results.push({ kind: "picker", optionId: opt.optionId, power, tags });
+				break;
+			}
+			case "scratchPicker": {
+				const { power, tags } = await _applyScratchPicker(opt);
+				genericSpent += power;
+				results.push({
+					kind: "scratchPicker",
+					optionId: opt.optionId,
+					power,
+					tags,
+				});
 				break;
 			}
 			default: {
@@ -197,13 +209,92 @@ function _applyCounter(opt) {
 async function _applyPicker(actor, opt) {
 	const { chips, cost } = opt;
 	const power = cost * chips.length;
-	const names = [];
+	const tags = [];
 	for (const { tagId, tagName } of chips) {
-		names.push(tagName);
 		const effect = resolveEffect(tagId, actor);
 		if (effect) await effect.update({ "system.isScratched": false });
+		// Recovered tags render as live (un-scratched) chips of their real type.
+		tags.push({
+			name: tagName,
+			type: effect?.type ?? "story_tag",
+			isScratched: false,
+		});
 	}
-	return { power, names };
+	return { power, tags };
+}
+
+/**
+ * Scratch (cross off) the selected story/backpack tags. Unlike `_applyPicker`
+ * (which recovers tags on the rolling actor), each chip carries its own owner
+ * id, so a tag can be scratched on a target as well as on the actor. Scene
+ * (world-pack) story tags carry no actor owner (`isScene`) and route through
+ * the story-tag write fork instead.
+ */
+async function _applyScratchPicker(opt) {
+	const { chips, cost } = opt;
+	const tags = [];
+	// Charge only for scratches that actually land. A chip whose owner/effect
+	// vanished, or a scene write that can't be routed (no sidebar / no active
+	// GM), is skipped and not billed — Power is scarce, so a silent drop must
+	// not cost the player anything or show a false "scratched" chip.
+	let scratched = 0;
+
+	// Actor-owned story/backpack tags: scratch directly on their owner. Scene
+	// tags carry no actor effect (handled via the fork below).
+	for (const { tagId, tagName, actorId, isScene } of chips) {
+		if (isScene) continue;
+		const owner = actorId ? game.actors.get(actorId) : null;
+		const effect = owner ? resolveEffect(tagId, owner) : null;
+		if (!effect) {
+			warn(`Scratch skipped — tag "${tagName}" could not be resolved.`);
+			continue;
+		}
+		await effect.update({ "system.isScratched": true });
+		tags.push({ name: tagName, type: effect.type, isScratched: true });
+		scratched++;
+	}
+
+	// Scene story tags live in the world pack, which players can't write
+	// directly. Route through the same fork the sidebar uses (#storyTagOp):
+	// the GM writes the pack via the sidebar's doUpdate; a player broadcasts
+	// the request for the active GM to apply (see the storyTagsUpdate socket).
+	const sceneChips = chips.filter((c) => c.isScene);
+	if (sceneChips.length) {
+		const updates = sceneChips.map((c) => ({
+			_id: c.tagId,
+			"system.isScratched": true,
+		}));
+		let applied = false;
+		if (game.user.isGM) {
+			// Guard the GM path: a null sidebar would otherwise drop the write
+			// silently. Post-ready it's always present.
+			const sidebar = getStoryTagSidebar();
+			if (sidebar) {
+				await sidebar.doUpdate("updateTags", updates);
+				applied = true;
+			} else {
+				warn("Scene story-tag scratch dropped — Tags sidebar unavailable.");
+			}
+		} else if (game.users.activeGM) {
+			// Only dispatch when a GM is online to apply it (see the activeGM
+			// gate in the storyTagsUpdate handler); otherwise it's a silent drop.
+			Sockets.dispatch("storyTagsUpdate", {
+				operation: "updateTags",
+				data: updates,
+			});
+			applied = true;
+		} else {
+			warn("Scene story-tag scratch dropped — no active GM to apply it.");
+		}
+		if (applied) {
+			for (const c of sceneChips) {
+				tags.push({ name: c.tagName, type: "story_tag", isScratched: true });
+			}
+			scratched += sceneChips.length;
+		}
+	}
+
+	return { power: cost * scratched, tags };
 }
 
 function _applyDefault(opt) {

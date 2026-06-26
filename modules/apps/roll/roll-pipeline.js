@@ -86,6 +86,7 @@ export function executeRoll({
 	sacrificeThemeId,
 	sacrificeStatusName,
 	actionUuid = null,
+	mitigation = null,
 }) {
 	const {
 		scratchedTags,
@@ -176,6 +177,7 @@ export function executeRoll({
 			sacrificeLevel,
 			sacrificeThemeId,
 			sacrificeStatusName,
+			mitigation,
 		},
 	);
 

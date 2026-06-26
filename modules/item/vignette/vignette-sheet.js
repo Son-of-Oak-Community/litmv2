@@ -51,7 +51,6 @@ export class VignetteSheet extends LitmItemSheet {
 		return {
 			...context,
 			consequences: this.system.consequences,
-			effects: this.document.effects,
 			enrichedThreat,
 			isConsequenceOnly: this.system.isConsequenceOnly,
 			system: this.system,
@@ -73,15 +72,6 @@ export class VignetteSheet extends LitmItemSheet {
 	static async #onSubmitDocumentForm(_event, _form, formData) {
 		const submitData = formData.object;
 		await this.document.update(submitData);
-
-		// Update tags and statuses from consequences. FormDataExtended
-		// flattens array fields into dotted keys (`system.consequences.0`),
-		// so test key prefixes rather than a nested path.
-		if (
-			Object.keys(submitData).some((k) => k.startsWith("system.consequences"))
-		) {
-			await this.document.system.syncEffectsFromConsequences();
-		}
 	}
 
 	/**
@@ -107,6 +97,5 @@ export class VignetteSheet extends LitmItemSheet {
 			"system.consequences",
 			Number(target.dataset.index),
 		);
-		await this.document.system.syncEffectsFromConsequences();
 	}
 }

@@ -23,6 +23,7 @@ import {
  */
 class StoryTagsStoreImpl {
 	#cachedActors = null;
+	#cachedResolved = null;
 
 	/**
 	 * The story tags configuration, validated and normalized.
@@ -46,6 +47,7 @@ class StoryTagsStoreImpl {
 
 	invalidateCache() {
 		this.#cachedActors = null;
+		this.#cachedResolved = null;
 	}
 
 	/** Synchronous pack documents — populated once `loadStoryTags()` has run. */
@@ -83,6 +85,37 @@ class StoryTagsStoreImpl {
 	}
 
 	/**
+	 * Resolve the tracked + auto-included UUIDs to actor documents, mapping
+	 * scene-token UUIDs to their actor. Synchronous (via fromUuidSync), so
+	 * callers in sync contexts (the chat-button gate) can use it directly.
+	 * Returns triples so the view-model getter (needs token/uuid) and
+	 * consequence sourcing (needs only the actor) share one resolution path.
+	 * Cached until {@link invalidateCache} so the per-chat-render button gate
+	 * doesn't re-read `config` (and its GM normalize-persist) or re-resolve
+	 * UUIDs on every message render.
+	 * @returns {{uuid: string, actor: Actor, tokenDoc: object|null}[]}
+	 */
+	resolveTrackedActors() {
+		if (this.#cachedResolved) return this.#cachedResolved;
+		const storedUuids = this.config.actors ?? [];
+		const userCharacterUuids = this.userCharacterUuids;
+		const fellowshipUuid = game.litmv2?.fellowship?.uuid;
+		const autoUuids = [...userCharacterUuids];
+		if (fellowshipUuid) autoUuids.push(fellowshipUuid);
+		const mergedUuids = [...new Set([...autoUuids, ...storedUuids])];
+		this.#cachedResolved = mergedUuids
+			.map((uuid) => {
+				const doc = foundry.utils.fromUuidSync(uuid, { strict: false });
+				if (!doc) return null;
+				const isToken = doc.documentName === "Token";
+				const actor = isToken ? doc.actor : doc;
+				return actor ? { uuid, actor, tokenDoc: isToken ? doc : null } : null;
+			})
+			.filter(Boolean);
+		return this.#cachedResolved;
+	}
+
+	/**
 	 * View-model list of tracked actors with their visible tags/statuses.
 	 * Cached until {@link invalidateCache}; the invalidation hooks registered
 	 * by {@link registerInvalidationHooks} keep it fresh.
@@ -90,23 +123,10 @@ class StoryTagsStoreImpl {
 	 */
 	get actors() {
 		if (this.#cachedActors) return this.#cachedActors;
-		// Merge stored UUIDs with user-assigned characters and the fellowship so they always appear
-		const storedUuids = this.config.actors ?? [];
 		const userCharacterUuids = this.userCharacterUuids;
 		const fellowshipUuid = game.litmv2?.fellowship?.uuid;
-		const autoUuids = [...userCharacterUuids];
-		if (fellowshipUuid) autoUuids.push(fellowshipUuid);
-		const mergedUuids = [...new Set([...autoUuids, ...storedUuids])];
 		const result =
-			mergedUuids
-				.map((uuid) => {
-					const doc = foundry.utils.fromUuidSync(uuid, { strict: false });
-					if (!doc) return null;
-					const isToken = doc.documentName === "Token";
-					const actor = isToken ? doc.actor : doc;
-					return actor ? { uuid, actor, tokenDoc: isToken ? doc : null } : null;
-				})
-				.filter(Boolean)
+			this.resolveTrackedActors()
 				.map(({ uuid, actor, tokenDoc }) => ({
 					// Concealed challenges show their alias to non-GM viewers
 					name: actor.system.maskedName ?? tokenDoc?.name ?? actor.name,

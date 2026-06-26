@@ -2,6 +2,7 @@
 	{{#if empty}}
 	<p class="hint">{{localize "LITM.Actions.no_consequences_to_apply"}}</p>
 	{{else}}
+	<div class="litm-spend-power__body">
 	{{#if targets.length}}
 	<fieldset class="litm--apply-target-row">
 		<legend>{{localize "LITM.Actions.pick_targets"}}</legend>
@@ -19,6 +20,7 @@
 		</ul>
 	</fieldset>
 	{{/if}}
+	{{#if items.length}}
 	<fieldset>
 		<legend>{{localize "LITM.Terms.consequences"}}</legend>
 		{{#if isPushed}}
@@ -28,40 +30,29 @@
 		{{/if}}
 		<ul class="litm-spend-power__options">
 			{{#each items as |item|}}
-			<li class="litm-spend-power__option {{#if item.applied}}is-applied{{/if}} {{#if item.disabled}}is-disabled{{/if}}"
-				data-key="{{item.key}}">
-				<div class="litm-spend-power__option-row">
-					<label class="litm-spend-power__option-label">
-						<input type="{{../inputType}}" name="option" value="{{item.key}}"
-							{{#if item.disabled}}disabled{{/if}} />
-						<span>{{{item.text}}}</span>
-						{{#if item.applied}}<i class="fa-solid fa-check litm--applied-check" aria-hidden="true"
-							data-tooltip="{{localize 'LITM.Actions.consequence_applied'}}"></i>{{/if}}
-					</label>
-				</div>
-				{{#if item.hasVariableTier}}
-				<p class="hint">{{localize "LITM.Actions.variable_tier_hint"}}</p>
-				<div class="litm-spend-power__var-tiers">
-					{{#each item.varTokens}}
-					<div class="litm-spend-power__var-tier" data-var-idx="{{idx}}" data-var-name="{{name}}">
-						<span class="litm-status litm--variable-tier" data-text="{{name}}">{{name}}</span>
-						<button type="button" class="litm-spend-power__counter-btn" data-action="counter-dec"
-							aria-label="{{localize "LITM.Ui.decrease"}}">
-							<i class="fas fa-minus" aria-hidden="true"></i>
-						</button>
-						<span class="litm-spend-power__counter-value" aria-live="polite">0</span>
-						<button type="button" class="litm-spend-power__counter-btn" data-action="counter-inc"
-							aria-label="{{localize "LITM.Ui.increase"}}">
-							<i class="fas fa-plus" aria-hidden="true"></i>
-						</button>
-					</div>
-					{{/each}}
-				</div>
-				{{/if}}
-			</li>
+			{{> "systems/litmv2/templates/partials/consequence-option.html" item inputType=@root.inputType}}
 			{{/each}}
 		</ul>
 	</fieldset>
+	{{/if}}
+	{{#if sources.length}}
+	<p class="hint">{{localize "LITM.Actions.contributed_consequences_hint"}}</p>
+	{{#each sources as |source|}}
+	<fieldset>
+		<legend>{{source.sourceName}}</legend>
+		{{#each source.vignettes as |vignette|}}
+		{{#if vignette.label}}<h4 class="litm-render__section-header">{{vignette.label}}</h4>{{/if}}
+		{{#if vignette.threat}}<div class="threat-text">{{{vignette.threat}}}</div>{{/if}}
+		<ul class="litm-spend-power__options">
+			{{#each vignette.items as |item|}}
+			{{> "systems/litmv2/templates/partials/consequence-option.html" item inputType=@root.inputType}}
+			{{/each}}
+		</ul>
+		{{/each}}
+	</fieldset>
+	{{/each}}
+	{{/if}}
+	</div>
 	<div class="form-footer">
 		<button type="submit" class="bright">
 			<i class="fa-solid fa-skull" aria-hidden="true"></i>

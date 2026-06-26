@@ -9,6 +9,7 @@ import {
 	viewLinkedRefAction,
 } from "../../utils.js";
 import { LitmEmbedPopout } from "../embed-popout.js";
+import { mitigationBannerText } from "../mitigation.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 import { LitmRoll } from "./roll.js";
 import {
@@ -269,6 +270,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					? this.#sacrificeStatusName
 					: undefined,
 			actionUuid: this.#actionUuid,
+			mitigation: type === "mitigate" ? this.#mitigation : null,
 		};
 	}
 
@@ -303,6 +305,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#actionUuid = null;
 	#actionDoc = null;
 	#sojournBonus = 0;
+	#mitigation = null;
 
 	constructor(options = {}) {
 		if (options.actorId) options.id = `litm-roll-dialog-${options.actorId}`;
@@ -363,8 +366,21 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (this.rendered) this.render();
 	}
 
+	/**
+	 * Attach (or clear) the consequence being reacted to. Drives the mitigate
+	 * dialog banner and is persisted on the resulting roll so the Spend Power
+	 * menu can pre-target the inflicted status/tag. Net-new dialog state.
+	 */
+	setMitigation(context) {
+		this.#mitigation = context || null;
+		if (this.rendered) this.render();
+	}
+
 	setType(type) {
 		if (!type) return;
+		// Mitigation context only makes sense for a reaction; drop it when the
+		// player switches away so no stale "Reacting to…" banner survives.
+		if (type !== "mitigate") this.#mitigation = null;
 		// Sacrifice is its own ritual — clear any pending action so the
 		// dialog never shows the action strip alongside the sacrifice grid.
 		if (type === "sacrifice") {
@@ -750,6 +766,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			isOwner,
 			title: this.rollName,
 			type: this.type,
+			mitigationBanner:
+				this.type === "mitigate" ? mitigationBannerText(this.#mitigation) : "",
 			isCampAction: this.type === "campAction",
 			sojournBonus: this.#sojournBonus,
 			totalPower: this.totalPower,
@@ -970,6 +988,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#actionUuid = null;
 		this.#actionDoc = null;
 		this.#sojournBonus = 0;
+		this.#mitigation = null;
 		this.rollName = "";
 		this.type = "quick";
 		// reset() is state-only — it must NOT close the dialog. Closing is

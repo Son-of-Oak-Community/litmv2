@@ -82,6 +82,24 @@ class StubField {
 // static methods like calculatePower, so an empty base class is fine.
 class StubRoll {}
 
+// --- foundry.documents.Actor ---
+// LitmActor extends this. Mirrors core's allApplicableEffects (own effects +
+// item effects gated on `effect.transfer`) so overrides that call
+// `super.allApplicableEffects()` behave like the real document.
+class StubActor {
+	constructor(source = {}) {
+		Object.assign(this, { effects: [], items: [], ...source });
+	}
+	*allApplicableEffects() {
+		for (const effect of this.effects) yield effect;
+		for (const item of this.items) {
+			for (const effect of item.effects) {
+				if (effect.transfer) yield effect;
+			}
+		}
+	}
+}
+
 // --- foundry.applications.* ---
 // Several utility modules transitively import ApplicationV2 / DialogV2 /
 // HandlebarsApplicationMixin at module-load time. They never get rendered in
@@ -122,6 +140,8 @@ globalThis.foundry = {
 		randomID,
 		escapeHTML,
 		deepClone: (v) => (v === undefined ? v : structuredClone(v)),
+		isEmpty: (v) =>
+			v == null || (typeof v === "object" && Object.keys(v).length === 0),
 	},
 	abstract: { TypeDataModel: StubDataModel },
 	data: {
@@ -145,6 +165,7 @@ globalThis.foundry = {
 		},
 	},
 	dice: { Roll: StubRoll },
+	documents: { Actor: StubActor },
 	applications: {
 		api: {
 			ApplicationV2: StubAppV2,
