@@ -54,6 +54,7 @@ export class HandlebarsPartials {
 	// invoked via top-level `renderTemplate(path, data)` are not listed --
 	// `getTemplate` lazy-loads and caches them on first call.
 	static partials = [
+		"systems/litmv2/templates/parts/description.html",
 		"systems/litmv2/templates/partials/play-tag.html",
 		"systems/litmv2/templates/partials/play-theme-tags.html",
 		"systems/litmv2/templates/partials/play-theme-tracks.html",

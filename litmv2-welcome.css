@@ -115,13 +115,6 @@
 	justify-content: center;
 }
 
-.litm--welcome-overlay__slide {
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-}
-
 /* --- Welcome Slide --- */
 .litm--welcome-overlay__welcome {
 	display: flex;
@@ -313,21 +306,6 @@
 }
 
 /* --- Tours --- */
-.litm--welcome-overlay__tours {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacer-8);
-	width: 100%;
-}
-
-.litm--welcome-overlay__tours h3 {
-	font-size: var(--font-size-13, 0.8125rem);
-	font-weight: bold;
-	color: var(--color-light-4);
-	text-align: center;
-	margin: 0 0 var(--spacer-4);
-}
-
 .litm--welcome-overlay__tour-btn {
 	display: flex;
 	flex-direction: column;

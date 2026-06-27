@@ -42,13 +42,7 @@
 		</ul>
 	</fieldset>
 
-	<fieldset>
-		<legend>{{localize "LITM.Terms.description"}}</legend>
-		<prose-mirror class="journal-entry-content" name="system.description" data-document-uuid="{{document.uuid}}"
-			value="{{source.system.description}}" compact>
-			{{{ enriched.description }}}
-		</prose-mirror>
-	</fieldset>
+	{{> "systems/litmv2/templates/parts/description.html"}}
 
 	<fieldset>
 		{{> systems/litmv2/templates/partials/control-legend.html label="LITM.Ui.power_tag_questions" action="addEntry" path="system.powerTagQuestions" tooltip="LITM.Ui.add_question"}}
