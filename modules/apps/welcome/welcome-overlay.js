@@ -394,7 +394,10 @@ export class WelcomeOverlay {
 			permissions.ACTOR_CREATE?.includes(foundry.CONST.USER_ROLES.PLAYER) ??
 			false;
 
-		const canCreateHero = game.user.can("ACTOR_CREATE");
+		// Players without ACTOR_CREATE can still create when a GM is online —
+		// the wizard falls through to a GM-proxy socket (see HeroCreationData).
+		const canCreateHero =
+			game.user.can("ACTOR_CREATE") || !!game.users.activeGM;
 
 		const tours = this.#collectTours();
 

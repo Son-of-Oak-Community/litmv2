@@ -5,6 +5,7 @@ import {
 } from "../../active-effects/effect-factories.js";
 import { POWER_TAG_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
 import { ContentSources } from "../../system/content-sources.js";
+import { Sockets } from "../../system/sockets.js";
 import { levelIcon, localize as t } from "../../utils.js";
 
 const THEME_SLOTS = 4;
@@ -708,6 +709,17 @@ export class HeroCreationData {
 			system: {},
 			items,
 		};
+
+		// Players without ACTOR_CREATE can't run Actor.create; fall through to a
+		// GM proxy over the socket when one is online (see Sockets handler).
+		if (!game.user.can("ACTOR_CREATE")) {
+			if (!game.users.activeGM) {
+				ui.notifications.error(t("LITM.Ui.hero_create_no_gm"));
+				return null;
+			}
+			return this.#requestHeroFromGM(actorData, assignToUser);
+		}
+
 		const actor = await foundry.documents.Actor.create(actorData, {
 			renderSheet: false,
 			fromSidebar: false,
@@ -727,6 +739,61 @@ export class HeroCreationData {
 		}
 
 		return actor;
+	}
+
+	/**
+	 * Ask the active GM to create the hero on our behalf and resolve with the
+	 * synced actor once it arrives. The GM grants us ownership, so the createActor
+	 * hook fires locally with an owned, renderable document. Correlation is by a
+	 * one-shot flag baked into the actor data.
+	 * @param {object} actorData
+	 * @param {string|null} assignToUser
+	 * @returns {Promise<Actor|null>}
+	 */
+	async #requestHeroFromGM(actorData, assignToUser) {
+		const requestId = foundry.utils.randomID();
+		foundry.utils.setProperty(
+			actorData,
+			"flags.litmv2.heroWizardRequestId",
+			requestId,
+		);
+		Sockets.dispatch("createHeroAsGM", {
+			actorData,
+			userId: game.user.id,
+			assignToUser,
+			requestId,
+		});
+
+		const actor = await this.#awaitGMCreatedHero(requestId);
+		if (!actor) ui.notifications.error(t("LITM.Ui.hero_create_timeout"));
+		return actor;
+	}
+
+	/**
+	 * Resolve with the GM-created hero matching `requestId`, or null on timeout.
+	 * @param {string} requestId
+	 * @param {number} [timeoutMs]
+	 * @returns {Promise<Actor|null>}
+	 */
+	#awaitGMCreatedHero(requestId, timeoutMs = 15000) {
+		return new Promise((resolve) => {
+			let timer = null;
+			const cleanup = () => {
+				Hooks.off("createActor", handler);
+				if (timer) clearTimeout(timer);
+			};
+			const handler = (actor) => {
+				if (actor.getFlag?.("litmv2", "heroWizardRequestId") !== requestId)
+					return;
+				cleanup();
+				resolve(actor);
+			};
+			Hooks.on("createActor", handler);
+			timer = setTimeout(() => {
+				cleanup();
+				resolve(null);
+			}, timeoutMs);
+		});
 	}
 
 	/** Theme items for trope mode: cloned kits with the player's selections. */

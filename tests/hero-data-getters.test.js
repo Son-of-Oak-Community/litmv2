@@ -73,6 +73,34 @@ describe("HeroData.themes", () => {
 		expect(themes[0].tags.map((e) => e.name)).toEqual(["title", "proud"]);
 	});
 
+	it("collapses duplicate title tags to a single one (read-side guard)", () => {
+		const theme = fakeItem({
+			type: "theme",
+			name: "Doubled",
+			effects: [
+				fakeEffect({
+					type: "power_tag",
+					name: "title",
+					system: { isTitleTag: true },
+				}),
+				fakeEffect({
+					type: "power_tag",
+					name: "title-dupe",
+					system: { isTitleTag: true },
+				}),
+				fakeEffect({ type: "power_tag", name: "fierce", system: {} }),
+			],
+		});
+		theme.sort = 0;
+		theme.system = { isFellowship: false };
+
+		const { model } = makeHero({ items: [theme] });
+
+		const tags = model.themes[0].tags;
+		expect(tags.filter((e) => e.system.isTitleTag)).toHaveLength(1);
+		expect(tags.map((e) => e.name)).toEqual(["title", "fierce"]);
+	});
+
 	it("excludes fellowship-flagged themes from the hero's own themes", () => {
 		const own = fakeItem({ type: "theme", name: "mine" });
 		own.sort = 0;

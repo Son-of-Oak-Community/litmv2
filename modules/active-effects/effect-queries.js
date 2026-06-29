@@ -50,6 +50,26 @@ export function partitionEffects(actor, ...types) {
 }
 
 /**
+ * Collapse duplicate title tags down to the first one, preserving order and
+ * all other effects. A theme has exactly one title tag by design, but a
+ * historical cross-client create race could leave stragglers (deleted by
+ * migration 003). This is the read-side guard: any UI that enumerates a
+ * theme's raw effects routes through here so a stray duplicate never surfaces
+ * (e.g. doubled in the roll dialog), regardless of how many physically exist.
+ * @param {ActiveEffect[]} effects
+ * @returns {ActiveEffect[]}
+ */
+export function dedupeTitleTags(effects) {
+	let seenTitle = false;
+	return effects.filter((e) => {
+		if (!e.system?.isTitleTag) return true;
+		if (seenTitle) return false;
+		seenTitle = true;
+		return true;
+	});
+}
+
+/**
  * Find the first applicable effect matching a predicate.
  * @param {Actor} actor
  * @param {Function} predicate - Test function receiving each effect
