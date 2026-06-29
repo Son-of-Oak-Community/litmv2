@@ -15,13 +15,7 @@
 	</div>
 
 	<!-- Description -->
-	<fieldset>
-		<legend>{{localize "LITM.Terms.description"}}</legend>
-		<prose-mirror class="journal-entry-content" name="system.description" data-document-uuid="{{document.uuid}}"
-			value="{{source.system.description}}" compact>
-			{{{ enriched.description }}}
-		</prose-mirror>
-	</fieldset>
+	{{> "systems/litmv2/templates/parts/description.html"}}
 
 	<!-- Power Tags -->
 	<fieldset>

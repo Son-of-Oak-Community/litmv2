@@ -588,8 +588,7 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
    chat action panel). Lets the parchment show through; chrome carries
    the contour. */
 .litm--action-card,
-.litm--success-card,
-.litm--chat-action {
+.litm--success-card {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacer-4);
@@ -622,9 +621,6 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 .litm-spend-power__option[data-verb-kind="meta"] .litm--chat-action-verb {
 	color: var(--color-text-secondary);
 }
-.litm-spend-power__option .litm--chat-action-label {
-	font-style: italic;
-}
 /* Check marker on consequence entries applied earlier. The entry itself stays
    fully interactive — consequences are options, and the same one may be dealt
    to another hero — so no dimming, just the marker. */
@@ -633,27 +629,6 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	margin-left: 0.35em;
 	font-size: var(--font-size-12);
 	color: var(--color-litm-status-text);
-}
-.litm--chat-action-consequence-row {
-	align-items: flex-start;
-}
-/* Consequence button — rose at rest (adversity, always); fills on apply. */
-.chat-message .litm--chat-action-consequence-btn {
-	padding: var(--spacer-2) var(--spacer-8);
-	width: 1.75em;
-	height: 1.75em;
-	background: transparent;
-	border: 1px solid var(--color-litm-limit);
-	color: var(--color-litm-limit-accent);
-}
-.chat-message
-	.litm--chat-action-consequence-btn:hover:not(:disabled):not(.is-applied) {
-	background: var(--color-litm-limit-15);
-}
-.chat-message .litm--chat-action-consequence-btn.is-applied {
-	background: var(--color-litm-limit-30);
-	border-color: var(--color-litm-limit);
-	color: var(--color-litm-limit-accent, var(--color-text-primary));
 }
 
 /* Roll dialog — compact action header strip. Identifies which action is
@@ -871,36 +846,11 @@ section.standard-form.litm-actions-app {
 }
 
 /* Outcome description and consequence textareas — vertical resize like prose */
-.litm--success-description,
 .litm--consequence-row > textarea {
 	resize: vertical;
 }
 .litm--consequence-row {
 	align-items: flex-start;
-}
-
-/* Outcome payload — grouped grid; tier sits compactly next to status */
-.litm--success-payload-grid {
-	display: grid;
-	grid-template-columns: 1fr 1fr 4rem 1fr;
-	gap: var(--spacer-8);
-	align-items: end;
-}
-.litm--success-payload-tier {
-	max-width: 4rem;
-}
-.litm--success-payload-toggles {
-	margin-top: var(--spacer-8);
-	align-items: center;
-}
-.litm--success-payload-toggles > label {
-	flex: 0 0 auto;
-	align-items: center;
-	flex-wrap: nowrap;
-	white-space: nowrap;
-}
-.litm--success-payload-toggles > label > * {
-	flex: 0 0 auto;
 }
 
 /* Inline action link from @action[Name] enricher */
@@ -1048,23 +998,10 @@ section.standard-form.litm-actions-app {
 .litm--success-card > header {
 	align-items: center;
 }
-.litm--success-verb,
-.litm--success-quality {
+.litm--success-verb {
 	flex: 0 0 auto;
 	width: fit-content;
 }
-.litm--success-payload {
-	font-size: var(--font-size-12);
-}
-.litm--success-payload > summary {
-	cursor: pointer;
-	color: var(--color-text-secondary);
-	padding: var(--spacer-4) 0;
-}
-.litm--success-payload > summary:hover {
-	color: var(--color-text-primary);
-}
-
 /* Linked-reference icon inside a tag chip (rote, action, journal page) */
 .litm--ref-link {
 	display: inline-flex;
@@ -1557,17 +1494,6 @@ section.standard-form.litm-actions-app {
 	letter-spacing: 0.05em;
 	color: var(--color-litm-tag-text);
 	margin-right: 0.25em;
-}
-
-/* Subhead inside a section ("EXTRA FEATS"). */
-.litm-render--action__subhead {
-	margin: var(--spacer-8) 0 var(--spacer-4);
-	font-family: var(--font-serif);
-	font-size: var(--font-size-12);
-	font-weight: 700;
-	letter-spacing: 0.18em;
-	text-transform: uppercase;
-	color: var(--color-text-secondary);
 }
 .litm-render--action__feats {
 	list-style: disc;
@@ -2548,16 +2474,8 @@ section.standard-form.litm-actions-app {
 /* Smallest defaults: everything stacks 1-up so tag chips and tracks have
    room to breathe at narrow widths. A medium breakpoint below lifts most
    grids to 2-up, and the wide layout takes themes up to 4-up. */
-.litm-hero-board__themes {
-	display: grid;
-	gap: var(--spacer-12);
-	grid-template-columns: minmax(0, 1fr);
-}
-.litm-hero-board__inventory {
-	display: grid;
-	gap: var(--spacer-12);
-	grid-template-columns: minmax(0, 1fr);
-}
+.litm-hero-board__themes,
+.litm-hero-board__inventory,
 .litm-hero-board__story-grid {
 	display: grid;
 	gap: var(--spacer-12);
@@ -3168,12 +3086,6 @@ section.standard-form.litm-actions-app {
 	cursor: not-allowed;
 }
 
-/* Title input */
-#litm-roll-dialog .litm--roll-title-input {
-	font-size: var(--font-size-14);
-	font-weight: bold;
-}
-
 /* Grid: settings beside the tag column when wide enough.
    align-content: start keeps the two grid items at the top of the
    available height so the cells don't get visually stretched when the
@@ -3212,23 +3124,6 @@ section.standard-form.litm-actions-app {
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
 	opacity: 0.7;
-}
-
-/* Uniform radio/label groups */
-.litm--radio-group {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacer-2) var(--spacer-12);
-	align-items: center;
-	font-size: var(--font-size-13);
-}
-
-.litm--radio-group label {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacer-4);
-	cursor: pointer;
-	white-space: nowrap;
 }
 
 /* Might & Modifier section */
@@ -3393,52 +3288,6 @@ section.standard-form.litm-actions-app {
 .themed.theme-dark .litm--segmented-option--icon img,
 .litm.application.theme-dark .litm--segmented-option--icon img {
 	filter: brightness(1.6) saturate(1.4);
-}
-
-/* Modifier stepper: -/value/+ */
-.litm--modifier-stepper {
-	display: flex;
-	align-items: center;
-	gap: 0;
-	flex: 0 0 auto;
-}
-
-.litm--modifier-stepper button {
-	flex: 0 0 auto;
-	width: 1.75rem;
-	height: var(--input-height);
-	padding: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: var(--font-size-11);
-	border: 1px solid var(--color-border);
-	background: var(--color-form-field-background);
-	cursor: pointer;
-}
-
-.litm--modifier-stepper button:first-child {
-	border-radius: var(--radius-md) 0 0 var(--radius-md);
-	border-right: none;
-}
-
-.litm--modifier-stepper button:last-child {
-	border-radius: 0 var(--radius-md) var(--radius-md) 0;
-	border-left: none;
-}
-
-.litm--modifier-stepper input[type="number"] {
-	width: 3rem;
-	text-align: center;
-	border-radius: 0;
-	-moz-appearance: textfield;
-	appearance: textfield;
-}
-
-.litm--modifier-stepper input[type="number"]::-webkit-inner-spin-button,
-.litm--modifier-stepper input[type="number"]::-webkit-outer-spin-button {
-	-webkit-appearance: none;
-	margin: 0;
 }
 
 /* Trade power annotation on total power line */
@@ -5347,15 +5196,6 @@ input.litm--single-use::after {
 
 /* --- Entries (tags, statuses, counters) --- */
 
-.litm-spend-power .litm-spend-power__tier {
-	margin: var(--spacer-2) 0 0;
-}
-
-.litm-spend-power .litm-spend-power__tier input {
-	width: 4rem;
-	flex: none;
-}
-
 .litm-spend-power .litm-spend-power__entries {
 	display: flex;
 	flex-direction: column;
@@ -6956,16 +6796,6 @@ body.litm--colorblind .themed.theme-dark,
 	gap: var(--spacer-8);
 }
 
-/* Period label — small serif italic, no caps. Sits inline with the chip
-   when a period is decided, or above the picker when it isn't. */
-.litm-camping-scene__period-label {
-	font-family: var(--font-serif);
-	font-style: italic;
-	font-size: var(--font-size-12);
-	color: var(--color-text-subtle);
-	flex: 0 0 auto;
-}
-
 /* Chip — replaces the three-card picker once a period is decided so the
    column stops growing. Tinted with the activity's accent color. */
 .litm-camping-scene__period-chip {
@@ -7224,13 +7054,6 @@ body.litm--colorblind .themed.theme-dark,
 
 .litm-camping-scene__switch {
 	display: none;
-}
-
-.litm-camping-scene__rephrase-row {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacer-2);
-	margin-bottom: var(--spacer-4);
 }
 
 .litm-camping-scene__footer {
