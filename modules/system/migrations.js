@@ -2,6 +2,7 @@ import { info } from "../logger.js";
 import { localize as t } from "../utils.js";
 import { migrate as migrateV1 } from "./migrations/001-legacy-effects.js";
 import { migrate as migrateV2 } from "./migrations/002-dedup-title-tags.js";
+import { migrate as migrateV3 } from "./migrations/003-redo-dedup-title-tags.js";
 import { LitmSettings } from "./settings.js";
 
 /**
@@ -21,6 +22,7 @@ import { LitmSettings } from "./settings.js";
 const MIGRATIONS = [
 	{ version: 1, migrate: migrateV1 },
 	{ version: 2, migrate: migrateV2 },
+	{ version: 3, migrate: migrateV3 },
 ];
 
 /**

@@ -586,6 +586,8 @@
 			"hero_created_dismiss": "Start Playing",
 			"hero_created_message": "Your hero has been created!",
 			"hero_created_tours_prompt": "Get Started",
+			"hero_create_no_gm": "A Game Master must be online to create your hero. Ask your GM to come online, or to grant players permission to create characters.",
+			"hero_create_timeout": "Creating your hero timed out. Check that a Game Master is connected and try again.",
 			"hero_creation_all_themes_required": "All 4 themes must be configured",
 			"hero_creation_back": "Back",
 			"hero_creation_backpack_active": "Active",

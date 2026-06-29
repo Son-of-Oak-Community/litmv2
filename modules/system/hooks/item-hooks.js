@@ -15,9 +15,16 @@ export function registerItemHooks() {
 /**
  * When an item with stashed legacy data is created (e.g. compendium import),
  * create proper AEs from the stashed flag data.
+ *
+ * createItem fires on every connected client, but the follow-up writes
+ * (createLegacyEffects, ensureTitleTag) must run on exactly one of them —
+ * otherwise the GM and the creating player both create a title tag, leaving a
+ * duplicate (invisible on the sheet, doubled in the roll dialog). Gate to the
+ * user who triggered the creation; they own the new item and can mutate it.
  */
 function _migrateLegacyItemOnCreate() {
-	Hooks.on("createItem", async (item) => {
+	Hooks.on("createItem", async (item, _options, userId) => {
+		if (userId !== game.userId) return;
 		await LitmItem.createLegacyEffects(item);
 		await LitmItem.ensureTitleTag(item);
 	});

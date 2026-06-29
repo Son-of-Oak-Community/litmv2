@@ -281,9 +281,17 @@ function _syncStoryThemeActorToItem() {
 /**
  * When an actor is imported (embedded items don't fire createItem),
  * create proper AEs from any stashed legacy flag data.
+ *
+ * createActor fires on every connected client; the follow-up writes
+ * (ensureTitleTag, relationship effects) must run on exactly one of them.
+ * Without this guard a player creating a hero and the GM both run
+ * ensureTitleTag, producing a duplicate title tag (hidden on the sheet but
+ * doubled in the roll dialog). Gate to the triggering user, who owns the
+ * new actor and can mutate it.
  */
 function _migrateLegacyActorOnCreate() {
-	Hooks.on("createActor", async (actor) => {
+	Hooks.on("createActor", async (actor, _options, userId) => {
+		if (userId !== game.userId) return;
 		for (const item of actor.items) {
 			if (
 				item.flags?.litmv2?.legacyTags ||

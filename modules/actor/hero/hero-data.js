@@ -6,6 +6,7 @@ import {
 	ITEM_TYPES,
 	THEME_TAG_TYPES,
 } from "../../system/config.js";
+import { dedupeTitleTags } from "../../active-effects/effect-queries.js";
 import { LitmSettings } from "../../system/settings.js";
 import { findFellowshipTheme } from "../../utils.js";
 import { advanceFlagLimit } from "../mixins/actor-limits.js";
@@ -201,12 +202,12 @@ export class HeroData extends LimitsMixin(
 			.sort((a, b) => a.sort - b.sort)
 			.map((theme) => ({
 				theme,
-				tags: [...theme.effects]
-					.filter((e) => THEME_TAG_TYPES.has(e.type))
-					.sort(
-						(a, b) =>
-							(b.system.isTitleTag ? 1 : 0) - (a.system.isTitleTag ? 1 : 0),
-					),
+				tags: dedupeTitleTags(
+					[...theme.effects].filter((e) => THEME_TAG_TYPES.has(e.type)),
+				).sort(
+					(a, b) =>
+						(b.system.isTitleTag ? 1 : 0) - (a.system.isTitleTag ? 1 : 0),
+				),
 			}));
 	}
 
@@ -241,7 +242,7 @@ export class HeroData extends LimitsMixin(
 		}
 		const themes = [...themeMap.values()].map(({ theme, tags: t }) => ({
 			theme,
-			tags: t.sort(
+			tags: dedupeTitleTags(t).sort(
 				(a, b) => (b.system.isTitleTag ? 1 : 0) - (a.system.isTitleTag ? 1 : 0),
 			),
 		}));

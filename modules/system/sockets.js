@@ -39,6 +39,7 @@ export class Sockets {
 		this.#registerRollModerationListeners();
 		this.#registerStoryTagsListeners();
 		this.#registerCampingListeners();
+		this.#registerHeroCreationListener();
 	}
 
 	static #registerRollUpdateListener() {
@@ -127,6 +128,36 @@ export class Sockets {
 				});
 			}
 		});
+	}
+
+	// Players without the core ACTOR_CREATE permission can't run Actor.create
+	// themselves. When a GM is online, the hero-creation wizard dispatches the
+	// assembled actor data here and the active GM creates it on their behalf,
+	// granting the requesting player ownership. Mirrors the scratchEffect /
+	// storyTagsUpdate GM-proxy pattern. The player learns of success via the
+	// createActor hook (the actor carries a correlation flag), not a return
+	// channel — the socket layer is fire-and-forget.
+	static #registerHeroCreationListener() {
+		Sockets.on(
+			"createHeroAsGM",
+			async ({ data: { actorData, userId, assignToUser } }) => {
+				if (game.user !== game.users.activeGM) return;
+				const data = foundry.utils.deepClone(actorData);
+				foundry.utils.setProperty(
+					data,
+					`ownership.${userId}`,
+					foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+				);
+				const actor = await foundry.documents.Actor.create(data, {
+					renderSheet: false,
+					fromSidebar: false,
+					litm: { skipHeroWizard: true, skipAutoSetup: true },
+				});
+				if (!actor) return;
+				const user = game.users.get(assignToUser || userId);
+				if (user && !user.character) await user.update({ character: actor.id });
+			},
+		);
 	}
 
 	static #registerCampingListeners() {
