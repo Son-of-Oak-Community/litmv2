@@ -1,3 +1,4 @@
+import { dedupeTitleTags } from "../../active-effects/effect-queries.js";
 import { completeTrackUpdate, fireTrackCompletion } from "../../system/chat.js";
 import {
 	ACTOR_TAG_TYPES,
@@ -6,7 +7,6 @@ import {
 	ITEM_TYPES,
 	THEME_TAG_TYPES,
 } from "../../system/config.js";
-import { dedupeTitleTags } from "../../active-effects/effect-queries.js";
 import { LitmSettings } from "../../system/settings.js";
 import { findFellowshipTheme } from "../../utils.js";
 import { advanceFlagLimit } from "../mixins/actor-limits.js";
