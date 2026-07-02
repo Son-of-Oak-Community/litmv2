@@ -578,9 +578,7 @@ export class HeroSheet extends LitmActorSheet {
 				nextState === "scratched" &&
 				findBurnedSelection(this.rollDialogInstance.selections, tagKey)
 			) {
-				ui.notifications.warn(
-					game.i18n.localize("LITM.Ui.burn_cap_warning"),
-				);
+				ui.notifications.warn(game.i18n.localize("LITM.Ui.burn_cap_warning"));
 				return;
 			}
 			this.rollDialogInstance.setCharacterTagState(tagKey, nextState);
