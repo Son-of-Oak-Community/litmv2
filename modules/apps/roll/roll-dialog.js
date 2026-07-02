@@ -11,6 +11,7 @@ import {
 import { LitmEmbedPopout } from "../embed-popout.js";
 import { mitigationBannerText } from "../mitigation.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
+import { findBurnedSelection, nextStateAfterScratched } from "./burn-cap.js";
 import { LitmRoll } from "./roll.js";
 import {
 	buildActionContext,
@@ -232,8 +233,19 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (event.shiftKey && !checkbox.disabled) {
 			const canScratch = checkbox.getAttribute("states")?.includes("scratched");
 			if (canScratch) {
-				checkbox.value = checkbox.value === "scratched" ? "" : "scratched";
-				checkbox.dispatchEvent(new Event("change"));
+				const burning = checkbox.value !== "scratched";
+				// Burn cap (p.158): an explicit shift-to-burn is refused outright
+				// when another tag is already burned, leaving this tag untouched.
+				// (The natural cycle skips past instead — see `_onTagChange`.)
+				if (burning && findBurnedSelection(this.#selectionMap, checkbox.name)) {
+					ui.notifications?.warn(t("LITM.Ui.burn_cap_warning"));
+					return;
+				}
+				checkbox.value = burning ? "scratched" : "";
+				// Bubble so the delegated `_onTagChange` registers the selection
+				// (and applies the non-owner permission gate) — a non-bubbling
+				// event would set only the visual and never reach the handler.
+				checkbox.dispatchEvent(new Event("change", { bubbles: true }));
 				return;
 			}
 		}
@@ -900,20 +912,22 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		}
 
 		// Burn cap: only one tag may be burned per roll (p.158). Skip past the
-		// scratched state to "off" instead of reverting — the checkbox cycle is
-		// …→negative→scratched→off, so reverting would trap the user, unable to
-		// cycle a selected tag back off while another tag is burned (#100).
-		if (value === "scratched") {
-			for (const [otherId, entry] of this.#selectionMap) {
-				if (otherId !== id && entry.state === "scratched") {
-					ui.notifications?.warn(t("LITM.Ui.burn_cap_warning"));
-					this.#revertTagChange(target, "");
-					this.setSelection(id, "");
-					this.#updateTotalPower();
-					this.#dispatchUpdate();
-					return;
-				}
-			}
+		// blocked scratched state to the NEXT state in this tag's own cycle
+		// instead of reverting to "off". For most cycles scratched is last, so
+		// the next state wraps to "" — but the GM power-tag cycle is
+		// `,positive,scratched,negative`, so skipping must land on "negative"
+		// (the Narrator inversion). Hard-reverting to "" would otherwise trap the
+		// cursor before "negative", making it unreachable while another tag is
+		// burned (#100).
+		if (value === "scratched" && findBurnedSelection(this.#selectionMap, id)) {
+			ui.notifications?.warn(t("LITM.Ui.burn_cap_warning"));
+			const states = (target.getAttribute("states") ?? "").split(",");
+			const next = nextStateAfterScratched(states);
+			this.#revertTagChange(target, next);
+			this.setSelection(id, next, next ? game.user.id : null);
+			this.#updateTotalPower();
+			this.#dispatchUpdate();
+			return;
 		}
 
 		const contributorId = value ? game.user.id : null;

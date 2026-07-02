@@ -6,6 +6,7 @@ import {
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ActionsApp } from "../../apps/actions-app.js";
+import { findBurnedSelection } from "../../apps/roll/burn-cap.js";
 import { resolveRollDialogOwnership } from "../../apps/roll/roll-dialog.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { LitmSettings } from "../../system/settings.js";
@@ -570,6 +571,18 @@ export class HeroSheet extends LitmActorSheet {
 					? "scratched"
 					: states[states.length - 1]
 				: states[1];
+			// Burn cap (p.158): refuse a second burn from the sheet, mirroring the
+			// roll dialog. Leave the tag untouched rather than silently swallowing
+			// the burn into a different state.
+			if (
+				nextState === "scratched" &&
+				findBurnedSelection(this.rollDialogInstance.selections, tagKey)
+			) {
+				ui.notifications.warn(
+					game.i18n.localize("LITM.Ui.burn_cap_warning"),
+				);
+				return;
+			}
 			this.rollDialogInstance.setCharacterTagState(tagKey, nextState);
 		}
 
