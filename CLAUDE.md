@@ -14,6 +14,8 @@ Foundry source is symlinked at `./foundry/` (client code in `public/`, CSS at `p
 - `npm run i18n:check` — find missing/superfluous localization keys
 - `npm run i18n:diff` — translator diagnostic; diffs each non-English language against `lang/en.json`
 
+Local runtime-verification steps (launching the test world, rules-as-written source path) live in the gitignored `CLAUDE.local.md` — machine-specific, so not checked in.
+
 ## Extensibility (don't break the public API surface)
 
 litmv2 is meant to be extended by modules/macros, not forked. The three extension surfaces:
@@ -134,7 +136,7 @@ The dialog's `#selectionMap` is the source of truth for tag selections, not form
 
 ### Sockets
 
-Namespace `system.litmv2`. Events: roll dialog sync (`updateRollDialog`, `requestRollDialogSync`, `resetRollDialog`, `closeRollDialog`), GM moderation (`rollDice`, `rejectRoll`), GM-applied ally-tag scratch (`scratchEffect`), story tags (`storyTagsUpdate`, `storyTagsRender`), camping (`campingOpen`, `campingSaveOp`, `campingEnd`). Definitions in `modules/system/sockets.js`.
+Namespace `system.litmv2`. Events: roll dialog sync (`updateRollDialog`, `requestRollDialogSync`, `resetRollDialog`, `closeRollDialog`), GM moderation (`rollDice`, `rejectRoll`), GM-applied ally-tag scratch (`scratchEffect`), story tags (`storyTagsUpdate`, `storyTagsRender`), camping (`campingOpen`, `campingSaveOp`, `campingEnd`), GM-proxied hero creation for players without `ACTOR_CREATE` (`createHeroAsGM`). Definitions in `modules/system/sockets.js`.
 
 ## Active Effects: the canonical tag store
 
@@ -192,6 +194,11 @@ import { error, warn, info, success } from "../logger.js";
 Exception: `.catch(console.error)` is fine — the logger loses stack traces.
 
 ### Data migrations
+
+**First ask whether a migration is needed at all.** Prefer a root fix — a guard in the
+data model (`migrateData`, `_preCreate`, an invariant in `prepareDerivedData`) — over
+migrating stored data. Propose `migrations.js` work only when bad data already exists
+in worlds and can't be normalized on load.
 
 Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on document load; idempotent, no version tracking). `modules/system/migrations.js` is reserved for bulk operations migrateData can't handle (renaming doc types, moving data between documents). Always `return super.migrateData(source)` at the end.
 
@@ -296,3 +303,8 @@ How the established primitives compose into the system's signature surfaces. Whe
 2. **Newcomer-friendly** — discoverable, tooltipped, consistent.
 3. **Reuse before reinvention** — if a new feature doesn't look like the rest, the new feature is wrong.
 4. **Both themes matter** — test light & dark; most game tokens are theme-aware via `body.theme-light`/`body.theme-dark`.
+5. **Two failed fixes = wrong layer.** If a visual fix hasn't landed after two attempts,
+   stop patching the symptom: find the canonical template/partial/class that owns the
+   element (tables above) and re-derive from it. Stacked overrides — filters,
+   `!important`, magic offsets — are the signal you're fighting a hand-rolled element
+   that should be using the design system.

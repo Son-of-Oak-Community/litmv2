@@ -5,6 +5,7 @@ license.json
 .auth/
 .playwright-cli/
 .vscode/
+CLAUDE.local.md
 foundry
 packs/
 __fixtures__/
