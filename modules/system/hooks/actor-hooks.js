@@ -115,6 +115,10 @@ function _prepareCharacterOnCreate() {
 	Hooks.on("createActor", (actor, options) => {
 		(async () => {
 			if (!game.user.isGM) return;
+			// Compendium documents are templates, not playable copies — never
+			// auto-scaffold them (the write also fails on locked packs). A world
+			// copy made from the pack re-fires this hook and gets scaffolded then.
+			if (actor.pack) return;
 			await ACTOR_SETUP[actor.type]?.(actor, options);
 			if (options?.renderSheet && actor.isOwner) {
 				actor.sheet.render(true, { mode: 1 });
