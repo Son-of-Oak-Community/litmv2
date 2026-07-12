@@ -1,6 +1,7 @@
 import { localize as t } from "../../utils.js";
 import { ACTOR_TYPES } from "../config.js";
 import { LitmSettings } from "../settings.js";
+import { shouldAutoLinkHero } from "./fellowship-rules.js";
 
 export function registerFellowshipHooks() {
 	if (!LitmSettings.useFellowship) return;
@@ -191,12 +192,10 @@ function _rerenderHeroSheetsOnFellowshipChange() {
  */
 function _autoLinkNewHeroes() {
 	Hooks.on("createActor", async (actor) => {
-		if (actor.type !== ACTOR_TYPES.hero) return;
 		if (!game.user.isGM) return;
 
 		const fellowshipId = LitmSettings.fellowshipId;
-		if (!fellowshipId) return;
-		if (actor.system.fellowshipId === fellowshipId) return;
+		if (!shouldAutoLinkHero(actor, fellowshipId)) return;
 
 		await actor.update({ "system.fellowshipId": fellowshipId });
 	});
