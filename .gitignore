@@ -11,6 +11,7 @@ packs/
 __fixtures__/
 CSS_GUIDE.md
 .superpowers/
+docs/superpowers/
 node_modules/
 
 # Dev screenshots and scratch artifacts at repo root

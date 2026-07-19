@@ -554,6 +554,12 @@ export class LitmActorSheet extends LitmSheetMixin(
 			target.closest?.(".theme-card__description") ??
 			target.querySelector?.(".theme-card__description");
 		if (!description) return;
+		const body = description.querySelector(".theme-card__description-body");
+		if (body)
+			description.style.setProperty(
+				"--description-height",
+				`${body.scrollHeight}px`,
+			);
 		description.classList.toggle("is-expanded");
 	}
 

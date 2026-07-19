@@ -31,62 +31,26 @@ export class Fonts {
 				},
 			],
 		});
-		FontConfig.loadFont("CaslonAntique", {
+		FontConfig.loadFont("Uncial Antiqua", {
 			editor: true,
 			fonts: [
 				{
-					name: "CaslonAntique",
-					urls: ["systems/litmv2/assets/fonts/caslon.ttf"],
-					sizeAdjust: "120%",
+					name: "Uncial Antiqua",
+					urls: ["systems/litmv2/assets/fonts/uncial-antiqua.ttf"],
+				},
+			],
+		});
+		FontConfig.loadFont("Grenze", {
+			editor: true,
+			fonts: [
+				{
+					name: "Grenze",
+					urls: ["systems/litmv2/assets/fonts/grenze.ttf"],
 				},
 				{
-					name: "CaslonAntique",
-					urls: ["systems/litmv2/assets/fonts/caslon-b.ttf"],
+					name: "Grenze",
+					urls: ["systems/litmv2/assets/fonts/grenze-b.ttf"],
 					weight: "bold",
-					sizeAdjust: "120%",
-				},
-				{
-					name: "CaslonAntique",
-					urls: ["systems/litmv2/assets/fonts/caslon-i.ttf"],
-					style: "italic",
-					sizeAdjust: "120%",
-				},
-			],
-		});
-		FontConfig.loadFont("Germania One", {
-			editor: true,
-			fonts: [
-				{
-					name: "Germania One",
-					urls: ["systems/litmv2/assets/fonts/germania-one.ttf"],
-				},
-			],
-		});
-		FontConfig.loadFont("Luminari", {
-			editor: true,
-			fonts: [
-				{
-					name: "Luminari",
-					urls: ["systems/litmv2/assets/fonts/luminari.ttf"],
-					sizeAdjust: "90%",
-				},
-			],
-		});
-		FontConfig.loadFont("Trattatello", {
-			editor: true,
-			fonts: [
-				{
-					name: "Trattatello",
-					urls: ["systems/litmv2/assets/fonts/trattatello.ttf"],
-				},
-			],
-		});
-		FontConfig.loadFont("STFU", {
-			editor: true,
-			fonts: [
-				{
-					name: "STFU",
-					urls: ["systems/litmv2/assets/fonts/stfu.woff"],
 				},
 			],
 		});
@@ -133,15 +97,6 @@ export class Fonts {
 				},
 			],
 		});
-		FontConfig.loadFont("AlchemyItalic", {
-			editor: true,
-			fonts: [
-				{
-					name: "AlchemyItalic",
-					urls: ["systems/litmv2/assets/fonts/alchemy-i.ttf"],
-				},
-			],
-		});
 		FontConfig.loadFont("PackardAntique", {
 			editor: true,
 			fonts: [
@@ -153,6 +108,29 @@ export class Fonts {
 					name: "PackardAntique",
 					urls: ["systems/litmv2/assets/fonts/packard-b.ttf"],
 					weight: "bold",
+				},
+			],
+		});
+		FontConfig.loadFont("Caveat", {
+			editor: true,
+			fonts: [
+				{
+					name: "Caveat",
+					urls: ["systems/litmv2/assets/fonts/caveat.ttf"],
+				},
+				{
+					name: "Caveat",
+					urls: ["systems/litmv2/assets/fonts/caveat-b.ttf"],
+					weight: "bold",
+				},
+			],
+		});
+		FontConfig.loadFont("Caveat Brush", {
+			editor: true,
+			fonts: [
+				{
+					name: "Caveat Brush",
+					urls: ["systems/litmv2/assets/fonts/caveat-brush.ttf"],
 				},
 			],
 		});

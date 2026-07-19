@@ -1,6 +1,15 @@
-Copyright 2012 The Libre Caslon Text Project Authors (https://github.com/impallari/Libre-Caslon-Text)
+This license applies to the following fonts bundled with litmv2:
 
-This Font Software is licensed under the SIL Open Font License, Version 1.1.
+  Caveat            Copyright 2014 The Caveat Project Authors (https://github.com/googlefonts/caveat)
+  Caveat Brush      Copyright 2015 Google Inc. All Rights Reserved.
+  Fraunces          Copyright 2020 The Fraunces Project Authors (https://github.com/undercasetype/Fraunces)
+  Grenze            Copyright 2019 The Grenze Project Authors (https://github.com/Omnibus-Type/Grenze)
+  Labrada           Copyright 2022 The Labrada Project Authors (https://github.com/Omnibus-Type/Labrada)
+  Luxurious Roman   Copyright 2015-2021 The Luxurious Roman Project Authors (https://github.com/googlefonts/luxurious-roman)
+  Uncial Antiqua    Copyright (c) 2011 by Brian J. Bonislawsky DBA Astigmatic (AOETI)
+  Ysgarth           Copyright (c) 2011 Neale Davidson / Pixel Sagas, relicensed under the OFL by Pixel Sagas
+
+These Font Software files are licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
 https://openfontlicense.org
 

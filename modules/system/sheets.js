@@ -13,6 +13,7 @@ import { ThemebookSheet } from "../item/themebook/themebook-sheet.js";
 import { TropeSheet } from "../item/trope/trope-sheet.js";
 import { VignetteSheet } from "../item/vignette/vignette-sheet.js";
 import { info } from "../logger.js";
+import { LitmJournalSheet } from "../sheets/journal-sheet.js";
 import {
 	ChallengeSheetLandscape,
 	FellowshipSheetLandscape,
@@ -149,6 +150,18 @@ export class LitmSheets {
 			makeDefault: true,
 			label: "LITM.Sheets.action",
 		});
+		// Rulebook journal sheet — non-default; documents opt in via
+		// flags.core.sheetClass (e.g. converted LitM content), so ordinary
+		// world journals keep the core sheet.
+		foundry.applications.apps.DocumentSheetConfig.registerSheet(
+			foundry.documents.JournalEntry,
+			"litmv2",
+			LitmJournalSheet,
+			{
+				makeDefault: false,
+				label: "LITM.Sheets.journal",
+			},
+		);
 		LitmActiveEffectSheet.register();
 	}
 }
