@@ -2,6 +2,7 @@ import { storyTagEffect } from "../../active-effects/effect-factories.js";
 import { findApplicableEffect } from "../../active-effects/effect-queries.js";
 import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { pickLimit, pickTargetActor } from "../../apps/target-picker.js";
+import { Sockets } from "../../system/sockets.js";
 import { localize as t } from "../../utils.js";
 import { scanMarkup } from "./action-rules.js";
 import { classifyTagStringMatch } from "./tag-string.js";
@@ -62,9 +63,17 @@ function substituteVariableTiers(text, chosenTiers) {
  * chip row — when set, actor-targeted successes use it directly instead of
  * prompting. Process verbs always prompt: limits aren't actors.
  */
-async function _resolveTarget({ def, actor, presetTarget = null }) {
+async function _resolveTarget({
+	def,
+	actor,
+	presetTarget = null,
+	presetLimitInfo = null,
+}) {
 	switch (successTargetMode(def)) {
 		case "process": {
+			// GM-side relay re-apply: the player already picked the limit.
+			if (presetLimitInfo)
+				return { actor: presetLimitInfo.actor, limitInfo: presetLimitInfo };
 			const limitInfo = await pickLimit();
 			if (!limitInfo) return null;
 			return { actor: limitInfo.actor, limitInfo };
@@ -110,7 +119,14 @@ function isTagChosen(chosenTags, tagIdx) {
  *                                         tokens, in scan order. Null applies all tags.
  * @param {Actor|null} [args.presetTarget] Target picked in the Spend Power dialog; skips
  *                                         the post-submit target picker when set.
- * @returns {Promise<{appliedSummary: string}|null>}
+ * @param {object|null} [args.presetLimitInfo]  Pre-resolved {actor, limitId, source} for
+ *                                         process verbs; skips the limit picker. Set by the
+ *                                         GM-side applySuccessAsGM relay handler.
+ * @param {object|null} [args.relay]       {messageId, successKey} context from Spend Power.
+ *                                         When the permission guard fails and a GM is active,
+ *                                         the apply is dispatched to the GM instead of warned
+ *                                         away, and `{relayed: true}` is returned.
+ * @returns {Promise<{appliedSummary: string}|{relayed: true}|null>}
  */
 export async function applySuccess({
 	success,
@@ -118,6 +134,8 @@ export async function applySuccess({
 	chosenTiers = [],
 	chosenTags = null,
 	presetTarget = null,
+	presetLimitInfo = null,
+	relay = null,
 }) {
 	const def = getVerbDef(success.verb);
 	if (def?.kind === "unsupported") {
@@ -129,12 +147,36 @@ export async function applySuccess({
 		def: def ?? { target: "self" },
 		actor,
 		presetTarget,
+		presetLimitInfo,
 	});
 	if (!resolved) return null;
 	const targetActor = resolved.actor;
 	const limitInfo = resolved.limitInfo ?? null;
 
 	if (!targetActor?.isOwner && !game.user.isGM) {
+		// The roll that earned this success already passed GM moderation, so
+		// the active GM applies it on the player's behalf — same trust model
+		// as the scratchEffect / storyTagsUpdate relays. Without a GM online
+		// nothing can apply it, so keep the warn-and-bail.
+		if (relay && game.users.activeGM) {
+			Sockets.dispatch("applySuccessAsGM", {
+				userId: game.user.id,
+				actorId: actor.id,
+				messageId: relay.messageId,
+				successKey: relay.successKey,
+				targetActorId: targetActor?.id ?? null,
+				limitInfo: limitInfo
+					? {
+							actorId: limitInfo.actor.id,
+							limitId: limitInfo.limitId,
+							source: limitInfo.source,
+						}
+					: null,
+				chosenTiers,
+				chosenTags,
+			});
+			return { relayed: true };
+		}
 		ui.notifications.warn(
 			game.i18n.format("LITM.Actions.apply_no_target_permission", {
 				name: targetActor ? publicName(targetActor) : "",

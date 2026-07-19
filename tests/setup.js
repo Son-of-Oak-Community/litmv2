@@ -100,6 +100,14 @@ class StubActor {
 	}
 }
 
+// --- foundry.documents.ChatMessage ---
+// spend-power-service posts "action applied" cards and GM-relay whispers
+// through ChatMessage.create; tests assert on the calls.
+class StubChatMessage {
+	static create = vi.fn(async (data) => data);
+	static getSpeaker = vi.fn(({ actor } = {}) => ({ actor: actor?.id ?? null }));
+}
+
 // --- foundry.applications.* ---
 // Several utility modules transitively import ApplicationV2 / DialogV2 /
 // HandlebarsApplicationMixin at module-load time. They never get rendered in
@@ -165,7 +173,7 @@ globalThis.foundry = {
 		},
 	},
 	dice: { Roll: StubRoll },
-	documents: { Actor: StubActor },
+	documents: { Actor: StubActor, ChatMessage: StubChatMessage },
 	applications: {
 		api: {
 			ApplicationV2: StubAppV2,
@@ -196,7 +204,9 @@ globalThis.game = {
 		register: vi.fn(),
 	},
 	actors: { get: vi.fn() },
-	user: { isGM: false },
+	messages: { get: vi.fn() },
+	users: { activeGM: null, get: vi.fn() },
+	user: { isGM: false, id: "user-1" },
 };
 
 // --- Hooks (no-op) ---

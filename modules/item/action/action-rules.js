@@ -198,6 +198,27 @@ function _costFromMarkup(text) {
  *   Falls back to the success's minimum cost (fixed + variableTokens × 1) when absent.
  * @returns {{ power: number, spent: number, remaining: number }}
  */
+/**
+ * Union of the two applied-success records on a roll message. The
+ * appliedSuccessCosts object is the canonical record — object flags merge
+ * per-key on concurrent document updates — while the appliedSuccesses array
+ * replaces wholesale, so two writers racing on the same message (a local
+ * apply and a GM-relayed one, or two relays) can clobber each other's array
+ * entry. Reading the union heals a clobbered array.
+ *
+ * @param {string[]|null} appliedKeys        appliedSuccesses flag
+ * @param {object|null} appliedCostsById     appliedSuccessCosts flag
+ * @returns {string[]}
+ */
+export function unionAppliedSuccessKeys(appliedKeys, appliedCostsById) {
+	return [
+		...new Set([
+			...(appliedKeys ?? []),
+			...Object.keys(appliedCostsById ?? {}),
+		]),
+	];
+}
+
 export function computePowerBudget(
 	roll,
 	actionSystem,
@@ -208,7 +229,8 @@ export function computePowerBudget(
 	const successesById = new Map(
 		(actionSystem?.successes ?? []).map((o) => [o.id, o]),
 	);
-	const spent = (appliedKeys ?? []).reduce((sum, key) => {
+	const spent = unionAppliedSuccessKeys(appliedKeys, appliedCostsById).reduce(
+		(sum, key) => {
 		if (key in appliedCostsById) return sum + appliedCostsById[key];
 		const cost = getSuccessCost(successesById.get(key));
 		// No tier chosen → assume tier 1 for the variable tokens (min cost).

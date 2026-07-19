@@ -3,6 +3,7 @@ import { StatusTagData } from "../active-effects/status-tag-data.js";
 import {
 	computeSuccessSpend,
 	getSuccessCost,
+	unionAppliedSuccessKeys,
 } from "../item/action/action-rules.js";
 import { applySuccess } from "../item/action/chat-actions.js";
 import { error, warn } from "../logger.js";
@@ -115,54 +116,98 @@ export async function applySpendIntent(actor, intent) {
 // ---------------------------------------------------------------------------
 
 async function _applyActionSuccessOption(opt, actor, messageId, presetTarget) {
+	const { spent } = await applyActionSuccess({
+		actor,
+		messageId,
+		successKey: opt.successKey,
+		chosenTiers: opt.chosenTiers,
+		chosenTags: opt.chosenTags ?? null,
+		presetTarget,
+	});
+	return spent;
+}
+
+/**
+ * Apply one action success end-to-end: resolve the success from its roll
+ * message, honor the applied-race guard, run the applier, persist the
+ * appliedSuccesses / appliedSuccessCosts flags and post the "action applied"
+ * chat card. Shared by the local Spend Power path above and the GM-side
+ * applySuccessAsGM socket relay (which passes presetTarget / presetLimitInfo
+ * pre-resolved and reacts to the returned status).
+ *
+ * A relayed apply ("the GM will finish this") records no flags, posts no
+ * chat card and charges 0 — the GM's client does all three so the result is
+ * indistinguishable from a local apply.
+ *
+ * @returns {Promise<{spent: number,
+ *   status: "applied"|"relayed"|"already"|"nothing"|"invalid"}>}
+ */
+export async function applyActionSuccess({
+	actor,
+	messageId,
+	successKey,
+	chosenTiers = [],
+	chosenTags = null,
+	presetTarget = null,
+	presetLimitInfo = null,
+}) {
 	const message = messageId ? game.messages.get(messageId) : null;
 	const actionUuid = message?.getFlag("litmv2", FLAGS.actionUuid);
-	if (!actionUuid) return 0;
+	if (!actionUuid) return { spent: 0, status: "invalid" };
 	const action = await foundry.utils.fromUuid(actionUuid);
-	if (!action || action.type !== "action") return 0;
+	if (!action || action.type !== "action")
+		return { spent: 0, status: "invalid" };
 
 	const success = (action.system.successes ?? []).find(
-		(o) => o.id === opt.successKey,
+		(o) => o.id === successKey,
 	);
-	if (!success) return 0;
+	if (!success) return { spent: 0, status: "invalid" };
 
-	// Skip if already applied since the dialog last opened (race-safe)
-	const appliedNow = message.getFlag("litmv2", "appliedSuccesses") ?? [];
-	if (appliedNow.includes(opt.successKey)) return 0;
+	// Skip if already applied since the dialog last opened (race-safe; the GM
+	// relay handler runs the same check against a possible double-submit).
+	// The union heals an appliedSuccesses array clobbered by a concurrent
+	// writer — appliedSuccessCosts is the merge-safe canonical record.
+	const appliedNow = unionAppliedSuccessKeys(
+		message.getFlag("litmv2", "appliedSuccesses"),
+		message.getFlag("litmv2", "appliedSuccessCosts"),
+	);
+	if (appliedNow.includes(successKey)) return { spent: 0, status: "already" };
 
 	let result;
 	try {
 		result = await applySuccess({
 			success,
 			actor,
-			chosenTiers: opt.chosenTiers,
-			chosenTags: opt.chosenTags ?? null,
+			chosenTiers,
+			chosenTags,
 			presetTarget,
+			presetLimitInfo,
+			relay: { messageId, successKey },
 		});
 	} catch (err) {
 		error("Failed to apply action success:", err);
 		ui.notifications.error(t("LITM.Actions.apply_failed"));
-		return 0;
+		return { spent: 0, status: "invalid" };
 	}
-	if (!result) return 0;
+	if (result?.relayed) return { spent: 0, status: "relayed" };
+	if (!result) return { spent: 0, status: "nothing" };
 
 	// Actual cost paid: the non-tag fixed part, plus only the tags the player
 	// kept selected, plus the tiers they picked for variable statuses.
 	const spent = computeSuccessSpend(getSuccessCost(success), {
-		chosenTags: opt.chosenTags,
-		chosenTiers: opt.chosenTiers,
+		chosenTags,
+		chosenTiers,
 	});
 
 	// Persist what was actually paid so reopened dialogs and the power budget
 	// don't have to guess tier/tag choices from the action definition. One
-	// update for both flags — they must stay in sync.
-	const appliedCosts = message.getFlag("litmv2", "appliedSuccessCosts") ?? {};
+	// update for both flags — they must stay in sync. The cost is written as
+	// a per-key dot path (object flags merge, so concurrent writers can't
+	// erase each other's cost); the array is display/back-compat and readers
+	// union it with the costs record.
 	await message.update({
-		"flags.litmv2.appliedSuccesses": [...appliedNow, opt.successKey],
-		"flags.litmv2.appliedSuccessCosts": {
-			...appliedCosts,
-			[opt.successKey]: spent,
-		},
+		"flags.litmv2.appliedSuccesses": [...appliedNow, successKey],
+		[`flags.litmv2.appliedSuccessCosts.${successKey}`]: spent,
 	});
 	await foundry.documents.ChatMessage.create({
 		speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
@@ -178,7 +223,91 @@ async function _applyActionSuccessOption(opt, actor, messageId, presetTarget) {
 		),
 	});
 
-	return spent;
+	return { spent, status: "applied" };
+}
+
+/**
+ * GM-side entry for the applySuccessAsGM socket relay. Re-resolves the ids
+ * in the payload to documents, runs the shared apply pipeline, and whispers
+ * the acting player when nothing landed — a silent no-op on the GM client is
+ * indistinguishable from a bug at the player's table. Runs on the active
+ * GM's client only; the socket listener gates on activeGM before calling.
+ *
+ * Relays for the same roll message are serialized: one Spend Power
+ * submission can fire several relays back-to-back, and interleaving their
+ * async apply pipelines on the GM client would race the shared message
+ * flags and target mutations — the local path applies its options
+ * sequentially, so the relayed path must too.
+ *
+ * Bails silently when any id no longer resolves (actor deleted, message
+ * pruned between dispatch and receipt).
+ *
+ * @param {object} payload  See the applySuccessAsGM dispatch in chat-actions.js.
+ */
+export function handleApplySuccessAsGM(payload) {
+	const key = payload?.messageId ?? "";
+	const prev = relayQueue.get(key) ?? Promise.resolve();
+	const run = prev
+		.then(() => _handleApplySuccessAsGM(payload))
+		.catch((err) => error("applySuccessAsGM relay failed:", err));
+	relayQueue.set(key, run);
+	run.finally(() => {
+		if (relayQueue.get(key) === run) relayQueue.delete(key);
+	});
+	return run;
+}
+
+/** Pending relay chain per roll message id — see handleApplySuccessAsGM. */
+const relayQueue = new Map();
+
+async function _handleApplySuccessAsGM({
+	userId,
+	actorId,
+	messageId,
+	successKey,
+	targetActorId,
+	limitInfo,
+	chosenTiers,
+	chosenTags,
+}) {
+	const actor = game.actors.get(actorId);
+	if (!actor) return;
+	const presetTarget = targetActorId ? game.actors.get(targetActorId) : null;
+	// A vanished target must bail like a vanished limit actor below —
+	// falling through with a null presetTarget would reopen the target
+	// picker on the GM's client for opponent verbs.
+	if (targetActorId && !presetTarget) return;
+	let presetLimitInfo = null;
+	if (limitInfo) {
+		const limitActor = game.actors.get(limitInfo.actorId);
+		if (!limitActor) return;
+		presetLimitInfo = {
+			actor: limitActor,
+			limitId: limitInfo.limitId,
+			source: limitInfo.source,
+		};
+	}
+
+	const { status } = await applyActionSuccess({
+		actor,
+		messageId,
+		successKey,
+		chosenTiers: chosenTiers ?? [],
+		chosenTags: chosenTags ?? null,
+		presetTarget,
+		presetLimitInfo,
+	});
+
+	// "already" (race-guard double-submit) stays silent: the first apply
+	// already produced the card the player is looking at.
+	if (status !== "nothing") return;
+	const target = presetTarget ?? presetLimitInfo?.actor ?? actor;
+	await foundry.documents.ChatMessage.create({
+		content: game.i18n.format("LITM.Actions.apply_relay_nothing", {
+			name: target.system?.publicName ?? target.name,
+		}),
+		whisper: [userId],
+	});
 }
 
 async function _applyStatusPicker(actor, opt) {

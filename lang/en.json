@@ -24,6 +24,7 @@
 			"apply_no_target_permission": "You don't have permission to apply Successes to {name}.",
 			"apply_process_addon_limit": "Limits contributed by add-ons can't be changed from chat yet.",
 			"apply_process_no_limit": "That limit no longer exists on the target.",
+			"apply_relay_nothing": "Nothing to apply on {name} — no matching tag or status was found.",
 			"apply_restore_needs_name": "This Restore Success has no tag or status to restore. Edit the action to add one.",
 			"apply_restore_no_match": "This character has no tag or status named \"{name}\".",
 			"apply_successes": "Apply Successes",
