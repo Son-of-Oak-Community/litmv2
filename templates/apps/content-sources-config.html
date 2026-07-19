@@ -1,16 +1,22 @@
 <div class="scrollable">
+<p class="hint">{{localize "LITM.Settings.content_sources_hint"}}</p>
 {{#each sections}}
 <fieldset>
     <legend>{{label}}</legend>
     {{#each packs}}
-    <label class="flexrow">
-        <input type="checkbox" name="{{../category}}" value="{{id}}" {{#if checked}}checked{{/if}}>
+    <label class="flexrow litm--pack-row{{#if hidden}} litm--pack-hidden{{/if}}"{{#if tooltip}} data-tooltip="{{tooltip}}"{{/if}}>
+        <input type="checkbox" class="noflex" name="{{../category}}" value="{{id}}" {{#if checked}}checked{{/if}} {{#if disabled}}disabled{{/if}}>
         <span class="flex1">{{label}}</span>
-        <span class="litm--source-label">{{source}}</span>
+        {{#if hidden}}<i class="fas fa-eye-slash noflex"></i>{{/if}}
+        <span class="litm--source-label noflex">{{source}}</span>
     </label>
     {{/each}}
     {{#unless hasSelection}}
+    {{#if isStatuses}}
     <p class="litm--no-packs notes">{{localize "LITM.Settings.content_sources_no_filter"}}</p>
+    {{else}}
+    <p class="litm--no-packs notes">{{localize "LITM.Settings.content_sources_no_filter_world"}}</p>
+    {{/if}}
     {{/unless}}
     {{#if isStatuses}}
     <button type="button" data-action="resetStatuses">

@@ -7454,3 +7454,46 @@ body.litm--colorblind .themed.theme-dark,
 	gap: var(--spacer-8);
 	margin-block-end: var(--spacer-8);
 }
+
+/* ========================================
+   23. Content Sources Config
+   GM settings app; light Foundry chrome.
+======================================== */
+
+/* Sections are the primary grouping, so they get more air than the rows
+   inside them — otherwise Foundry's uniform fieldset gap makes the row
+   spacing rival the section spacing and the boundaries blur. */
+#content-sources-config .scrollable {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+#content-sources-config fieldset {
+	gap: var(--spacer-8);
+}
+
+#content-sources-config .litm--pack-row {
+	flex-wrap: nowrap;
+	gap: var(--spacer-8);
+}
+
+/* The providing module's title — context, not a competing label. */
+#content-sources-config .litm--source-label {
+	max-width: 40%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size-12);
+	color: var(--color-text-secondary);
+}
+
+/* Packs hidden from players by ownership can't feed player-facing pickers —
+   mute the row and let the eye-slash tooltip carry the reason. */
+#content-sources-config .litm--pack-hidden {
+	color: var(--color-text-secondary);
+}
+
+#content-sources-config .litm--pack-hidden i {
+	opacity: 0.6;
+}

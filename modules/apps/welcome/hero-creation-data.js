@@ -238,7 +238,7 @@ export class HeroCreationData {
 	}
 
 	async #loadPackIndex(category, type, fields) {
-		const packs = ContentSources.getPacks(category);
+		const { packs, includeWorld } = ContentSources.getSources(category);
 		const results = [];
 
 		for (const pack of packs) {
@@ -262,18 +262,24 @@ export class HeroCreationData {
 			}
 		}
 
-		for (const item of game.items) {
-			if (item.type !== type) continue;
-			const lvl = item.system?.theme_level || item.system?.level || "";
-			results.push({
-				uuid: item.uuid || item.id,
-				name: item.name,
-				img: item.img || "",
-				category: item.system?.category || "",
-				themeLevel: lvl,
-				sourceLabel: "World",
-				tagTooltip: HeroCreationData.buildTagTooltip([...item.effects]),
-			});
+		if (includeWorld) {
+			for (const item of game.items) {
+				if (item.type !== type) continue;
+				// World documents are synced to every client regardless of
+				// ownership — filter here so GM-private items stay out of the
+				// picker. OBSERVER matches the bar packs use (`pack.visible`).
+				if (!item.testUserPermission(game.user, "OBSERVER")) continue;
+				const lvl = item.system?.theme_level || item.system?.level || "";
+				results.push({
+					uuid: item.uuid || item.id,
+					name: item.name,
+					img: item.img || "",
+					category: item.system?.category || "",
+					themeLevel: lvl,
+					sourceLabel: "World",
+					tagTooltip: HeroCreationData.buildTagTooltip([...item.effects]),
+				});
+			}
 		}
 
 		return results.sort((a, b) => a.name.localeCompare(b.name));
