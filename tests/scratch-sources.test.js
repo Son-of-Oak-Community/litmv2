@@ -120,4 +120,43 @@ describe("collectScratchableTags", () => {
 			},
 		]);
 	});
+
+	it("applies tagFilter to candidate groups but never to the own group", () => {
+		const hidden = (id, name) => ({
+			id,
+			name,
+			system: { isScratched: false, isHidden: true },
+		});
+		const hero = actor("h1", "Gerrin", [hidden("e1", "secret plan")]);
+		const foe = actor("c1", "Bandit", [
+			tag("e3", "reinforcements"),
+			hidden("e4", "hidden blade"),
+		]);
+		const groups = collectScratchableTags(hero, [candidate(foe)], [], {
+			tagFilter: (e) => !e.system.isHidden,
+		});
+		expect(groups).toEqual([
+			{
+				ownerId: "h1",
+				ownerName: "Gerrin",
+				isOwn: true,
+				tags: [{ id: "e1", name: "secret plan" }],
+			},
+			{
+				ownerId: "c1",
+				ownerName: "Bandit",
+				isOwn: false,
+				tags: [{ id: "e3", name: "reinforcements" }],
+			},
+		]);
+	});
+
+	it("drops a candidate whose tags are all filtered out", () => {
+		const hero = actor("h1", "Gerrin", [tag("e1", "tonic")]);
+		const foe = actor("c1", "Bandit", [tag("e3", "reinforcements")]);
+		const groups = collectScratchableTags(hero, [candidate(foe)], [], {
+			tagFilter: () => false,
+		});
+		expect(groups.map((g) => g.ownerId)).toEqual(["h1"]);
+	});
 });

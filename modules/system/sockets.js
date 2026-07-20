@@ -1,6 +1,9 @@
 import { scratchTag } from "../active-effects/scratchable-mixin.js";
 import { LitmRollDialog } from "../apps/roll/roll-dialog.js";
-import { handleApplySuccessAsGM } from "../apps/spend-power-service.js";
+import {
+	handleApplyStatusAsGM,
+	handleApplySuccessAsGM,
+} from "../apps/spend-power-service.js";
 import { error, warn } from "../logger.js";
 import { getStoryTagSidebar } from "../utils.js";
 
@@ -171,6 +174,13 @@ export class Sockets {
 		Sockets.on("applySuccessAsGM", async ({ data }) => {
 			if (game.user !== game.users.activeGM) return;
 			await handleApplySuccessAsGM(data);
+		});
+
+		// Same trust model for the generic Spend Power options: Inflict's
+		// status add and Reduce's tier drop on actors the player doesn't own.
+		Sockets.on("applyStatusAsGM", async ({ data }) => {
+			if (game.user !== game.users.activeGM) return;
+			await handleApplyStatusAsGM(data);
 		});
 	}
 

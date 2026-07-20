@@ -29,21 +29,19 @@ export function mitigationBannerText(mitigation) {
 
 /**
  * What to pre-select in the post-reaction Spend Power menu.
- * Statuses are only offered when the consequence landed on the rolling actor,
- * because `reduce_status` is own-actor only (multi-owner reduce is deferred).
- * Story tags carry their owner id, so `scratch_tag` (multi-owner) reaches them
- * even when reacting on behalf of a story-theme/fellowship.
+ * Both effect kinds carry the owner (the actor the consequence landed on):
+ * `reduce_status` and `scratch_tag` are multi-owner pickers, so the preselect
+ * matches rows by name + owner even when reacting on behalf of a
+ * story-theme/fellowship.
  */
-export function mitigationPreselect(mitigation, rollingActorId) {
+export function mitigationPreselect(mitigation, _rollingActorId) {
 	if (!mitigation) return null;
 	const effects = mitigation.effects ?? [];
-	const onSelf = mitigation.targetActorId === rollingActorId;
 	return {
-		statuses: onSelf
-			? effects
-					.filter((e) => e.kind === "status")
-					.map((e) => ({ name: e.name, tier: e.tier ?? null }))
-			: [],
+		statuses: effects
+			.filter((e) => e.kind === "status")
+			.map((e) => ({ name: e.name, tier: e.tier ?? null })),
+		statusOwnerId: mitigation.targetActorId ?? null,
 		tags: effects.filter((e) => e.kind === "story").map((e) => e.name),
 		tagOwnerId: mitigation.targetActorId ?? null,
 	};

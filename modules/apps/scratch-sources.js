@@ -19,9 +19,19 @@ function unscratchedStoryTags(actor) {
  * @param {{id:string,label:string,actor:Actor}[]} candidates  Target candidates.
  * @param {{id:string,name:string}[]} sceneTags   Pre-filtered scene story tags
  *        (unscratched, visible) from the world story-tag pack.
+ * @param {object} [options]
+ * @param {(effect: object) => boolean} [options.tagFilter]  Extra filter for
+ *        candidate-group tags (eg. visibility) — the caller supplies it so
+ *        this module stays free of game/user globals. The rolling actor's own
+ *        group is not filtered: players always see their own tags.
  * @returns {{ownerId:string,ownerName:string,isOwn:boolean,isScene?:boolean,tags:{id:string,name:string}[]}[]}
  */
-export function collectScratchableTags(actor, candidates = [], sceneTags = []) {
+export function collectScratchableTags(
+	actor,
+	candidates = [],
+	sceneTags = [],
+	{ tagFilter = null } = {},
+) {
 	const groups = [];
 	const seen = new Set();
 
@@ -39,7 +49,9 @@ export function collectScratchableTags(actor, candidates = [], sceneTags = []) {
 	for (const cand of candidates) {
 		if (seen.has(cand.id)) continue;
 		seen.add(cand.id);
-		const tags = unscratchedStoryTags(cand.actor);
+		const tags = unscratchedStoryTags(cand.actor).filter(
+			(e) => !tagFilter || tagFilter(e),
+		);
 		if (!tags.length) continue;
 		groups.push({
 			ownerId: cand.id,

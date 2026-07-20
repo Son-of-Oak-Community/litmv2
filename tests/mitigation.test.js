@@ -58,16 +58,18 @@ describe("mitigationBannerText", () => {
 });
 
 describe("mitigationPreselect", () => {
-	it("preselects statuses + tags when the consequence landed on the rolling actor", () => {
+	it("preselects statuses + tags with their owner ids", () => {
 		expect(mitigationPreselect(ctx, "h1")).toEqual({
 			statuses: [{ name: "wounded", tier: 2 }],
+			statusOwnerId: "h1",
 			tags: ["tangled"],
 			tagOwnerId: "h1",
 		});
 	});
-	it("drops status preselection when reacting on behalf of another actor, keeps tags", () => {
+	it("keeps statuses when reacting on behalf of another actor — reduce_status is multi-owner", () => {
 		expect(mitigationPreselect(ctx, "hero-rolling")).toEqual({
-			statuses: [],
+			statuses: [{ name: "wounded", tier: 2 }],
+			statusOwnerId: "h1",
 			tags: ["tangled"],
 			tagOwnerId: "h1",
 		});
