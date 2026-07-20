@@ -81,20 +81,14 @@ describe("ContentSources.getSources", () => {
 	// gates writes. getSources' `visible` filter is the sole thing keeping
 	// GM-only pack content out of player-facing pickers.
 	it("packs invisible to the current user are excluded, even when selected", () => {
-		game.packs = [
-			pack("modA.themekits"),
-			pack("gm.secrets", "Item", false),
-		];
+		game.packs = [pack("modA.themekits"), pack("gm.secrets", "Item", false)];
 		setSetting(["modA.themekits", "gm.secrets"]);
 		const { packs } = ContentSources.getSources("themekits");
 		expect(packs.map((p) => p.collection)).toEqual(["modA.themekits"]);
 	});
 
 	it("invisible packs are excluded from the empty-setting 'everything' default", () => {
-		game.packs = [
-			pack("modA.themekits"),
-			pack("gm.secrets", "Item", false),
-		];
+		game.packs = [pack("modA.themekits"), pack("gm.secrets", "Item", false)];
 		setSetting([]);
 		const { packs } = ContentSources.getSources("themekits");
 		expect(packs.map((p) => p.collection)).toEqual(["modA.themekits"]);
@@ -118,10 +112,7 @@ describe("ContentSources.getSources", () => {
 // config UI offers it even though getSources would ignore the selection.
 describe("ContentSources.getCandidatePacks", () => {
 	it("filters packs by the category's document type", () => {
-		game.packs = [
-			pack("modA.themekits"),
-			pack("modB.effects", "ActiveEffect"),
-		];
+		game.packs = [pack("modA.themekits"), pack("modB.effects", "ActiveEffect")];
 		expect(
 			ContentSources.getCandidatePacks("themekits").map((p) => p.collection),
 		).toEqual(["modA.themekits"]);
@@ -138,10 +129,7 @@ describe("ContentSources.getCandidatePacks", () => {
 	});
 
 	it("includes packs invisible to the current user (config app mutes them instead)", () => {
-		game.packs = [
-			pack("modA.themekits"),
-			pack("gm.secrets", "Item", false),
-		];
+		game.packs = [pack("modA.themekits"), pack("gm.secrets", "Item", false)];
 		expect(
 			ContentSources.getCandidatePacks("themekits").map((p) => p.collection),
 		).toEqual(["modA.themekits", "gm.secrets"]);

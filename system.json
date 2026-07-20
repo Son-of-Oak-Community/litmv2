@@ -1,7 +1,7 @@
 {
 	"$schema": "https://json.schemastore.org/foundryvtt-system-manifest.json",
 	"id": "litmv2",
-	"version": "14.63",
+	"version": "14.64",
 	"license": "LICENSE",
 	"title": "Legend in the Mist: Unofficial",
 	"description": "An unofficial, community-made system for playing the <strong>Rustic Fantasy</strong> game <em>Legend in the Mist</em> in Foundry Virtual Tabletop.",
@@ -14,7 +14,12 @@
 		}
 	],
 	"esmodules": ["litmv2.js"],
-	"styles": ["litmv2.css", "litmv2-welcome.css", "litmv2-journal.css", "litmv2-journal-content.css"],
+	"styles": [
+		"litmv2.css",
+		"litmv2-welcome.css",
+		"litmv2-journal.css",
+		"litmv2-journal-content.css"
+	],
 	"documentTypes": {
 		"Actor": {
 			"hero": {

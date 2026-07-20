@@ -231,11 +231,13 @@ export function computePowerBudget(
 	);
 	const spent = unionAppliedSuccessKeys(appliedKeys, appliedCostsById).reduce(
 		(sum, key) => {
-		if (key in appliedCostsById) return sum + appliedCostsById[key];
-		const cost = getSuccessCost(successesById.get(key));
-		// No tier chosen → assume tier 1 for the variable tokens (min cost).
-		return sum + cost.fixed + cost.variableTokens;
-	}, 0);
+			if (key in appliedCostsById) return sum + appliedCostsById[key];
+			const cost = getSuccessCost(successesById.get(key));
+			// No tier chosen → assume tier 1 for the variable tokens (min cost).
+			return sum + cost.fixed + cost.variableTokens;
+		},
+		0,
+	);
 	const remaining = Math.max(0, power - spent);
 	return { power, spent, remaining };
 }

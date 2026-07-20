@@ -129,9 +129,7 @@ export class ContentSources {
 		return game.packs.filter(
 			(p) =>
 				p.documentName === docType &&
-				!(
-					category === "statuses" && p.collection === WORLD_STORY_TAG_PACK_ID
-				),
+				!(category === "statuses" && p.collection === WORLD_STORY_TAG_PACK_ID),
 		);
 	}
 

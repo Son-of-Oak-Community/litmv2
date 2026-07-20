@@ -1,7 +1,4 @@
-import {
-	ContentSources,
-	WORLD_SOURCE_ID,
-} from "../system/content-sources.js";
+import { ContentSources, WORLD_SOURCE_ID } from "../system/content-sources.js";
 import { LitmSettings } from "../system/settings.js";
 import { localize as t } from "../utils.js";
 
@@ -67,8 +64,8 @@ export class ContentSourcesConfig extends HandlebarsApplicationMixin(
 		context.sections = ContentSourcesConfig.CATEGORIES.map(
 			({ category, labelKey }) => {
 				const selected = new Set(LitmSettings.getCompendiumSetting(category));
-				const packs = ContentSources.getCandidatePacks(category).map(
-					(p) => {
+				const packs = ContentSources.getCandidatePacks(category)
+					.map((p) => {
 						const checked = selected.has(p.collection);
 						const { gmOnly, trustedOnly } =
 							ContentSourcesConfig.#packPlayerAccess(p);
@@ -149,8 +146,7 @@ export class ContentSourcesConfig extends HandlebarsApplicationMixin(
 		const levels = CONST.DOCUMENT_OWNERSHIP_LEVELS;
 		const level = (role) => levels[pack.ownership[role]] ?? levels.NONE;
 		const playerSees = level("PLAYER") >= levels.OBSERVER;
-		const trustedSees =
-			playerSees || level("TRUSTED") >= levels.OBSERVER;
+		const trustedSees = playerSees || level("TRUSTED") >= levels.OBSERVER;
 		return { gmOnly: !trustedSees, trustedOnly: trustedSees && !playerSees };
 	}
 

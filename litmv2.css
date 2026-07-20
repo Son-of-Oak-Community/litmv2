@@ -2569,7 +2569,8 @@ section.standard-form.litm-actions-app {
 	   of characters — size the profile column to the inputs' natural
 	   width instead. Play mode keeps min-content: the name there is
 	   static text, and tight is correct. */
-	.litm-hero-sheet:has([data-application-part="actions"][hidden]) .window-content {
+	.litm-hero-sheet:has([data-application-part="actions"][hidden])
+	.window-content {
 		grid-template-columns: max-content minmax(0, 1fr);
 	}
 	.litm-hero-sheet [data-application-part="description"] {
@@ -2625,8 +2626,9 @@ section.standard-form.litm-actions-app {
    actively rendered — Camping is already in the strip in play mode. Edit
    mode renders an empty hidden stub for the actions PART, so the frame
    button remains visible there. */
-.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
-	.window-header
+.litm-hero-sheet:has(
+		[data-application-part="actions"]:not([hidden])
+	) .window-header
 	> button[data-action="openCamping"] {
 	display: none;
 }

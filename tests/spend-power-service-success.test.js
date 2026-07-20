@@ -94,7 +94,10 @@ describe("applyActionSuccess — applied path", () => {
 		});
 		const target = fakeActor({ id: "c1", name: "Beast", effects: [status] });
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage({ applied: ["succ1"], costs: { succ1: 3 } });
+		const message = fakeRollMessage({
+			applied: ["succ1"],
+			costs: { succ1: 3 },
+		});
 		wire({ message, action: fakeAction(), actors: { c1: target } });
 		game.user.isGM = true;
 
@@ -259,7 +262,10 @@ describe("handleApplySuccessAsGM — GM socket handler", () => {
 		});
 		const target = fakeActor({ id: "c1", name: "Beast", effects: [status] });
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage({ applied: ["succ1"], costs: { succ1: 3 } });
+		const message = fakeRollMessage({
+			applied: ["succ1"],
+			costs: { succ1: 3 },
+		});
 		wire({ message, action: fakeAction(), actors: { c1: target, h1: hero } });
 
 		await handleApplySuccessAsGM(relayPayload());

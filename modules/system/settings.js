@@ -1,6 +1,6 @@
 import { ContentSourcesConfig } from "../apps/content-sources-config.js";
-import { ContentSources } from "./content-sources.js";
 import { LitmConfig } from "./config.js";
+import { ContentSources } from "./content-sources.js";
 
 export class LitmSettings {
 	static get popoutTagsSidebar() {
