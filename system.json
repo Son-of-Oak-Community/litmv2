@@ -13,7 +13,9 @@
 			"ko-fi": "amediocredad"
 		}
 	],
-	"esmodules": ["litmv2.js"],
+	"esmodules": [
+		"litmv2.js"
+	],
 	"styles": [
 		"litmv2.css",
 		"litmv2-welcome.css",
@@ -23,16 +25,25 @@
 	"documentTypes": {
 		"Actor": {
 			"hero": {
-				"htmlFields": ["description"]
+				"htmlFields": [
+					"description"
+				]
 			},
 			"journey": {
-				"htmlFields": ["description"]
+				"htmlFields": [
+					"description"
+				]
 			},
 			"challenge": {
-				"htmlFields": ["description", "specialFeatures"]
+				"htmlFields": [
+					"description",
+					"specialFeatures"
+				]
 			},
 			"fellowship": {
-				"htmlFields": ["description"]
+				"htmlFields": [
+					"description"
+				]
 			},
 			"story_theme": {}
 		},
@@ -47,23 +58,36 @@
 		"Item": {
 			"backpack": {},
 			"story_theme": {
-				"htmlFields": ["description"]
+				"htmlFields": [
+					"description"
+				]
 			},
 			"theme": {
-				"htmlFields": ["description"]
+				"htmlFields": [
+					"description"
+				]
 			},
 			"themebook": {
-				"htmlFields": ["description"]
+				"htmlFields": [
+					"description"
+				]
 			},
 			"trope": {
-				"htmlFields": ["description"]
+				"htmlFields": [
+					"description"
+				]
 			},
 			"vignette": {},
 			"addon": {
-				"htmlFields": ["description", "specialFeatures"]
+				"htmlFields": [
+					"description",
+					"specialFeatures"
+				]
 			},
 			"action": {
-				"htmlFields": ["description"]
+				"htmlFields": [
+					"description"
+				]
 			}
 		}
 	},
@@ -108,7 +132,12 @@
 	"packs": [],
 	"flags": {
 		"hotReload": {
-			"extensions": ["css", "html", "js", "json"],
+			"extensions": [
+				"css",
+				"html",
+				"js",
+				"json"
+			],
 			"paths": [
 				"styles",
 				"templates",
@@ -132,7 +161,7 @@
 	"background": "systems/litmv2/assets/media/litm_splash.webp",
 	"url": "https://github.com/Son-of-Oak-Community/litmv2",
 	"bugs": "https://github.com/Son-of-Oak-Community/litmv2/issues?q=is:issue+is:open+sort:updated-desc",
-	"manifest": "https://raw.githubusercontent.com/Son-of-Oak-Community/litmv2/refs/heads/main/system.json",
-	"download": "https://github.com/Son-of-Oak-Community/litmv2/archive/refs/heads/main.zip",
+	"manifest": "https://raw.githubusercontent.com/Son-of-Oak-Community/litmv2/refs/heads/v14/system.json",
+	"download": "https://github.com/Son-of-Oak-Community/litmv2/archive/refs/tags/v14.65.zip",
 	"readme": "https://raw.githubusercontent.com/Son-of-Oak-Community/litmv2/refs/heads/main/README.md"
 }
