@@ -151,14 +151,17 @@ export function toQuestionOptions(questions = [], skipFirst = 0) {
 
 /**
  * Query items from world items and compendium packs.
- * Iterates world items and compendium pack indices, filtering by type
- * and an optional predicate, and returns deduplicated results.
+ * Resolves the category's content sources (compendium packs + whether world
+ * items are enabled), filters by type and an optional predicate, and returns
+ * the results. Without a `category`, searches all Item packs and
+ * world items (no source filtering).
  * @param {object} options
  * @param {string} options.type                Item type to filter by (e.g. "themebook", "theme")
  * @param {Function} [options.filter]          Optional predicate receiving each item/index entry
  * @param {string[]} [options.indexFields=[]]  Extra fields to request via pack.getIndex
  * @param {Function} [options.map]             Optional mapper; receives (entry, {pack}) and returns
  *                                             the value to include. If omitted, entries are returned as-is.
+ * @param {string} [options.category]          Content-source category ("themebooks", "themekits", "tropes")
  * @returns {Promise<any[]>}
  */
 export async function queryItemsFromPacks({
@@ -170,16 +173,27 @@ export async function queryItemsFromPacks({
 } = {}) {
 	const results = [];
 
+	const { packs, includeWorld } = category
+		? ContentSources.getSources(category)
+		: {
+				packs: game.packs.filter(
+					(pack) => pack.documentName === "Item" && pack.visible,
+				),
+				includeWorld: true,
+			};
+
 	// World items
-	for (const item of game.items.filter((it) => it.type === type)) {
-		if (filter && !filter(item)) continue;
-		results.push(map ? map(item, { pack: null }) : item);
+	if (includeWorld) {
+		for (const item of game.items.filter((it) => it.type === type)) {
+			// World documents are synced to every client regardless of
+			// ownership — keep GM-private items out of player-facing pickers.
+			if (!item.testUserPermission(game.user, "OBSERVER")) continue;
+			if (filter && !filter(item)) continue;
+			results.push(map ? map(item, { pack: null }) : item);
+		}
 	}
 
 	// Compendium packs
-	const packs = category
-		? ContentSources.getPacks(category)
-		: game.packs.filter((pack) => pack.documentName === "Item");
 	for (const pack of packs) {
 		await pack.getIndex({ fields: ["type", "name", ...indexFields] });
 		for (const entry of pack.index?.contents || []) {

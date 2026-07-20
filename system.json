@@ -14,7 +14,7 @@
 		}
 	],
 	"esmodules": ["litmv2.js"],
-	"styles": ["litmv2.css", "litmv2-welcome.css"],
+	"styles": ["litmv2.css", "litmv2-welcome.css", "litmv2-journal.css", "litmv2-journal-content.css"],
 	"documentTypes": {
 		"Actor": {
 			"hero": {
@@ -110,6 +110,8 @@
 				"lang",
 				"litmv2.css",
 				"litmv2-welcome.css",
+				"litmv2-journal.css",
+				"litmv2-journal-content.css",
 				"litmv2.js"
 			]
 		}

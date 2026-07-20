@@ -6,6 +6,7 @@ import {
 	getMinSuccessCost,
 	getSuccessCost,
 	scanMarkup,
+	unionAppliedSuccessKeys,
 } from "../item/action/action-rules.js";
 import {
 	getVerbDef,
@@ -297,10 +298,13 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		if (!message || !action) return [];
 
 		const sys = action.system;
-		const applied = new Set(
-			message.getFlag("litmv2", "appliedSuccesses") ?? [],
-		);
 		const appliedCosts = message.getFlag("litmv2", "appliedSuccessCosts") ?? {};
+		const applied = new Set(
+			unionAppliedSuccessKeys(
+				message.getFlag("litmv2", "appliedSuccesses"),
+				appliedCosts,
+			),
+		);
 		const roll = message.rolls?.[0];
 		const allowedVerbs = getAllowedVerbs(roll);
 		// Affordability uses the combined remaining (action-aware budget minus

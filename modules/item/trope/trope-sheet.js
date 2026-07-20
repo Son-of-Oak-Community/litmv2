@@ -60,6 +60,7 @@ export class TropeSheet extends LitmItemSheet {
 
 		const entries = await queryItemsFromPacks({
 			type: "theme",
+			category: "themekits",
 			map: (entry, { pack }) => {
 				const uuid = pack
 					? entry.uuid ||

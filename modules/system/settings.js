@@ -1,4 +1,5 @@
 import { ContentSourcesConfig } from "../apps/content-sources-config.js";
+import { ContentSources } from "./content-sources.js";
 import { LitmConfig } from "./config.js";
 
 export class LitmSettings {
@@ -131,6 +132,11 @@ export class LitmSettings {
 			config: false,
 			type: Array,
 			default: [],
+			// The item categories are read live by their pickers, but
+			// CONFIG.statusEffects is only built at `ready`. Rebuild it in place
+			// on every client when the selection changes, so status sources apply
+			// without a world reload.
+			onChange: () => ContentSources.loadStatusCompendium(),
 		});
 		game.settings.register("litmv2", "statusesSeeded", {
 			scope: "world",

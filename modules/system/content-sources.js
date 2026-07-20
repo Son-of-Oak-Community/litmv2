@@ -73,7 +73,68 @@ const DEFAULT_STATUSES = [
 const WORLD_STATUS_PACK_ID = "world.litmv2-statuses";
 const WORLD_STORY_TAG_PACK_ID = "world.litmv2-story-tags";
 
+/** Sentinel id representing world items in the compendium source settings.
+ * Real pack collection ids are always `scope.name`, so the bare word can't collide. */
+const WORLD_SOURCE_ID = "world";
+
 export class ContentSources {
+	/**
+	 * Resolve a category's content sources from the world setting.
+	 * An empty setting means no filter: all packs of the matching document
+	 * type plus world items. A non-empty setting selects exactly the checked
+	 * sources; world items are included only via the `WORLD_SOURCE_ID` sentinel.
+	 * Note: `includeWorld` has no meaning for the "statuses" category (statuses live only in compendium packs).
+	 * @param {string} category - One of: "themebooks", "themekits", "tropes", "statuses"
+	 * @returns {{ packs: CompendiumCollection[], includeWorld: boolean }}
+	 */
+	static getSources(category) {
+		if (!CATEGORY_DOC_TYPE[category]) {
+			error(`ContentSources.getSources: unknown category "${category}"`);
+			return { packs: [], includeWorld: false };
+		}
+
+		const selected = LitmSettings.getCompendiumSetting(category);
+		// Foundry only enforces pack ownership on writes — reads are served to
+		// any client that asks. Filtering on `visible` here is what actually
+		// keeps GM-only pack content out of player-facing pickers, so each
+		// client resolves its own view of the configured sources.
+		const allPacks = ContentSources.getCandidatePacks(category).filter(
+			(p) => p.visible,
+		);
+
+		if (!selected?.length) return { packs: allPacks, includeWorld: true };
+
+		const idSet = new Set(selected);
+		return {
+			packs: allPacks.filter((p) => idSet.has(p.collection)),
+			includeWorld: idSet.has(WORLD_SOURCE_ID),
+		};
+	}
+
+	/**
+	 * All packs that can hold a category's content, regardless of the world
+	 * setting or the current user's visibility. This is the single definition
+	 * of "which packs belong to a category" — `getSources` layers the setting
+	 * and `visible` on top; the config app layers ownership display on top.
+	 * @param {string} category - One of: "themebooks", "themekits", "tropes", "statuses"
+	 * @returns {CompendiumCollection[]}
+	 */
+	static getCandidatePacks(category) {
+		const docType = CATEGORY_DOC_TYPE[category];
+		if (!docType) return [];
+		// The story-tags pack is also an ActiveEffect pack, but it holds story
+		// tags, not statuses — never treat it as a status source. Letting it
+		// through pollutes the status palette and risks duplicate slugified ids
+		// in CONFIG.statusEffects (whose v14 Proxy throws on duplicate keys).
+		return game.packs.filter(
+			(p) =>
+				p.documentName === docType &&
+				!(
+					category === "statuses" && p.collection === WORLD_STORY_TAG_PACK_ID
+				),
+		);
+	}
+
 	/**
 	 * Get compendium packs for a given category, filtered by the world setting.
 	 * If the setting is empty, returns all packs of the matching document type.
@@ -81,28 +142,7 @@ export class ContentSources {
 	 * @returns {CompendiumCollection[]}
 	 */
 	static getPacks(category) {
-		const docType = CATEGORY_DOC_TYPE[category];
-		if (!docType) {
-			error(`ContentSources.getPacks: unknown category "${category}"`);
-			return [];
-		}
-
-		const selected = LitmSettings.getCompendiumSetting(category);
-		let allPacks = game.packs.filter((p) => p.documentName === docType);
-
-		// The story-tags pack is also an ActiveEffect pack, but it holds story
-		// tags, not statuses — never treat it as a status source. Letting it
-		// through pollutes the status palette and risks duplicate slugified ids
-		// in CONFIG.statusEffects (whose v14 Proxy throws on duplicate keys).
-		if (category === "statuses")
-			allPacks = allPacks.filter(
-				(p) => p.collection !== WORLD_STORY_TAG_PACK_ID,
-			);
-
-		if (!selected?.length) return allPacks;
-
-		const idSet = new Set(selected);
-		return allPacks.filter((p) => idSet.has(p.collection));
+		return ContentSources.getSources(category).packs;
 	}
 
 	/**
@@ -310,4 +350,4 @@ export class ContentSources {
 	}
 }
 
-export { WORLD_STORY_TAG_PACK_ID };
+export { WORLD_SOURCE_ID, WORLD_STORY_TAG_PACK_ID };

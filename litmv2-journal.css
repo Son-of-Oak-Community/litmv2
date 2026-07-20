@@ -1,0 +1,652 @@
+/* ==========================================================================
+   Legend in the Mist — Journal Content Styling
+   Ported from the legend-in-the-mist module. Scoped under .litm-journal, applied
+   only to JournalEntries using the LitmJournalSheet (opt-in). The rich content
+   blocks below key off hand-authored litm-* classes; converter-imported journals
+   currently carry the base parchment/serif look. See litmv2-converter bug 6.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Font Faces
+   -------------------------------------------------------------------------- */
+/* Ecstasy, M-Leaves, and Dreamland Lower (the module's title/dropcap/ingress
+   faces) are licensed fonts and can't ship in this repository — the stacks
+   below substitute system-shipped faces instead; Grenze stands in
+   wherever Dreamland was used. */
+@font-face {
+    font-family: "Manuskript Antiqua";
+    src: url("systems/litmv2/assets/fonts/pragroman.woff") format("woff");
+    font-display: swap;
+    size-adjust: 90%;
+}
+
+
+/* --------------------------------------------------------------------------
+   Theme Variables — Defaults (fallback when theme class is absent)
+   -------------------------------------------------------------------------- */
+.litm-journal,
+.litm-journal.theme-light {
+    --color-litm-title: #443834;
+    --color-litm-drop: #762b2d;
+    --litm-body-font: var(--font-serif, Labrada, serif);
+    --litm-title-font: var(--font-blackletter, serif);
+    --litm-heading-font:
+        "Manuskript Antiqua", PackardAntique, var(--font-serif);
+    --litm-ingress-font: Grenze, var(--litm-heading-font);
+    --litm-dropcap-font: var(--font-blackletter, serif);
+    --litm-text-color: #2c2c2c;
+    --litm-accent-color: #4a4a4a;
+    --litm-bg: transparent;
+    --litm-bg-subtle: #faf8f4;
+    --litm-callout-bg: #f0ebe0;
+    --litm-callout-border: #8b7355;
+    --litm-callout-heading: #5a4a32;
+    --litm-rule-color: #6b3a2a;
+    --litm-delve-bg: #e8edf5;
+    --litm-delve-border: #4a6896;
+    --litm-delve-heading: #4a6896;
+    --litm-note-color: #5a3e28;
+    --litm-note-bg: #faf6ed;
+    --litm-note-border: #c9b99a;
+    --litm-example-bg: #f9f7f2;
+    --litm-example-border: #d4cfc5;
+    --litm-card-bg: #faf8f4;
+    --litm-card-border: #6b5b4a;
+    --litm-rote-header-bg: #f0ebe0;
+    --litm-adventure-heading: #6b3a2a;
+    --litm-adventure-border: #9b5a3a;
+    --litm-role-badge-bg: #e0dcd4;
+    --litm-role-badge-color: #4a4a4a;
+    --litm-dropcap-color: #6b3a2a;
+    --background: url("systems/litmv2/assets/journal/parchment.webp") top center / cover no-repeat;
+    --sidebar-background: url("systems/litmv2/assets/journal/sidebar.webp") left / 80% 105% no-repeat;
+}
+
+/* --------------------------------------------------------------------------
+   Theme Variables — Dark Mode
+   -------------------------------------------------------------------------- */
+body.theme-dark .litm-journal,
+.litm-journal.theme-dark {
+    --color-litm-title: var(--color-light-4);
+    --color-litm-drop: var(--color-warm-2);
+    --litm-text-color: var(--color-text-primary, #d4d0c8);
+    --litm-heading-color: #c9886a;
+    --litm-accent-color: var(--color-text-secondary, #a09888);
+    --litm-bg: transparent;
+    --litm-bg-subtle: rgba(255, 255, 255, 0.03);
+    --litm-callout-bg: rgba(139, 115, 85, 0.15);
+    --litm-callout-border: #8b7355;
+    --litm-callout-heading: #c9b99a;
+    --litm-delve-bg: rgba(74, 104, 150, 0.15);
+    --litm-delve-border: #6888b8;
+    --litm-delve-heading: #8ca8d0;
+    --litm-note-color: #c9b99a;
+    --litm-note-bg: rgba(250, 246, 237, 0.05);
+    --litm-note-border: rgba(201, 185, 154, 0.3);
+    --litm-example-bg: rgba(255, 255, 255, 0.03);
+    --litm-example-border: rgba(212, 207, 197, 0.2);
+    --litm-card-bg: rgba(255, 255, 255, 0.03);
+    --litm-card-border: rgba(107, 91, 74, 0.5);
+    --litm-rote-header-bg: rgba(240, 235, 224, 0.08);
+    --litm-adventure-heading: #c9886a;
+    --litm-adventure-border: #9b5a3a;
+    --litm-role-badge-bg: rgba(224, 220, 212, 0.1);
+    --litm-role-badge-color: var(--color-text-secondary, #a09888);
+    --litm-dropcap-color: #c9886a;
+    --litm-rule-color: rgba(201, 136, 106, 0.5);
+    --background: none;
+    --sidebar-background: none;
+}
+
+/* --------------------------------------------------------------------------
+   Content Padding
+   -------------------------------------------------------------------------- */
+.litm-journal .journal-entry-pages {
+    padding-top: 1rem;
+}
+
+.litm-journal .journal-entry-page,
+.litm-journal .journal-page-content,
+.journal-entry-page:has(.litm-rules),
+.journal-page-content:has(.litm-rules) {
+    container-type: inline-size;
+}
+
+/* --------------------------------------------------------------------------
+   Cover Page Content (title + ingress, authored in HTML)
+   -------------------------------------------------------------------------- */
+.litm-cover-page {
+    max-width: 72ch;
+    margin-inline: auto;
+    text-align: center;
+}
+
+.litm-cover-page>img {
+    width: 100%;
+    display: block;
+}
+
+.litm-cover-page .litm-chapter-title {
+    font-family: var(--litm-title-font);
+    font-size: 5em;
+    font-weight: normal;
+    line-height: 1.05;
+    text-align: center;
+    color: var(--color-litm-title);
+    margin: 0 0 0.1em;
+    border: none;
+}
+
+.litm-title-ingress {
+    font-family: var(--litm-ingress-font);
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.7;
+    color: var(--color-text-primary);
+    text-align: left;
+}
+
+.litm-title-ingress .litm-dropcap::first-letter {
+    font-family: var(--litm-dropcap-font);
+    font-style: normal;
+    font-weight: normal;
+    font-size-adjust: 1;
+    font-size: 6em;
+    color: var(--color-litm-drop);
+    float: left;
+    line-height: 1;
+    margin-block: 0.08em -0.1em;
+    margin-left: -0.05em;
+}
+
+/* --------------------------------------------------------------------------
+   Journal Page Header (styled via :has when content contains .litm-rules)
+   -------------------------------------------------------------------------- */
+.journal-entry-page:has(.litm-rules) .journal-page-header :is(h1, h2, h3) {
+    font-family: var(--litm-title-font);
+    color: var(--litm-heading-color);
+    text-align: center;
+    border: none;
+    font-weight: normal;
+    font-size: 2.5em;
+    line-height: 1.2;
+    margin-bottom: 0.25em;
+}
+
+/* --------------------------------------------------------------------------
+   Base Rules Container
+   -------------------------------------------------------------------------- */
+.litm-rules {
+    font-family: var(--litm-body-font);
+    font-size: var(--font-size-16, 1rem);
+    font-weight: 450;
+    color: var(--litm-text-color);
+    background: var(--litm-bg);
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0.5rem 1rem;
+    display: grid;
+    grid-template-columns: 1fr 250px;
+    grid-auto-flow: dense;
+    gap: 0.5rem 1.5rem;
+}
+
+.litm-rules>* {
+    grid-column: 1;
+}
+
+@container (max-width: 750px) {
+    .litm-rules {
+        grid-template-columns: 1fr;
+    }
+
+    .litm-rules>.litm-sidebar,
+    .litm-rules>.litm-margin-note {
+        grid-column: 1;
+        grid-row: span 1;
+    }
+}
+
+.litm-rules h2 {
+    font-family: var(--litm-heading-font);
+    font-variant: small-caps;
+    text-transform: uppercase;
+    font-size: 1.5em;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    border-bottom: 3px solid var(--litm-rule-color);
+    padding-bottom: 0.25rem;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    color: var(--litm-heading-color);
+}
+
+.litm-rules h3 {
+    font-family: var(--litm-heading-font);
+    font-weight: 700;
+    font-size: 1.15em;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--litm-heading-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.litm-rules h3::after {
+    content: "";
+    flex: 1;
+    height: 2px;
+    background: var(--litm-rule-color);
+}
+
+.litm-rules p {
+    margin-bottom: 0.75rem;
+}
+
+.litm-rules ul,
+.litm-rules ol {
+    margin-bottom: 0.75rem;
+    padding-left: 1.5rem;
+}
+
+.litm-rules li {
+    margin-bottom: 0.25rem;
+}
+
+.litm-rules dl {
+    margin-bottom: 0.75rem;
+}
+
+.litm-rules dt {
+    font-weight: bold;
+    margin-top: 0.5rem;
+}
+
+.litm-rules dd {
+    margin-left: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+/* --------------------------------------------------------------------------
+   Two-Column Layout (Glossary)
+   -------------------------------------------------------------------------- */
+.litm-two-column {
+    column-count: 2;
+    column-gap: 2rem;
+}
+
+.litm-two-column dl {
+    break-inside: avoid;
+}
+
+.litm-two-column dt {
+    break-after: avoid;
+}
+
+@media (max-width: 600px) {
+    .litm-two-column {
+        column-count: 1;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Ingress / Intro Paragraph (bold italic opening text)
+   -------------------------------------------------------------------------- */
+.litm-rules .litm-ingress {
+    font-size: 1.5em;
+    font-weight: 600;
+    font-style: normal;
+    line-height: 1.2;
+}
+
+/* --------------------------------------------------------------------------
+   Chapter Title
+   -------------------------------------------------------------------------- */
+.litm-chapter-title {
+    font-family: var(--litm-title-font);
+    font-size: 2.5em;
+    text-align: center;
+    color: var(--litm-heading-color);
+    margin: 0.5em 0;
+    line-height: 1.2;
+}
+
+/* --------------------------------------------------------------------------
+   Drop Cap
+   -------------------------------------------------------------------------- */
+.litm-dropcap::first-letter {
+    font-family: var(--litm-dropcap-font);
+    font-style: normal;
+    font-weight: normal;
+    font-size-adjust: 1;
+    font-size: 6em;
+    color: var(--litm-heading-color);
+    float: left;
+    line-height: 1;
+    margin-block: 0.08em -0.1em;
+    margin-left: -0.05em;
+}
+
+/* --------------------------------------------------------------------------
+   Sidebar / Callout Boxes
+   -------------------------------------------------------------------------- */
+.litm-callout {
+    background: var(--litm-callout-bg);
+    border-left: 4px solid var(--litm-callout-border);
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.95em;
+}
+
+.litm-callout h4 {
+    font-variant: small-caps;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--litm-callout-heading);
+}
+
+/* "Delve Deeper" boxes */
+.litm-delve-deeper {
+    border-image: url("systems/litmv2/assets/journal/note-d.webp") 60 fill / 10px / 0 stretch;
+    background: none;
+    padding: 1.5rem 1.5rem 1rem;
+    margin: 1rem 0;
+    font-weight: 500;
+    color: var(--color-light-1);
+}
+
+.litm-delve-deeper::before {
+    content: "";
+    display: block;
+    width: 2em;
+    height: 2em;
+    margin: 0 auto 0.5rem;
+    background: url("/systems/litmv2/assets/media/icons/torch.svg") center / contain no-repeat;
+}
+
+.litm-delve-deeper>h3:first-child,
+.litm-delve-deeper>h3:first-of-type {
+    font-family: var(--litm-heading-font);
+    font-variant: small-caps;
+    text-transform: uppercase;
+    font-style: normal;
+    font-weight: 700;
+    font-size: 1.1em;
+    letter-spacing: 0.1em;
+    color: #dd9328;
+    margin-bottom: 0.5rem;
+    border: none;
+    text-align: center;
+    justify-content: center;
+}
+
+.litm-delve-deeper>h3:first-of-type::after {
+    display: none;
+}
+
+/* Full-page "Delve Deeper" dark sections (e.g. "Coming From Other RPGs") */
+.litm-delve-deeper-page {
+    background: url("systems/litmv2/assets/journal/parchment-dark.webp") center / cover no-repeat;
+    padding: 2rem 2.5rem;
+    margin: 1.5rem -0.5rem;
+    color: var(--color-light-1);
+}
+
+.litm-delve-deeper-page h2 {
+    font-family: var(--litm-chapter-font);
+    color: #dd9328;
+    border: none;
+    border-bottom: 2px solid #dd9328;
+    margin-top: 0;
+    padding-bottom: 0.3rem;
+}
+
+.litm-delve-deeper-page h2::before {
+    content: "";
+    display: inline-block;
+    width: 1.2em;
+    height: 1.2em;
+    margin-right: 0.3em;
+    vertical-align: baseline;
+    background: url("/systems/litmv2/assets/media/icons/torch.svg") center / contain no-repeat;
+}
+
+.litm-delve-deeper-page h3 {
+    font-family: var(--litm-heading-font);
+    font-variant: small-caps;
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: 1em;
+    letter-spacing: 0.08em;
+    color: #dd9328;
+    border: none;
+}
+
+.litm-delve-deeper-page h3::after {
+    display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Handwritten Margin Notes (informal asides, same look as sidebar)
+   -------------------------------------------------------------------------- */
+.litm-sidebar,
+.litm-margin-note {
+    font-family: "Caveat", cursive;
+    grid-column: 2;
+    grid-row: span 3;
+    font-size: 1.2em;
+    line-height: 1.35;
+    color: var(--litm-text-color);
+    background: var(--sidebar-background);
+    padding: 0.75rem 1rem;
+    border-left: 3px solid var(--litm-heading-color);
+    border-radius: 4px;
+    align-self: start;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    max-width: 46ch;
+}
+
+.litm-sidebar h4,
+.litm-sidebar h5,
+.litm-margin-note h4,
+.litm-margin-note h5 {
+    font-family: "Caveat Brush", cursive;
+    font-size: 1.4em;
+    font-weight: normal;
+    margin-top: 0;
+    margin-bottom: 0.4rem;
+    color: var(--litm-heading-color);
+}
+
+.litm-sidebar>*,
+.litm-margin-note>* {
+    transform-origin: top;
+}
+
+@container (min-width: 751px) {
+
+    .litm-sidebar>*:not(blockquote),
+    .litm-margin-note>*:not(blockquote) {
+        transform: rotate(-4deg);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Read-Aloud / Blockquote (parchment note card)
+   -------------------------------------------------------------------------- */
+.litm-rules blockquote {
+    border-image: url("systems/litmv2/assets/journal/note.webp") 80 fill / 13px / 0 stretch;
+    padding: 0.5rem 1rem;
+    background: none;
+    font-family: "Fraunces";
+    color: var(--color-dark-1);
+    font-weight: 600;
+    font-style: normal;
+    font-size: 0.8em;
+    line-height: 1.35;
+    filter: drop-shadow(2px 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+.litm-rules blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Example Boxes
+   -------------------------------------------------------------------------- */
+.litm-example {
+    background: var(--litm-example-bg);
+    border: 1px solid var(--litm-example-border);
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.litm-example p {
+    margin-bottom: 0.5rem;
+}
+
+/* Example of Play — Grenze (Dreamland stand-in) for dialogue */
+.litm-example-play {
+    font-family: Grenze, var(--litm-body-font);
+    font-size: 1.05em;
+    line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   Challenge Profile Card
+   -------------------------------------------------------------------------- */
+.litm-challenge-card {
+    background: var(--litm-card-bg);
+    border: 2px solid var(--litm-card-border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+}
+
+.litm-challenge-card h3 {
+    display: block;
+    font-variant: small-caps;
+    letter-spacing: 0.1em;
+    font-size: 1.25em;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--litm-card-border);
+    padding-bottom: 0.5rem;
+}
+
+.litm-challenge-card h3::after {
+    display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Rote Cards
+   -------------------------------------------------------------------------- */
+.litm-rote {
+    margin-bottom: 1.5rem;
+}
+
+.litm-rote-header {
+    background: var(--litm-rote-header-bg);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+}
+
+.litm-rote-practitioners {
+    font-style: italic;
+    margin: 0;
+}
+
+.litm-rote-tags li {
+    display: inline-block;
+    margin-right: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+/* --------------------------------------------------------------------------
+   Adventure Module Styling
+   -------------------------------------------------------------------------- */
+.litm-adventure h2 {
+    color: var(--litm-adventure-heading);
+    border-color: var(--litm-adventure-border);
+}
+
+.litm-adventure h3 {
+    color: var(--litm-adventure-heading);
+}
+
+/* --------------------------------------------------------------------------
+   Theme Level Colors
+   (matches themekits folder colors from CLAUDE.md)
+   -------------------------------------------------------------------------- */
+.litm-origin {
+    color: #759d73;
+}
+
+.litm-adventure-level {
+    color: #bc6c59;
+}
+
+.litm-greatness {
+    color: #7483a9;
+}
+
+.litm-journal.theme-dark .litm-origin {
+    color: #8fb88d;
+}
+
+.litm-journal.theme-dark .litm-adventure-level {
+    color: #d4897a;
+}
+
+.litm-journal.theme-dark .litm-greatness {
+    color: #95a3c4;
+}
+
+/* --------------------------------------------------------------------------
+   Theme Kit Grid (3-up layout for Origin / Adventure / Greatness)
+   -------------------------------------------------------------------------- */
+.litm-themekit-grid {
+    container-type: inline-size;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.litm-themekit-grid>* {
+    min-width: 0;
+}
+
+@container (max-width: 950px) {
+    .litm-themekit-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@container (max-width: 500px) {
+    .litm-themekit-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Challenge Role Badges
+   -------------------------------------------------------------------------- */
+.litm-role-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.8em;
+    font-weight: bold;
+    font-variant: small-caps;
+    letter-spacing: 0.05em;
+    background: var(--litm-role-badge-bg);
+    color: var(--litm-role-badge-color);
+    margin-right: 0.25rem;
+}

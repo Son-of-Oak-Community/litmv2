@@ -84,11 +84,9 @@ body,
 		Ysgarth, "Modesto Condensed", "Arial Narrow Bold", sans-serif;
 	--font-packard:
 		PackardAntique, "Garamond Premier Pro", "Palatino Linotype", Palatino, serif;
-	--font-luminari: Luminari, "Germania One", STFU, cursive;
-	--font-powell: PowellAntique, PackardAntiqu, serif;
-	--font-trattatello: Trattatello, AlchemyItalic, PackardAntique, cursive;
-	--font-serif:
-		Labrada, Fraunces, LibreCaslonText, "Book Antiqua", Palatino, serif;
+	--font-grenze: Grenze, serif;
+	--font-powell: PowellAntique, PackardAntique, serif;
+	--font-serif: Labrada, Fraunces, "Book Antiqua", Palatino, serif;
 
 	/* Alpha-variant colors (kept: 3+ uses across core styles) */
 	--color-warm-1-10: color-mix(in srgb, var(--color-warm-1) 10%, transparent);
@@ -194,7 +192,7 @@ body,
 
 	/* Foundry Styles */
 	--font-h1: var(--font-blackletter);
-	--font-h2: var(--font-luminari);
+	--font-h2: var(--font-grenze);
 	--font-h3: var(--font-blackletter);
 	--font-h4: var(--font-powell);
 	--font-blockquote: var(--font-serif);
@@ -806,7 +804,7 @@ section.standard-form.litm-actions-app {
 	color: var(--color-text-subtle);
 }
 
-/* Action sheet — title input gets a Luminari treatment matching theme/vignette */
+/* Action sheet — title input gets the h2 display treatment matching theme/vignette */
 .litm-action-sheet > header.img-name input[name="name"] {
 	font-family: var(--font-h2);
 	font-size: var(--font-size-20);
@@ -1263,7 +1261,7 @@ section.standard-form.litm-actions-app {
 }
 
 .litm-render--challenge__category {
-	font-family: var(--font-luminari);
+	font-family: var(--font-grenze);
 	font-style: italic;
 	color: var(--color-text-secondary);
 	font-size: var(--font-size-13);
@@ -1541,7 +1539,7 @@ section.standard-form.litm-actions-app {
 
 .litm-render--themebook__level {
 	text-align: center;
-	font-family: var(--font-luminari);
+	font-family: var(--font-grenze);
 	font-style: italic;
 	color: var(--color-text-secondary);
 	font-size: var(--font-size-13);
@@ -1898,15 +1896,15 @@ section.standard-form.litm-actions-app {
 	text-transform: uppercase;
 }
 
-/* Track-completion action button — shown above an abandon/milestone/improve
-   track when it caps out, to invoke the matching advancement/evolution flow. */
+/* Track-completion action button — shown below an abandon/milestone/improve
+   track's label when it caps out, to invoke the matching advancement/evolution flow. */
 .litm .theme-card-track .litm--track-action {
 	margin-top: var(--spacer-4);
 }
 
 .litm .theme-card__quest {
 	margin: var(--spacer-12) 0 0;
-	font-family: var(--font-trattatello);
+	font-family: var(--font-grenze);
 	font-style: normal;
 	font-size: var(--font-size-20);
 	color: var(--color-text-subtle);
@@ -1918,20 +1916,28 @@ section.standard-form.litm-actions-app {
 	font-family: var(--font-serif);
 }
 
+/* The fade gradient sits in the bottom half of a double-height mask so the
+   expand can slide it off-element via mask-position (animatable) instead of
+   swapping mask-image gradients (not). --description-height is set by the
+   toggle handler to the body's real scroll height, so the max-height
+   transition tracks the actual content instead of dead-timing to a cap. */
 .litm .theme-card__description-body {
 	max-height: calc(3 * 1.5em);
 	overflow: hidden;
 	font-style: italic;
 	color: var(--color-text-secondary);
-	-webkit-mask-image: linear-gradient(to bottom, black 1.5em, transparent 5em);
-	mask-image: linear-gradient(to bottom, black 1.5em, transparent 4em);
-	transition: max-height var(--transition-normal);
+	mask-image: linear-gradient(to top, transparent 0.5em, black 3em);
+	mask-size: 100% 200%;
+	mask-repeat: no-repeat;
+	mask-position: 0 100%;
+	transition:
+		max-height var(--transition-slower),
+		mask-position var(--transition-slower);
 }
 
 .litm .theme-card__description.is-expanded .theme-card__description-body {
-	max-height: 80em;
-	-webkit-mask-image: none;
-	mask-image: none;
+	max-height: var(--description-height, 80em);
+	mask-position: 0 0;
 }
 
 /* Card-level affordance: the parchment shows a subtle cursor and tooltip
@@ -2558,6 +2564,14 @@ section.standard-form.litm-actions-app {
 		flex-wrap: nowrap;
 		padding-inline-end: var(--spacer-16);
 	}
+	/* Edit mode (actions PART is the hidden stub): the header holds
+	   name/alias/promise inputs whose min-content collapses to a couple
+	   of characters — size the profile column to the inputs' natural
+	   width instead. Play mode keeps min-content: the name there is
+	   static text, and tight is correct. */
+	.litm-hero-sheet:has([data-application-part="actions"][hidden]) .window-content {
+		grid-template-columns: max-content minmax(0, 1fr);
+	}
 	.litm-hero-sheet [data-application-part="description"] {
 		grid-area: description;
 	}
@@ -2607,14 +2621,10 @@ section.standard-form.litm-actions-app {
 	}
 }
 
-/* Suppress duplicate frame chrome buttons when the actions strip is
-   actively rendered — Roll/Actions/Sacrifice/Camping are already in the
-   strip in play mode. Edit mode renders an empty hidden stub for the
-   actions PART, so the frame buttons remain visible there. */
-.litm-hero-sheet:has(
-		[data-application-part="actions"]:not([hidden])
-	) .window-header
-	> button[data-action="openActionsApp"],
+/* Suppress the duplicate frame camping button when the actions strip is
+   actively rendered — Camping is already in the strip in play mode. Edit
+   mode renders an empty hidden stub for the actions PART, so the frame
+   button remains visible there. */
 .litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
 	.window-header
 	> button[data-action="openCamping"] {
@@ -2766,6 +2776,17 @@ section.standard-form.litm-actions-app {
 	.litm-fellowship-sheet .progress-display
 ) {
 	display: flex;
+}
+
+/* Ceremonial header for the Promise track — calligraphic display face to
+   contrast the blackletter actor name above it. Centered against the taller
+   progress boxes so its baseline doesn't sink below them. */
+.litm--promise-title {
+	align-self: center;
+	margin: 0;
+	font-family: "Uncial Antiqua", var(--font-h2);
+	font-size: var(--font-size-20);
+	line-height: 1;
 }
 
 .litm--promise-pending {
@@ -2925,7 +2946,7 @@ section.standard-form.litm-actions-app {
 	margin-bottom: var(--spacer-8);
 	color: var(--color-text-primary);
 	font-size: var(--font-size-18);
-	font-family: var(--font-luminari);
+	font-family: var(--font-grenze);
 }
 
 .litm .consequences-list {
@@ -7432,4 +7453,47 @@ body.litm--colorblind .themed.theme-dark,
 	align-items: center;
 	gap: var(--spacer-8);
 	margin-block-end: var(--spacer-8);
+}
+
+/* ========================================
+   23. Content Sources Config
+   GM settings app; light Foundry chrome.
+======================================== */
+
+/* Sections are the primary grouping, so they get more air than the rows
+   inside them — otherwise Foundry's uniform fieldset gap makes the row
+   spacing rival the section spacing and the boundaries blur. */
+#content-sources-config .scrollable {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+#content-sources-config fieldset {
+	gap: var(--spacer-8);
+}
+
+#content-sources-config .litm--pack-row {
+	flex-wrap: nowrap;
+	gap: var(--spacer-8);
+}
+
+/* The providing module's title — context, not a competing label. */
+#content-sources-config .litm--source-label {
+	max-width: 40%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size-12);
+	color: var(--color-text-secondary);
+}
+
+/* Packs hidden from players by ownership can't feed player-facing pickers —
+   mute the row and let the eye-slash tooltip carry the reason. */
+#content-sources-config .litm--pack-hidden {
+	color: var(--color-text-secondary);
+}
+
+#content-sources-config .litm--pack-hidden i {
+	opacity: 0.6;
 }

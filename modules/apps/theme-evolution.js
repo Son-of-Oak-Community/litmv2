@@ -816,6 +816,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		if (!this._themebooks.length) {
 			const all = await queryItemsFromPacks({
 				type: "themebook",
+				category: "themebooks",
 				indexFields: ["name", "system.theme_level", "system.isFellowship"],
 				map: (entry) => ({
 					name: entry.name,

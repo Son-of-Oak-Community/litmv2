@@ -1,11 +1,5 @@
 <div class="theme-card-tracks">
 	<div class="theme-card-track">
-		{{#if (eq system.quest.tracks.abandon.value 3)}}
-		<button type="button" class="litm--track-action" data-action="openThemeEvolution" data-item-id="{{_id}}"
-			data-tooltip="{{localize 'LITM.Ui.replace_theme'}}" aria-label="{{localize 'LITM.Ui.replace_theme'}}">
-			<i class="fa-solid fa-wind" aria-hidden="true"></i>
-		</button>
-		{{/if}}
 		<div class="progress-display" data-id="system.quest.tracks.abandon.value" role="group"
 			aria-label="{{localize 'LITM.Themes.abandon'}}">
 			{{#progress-buttons system.quest.tracks.abandon.value 3}}
@@ -16,14 +10,14 @@
 			{{/progress-buttons}}
 		</div>
 		<label>{{localize "LITM.Themes.abandon"}}</label>
-	</div>
-	<div class="theme-card-track">
-		{{#if (eq system.improve.value (improve-threshold))}}
-		<button type="button" class="litm--track-action" data-action="openThemeAdvancement" data-item-id="{{_id}}"
-			data-tooltip="{{localize 'LITM.Ui.choose_improvement'}}" aria-label="{{localize 'LITM.Ui.choose_improvement'}}">
-			<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+		{{#if (eq system.quest.tracks.abandon.value 3)}}
+		<button type="button" class="litm--track-action" data-action="openThemeEvolution" data-item-id="{{_id}}"
+			data-tooltip="{{localize 'LITM.Ui.replace_theme'}}" aria-label="{{localize 'LITM.Ui.replace_theme'}}">
+			<i class="fa-solid fa-wind" aria-hidden="true"></i>
 		</button>
 		{{/if}}
+	</div>
+	<div class="theme-card-track">
 		<div class="progress-display" data-id="system.improve.value" role="group"
 			aria-label="{{localize 'LITM.Ui.improve'}}">
 			{{#progress-buttons system.improve.value (improve-threshold)}}
@@ -34,14 +28,14 @@
 			{{/progress-buttons}}
 		</div>
 		<label>{{localize "LITM.Ui.improve"}}</label>
-	</div>
-	<div class="theme-card-track">
-		{{#if (eq system.quest.tracks.milestone.value 3)}}
-		<button type="button" class="litm--track-action" data-action="openThemeEvolution" data-item-id="{{_id}}"
-			data-tooltip="{{localize 'LITM.Ui.evolve_theme'}}" aria-label="{{localize 'LITM.Ui.evolve_theme'}}">
-			<i class="fa-solid fa-mountain-sun" aria-hidden="true"></i>
+		{{#if (eq system.improve.value (improve-threshold))}}
+		<button type="button" class="litm--track-action" data-action="openThemeAdvancement" data-item-id="{{_id}}"
+			data-tooltip="{{localize 'LITM.Ui.choose_improvement'}}" aria-label="{{localize 'LITM.Ui.choose_improvement'}}">
+			<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
 		</button>
 		{{/if}}
+	</div>
+	<div class="theme-card-track">
 		<div class="progress-display" data-id="system.quest.tracks.milestone.value" role="group"
 			aria-label="{{localize 'LITM.Themes.milestone'}}">
 			{{#progress-buttons system.quest.tracks.milestone.value 3}}
@@ -52,5 +46,11 @@
 			{{/progress-buttons}}
 		</div>
 		<label>{{localize "LITM.Themes.milestone"}}</label>
+		{{#if (eq system.quest.tracks.milestone.value 3)}}
+		<button type="button" class="litm--track-action" data-action="openThemeEvolution" data-item-id="{{_id}}"
+			data-tooltip="{{localize 'LITM.Ui.evolve_theme'}}" aria-label="{{localize 'LITM.Ui.evolve_theme'}}">
+			<i class="fa-solid fa-mountain-sun" aria-hidden="true"></i>
+		</button>
+		{{/if}}
 	</div>
 </div>

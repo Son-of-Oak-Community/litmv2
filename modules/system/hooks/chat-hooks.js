@@ -11,6 +11,7 @@ import {
 	computePowerBudget,
 	getAllowedVerbs,
 	getSuccessCost,
+	unionAppliedSuccessKeys,
 } from "../../item/action/action-rules.js";
 import { getVerbDef } from "../../item/action/verb-definitions.js";
 import { localize as t, viewLinkedRefAction } from "../../utils.js";
@@ -764,7 +765,10 @@ function _attachContextMenuToRollMessage() {
 				const message = game.messages.get(li.dataset.messageId);
 				if (!message) return false;
 				const spent = message.getFlag("litmv2", "spentPower") ?? 0;
-				const applied = message.getFlag("litmv2", "appliedSuccesses") ?? [];
+				const applied = unionAppliedSuccessKeys(
+					message.getFlag("litmv2", "appliedSuccesses"),
+					message.getFlag("litmv2", "appliedSuccessCosts"),
+				);
 				if (spent <= 0 && applied.length === 0) return false;
 				return game.user.isGM || message.author?.id === game.user.id;
 			},

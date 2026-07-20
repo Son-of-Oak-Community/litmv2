@@ -1,4 +1,7 @@
-import { ContentSources } from "../system/content-sources.js";
+import {
+	ContentSources,
+	WORLD_SOURCE_ID,
+} from "../system/content-sources.js";
 import { LitmSettings } from "../system/settings.js";
 import { localize as t } from "../utils.js";
 
@@ -16,8 +19,8 @@ export class ContentSourcesConfig extends HandlebarsApplicationMixin(
 			contentClasses: ["standard-form"],
 		},
 		position: {
-			width: 480,
-			height: 500,
+			width: 560,
+			height: 720,
 		},
 		form: {
 			closeOnSubmit: true,
@@ -41,22 +44,18 @@ export class ContentSourcesConfig extends HandlebarsApplicationMixin(
 	static CATEGORIES = [
 		{
 			category: "themebooks",
-			docType: "Item",
 			labelKey: "LITM.Settings.content_sources_themebooks",
 		},
 		{
 			category: "themekits",
-			docType: "Item",
 			labelKey: "LITM.Settings.content_sources_themekits",
 		},
 		{
 			category: "tropes",
-			docType: "Item",
 			labelKey: "LITM.Settings.content_sources_tropes",
 		},
 		{
 			category: "statuses",
-			docType: "ActiveEffect",
 			labelKey: "LITM.Settings.content_sources_statuses",
 		},
 	];
@@ -66,22 +65,48 @@ export class ContentSourcesConfig extends HandlebarsApplicationMixin(
 		const context = await super._prepareContext(options);
 
 		context.sections = ContentSourcesConfig.CATEGORIES.map(
-			({ category, docType, labelKey }) => {
+			({ category, labelKey }) => {
 				const selected = new Set(LitmSettings.getCompendiumSetting(category));
-				const packs = game.packs
-					.filter((p) => p.documentName === docType)
-					.map((p) => ({
-						id: p.collection,
-						label: p.metadata.label,
-						source: p.metadata.packageName || "world",
-						checked: selected.has(p.collection),
-					}));
+				const packs = ContentSources.getCandidatePacks(category).map(
+					(p) => {
+						const checked = selected.has(p.collection);
+						const { gmOnly, trustedOnly } =
+							ContentSourcesConfig.#packPlayerAccess(p);
+						return {
+							id: p.collection,
+							label: p.metadata.label,
+							source: ContentSourcesConfig.#sourceTitle(p),
+							checked,
+							hidden: gmOnly || trustedOnly,
+							// A GM-only pack can't feed player-facing pickers, so it
+							// can't be newly selected — but a stale selection stays
+							// toggleable so it can still be unticked.
+							disabled: gmOnly && !checked,
+							tooltip: gmOnly
+								? "LITM.Settings.content_sources_gm_only"
+								: trustedOnly
+									? "LITM.Settings.content_sources_trusted_only"
+									: null,
+						};
+					})
+					.sort((a, b) => a.label.localeCompare(b.label, game.i18n.lang));
+				const isStatuses = category === "statuses";
+				// World items are a selectable source for Item categories; statuses
+				// live only in ActiveEffect packs, so they get no World row.
+				if (!isStatuses) {
+					packs.unshift({
+						id: WORLD_SOURCE_ID,
+						label: t("LITM.Settings.content_sources_world"),
+						source: t("LITM.Settings.content_sources_source_world"),
+						checked: selected.has(WORLD_SOURCE_ID),
+					});
+				}
 				return {
 					category,
 					label: t(labelKey),
 					packs,
 					hasSelection: packs.some((p) => p.checked),
-					isStatuses: category === "statuses",
+					isStatuses,
 				};
 			},
 		);
@@ -91,6 +116,42 @@ export class ContentSourcesConfig extends HandlebarsApplicationMixin(
 		];
 
 		return context;
+	}
+
+	/**
+	 * Human-readable title of the package a pack ships with — the module or
+	 * system title instead of its raw package id, "World" for world packs.
+	 * @param {CompendiumCollection} pack
+	 * @returns {string}
+	 */
+	static #sourceTitle(pack) {
+		const { packageType, packageName } = pack.metadata;
+		switch (packageType) {
+			case "world":
+				return t("LITM.Settings.content_sources_source_world");
+			case "system":
+				return game.system.title;
+			default:
+				return game.modules.get(packageName)?.title || packageName;
+		}
+	}
+
+	/**
+	 * Classify a pack's visibility to non-GM users from its ownership config.
+	 * Roles are hierarchical: a PLAYER grant reaches trusted players too, but a
+	 * TRUSTED grant leaves regular players without access.
+	 * @param {CompendiumCollection} pack
+	 * @returns {{ gmOnly: boolean, trustedOnly: boolean }} `gmOnly` — no non-GM
+	 *   role can observe the pack; `trustedOnly` — trusted players can, regular
+	 *   players can't.
+	 */
+	static #packPlayerAccess(pack) {
+		const levels = CONST.DOCUMENT_OWNERSHIP_LEVELS;
+		const level = (role) => levels[pack.ownership[role]] ?? levels.NONE;
+		const playerSees = level("PLAYER") >= levels.OBSERVER;
+		const trustedSees =
+			playerSees || level("TRUSTED") >= levels.OBSERVER;
+		return { gmOnly: !trustedSees, trustedOnly: trustedSees && !playerSees };
 	}
 
 	/**

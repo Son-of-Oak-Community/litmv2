@@ -136,7 +136,7 @@ The dialog's `#selectionMap` is the source of truth for tag selections, not form
 
 ### Sockets
 
-Namespace `system.litmv2`. Events: roll dialog sync (`updateRollDialog`, `requestRollDialogSync`, `resetRollDialog`, `closeRollDialog`), GM moderation (`rollDice`, `rejectRoll`), GM-applied ally-tag scratch (`scratchEffect`), story tags (`storyTagsUpdate`, `storyTagsRender`), camping (`campingOpen`, `campingSaveOp`, `campingEnd`), GM-proxied hero creation for players without `ACTOR_CREATE` (`createHeroAsGM`). Definitions in `modules/system/sockets.js`.
+Namespace `system.litmv2`. Events: roll dialog sync (`updateRollDialog`, `requestRollDialogSync`, `resetRollDialog`, `closeRollDialog`), GM moderation (`rollDice`, `rejectRoll`), GM-applied ally-tag scratch (`scratchEffect`), GM-proxied success application to unowned targets (`applySuccessAsGM`), story tags (`storyTagsUpdate`, `storyTagsRender`), camping (`campingOpen`, `campingSaveOp`, `campingEnd`), GM-proxied hero creation for players without `ACTOR_CREATE` (`createHeroAsGM`). Definitions in `modules/system/sockets.js`.
 
 ## Active Effects: the canonical tag store
 
@@ -268,7 +268,7 @@ Game colors   --color-litm-tag (gold), --color-litm-status (sage),
 Alpha tints   --color-warm-1-10/25/50, --color-text-primary-10/15/40, --color-overlay-white-3/5/7/8/10
 Fonts         --font-blackletter (Ysgarth — ceremonial: actor titles, welcome overlay
                                    trope categories, in-fiction banners only),
-              --font-h2 (Luminari, section/card titles),
+              --font-h2 (Grenze, section/card titles),
               --font-h4 (PowellAntique, overlays),
               --font-serif (Labrada → Fraunces, body),
               --font-blockquote (Labrada italic, flavor text)

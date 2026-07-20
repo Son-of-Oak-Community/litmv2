@@ -1,5 +1,6 @@
 import { scratchTag } from "../active-effects/scratchable-mixin.js";
 import { LitmRollDialog } from "../apps/roll/roll-dialog.js";
+import { handleApplySuccessAsGM } from "../apps/spend-power-service.js";
 import { error, warn } from "../logger.js";
 import { getStoryTagSidebar } from "../utils.js";
 
@@ -40,6 +41,7 @@ export class Sockets {
 		this.#registerStoryTagsListeners();
 		this.#registerCampingListeners();
 		this.#registerHeroCreationListener();
+		this.#registerSuccessRelayListener();
 	}
 
 	static #registerRollUpdateListener() {
@@ -158,6 +160,18 @@ export class Sockets {
 				if (user && !user.character) await user.update({ character: actor.id });
 			},
 		);
+	}
+
+	// Players can't mutate actors they don't own; when a Spend Power action
+	// success targets a GM-owned actor (or limit), the player's client relays
+	// the fully-resolved apply here and the active GM executes it — flags,
+	// chat card and all. Mirrors the scratchEffect / storyTagsUpdate GM-proxy
+	// pattern; the roll already passed GM moderation, so no confirmation.
+	static #registerSuccessRelayListener() {
+		Sockets.on("applySuccessAsGM", async ({ data }) => {
+			if (game.user !== game.users.activeGM) return;
+			await handleApplySuccessAsGM(data);
+		});
 	}
 
 	static #registerCampingListeners() {

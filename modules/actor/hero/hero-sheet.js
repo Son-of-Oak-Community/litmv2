@@ -110,32 +110,15 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	/**
-	 * Inline Actions browser button alongside the edit/play mode toggle. V14's
-	 * `window.controls` array is dropdown-only, so frame extension is the
-	 * supported way to add an inline header button. Appended to match the
-	 * mode toggle's placement (also injected into `.window-header`); the
-	 * frame's click delegation routes `data-action` to the actions map.
+	 * Inline camping button in the window header. V14's `window.controls`
+	 * array is dropdown-only, so frame extension is the supported way to
+	 * add an inline header button; the frame's click delegation routes
+	 * `data-action` to the actions map.
 	 * @override
 	 */
 	async _renderFrame(options) {
 		const frame = await super._renderFrame(options);
 		const close = frame.querySelector(".window-header [data-action='close']");
-
-		if (this.document.isOwner) {
-			const label = game.i18n.localize("LITM.Actions.app_title");
-			const button = document.createElement("button");
-			button.type = "button";
-			button.className = "header-control icon fa-solid fa-scroll";
-			button.dataset.action = "openActionsApp";
-			button.dataset.tooltip = label;
-			button.setAttribute("aria-label", label);
-
-			// Sit alongside the copyUuid/mode-toggle slot (DocumentSheetV2 inserts
-			// copyUuid before close; _renderModeToggle later replaces it). Inserting
-			// before close keeps the actions button adjacent to the mode toggle and
-			// close as the rightmost control.
-			close.insertAdjacentElement("beforebegin", button);
-		}
 
 		// Camping button falls back here when fellowship is disabled (no
 		// fellowship sheet to host it). GM-only since the scene is a GM tool.

@@ -11,12 +11,20 @@ vi.mock("../modules/apps/target-picker.js", () => ({
 	pickLimit: vi.fn(),
 }));
 
+// applySuccess dispatches the GM relay through Sockets; mock the module so
+// tests can assert on the payload without a live game.socket.
+vi.mock("../modules/system/sockets.js", () => ({
+	Sockets: { dispatch: vi.fn() },
+}));
+
 // chat-actions imports the regex from CONFIG.litmv2.tagStringRe in addition
 // to makeTagStringRe directly. Either is fine for the new appliers; we just
 // need the parseTagStringMatch path to work.
 beforeEach(() => {
 	vi.clearAllMocks();
 	CONFIG.litmv2.tagStringRe = makeTagStringRe();
+	game.users.activeGM = null;
+	game.user.isGM = false;
 });
 
 const heroActor = (overrides = {}) => {
@@ -482,5 +490,142 @@ describe("applySuccess — weaken (opponent target, mocked picker)", () => {
 		expect(ui.notifications.warn).toHaveBeenCalledWith(
 			"LITM.Actions.apply_weaken_needs_name",
 		);
+	});
+});
+
+describe("applySuccess — GM relay for unowned targets", () => {
+	it("dispatches applySuccessAsGM and returns {relayed:true} when a GM is active", async () => {
+		const { Sockets } = await import("../modules/system/sockets.js");
+		const { pickTargetActor } = await import(
+			"../modules/apps/target-picker.js"
+		);
+		const status = fakeEffect({
+			id: "s1",
+			type: "status_tag",
+			name: "Blessed",
+			system: { tiers: [false, false, true, false, false, false] },
+		});
+		const opponent = fakeActor({
+			id: "opp1",
+			name: "Beast",
+			isOwner: false,
+			effects: [status],
+		});
+		pickTargetActor.mockResolvedValue(opponent);
+		game.users.activeGM = { id: "gm-1" };
+
+		const actor = heroActor();
+		const result = await applySuccess({
+			success: { id: "succ1", verb: "weaken", text: "Strip [Blessed-3]" },
+			actor,
+			chosenTiers: [],
+			chosenTags: null,
+			relay: { messageId: "m1", successKey: "succ1" },
+		});
+
+		expect(result).toEqual({ relayed: true });
+		expect(Sockets.dispatch).toHaveBeenCalledWith("applySuccessAsGM", {
+			userId: "user-1",
+			actorId: actor.id,
+			messageId: "m1",
+			successKey: "succ1",
+			targetActorId: "opp1",
+			limitInfo: null,
+			chosenTiers: [],
+			chosenTags: null,
+		});
+		// Nothing mutated locally, nothing warned.
+		expect(status.delete).not.toHaveBeenCalled();
+		expect(status.update).not.toHaveBeenCalled();
+		expect(ui.notifications.warn).not.toHaveBeenCalled();
+	});
+
+	it("serializes limitInfo for process verbs (limit picked on the player client)", async () => {
+		const { Sockets } = await import("../modules/system/sockets.js");
+		const { pickLimit } = await import("../modules/apps/target-picker.js");
+		const gate = fakeActor({ id: "j1", name: "Gate", isOwner: false });
+		pickLimit.mockResolvedValue({
+			actor: gate,
+			limitId: "L1",
+			limit: { id: "L1", label: "Siege" },
+			source: "system",
+		});
+		game.users.activeGM = { id: "gm-1" };
+
+		const result = await applySuccess({
+			success: { id: "succ2", verb: "advance", text: "" },
+			actor: heroActor(),
+			relay: { messageId: "m1", successKey: "succ2" },
+		});
+
+		expect(result).toEqual({ relayed: true });
+		expect(Sockets.dispatch).toHaveBeenCalledWith(
+			"applySuccessAsGM",
+			expect.objectContaining({
+				targetActorId: "j1",
+				limitInfo: { actorId: "j1", limitId: "L1", source: "system" },
+			}),
+		);
+	});
+
+	it("keeps the warn-and-null behavior when no GM is active, even with relay context", async () => {
+		const { Sockets } = await import("../modules/system/sockets.js");
+		const { pickTargetActor } = await import(
+			"../modules/apps/target-picker.js"
+		);
+		pickTargetActor.mockResolvedValue(
+			fakeActor({ name: "Beast", isOwner: false }),
+		);
+
+		const result = await applySuccess({
+			success: { id: "succ1", verb: "weaken", text: "[Blessed-3]" },
+			actor: heroActor(),
+			relay: { messageId: "m1", successKey: "succ1" },
+		});
+
+		expect(result).toBeNull();
+		expect(Sockets.dispatch).not.toHaveBeenCalled();
+		expect(ui.notifications.warn).toHaveBeenCalled();
+	});
+
+	it("does not relay without relay context (non-Spend-Power callers keep the warn)", async () => {
+		const { Sockets } = await import("../modules/system/sockets.js");
+		const { pickTargetActor } = await import(
+			"../modules/apps/target-picker.js"
+		);
+		pickTargetActor.mockResolvedValue(
+			fakeActor({ name: "Beast", isOwner: false }),
+		);
+		game.users.activeGM = { id: "gm-1" };
+
+		const result = await applySuccess({
+			success: { id: "succ1", verb: "weaken", text: "[Blessed-3]" },
+			actor: heroActor(),
+		});
+
+		expect(result).toBeNull();
+		expect(Sockets.dispatch).not.toHaveBeenCalled();
+		expect(ui.notifications.warn).toHaveBeenCalled();
+	});
+
+	it("uses presetLimitInfo without opening the limit picker (GM re-apply path)", async () => {
+		const { pickLimit } = await import("../modules/apps/target-picker.js");
+		game.user.isGM = true;
+		const gate = fakeActor({ id: "j1", name: "Gate", isOwner: false });
+		gate.system.advanceLimit = vi.fn(async () => ({
+			limit: { label: "Siege" },
+			value: 3,
+			max: 5,
+		}));
+
+		const result = await applySuccess({
+			success: { id: "succ2", verb: "advance", text: "" },
+			actor: heroActor(),
+			presetLimitInfo: { actor: gate, limitId: "L1", source: "system" },
+		});
+
+		expect(pickLimit).not.toHaveBeenCalled();
+		expect(gate.system.advanceLimit).toHaveBeenCalledWith("L1", 1);
+		expect(result.appliedSummary).toContain("LITM.Actions.applied_advance");
 	});
 });
