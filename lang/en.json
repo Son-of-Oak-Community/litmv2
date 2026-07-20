@@ -193,7 +193,7 @@
 			},
 			"reduce": {
 				"action": "Reduce Status",
-				"description": "Reduce a status on yourself or an ally."
+				"description": "Reduce a status — yours or a target's."
 			},
 			"scratch": {
 				"action": "Scratch a tag",
@@ -938,7 +938,10 @@
 			"story_tags": "Story Tags",
 			"wrap_tag_markup": "Wrap Tag Markup",
 			"wrap_tag_markup_hint": "Wraps the selected text in a text field with [brackets] to create tag markup.",
-			"your_tags": "Your Tags"
+			"your_tags": "Your Tags",
+			"your_statuses": "Your Statuses",
+			"inflict_target_hint": "Pick who suffers the status, or post it to chat for the Narrator to place.",
+			"inflict_post_to_chat": "Post to Chat"
 		}
 	},
 	"TYPES": {

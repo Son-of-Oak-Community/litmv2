@@ -133,17 +133,21 @@
 					</ul>
 					{{/each}}
 				</div>
-				{{else if option.statusCards}}
+				{{else if option.statusGroups}}
 				<div class="litm-spend-power__entries is-hidden" data-status-picker="true">
+					{{#each option.statusGroups as |group|}}
+					<h4 class="litm-render__section-header">{{#if group.isOwn}}{{localize "LITM.Ui.your_statuses"}}{{else}}{{group.ownerName}}{{/if}}</h4>
 					<ul class="litm-spend-power__status-list">
-						{{#each option.statusCards as |status|}}
-						<li class="litm-spend-power__status-item" data-effect-id="{{status.id}}" data-status-name="{{status.name}}" data-max-tier="{{status.tier}}">
+						{{#each group.statuses as |status|}}
+						{{!-- The counter shows the *resulting* tier: it starts at the
+						      current tier and minus reduces it; the drop is what's paid. --}}
+						<li class="litm-spend-power__status-item" data-effect-id="{{status.id}}" data-status-name="{{status.name}}" data-max-tier="{{status.tier}}" data-actor-id="{{group.ownerId}}">
 							<span class="litm-spend-power__status-name">{{status.name}}-{{status.tier}}</span>
 							<div class="litm-spend-power__status-reduce flexrow">
 								<button type="button" class="litm-spend-power__counter-btn" data-action="counter-dec">
 									<i class="fas fa-minus" aria-hidden="true"></i>
 								</button>
-								<span class="litm-spend-power__counter-value" aria-live="polite">0</span>
+								<span class="litm-spend-power__counter-value" aria-live="polite">{{status.tier}}</span>
 								<button type="button" class="litm-spend-power__counter-btn" data-action="counter-inc">
 									<i class="fas fa-plus" aria-hidden="true"></i>
 								</button>
@@ -151,6 +155,7 @@
 						</li>
 						{{/each}}
 					</ul>
+					{{/each}}
 				</div>
 				{{else if option.draggable}}
 				<div class="litm-spend-power__entries is-hidden">
@@ -159,6 +164,26 @@
 						<i class="fas fa-plus" aria-hidden="true"></i>
 						{{#if option.hasTier}}{{localize "LITM.Ui.add_status"}}{{else}}{{localize "LITM.Ui.add_tag"}}{{/if}}
 					</button>
+					{{#if option.targets}}
+					<p class="hint">{{localize "LITM.Ui.inflict_target_hint"}}</p>
+					<ul class="litm--apply-target-chips">
+						<li class="litm--apply-target-chip">
+							<label>
+								<input type="radio" name="inflict-target" value="" checked />
+								<span>{{localize "LITM.Ui.inflict_post_to_chat"}}</span>
+							</label>
+						</li>
+						{{#each option.targets}}
+						<li class="litm--apply-target-chip">
+							<label>
+								<input type="radio" name="inflict-target" value="{{id}}" />
+								{{#if img}}<img src="{{img}}" alt="" />{{/if}}
+								<span>{{name}}</span>
+							</label>
+						</li>
+						{{/each}}
+					</ul>
+					{{/if}}
 				</div>
 				{{else if option.hasCounter}}
 				<div class="litm-spend-power__entries is-hidden" data-counter="true">

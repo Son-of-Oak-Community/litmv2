@@ -52,7 +52,11 @@ export async function applySpendIntent(actor, intent) {
 
 		switch (opt.kind) {
 			case "statusPicker": {
-				const { power, bodyLines } = await _applyStatusPicker(actor, opt);
+				const { power, bodyLines } = await _applyStatusPicker(
+					actor,
+					opt,
+					messageId,
+				);
 				genericSpent += power;
 				results.push({
 					kind: "statusPicker",
@@ -91,9 +95,22 @@ export async function applySpendIntent(actor, intent) {
 				break;
 			}
 			default: {
-				const { power, body } = _applyDefault(opt);
-				genericSpent += power;
-				results.push({ kind: "default", optionId: opt.optionId, power, body });
+				// Inflict with a picked target applies the statuses directly
+				// (or via the GM relay); without one it stays the legacy
+				// draggable-chat-chip flow handled by _applyDefault.
+				const applied =
+					opt.optionId === "inflict_status" &&
+					opt.targetActorId &&
+					opt.entries?.length
+						? await _applyInflict(opt, messageId)
+						: _applyDefault(opt);
+				genericSpent += applied.power;
+				results.push({
+					kind: "default",
+					optionId: opt.optionId,
+					power: applied.power,
+					body: applied.body,
+				});
 				break;
 			}
 		}
@@ -245,11 +262,33 @@ export async function applyActionSuccess({
  * @param {object} payload  See the applySuccessAsGM dispatch in chat-actions.js.
  */
 export function handleApplySuccessAsGM(payload) {
+	return _enqueueRelay(payload, "applySuccessAsGM", () =>
+		_handleApplySuccessAsGM(payload),
+	);
+}
+
+/**
+ * GM-side entry for the applyStatusAsGM socket relay: generic Spend Power
+ * status ops (Inflict's add, Reduce's tier drop) on actors the player doesn't
+ * own. Shares the per-message relay queue with the success relay so one
+ * submission mixing successes and status ops stays serialized.
+ */
+export function handleApplyStatusAsGM(payload) {
+	return _enqueueRelay(payload, "applyStatusAsGM", () =>
+		_handleApplyStatusAsGM(payload),
+	);
+}
+
+/** Pending relay chain per roll message id — see handleApplySuccessAsGM. */
+const relayQueue = new Map();
+
+/** Serialize a relayed apply behind any pending ones for the same message. */
+function _enqueueRelay(payload, label, fn) {
 	const key = payload?.messageId ?? "";
 	const prev = relayQueue.get(key) ?? Promise.resolve();
 	const run = prev
-		.then(() => _handleApplySuccessAsGM(payload))
-		.catch((err) => error("applySuccessAsGM relay failed:", err));
+		.then(fn)
+		.catch((err) => error(`${label} relay failed:`, err));
 	relayQueue.set(key, run);
 	run.finally(() => {
 		if (relayQueue.get(key) === run) relayQueue.delete(key);
@@ -257,8 +296,40 @@ export function handleApplySuccessAsGM(payload) {
 	return run;
 }
 
-/** Pending relay chain per roll message id — see handleApplySuccessAsGM. */
-const relayQueue = new Map();
+async function _handleApplyStatusAsGM({
+	userId,
+	op,
+	actorId,
+	effectId,
+	name,
+	tier,
+	tiers,
+}) {
+	const actor = game.actors.get(actorId);
+	// A vanished target/effect between dispatch and receipt would be a silent
+	// no-op on the GM client — whisper the acting player instead (mirrors the
+	// "nothing" branch of the success relay).
+	if (!actor) return _whisperRelayNothing(userId, null);
+
+	if (op === "add") {
+		await actor.system.addStatus(name, { tier, isHidden: false });
+		return;
+	}
+	if (op === "reduce") {
+		const effect = resolveEffect(effectId, actor);
+		if (!effect) return _whisperRelayNothing(userId, actor);
+		await effect.system.reduceTier(tiers, { deleteOnEmpty: true });
+	}
+}
+
+async function _whisperRelayNothing(userId, target) {
+	await foundry.documents.ChatMessage.create({
+		content: game.i18n.format("LITM.Actions.apply_relay_nothing", {
+			name: target?.system?.publicName ?? target?.name ?? "",
+		}),
+		whisper: [userId],
+	});
+}
 
 async function _handleApplySuccessAsGM({
 	userId,
@@ -301,34 +372,108 @@ async function _handleApplySuccessAsGM({
 	// "already" (race-guard double-submit) stays silent: the first apply
 	// already produced the card the player is looking at.
 	if (status !== "nothing") return;
-	const target = presetTarget ?? presetLimitInfo?.actor ?? actor;
-	await foundry.documents.ChatMessage.create({
-		content: game.i18n.format("LITM.Actions.apply_relay_nothing", {
-			name: target.system?.publicName ?? target.name,
-		}),
-		whisper: [userId],
-	});
+	await _whisperRelayNothing(
+		userId,
+		presetTarget ?? presetLimitInfo?.actor ?? actor,
+	);
 }
 
-async function _applyStatusPicker(actor, opt) {
+/**
+ * Reduce the selected statuses. Each reduction carries its owner id (the
+ * picker groups statuses by story-tag-sidebar actor), so a status can be
+ * reduced on a target as well as on the rolling actor. Reductions on actors
+ * the player can't write route through the applyStatusAsGM relay; like the
+ * scene-tag scratch fork, a drop with no active GM is skipped and not billed.
+ */
+async function _applyStatusPicker(actor, opt, messageId) {
 	const { reductions, cost } = opt;
-	const power = reductions.reduce((sum, { tiers }) => sum + cost * tiers, 0);
 	const bodyLines = [];
-	for (const { effectId, name, tiers } of reductions) {
-		const effect = resolveEffect(effectId, actor);
-		if (!effect) continue;
+	let paidTiers = 0;
+	for (const { effectId, name, actorId, tiers } of reductions) {
+		const owner = (actorId ? game.actors.get(actorId) : null) ?? actor;
+		const effect = resolveEffect(effectId, owner);
+		if (!effect) {
+			warn(`Status reduction skipped — "${name}" could not be resolved.`);
+			continue;
+		}
+		// Observer permission suffices to read the effect, so old/new tiers are
+		// computed locally even when the write itself is relayed to the GM.
 		const oldTier = effect.system.currentTier;
 		const newTier = StatusTagData.tierOf(
 			effect.system.calculateReduction(tiers),
 		);
-		await effect.system.reduceTier(tiers, { deleteOnEmpty: true });
+		if (owner.isOwner || game.user.isGM) {
+			await effect.system.reduceTier(tiers, { deleteOnEmpty: true });
+		} else if (game.users.activeGM) {
+			Sockets.dispatch("applyStatusAsGM", {
+				op: "reduce",
+				userId: game.user.id,
+				messageId,
+				actorId: owner.id,
+				effectId: effect.id,
+				tiers,
+			});
+		} else {
+			warn(`Status reduction dropped — no active GM to apply "${name}".`);
+			continue;
+		}
+		paidTiers += tiers;
+		const label =
+			owner === actor
+				? name
+				: `${owner.system?.publicName ?? owner.name}: ${name}`;
 		const after =
 			newTier > 0
 				? `<strong>${name}-${newTier}</strong>`
 				: `<em>${t("LITM.Ui.removed")}</em>`;
-		bodyLines.push(`<span>${name}-${oldTier} &rarr; ${after}</span>`);
+		bodyLines.push(`<span>${label}-${oldTier} &rarr; ${after}</span>`);
 	}
-	return { power, bodyLines };
+	return { power: cost * paidTiers, bodyLines };
+}
+
+/**
+ * Inflict the entered statuses on the target picked in the dialog (the
+ * no-target case never reaches here — it posts a draggable chat chip via
+ * _applyDefault). Unowned targets route through the applyStatusAsGM relay.
+ */
+async function _applyInflict(opt, messageId) {
+	const { entries, cost, targetActorId } = opt;
+	const target = game.actors.get(targetActorId);
+	if (!target) {
+		warn("Inflict skipped — target actor not found.");
+		return { power: 0, body: "" };
+	}
+	const canApply = target.isOwner || game.user.isGM;
+	if (!canApply && !game.users.activeGM) {
+		warn(
+			`Inflict dropped — no active GM to apply statuses to "${target.name}".`,
+		);
+		return { power: 0, body: "" };
+	}
+
+	const chips = [];
+	let power = 0;
+	for (const { name, tier } of entries) {
+		const tierN = Math.max(tier ?? 1, 1);
+		if (canApply) {
+			await target.system.addStatus(name, { tier: tierN, isHidden: false });
+		} else {
+			Sockets.dispatch("applyStatusAsGM", {
+				op: "add",
+				userId: game.user.id,
+				messageId,
+				actorId: target.id,
+				name,
+				tier: tierN,
+			});
+		}
+		chips.push(`[${foundry.utils.escapeHTML(name)}-${tierN}]`);
+		power += cost * tierN;
+	}
+	const targetName = foundry.utils.escapeHTML(
+		target.system?.publicName ?? target.name,
+	);
+	return { power, body: `<strong>${targetName}</strong> ${chips.join(" ")}` };
 }
 
 function _applyCounter(opt) {
@@ -378,7 +523,16 @@ async function _applyScratchPicker(opt) {
 			warn(`Scratch skipped — tag "${tagName}" could not be resolved.`);
 			continue;
 		}
-		await effect.update({ "system.isScratched": true });
+		if (owner.isOwner || game.user.isGM) {
+			await effect.update({ "system.isScratched": true });
+		} else if (game.users.activeGM) {
+			// Players can't write an unowned owner's effect — the active GM
+			// applies the scratch (same relay the roll flow uses for ally tags).
+			Sockets.dispatch("scratchEffect", { uuid: effect.uuid });
+		} else {
+			warn(`Scratch dropped — no active GM to apply "${tagName}".`);
+			continue;
+		}
 		tags.push({ name: tagName, type: effect.type, isScratched: true });
 		scratched++;
 	}

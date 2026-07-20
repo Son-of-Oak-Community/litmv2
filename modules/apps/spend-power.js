@@ -22,21 +22,25 @@ import { adjustCounter, readVariableTiers } from "./counter-controls.js";
 import { mitigationPreselect } from "./mitigation.js";
 import { collectScratchableTags } from "./scratch-sources.js";
 import { applySpendIntent } from "./spend-power-service.js";
+import { collectReducibleStatuses } from "./status-sources.js";
 import { StoryTagsStore } from "./story-tags/story-tags-store.js";
 import { getTargetCandidates } from "./target-picker.js";
 
 /** Cost calculators by option type. Each receives (li, cost, entriesSection, hasTier). */
 const COST_CALCULATORS = {
+	// Status counters show the *resulting* tier (start = current tier, minus
+	// reduces) — the paid amount is the drop from the current tier.
 	statusPicker(_li, cost, entriesSection) {
 		let total = 0;
 		entriesSection
 			.querySelectorAll(".litm-spend-power__status-item")
 			.forEach((item) => {
-				const count = Number(
+				const max = Number(item.dataset.maxTier);
+				const value = Number(
 					item.querySelector(".litm-spend-power__counter-value")?.textContent ??
-						0,
+						max,
 				);
-				total += cost * count;
+				total += cost * Math.max(0, max - value);
 			});
 		return total;
 	},
@@ -201,7 +205,6 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	async _prepareContext(_options) {
 		const actor = game.actors.get(this.actorId);
 		const scratchedTags = actor ? this.#getScratchedTags(actor) : [];
-		const statusCards = actor ? this.#getStatusCards(actor) : [];
 		// Scene story tags live in the world pack; ensure it's loaded, then
 		// surface the unscratched, visible ones as a shared scratch group.
 		await StoryTagsStore.loadStoryTags();
@@ -214,22 +217,39 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 					isEffectVisible(e),
 			)
 			.map((e) => ({ id: e._id ?? e.id, name: e.name }));
+		// Candidate owners for scratch/reduce/inflict are the actors tracked by
+		// the story-tag sidebar (not every observable world actor) — the same
+		// list the Apply Consequences menu draws from. Hidden columns stay
+		// GM-only; concealed challenges show their masked name.
+		const sidebarCandidates = this.#getSidebarCandidates();
+		// Hidden tags/statuses on candidates must not leak to players. Own tags
+		// are never filtered — collectors skip the filter for the isOwn group.
+		const effectFilter = (e) => !e.disabled && isEffectVisible(e);
 		const scratchGroups = actor
-			? collectScratchableTags(
-					actor,
-					getTargetCandidates({ allowSelf: false }),
-					sceneTags,
-				)
+			? collectScratchableTags(actor, sidebarCandidates, sceneTags, {
+					tagFilter: effectFilter,
+				})
 			: [];
+		const statusGroups = actor
+			? collectReducibleStatuses(actor, sidebarCandidates, {
+					statusFilter: effectFilter,
+				})
+			: [];
+		const inflictTargets = sidebarCandidates.map((c) => ({
+			id: c.id,
+			name: c.label,
+			img: c.img,
+		}));
 
 		const options = this.spendingOptions
 			.filter((o) => o.id !== "recover_tag" || scratchedTags.length > 0)
 			.filter((o) => o.id !== "scratch_tag" || scratchGroups.length > 0)
-			.filter((o) => o.id !== "reduce_status" || statusCards.length > 0)
+			.filter((o) => o.id !== "reduce_status" || statusGroups.length > 0)
 			.map((o) => {
 				if (o.id === "recover_tag") return { ...o, scratchedTags };
 				if (o.id === "scratch_tag") return { ...o, scratchGroups };
-				if (o.id === "reduce_status") return { ...o, statusCards };
+				if (o.id === "reduce_status") return { ...o, statusGroups };
+				if (o.id === "inflict_status") return { ...o, targets: inflictTargets };
 				return o;
 			});
 
@@ -400,17 +420,29 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		}));
 	}
 
-	#getStatusCards(actor) {
-		const statuses = [];
-		for (const effect of actor.allApplicableEffects()) {
-			if (effect.type === "status_tag") {
-				const tier = effect.system?.currentTier ?? 0;
-				if (tier > 0) {
-					statuses.push({ id: effect.id, name: effect.name, tier });
-				}
-			}
+	/**
+	 * Candidate owners for the scratch/reduce/inflict pickers: the story-tag
+	 * sidebar's tracked actors, matching what the sidebar itself shows —
+	 * hidden columns are GM-only, concealed challenges wear their mask.
+	 * @returns {{id:string,label:string,img:string,actor:Actor}[]}
+	 */
+	#getSidebarCandidates() {
+		const hiddenUuids = new Set(StoryTagsStore.config.hiddenActors ?? []);
+		const seen = new Set();
+		const candidates = [];
+		for (const { uuid, actor } of StoryTagsStore.resolveTrackedActors()) {
+			if (!game.user.isGM && hiddenUuids.has(uuid)) continue;
+			// A tracked token and its sidebar actor resolve to the same document.
+			if (seen.has(actor.id)) continue;
+			seen.add(actor.id);
+			candidates.push({
+				id: actor.id,
+				label: actor.system.maskedName ?? actor.name,
+				img: actor.img,
+				actor,
+			});
 		}
-		return statuses;
+		return candidates;
 	}
 
 	/**
@@ -434,15 +466,19 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 					const item = [
 						...li.querySelectorAll(".litm-spend-power__status-item"),
 					].find(
-						(el) => el.dataset.statusName?.toLowerCase() === name.toLowerCase(),
+						(el) =>
+							el.dataset.statusName?.toLowerCase() === name.toLowerCase() &&
+							(!pre.statusOwnerId ||
+								el.dataset.actorId === pre.statusOwnerId),
 					);
 					if (!item) continue;
+					// Counters show the resulting tier — preselect the full drop.
 					const max = Number(item.dataset.maxTier);
-					const val = Math.min(tier ?? max, max);
+					const reduceBy = Math.min(tier ?? max, max);
 					const valueEl = item.querySelector(
 						".litm-spend-power__counter-value",
 					);
-					if (valueEl) valueEl.textContent = String(val);
+					if (valueEl) valueEl.textContent = String(max - reduceBy);
 				}
 			}
 		}
@@ -634,11 +670,14 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 						chip.classList.remove("is-selected");
 					});
 			} else if (isStatusPicker) {
-				// Reset all status counters to 0
+				// Reset all status counters back to their current tier (no drop)
 				entriesSection
-					.querySelectorAll(".litm-spend-power__counter-value")
-					.forEach((el) => {
-						el.textContent = "0";
+					.querySelectorAll(".litm-spend-power__status-item")
+					.forEach((item) => {
+						const valueEl = item.querySelector(
+							".litm-spend-power__counter-value",
+						);
+						if (valueEl) valueEl.textContent = item.dataset.maxTier;
 					});
 			} else if (isCounter) {
 				// Reset counter to 1
@@ -804,17 +843,24 @@ function parseSpendIntent(form, dialog) {
 		const { type, entriesSection, hasTier } = getOptionType(li);
 
 		if (type === "statusPicker") {
+			// Counters display the resulting tier; the reduction is the drop
+			// from the status's current tier (data-max-tier).
 			const reductions = [
 				...entriesSection.querySelectorAll(".litm-spend-power__status-item"),
 			]
-				.map((item) => ({
-					effectId: item.dataset.effectId,
-					name: item.dataset.statusName,
-					tiers: Number(
+				.map((item) => {
+					const max = Number(item.dataset.maxTier);
+					const value = Number(
 						item.querySelector(".litm-spend-power__counter-value")
-							?.textContent ?? 0,
-					),
-				}))
+							?.textContent ?? max,
+					);
+					return {
+						effectId: item.dataset.effectId,
+						name: item.dataset.statusName,
+						actorId: item.dataset.actorId,
+						tiers: Math.max(0, max - value),
+					};
+				})
 				.filter(({ tiers }) => tiers > 0);
 			if (reductions.length === 0) continue;
 			options.push({
@@ -899,6 +945,10 @@ function parseSpendIntent(form, dialog) {
 						true,
 			}))
 			.filter(({ name }) => name !== "");
+		// Inflict's optional target chip — "" (post to chat) parses to null,
+		// which keeps the legacy draggable-chat-chip behavior.
+		const targetActorId =
+			li.querySelector("input[name='inflict-target']:checked")?.value || null;
 		options.push({
 			kind: "default",
 			optionId,
@@ -907,6 +957,7 @@ function parseSpendIntent(form, dialog) {
 			hasTier,
 			draggable: !!option.draggable,
 			entries,
+			targetActorId,
 		});
 	}
 
