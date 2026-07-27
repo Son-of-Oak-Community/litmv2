@@ -323,9 +323,9 @@ export class HeroData extends LimitsMixin(
 			ui.notifications.warn(game.i18n.localize("LITM.Ui.warn_no_backpack"));
 			return;
 		}
-		return backpack.createEmbeddedDocuments("ActiveEffect", [
-			{ ...effectData, transfer: true },
-		]);
+		// No explicit `transfer` — it is the Foundry default for item-parented
+		// effects (Active-Effects rule 5).
+		return backpack.createEmbeddedDocuments("ActiveEffect", [effectData]);
 	}
 
 	/**

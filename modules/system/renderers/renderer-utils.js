@@ -3,6 +3,29 @@ import { classifyTagStringMatch } from "../../item/action/tag-string.js";
 import { makeTagStringRe } from "../config.js";
 
 /**
+ * Build the `content` body for a confirmation dialog from a localization key.
+ *
+ * `game.i18n.format` is a plain `String.replace` — it does no HTML escaping —
+ * and DialogV2 renders `content` as raw HTML. Interpolated values here are
+ * routinely document names, which players control on their own documents, so
+ * every value is escaped. The localized string itself is *not* escaped: that's
+ * authored content and may legitimately carry markup.
+ *
+ * Exists so the escaping has one owner. The audit's root-cause for the XSS
+ * cluster was sibling call sites drifting apart — one escaped, the next forgot.
+ * @param {string} key      Localization key (or, in tests, a literal template)
+ * @param {object} [data]   Values to interpolate; each is escaped
+ * @returns {string} `<p>…</p>` ready for DialogV2 `content`
+ */
+export function dialogContent(key, data = {}) {
+	const esc = foundry.utils.escapeHTML;
+	const safe = Object.fromEntries(
+		Object.entries(data).map(([k, v]) => [k, esc(String(v))]),
+	);
+	return `<p>${game.i18n.format(key, safe)}</p>`;
+}
+
+/**
  * Creates a tag span matching the hero play sheet pattern.
  * @param {string} name - Tag name
  * @param {string} type - Tag CSS class (litm-power_tag, litm-weakness_tag, etc.)

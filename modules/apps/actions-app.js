@@ -1,5 +1,6 @@
 import { ACTION_CATEGORIES } from "../item/action/action-data.js";
 import { error } from "../logger.js";
+import { dialogContent } from "../system/renderers/renderer-utils.js";
 import { localize as t, viewLinkedRefAction } from "../utils.js";
 import { sendRollRequest } from "./roll/roll-request.js";
 
@@ -246,7 +247,9 @@ export class ActionsApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (!item) return;
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: t("LITM.Actions.confirm_remove_title") },
-			content: `<p>${game.i18n.format("LITM.Actions.confirm_remove_content", { name: item.name })}</p>`,
+			content: dialogContent("LITM.Actions.confirm_remove_content", {
+				name: item.name,
+			}),
 			no: { default: true },
 		}).catch(() => false);
 		if (!confirmed) return;

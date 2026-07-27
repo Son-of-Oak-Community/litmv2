@@ -418,13 +418,18 @@ async function _applyStatusPicker(actor, opt, messageId) {
 			continue;
 		}
 		paidTiers += tiers;
+		// Status and actor names are player-set and this body is rendered raw
+		// ({{{body}}} in chat/spend-power.html) to every client — escape both,
+		// as the sibling _applyDefault path already does.
+		const esc = foundry.utils.escapeHTML;
+		const safeName = esc(name);
 		const label =
 			owner === actor
-				? name
-				: `${owner.system?.publicName ?? owner.name}: ${name}`;
+				? safeName
+				: `${esc(owner.system?.publicName ?? owner.name)}: ${safeName}`;
 		const after =
 			newTier > 0
-				? `<strong>${name}-${newTier}</strong>`
+				? `<strong>${safeName}-${newTier}</strong>`
 				: `<em>${t("LITM.Ui.removed")}</em>`;
 		bodyLines.push(`<span>${label}-${oldTier} &rarr; ${after}</span>`);
 	}

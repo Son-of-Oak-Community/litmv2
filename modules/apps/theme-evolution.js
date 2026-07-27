@@ -31,6 +31,7 @@ import {
 	getThemeLevels,
 	POWER_TAG_TYPES,
 } from "../system/config.js";
+import { dialogContent } from "../system/renderers/renderer-utils.js";
 import { queryItemsFromPacks, localize as t } from "../utils.js";
 import {
 	applyPromiseGain,
@@ -960,7 +961,10 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: t("LITM.Ui.evolution_drop_theme_confirm_title") },
-			content: `<p>${game.i18n.format("LITM.Ui.evolution_drop_theme_confirm_body", { current: theme.name, dropped: item.name })}</p>`,
+			content: dialogContent("LITM.Ui.evolution_drop_theme_confirm_body", {
+				current: theme.name,
+				dropped: item.name,
+			}),
 		});
 		if (!confirmed) return;
 

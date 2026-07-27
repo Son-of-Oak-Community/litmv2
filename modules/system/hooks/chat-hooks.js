@@ -21,7 +21,10 @@ import {
 	IMPROVE_MARKING_TAG_TYPES,
 	POWER_TAG_TYPES,
 } from "../config.js";
-import { formatCostLabel } from "../renderers/renderer-utils.js";
+import {
+	dialogContent,
+	formatCostLabel,
+} from "../renderers/renderer-utils.js";
 import { Sockets } from "../sockets.js";
 
 /**
@@ -166,31 +169,48 @@ async function _handleMarkImprove(target) {
 	await message.update({ rolls: [roll.toJSON()] });
 }
 
+/**
+ * Moderation cards being approved/rejected right now. The card is deleted as
+ * part of handling, but deletion is async — without this, a fast double-click
+ * dispatches the verdict twice (two rolls, or two "rejected" toasts) because
+ * the second click still reads the flags off a not-yet-deleted document.
+ */
+const _moderationInFlight = new Set();
+
 async function _handleApproveModeration(_target, app) {
 	if (!game.user.isGM) return;
-	const data = await app.getFlag("litmv2", "data");
-	const userId = await app.getFlag("litmv2", "userId");
+	if (_moderationInFlight.has(app.id)) return;
+	_moderationInFlight.add(app.id);
+	try {
+		const data = await app.getFlag("litmv2", "data");
+		const userId = await app.getFlag("litmv2", "userId");
 
-	// Delete Message
-	app.delete();
+		// Roll
+		if (userId === game.userId) {
+			await app.delete();
+			LitmRollDialog.roll(data);
+			// Reset own roll dialog locally (sockets don't echo to sender)
+			const actor = game.actors.get(data.actorId);
+			if (actor?.sheet?.rendered) actor.sheet.resetRollDialog();
+		} else {
+			// Name the request; don't carry it. The requester's client reads the
+			// roll back off the card it authored (see resolveApprovedRoll), so a
+			// forged packet can't hand it attacker-chosen tags. Dispatch before the
+			// delete so the card is still there when the approval lands.
+			Sockets.dispatch("rollDice", {
+				userId,
+				messageId: app.id,
+			});
+			await app.delete();
+		}
 
-	// Roll
-	if (userId === game.userId) {
-		LitmRollDialog.roll(data);
-		// Reset own roll dialog locally (sockets don't echo to sender)
-		const actor = game.actors.get(data.actorId);
-		if (actor?.sheet?.rendered) actor.sheet.resetRollDialog();
-	} else {
-		Sockets.dispatch("rollDice", {
-			userId,
-			data,
+		// Dispatch order to reset Roll Dialog on other clients
+		Sockets.dispatch("resetRollDialog", {
+			actorId: data.actorId,
 		});
+	} finally {
+		_moderationInFlight.delete(app.id);
 	}
-
-	// Dispatch order to reset Roll Dialog on other clients
-	Sockets.dispatch("resetRollDialog", {
-		actorId: data.actorId,
-	});
 }
 
 async function _handleCompleteSacrifice(target) {
@@ -251,12 +271,13 @@ async function _confirmAndApplySacrifice(
 	if (effective === "grave") {
 		const name =
 			(statusName || "").trim() || t("LITM.Ui.sacrifice_grave_default");
-		// Status name is user input from the roll dialog — escape before
-		// interpolating into Dialog HTML, but keep the raw name for addStatus.
-		const safeName = foundry.utils.escapeHTML(name);
+		// Status name is user input from the roll dialog; dialogContent escapes
+		// it, and the raw `name` still goes to addStatus below.
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: t("LITM.Ui.sacrifice_confirm_title") },
-			content: `<p>${game.i18n.format("LITM.Ui.sacrifice_confirm_grave_named", { status: safeName })}</p>`,
+			content: dialogContent("LITM.Ui.sacrifice_confirm_grave_named", {
+				status: name,
+			}),
 			rejectClose: false,
 			modal: true,
 		});
@@ -272,7 +293,7 @@ async function _confirmAndApplySacrifice(
 			: "LITM.Ui.sacrifice_confirm_painful";
 	const confirmed = await foundry.applications.api.DialogV2.confirm({
 		window: { title: t("LITM.Ui.sacrifice_confirm_title") },
-		content: `<p>${game.i18n.format(confirmKey, { theme: theme.name })}</p>`,
+		content: dialogContent(confirmKey, { theme: theme.name }),
 		rejectClose: false,
 		modal: true,
 	});
@@ -282,14 +303,20 @@ async function _confirmAndApplySacrifice(
 
 async function _handleRejectModeration(_target, app) {
 	if (!game.user.isGM) return;
-	const data = await app.getFlag("litmv2", "data");
-	// Delete Message
-	app.delete();
-	// Dispatch order to reopen
-	Sockets.dispatch("rejectRoll", {
-		name: game.user.name,
-		actorId: data.actorId,
-	});
+	if (_moderationInFlight.has(app.id)) return;
+	_moderationInFlight.add(app.id);
+	try {
+		const data = await app.getFlag("litmv2", "data");
+		// Delete Message
+		await app.delete();
+		// Dispatch order to reopen
+		Sockets.dispatch("rejectRoll", {
+			name: game.user.name,
+			actorId: data.actorId,
+		});
+	} finally {
+		_moderationInFlight.delete(app.id);
+	}
 }
 
 async function _handleOpenThemeAdvancement(target) {
@@ -679,11 +706,11 @@ function _attachContextMenuToRollMessage() {
 					!li.querySelector(`[data-type='${type}']`)
 				);
 			};
-			const handler = (_event, li) => {
+			const handler = async (_event, li) => {
 				const message = game.messages.get(li.dataset.messageId);
 				const roll = message.rolls[0];
 				roll.options.type = type;
-				message.update({ rolls: [roll.toJSON()] });
+				await message.update({ rolls: [roll.toJSON()] });
 			};
 			return {
 				label,

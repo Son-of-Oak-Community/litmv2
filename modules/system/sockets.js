@@ -1,4 +1,5 @@
 import { scratchTag } from "../active-effects/scratchable-mixin.js";
+import { resolveApprovedRoll } from "../apps/roll/moderation.js";
 import { LitmRollDialog } from "../apps/roll/roll-dialog.js";
 import {
 	handleApplyStatusAsGM,
@@ -34,7 +35,9 @@ export class Sockets {
 		game.socket.on("system.litmv2", (data) => {
 			const { event: e, senderId, ...d } = data;
 			if (senderId === game.userId) return;
-			Hooks.callAll(`litm.socket.${e}`, d);
+			// senderId is client-authored and so never trustworthy on its own,
+			// but handlers can't even raise the bar without seeing it.
+			Hooks.callAll(`litm.socket.${e}`, { ...d, senderId });
 		});
 	}
 
@@ -64,8 +67,9 @@ export class Sockets {
 	}
 
 	static #registerRollModerationListeners() {
-		Sockets.on("rollDice", ({ data: { userId, data } }) => {
-			if (userId !== game.userId) return;
+		Sockets.on("rollDice", ({ senderId, data: { userId, messageId } }) => {
+			const data = resolveApprovedRoll({ senderId, userId, messageId });
+			if (!data) return;
 			LitmRollDialog.roll(data);
 		});
 
