@@ -1,6 +1,6 @@
 export { SUCCESS_VERBS } from "./verb-definitions.js";
 
-import { maxStatusTier } from "../../active-effects/index.js";
+import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { SUCCESS_VERBS } from "./verb-definitions.js";
 
 export const ACTION_CATEGORIES = Object.freeze([

@@ -21,9 +21,10 @@ function unscratchedStoryTags(actor) {
  *        (unscratched, visible) from the world story-tag pack.
  * @param {object} [options]
  * @param {(effect: object) => boolean} [options.tagFilter]  Extra filter for
- *        candidate-group tags (eg. visibility) — the caller supplies it so
- *        this module stays free of game/user globals. The rolling actor's own
- *        group is not filtered: players always see their own tags.
+ *        tags (eg. visibility) — the caller supplies it so this module stays
+ *        free of game/user globals. Applies to every group, the rolling actor's
+ *        included: a Narrator-hidden tag is already invisible on the hero's own
+ *        sheet, so this picker must not be the surface that leaks it.
  * @returns {{ownerId:string,ownerName:string,isOwn:boolean,isScene?:boolean,tags:{id:string,name:string}[]}[]}
  */
 export function collectScratchableTags(
@@ -35,7 +36,9 @@ export function collectScratchableTags(
 	const groups = [];
 	const seen = new Set();
 
-	const own = unscratchedStoryTags(actor);
+	const own = unscratchedStoryTags(actor).filter(
+		(e) => !tagFilter || tagFilter(e),
+	);
 	if (actor && own.length) {
 		groups.push({
 			ownerId: actor.id,

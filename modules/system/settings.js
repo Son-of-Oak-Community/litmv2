@@ -233,7 +233,7 @@ export class LitmSettings {
 		// every status has. Seeding late left the first render of a world on
 		// the defaults until each document happened to be updated.
 		LitmConfig.heroLimit = LitmSettings.heroLimit;
-		LitmConfig.themeLimit = game.settings.get("litmv2", "theme_limit");
+		LitmConfig.themeLimit = LitmSettings.themeLimit;
 		game.settings.register("litmv2", "improve_threshold", {
 			name: "LITM.Settings.improve_threshold",
 			hint: "LITM.Settings.improve_threshold_hint",
@@ -250,10 +250,7 @@ export class LitmSettings {
 		// The ThemeData schema reads this for the improve track's `max` when it
 		// is first built (during setup, before ready) — mirror it now rather
 		// than in ready-hooks like heroLimit/themeLimit.
-		LitmConfig.improveThreshold = game.settings.get(
-			"litmv2",
-			"improve_threshold",
-		);
+		LitmConfig.improveThreshold = LitmSettings.improveThreshold;
 		game.settings.register("litmv2", "auto_mark_improve", {
 			name: "LITM.Settings.auto_mark_improve",
 			hint: "LITM.Settings.auto_mark_improve_hint",

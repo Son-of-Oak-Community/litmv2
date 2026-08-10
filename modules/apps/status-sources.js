@@ -20,9 +20,10 @@ function activeStatuses(actor) {
  * @param {{id:string,label:string,actor:Actor}[]} candidates  Target candidates.
  * @param {object} [options]
  * @param {(effect: object) => boolean} [options.statusFilter]  Extra filter for
- *        candidate-group statuses (eg. visibility) — supplied by the caller so
- *        this module stays free of game/user globals. The rolling actor's own
- *        group is not filtered: players always see their own statuses.
+ *        statuses (eg. visibility) — supplied by the caller so this module stays
+ *        free of game/user globals. Applies to every group, the rolling actor's
+ *        included: a Narrator-hidden status is already invisible on the hero's
+ *        own sheet, so this picker must not be the surface that leaks it.
  * @returns {{ownerId:string,ownerName:string,isOwn:boolean,statuses:{id:string,name:string,tier:number}[]}[]}
  */
 export function collectReducibleStatuses(
@@ -38,7 +39,9 @@ export function collectReducibleStatuses(
 	const groups = [];
 	const seen = new Set();
 
-	const own = activeStatuses(actor);
+	const own = activeStatuses(actor).filter(
+		(e) => !statusFilter || statusFilter(e),
+	);
 	if (actor && own.length) {
 		groups.push({
 			ownerId: actor.id,

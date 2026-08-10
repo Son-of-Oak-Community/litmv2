@@ -1,5 +1,5 @@
 import { isEffectVisible } from "../active-effects/effect-queries.js";
-import { maxStatusTier } from "../active-effects/status-tiers.js";
+import { maxStatusTier } from "../active-effects/status-tag-data.js";
 import {
 	computePowerBudget,
 	computeSuccessSpend,
@@ -218,13 +218,14 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 					isEffectVisible(e),
 			)
 			.map((e) => ({ id: e._id ?? e.id, name: e.name }));
-		// Candidate owners for scratch/reduce/inflict are the actors tracked by
-		// the story-tag sidebar (not every observable world actor) — the same
-		// list the Apply Consequences menu draws from. Hidden columns stay
-		// GM-only; concealed challenges show their masked name.
-		const sidebarCandidates = this.#getSidebarCandidates();
-		// Hidden tags/statuses on candidates must not leak to players. Own tags
-		// are never filtered — collectors skip the filter for the isOwn group.
+		// Candidate owners for scratch/reduce/inflict are the actors in play —
+		// scene tokens plus the story-tag sidebar's tracked actors, not every
+		// actor in the world directory. Same list the Apply Consequences menu
+		// draws from; hidden columns stay GM-only.
+		const sidebarCandidates = getTargetCandidates({ allowSelf: true });
+		// Narrator-hidden tags/statuses must not leak to players — including on
+		// the player's own hero, which already hides them on its sheet. For a GM
+		// isEffectVisible is always true, so the GM's menu is unaffected.
 		const effectFilter = (e) => !e.disabled && isEffectVisible(e);
 		const scratchGroups = actor
 			? collectScratchableTags(actor, sidebarCandidates, sceneTags, {
@@ -283,7 +284,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		let targets = [];
 		if (actionSuccesses.some((s) => s.needsActorTarget)) {
 			const preferredId = [...(game.user.targets ?? [])][0]?.actor?.id ?? null;
-			targets = getTargetCandidates({ allowSelf: true }).map((c) => ({
+			targets = sidebarCandidates.map((c) => ({
 				id: c.id,
 				name: c.label,
 				img: c.img,
@@ -413,37 +414,19 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			});
 	}
 
-	#getScratchedTags(actor) {
-		return (actor.system.scratchedTags ?? []).map((effect) => ({
-			id: effect.id,
-			name: effect.name,
-			itemId: effect.parent !== actor ? effect.parent?.id : "",
-		}));
-	}
-
 	/**
-	 * Candidate owners for the scratch/reduce/inflict pickers: the story-tag
-	 * sidebar's tracked actors, matching what the sidebar itself shows —
-	 * hidden columns are GM-only, concealed challenges wear their mask.
-	 * @returns {{id:string,label:string,img:string,actor:Actor}[]}
+	 * Own scratched tags eligible for Recover. Narrator-hidden tags are filtered
+	 * out for players, same as every other tag surface — recovering one would
+	 * reveal it.
 	 */
-	#getSidebarCandidates() {
-		const hiddenUuids = new Set(StoryTagsStore.config.hiddenActors ?? []);
-		const seen = new Set();
-		const candidates = [];
-		for (const { uuid, actor } of StoryTagsStore.resolveTrackedActors()) {
-			if (!game.user.isGM && hiddenUuids.has(uuid)) continue;
-			// A tracked token and its sidebar actor resolve to the same document.
-			if (seen.has(actor.id)) continue;
-			seen.add(actor.id);
-			candidates.push({
-				id: actor.id,
-				label: actor.system.maskedName ?? actor.name,
-				img: actor.img,
-				actor,
-			});
-		}
-		return candidates;
+	#getScratchedTags(actor) {
+		return (actor.system.scratchedTags ?? [])
+			.filter((effect) => !effect.disabled && isEffectVisible(effect))
+			.map((effect) => ({
+				id: effect.id,
+				name: effect.name,
+				itemId: effect.parent !== actor ? effect.parent?.id : "",
+			}));
 	}
 
 	/**
@@ -469,8 +452,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 					].find(
 						(el) =>
 							el.dataset.statusName?.toLowerCase() === name.toLowerCase() &&
-							(!pre.statusOwnerId ||
-								el.dataset.actorId === pre.statusOwnerId),
+							(!pre.statusOwnerId || el.dataset.actorId === pre.statusOwnerId),
 					);
 					if (!item) continue;
 					// Counters show the resulting tier — preselect the full drop.

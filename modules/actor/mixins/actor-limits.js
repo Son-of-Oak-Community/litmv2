@@ -5,9 +5,11 @@
  * journey) — return the same shape so callers can treat them uniformly.
  *
  * @typedef {object} LimitChangeResult
- * @property {object} limit  The updated limit entry (post-clamp).
- * @property {number} value  The new clamped value.
- * @property {number} max    The limit's max (defaults to 6 if unset).
+ * @property {object} limit    The updated limit entry (post-clamp).
+ * @property {number} value    The new clamped value.
+ * @property {number} max      The limit's max (defaults to 6 if unset).
+ * @property {boolean} immune  True when the limit's max is 0 — an immunity, so
+ *                             nothing was written and `value` stays 0.
  */
 
 /**
@@ -41,7 +43,8 @@ export async function advanceFlagLimit(actor, limitId, delta, { max } = {}) {
 	const limits = actor.getFlag("litmv2", "limits") ?? [];
 	const result = _shiftLimit(limits, limitId, delta, max);
 	if (!result) return null;
-	await actor.setFlag("litmv2", "limits", result.updated);
+	if (!result.change.immune)
+		await actor.setFlag("litmv2", "limits", result.updated);
 	return result.change;
 }
 
@@ -59,7 +62,8 @@ export async function advanceSystemLimit(actor, limitId, delta) {
 	const limits = actor.system._source?.limits ?? [];
 	const result = _shiftLimit(limits, limitId, delta);
 	if (!result) return null;
-	await actor.update({ "system.limits": result.updated });
+	if (!result.change.immune)
+		await actor.update({ "system.limits": result.updated });
 	return result.change;
 }
 
@@ -80,9 +84,13 @@ function _shiftLimit(limits, limitId, delta, maxOverride) {
 	// `maxOverride` lets a caller supply an effective max that differs from the
 	// stored one — heroes derive theirs from the world's Hero Limit setting, so
 	// a limit created under an older setting keeps a stale `max` on the flag.
-	// A max of 0 is meaningful ("no maximum for that Limit", Core Book p.169),
-	// so test for finiteness rather than truthiness at each step.
-	const max = _firstFinite(maxOverride, limit.max, 6);
+	// A max of 0 is an *immunity* — the Core Book's "no maximum ( – )" Limit,
+	// which no amount of the matching status can advance (p.169) — so test for
+	// finiteness rather than truthiness, and report rather than write.
+	const max = _firstFinite(maxOverride, limit.max);
+	if (max === 0) {
+		return { updated: limits, change: { limit, value: 0, max, immune: true } };
+	}
 	const newValue = Math.max(
 		0,
 		Math.min(max, (Number(limit.value) || 0) + delta),
@@ -91,6 +99,6 @@ function _shiftLimit(limits, limitId, delta, maxOverride) {
 	updated[idx] = { ...limit, value: newValue };
 	return {
 		updated,
-		change: { limit: updated[idx], value: newValue, max },
+		change: { limit: updated[idx], value: newValue, max, immune: false },
 	};
 }

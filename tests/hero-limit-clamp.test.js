@@ -104,13 +104,27 @@ describe("advanceFlagLimit max override", () => {
 		expect(result.max).toBe(8);
 	});
 
-	it("honours a max of 0 (a Limit with no maximum) instead of falling back to 6", async () => {
+	// A max of 0 is the Core Book's "no maximum ( – )" Limit (p.169) — an
+	// immunity. The status lands, the Limit never moves, and the caller is told
+	// so rather than being handed a 0/0 that reads as a successful advance.
+	it("reports a max of 0 as an immunity instead of falling back to 6", async () => {
 		const actor = makeActor([{ ...staleLimit, value: 0 }]);
 
 		const result = await advanceFlagLimit(actor, "L1", 4, { max: 0 });
 
 		expect(result.max).toBe(0);
 		expect(result.value).toBe(0);
+		expect(result.immune).toBe(true);
+		expect(actor.setFlag).not.toHaveBeenCalled();
+	});
+
+	it("marks an ordinary advance as not immune", async () => {
+		const actor = makeActor([{ ...staleLimit, value: 0 }]);
+
+		const result = await advanceFlagLimit(actor, "L1", 2, { max: 6 });
+
+		expect(result.immune).toBe(false);
+		expect(actor.setFlag).toHaveBeenCalled();
 	});
 
 	it("falls back past a blank stored max", async () => {

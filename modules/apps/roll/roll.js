@@ -3,7 +3,7 @@ import {
 	IMPROVE_MARKING_TAG_TYPES,
 	ROLL_TYPES,
 } from "../../system/config.js";
-import { maxStatusTier } from "../../active-effects/status-tiers.js";
+import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { LitmSettings } from "../../system/settings.js";
 import { localize as t } from "../../utils.js";
 

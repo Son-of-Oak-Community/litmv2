@@ -1,4 +1,4 @@
-import { clampTier } from "../active-effects/index.js";
+import { clampTier } from "../active-effects/status-tag-data.js";
 
 /**
  * Shared +/- counter handler for SpendPowerApp and ApplyActionMenuApp. Walks

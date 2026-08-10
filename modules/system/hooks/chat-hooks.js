@@ -1,4 +1,4 @@
-import { maxStatusTier } from "../../active-effects/status-tiers.js";
+import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { collectSourceConsequences } from "../../apps/consequence-sources.js";
@@ -15,6 +15,7 @@ import {
 	unionAppliedSuccessKeys,
 } from "../../item/action/action-rules.js";
 import { getVerbDef } from "../../item/action/verb-definitions.js";
+import { warn } from "../../logger.js";
 import { localize as t, viewLinkedRefAction } from "../../utils.js";
 import { buildTrackCompleteContent } from "../chat.js";
 import {
@@ -186,10 +187,22 @@ async function _handleApproveModeration(_target, app) {
 	try {
 		const data = await app.getFlag("litmv2", "data");
 		const userId = await app.getFlag("litmv2", "userId");
+		if (!data?.actorId) {
+			warn(`Moderation card ${app.id} carries no roll data; discarding it.`);
+			await app.delete().catch(console.error);
+			return;
+		}
 
 		// Roll
 		if (userId === game.userId) {
-			await app.delete();
+			// Deleting the card is the claim on the request: a second GM (or a
+			// second click that outran `_moderationInFlight`) finds it already
+			// gone and must not roll it again.
+			const claimed = await app.delete().catch(() => null);
+			if (!claimed) {
+				warn(`Moderation card ${app.id} was already resolved elsewhere.`);
+				return;
+			}
 			LitmRollDialog.roll(data);
 			// Reset own roll dialog locally (sockets don't echo to sender)
 			const actor = game.actors.get(data.actorId);
@@ -203,7 +216,9 @@ async function _handleApproveModeration(_target, app) {
 				userId,
 				messageId: app.id,
 			});
-			await app.delete();
+			// The roll is already on its way; a failed delete must not swallow the
+			// dialog reset below.
+			await app.delete().catch(console.error);
 		}
 
 		// Dispatch order to reset Roll Dialog on other clients
@@ -310,8 +325,15 @@ async function _handleRejectModeration(_target, app) {
 	_moderationInFlight.add(app.id);
 	try {
 		const data = await app.getFlag("litmv2", "data");
-		// Delete Message
-		await app.delete();
+		// Deleting the card claims the request, as in _handleApproveModeration:
+		// whoever fails to delete it is not the one who rejected it, and must not
+		// send the requester a second rejection.
+		const claimed = await app.delete().catch(() => null);
+		if (!claimed) {
+			warn(`Moderation card ${app.id} was already resolved elsewhere.`);
+			return;
+		}
+		if (!data?.actorId) return;
 		// Dispatch order to reopen
 		Sockets.dispatch("rejectRoll", {
 			name: game.user.name,

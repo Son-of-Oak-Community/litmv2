@@ -5,6 +5,7 @@ import {
 	padTiers,
 	StatusTagData,
 } from "../modules/active-effects/status-tag-data.js";
+import { toTiers } from "../modules/apps/story-tags/story-tag-helpers.js";
 import { classifyTagStringMatch } from "../modules/item/action/tag-string.js";
 import { LitmConfig, makeTagStringRe } from "../modules/system/config.js";
 
@@ -86,6 +87,33 @@ describe("padTiers", () => {
 	});
 });
 
+describe("toTiers (story-tag sidebar form)", () => {
+	it("keeps a partly-marked deep track when the Hero Limit drops back", () => {
+		withHeroLimit(5);
+		// Checkbox-style: unchecked boxes submit as null, so the array arrives at
+		// its own length.
+		const submitted = [null, "2", null, null, null, null, null, "8"];
+
+		expect(toTiers(submitted)).toHaveLength(8);
+		expect(StatusTagData.tierOf(toTiers(submitted))).toBe(8);
+	});
+
+	it("keeps a fully-marked deep track, which submits as bare tier numbers", () => {
+		withHeroLimit(5);
+		// Every box checked: nothing is null, so this is indistinguishable from
+		// select-style input — and must still not shrink to the world's depth.
+		const submitted = ["1", "2", "3", "4", "5", "6", "7", "8"];
+
+		expect(toTiers(submitted)).toEqual(Array(8).fill(true));
+	});
+
+	it("sizes to the world's depth when the marks are shallower", () => {
+		withHeroLimit(5);
+		expect(toTiers(["3"])).toHaveLength(6);
+		expect(toTiers([])).toEqual(Array(6).fill(false));
+	});
+});
+
 describe("clampTier", () => {
 	it("bounds to the world's track depth", () => {
 		withHeroLimit(7);
@@ -152,6 +180,14 @@ describe("marking deep tracks", () => {
 		const marked = StatusTagData.markTier(tiers, 6);
 
 		expect(StatusTagData.tierOf(marked)).toBe(7);
+	});
+
+	it("pads rather than passing through when there is no tier to mark", () => {
+		withHeroLimit(7);
+		// Tier 0 is "no tier" — it still owes the caller a full-depth track, and
+		// must not throw on an effect that has none stored yet.
+		expect(StatusTagData.markTier(undefined, 0)).toEqual(Array(8).fill(false));
+		expect(StatusTagData.markTier(Array(6).fill(false), 0)).toHaveLength(8);
 	});
 
 	it("oneHot sizes to the world's depth", () => {

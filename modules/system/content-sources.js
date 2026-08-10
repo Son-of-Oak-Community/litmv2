@@ -1,4 +1,4 @@
-import { maxStatusTier } from "../active-effects/index.js";
+import { maxStatusTier } from "../active-effects/status-tag-data.js";
 import { descriptorToEffectData } from "../item/action/tag-string.js";
 import { error, info } from "../logger.js";
 import { LitmSettings } from "./settings.js";

@@ -446,6 +446,17 @@ async function _applyProcess({ success, limitInfo, chosenTiers }) {
 		return null;
 	}
 
+	// A Limit with no maximum is an immunity: the status lands, the Limit does
+	// not move, and the table is told so (Core Book p.169).
+	if (result.immune) {
+		return {
+			appliedSummary: game.i18n.format("LITM.Actions.applied_immune", {
+				actor: publicName(actor),
+				name: result.limit.label || t("LITM.Terms.limit"),
+			}),
+		};
+	}
+
 	const verbKey =
 		success.verb === "advance" ? "applied_advance" : "applied_setback";
 	return {

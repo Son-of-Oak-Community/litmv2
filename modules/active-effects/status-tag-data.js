@@ -2,7 +2,9 @@ import { maxStatusTier, padTiers } from "./status-tiers.js";
 
 // Re-exported so `status-tag-data.js` stays the one import site for tier
 // semantics; `status-tiers.js` exists only to keep the primitives free of
-// `foundry.*` for Foundry-free callers (the camping data layer).
+// `foundry.*`, and is imported directly only by modules that must stay that
+// way themselves (the camping data layer). Import from here everywhere else —
+// no third path, and `active-effects/index.js` deliberately doesn't offer one.
 export {
 	clampTier,
 	maxStatusTier,
@@ -138,9 +140,9 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 	 */
 	static markTier(tiers, tier) {
 		const index = tier - 1;
-		if (index < 0) return [...tiers];
-
 		const newTiers = padTiers(tiers);
+		if (index < 0) return newTiers;
+
 		if (index >= newTiers.length) return newTiers;
 
 		if (!newTiers[index]) {

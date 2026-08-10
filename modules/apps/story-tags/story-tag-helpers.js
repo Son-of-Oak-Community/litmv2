@@ -2,7 +2,7 @@ import {
 	maxStatusTier,
 	padTiers,
 	StatusTagData,
-} from "../../active-effects/index.js";
+} from "../../active-effects/status-tag-data.js";
 import { classifyTagString } from "../../item/action/tag-string.js";
 
 /**
@@ -84,13 +84,17 @@ export function toTiers(values = []) {
 	) {
 		return values.map((v) => v !== null && v !== false && v !== "");
 	}
-	const tiers = new Array(length).fill(false);
-	for (const value of values) {
-		const index = Number.parseInt(value, 10) - 1;
-		if (Number.isFinite(index) && index >= 0 && index < length) {
-			tiers[index] = true;
-		}
-	}
+	// Value-style: each entry names a marked tier (the checkbox inputs carry
+	// their 1-based tier as `value`, so a fully-marked track arrives here too).
+	// Size the result to the deepest mark as well as the world's depth — like
+	// `padTiers`, this never shrinks a track someone already marked under a
+	// higher Hero Limit.
+	const indices = values
+		.map((value) => Number.parseInt(value, 10) - 1)
+		.filter((index) => Number.isFinite(index) && index >= 0);
+	const size = Math.max(length, ...indices.map((index) => index + 1));
+	const tiers = new Array(size).fill(false);
+	for (const index of indices) tiers[index] = true;
 	return tiers;
 }
 
