@@ -227,6 +227,32 @@ export const LitmConfig = {
 	/** Default hero Limit value. Mirrored from the world setting at ready. */
 	heroLimit: 5,
 
+	/** @see {@link LitmConfig.maxStatusTier} */
+	_maxStatusTierOverride: null,
+
+	/**
+	 * How many boxes a status track has — the highest tier any status can
+	 * reach, and therefore the tier at which a status becomes permanent
+	 * (death or transformation).
+	 *
+	 * Derived rather than configured: the Core Book ties the two together
+	 * ("lowering the default Limit for Heroes to 4 (5 is permanent)", p.169),
+	 * so a Hero Limit of 5 gives the RAW six-box track and a homebrew Limit
+	 * of 7 deepens every track in the world to 8. The floor keeps gritty
+	 * worlds at six boxes — challenges, progress clocks and RAW's own tier-6
+	 * statuses must not shrink because heroes got fragile.
+	 *
+	 * Settable, so a module can decouple it from the Hero Limit.
+	 * @type {number}
+	 */
+	get maxStatusTier() {
+		return this._maxStatusTierOverride ?? Math.max(6, this.heroLimit + 1);
+	},
+
+	set maxStatusTier(value) {
+		this._maxStatusTierOverride = value;
+	},
+
 	/** Maximum non-fellowship themes a hero can have. Mirrored from the world setting at ready. */
 	themeLimit: 4,
 

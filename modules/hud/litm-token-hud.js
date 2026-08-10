@@ -2,6 +2,7 @@ import {
 	isEffectVisible,
 	resolveEffect,
 } from "../active-effects/effect-queries.js";
+import { StatusTagData } from "../active-effects/index.js";
 import { ContentSources } from "../system/content-sources.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
 
@@ -200,7 +201,7 @@ export class LitmTokenHUD extends TokenHUD {
 			await this.actor.system.removeStatus(choice.effectId);
 		} else {
 			await this.actor.system.addStatus(choice.title, {
-				tiers: [true, false, false, false, false, false],
+				tiers: StatusTagData.oneHot(1),
 				img: choice.src,
 			});
 		}

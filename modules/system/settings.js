@@ -51,8 +51,29 @@ export class LitmSettings {
 		return game.settings.set("litmv2", "systemMigrationVersion", v);
 	}
 
+	/**
+	 * Upper bound for the Hero Limit setting. Not a rules value — status
+	 * tracks grow to `heroLimit + 1` (see `CONFIG.litmv2.maxStatusTier`), so
+	 * this only keeps the deepest homebrew track at a renderable ten boxes.
+	 * @type {number}
+	 */
+	static #MAX_HERO_LIMIT = 9;
+
+	/**
+	 * The world's Hero Limit: the status tier at which a hero is overcome.
+	 * Clamped on read so a value stored outside the setting's range — by an
+	 * older range, a macro, or a module — can't produce an untrackable limit.
+	 * @returns {number}
+	 */
 	static get heroLimit() {
-		return game.settings.get("litmv2", "hero_limit");
+		const stored = game.settings.get("litmv2", "hero_limit");
+		return LitmSettings.#clampHeroLimit(stored);
+	}
+
+	static #clampHeroLimit(value) {
+		const n = Number(value);
+		if (!Number.isFinite(n)) return 5;
+		return Math.max(1, Math.min(LitmSettings.#MAX_HERO_LIMIT, Math.round(n)));
 	}
 
 	static get themeLimit() {
@@ -186,10 +207,10 @@ export class LitmSettings {
 			config: true,
 			type: Number,
 			default: 5,
-			range: { min: 1, max: 10, step: 1 },
+			range: { min: 1, max: LitmSettings.#MAX_HERO_LIMIT, step: 1 },
 			requiresReload: true,
 			onChange: (value) => {
-				CONFIG.litmv2.heroLimit = value;
+				CONFIG.litmv2.heroLimit = LitmSettings.#clampHeroLimit(value);
 			},
 		});
 		game.settings.register("litmv2", "theme_limit", {
@@ -205,6 +226,14 @@ export class LitmSettings {
 				CONFIG.litmv2.themeLimit = value;
 			},
 		});
+		// Seeded here (init) rather than on `ready` — documents prepare their
+		// data before `ready`, and both values are read during preparation:
+		// `heroLimit` sets the hero's limit readout *and* the status track
+		// depth (`CONFIG.litmv2.maxStatusTier`), which decides how many boxes
+		// every status has. Seeding late left the first render of a world on
+		// the defaults until each document happened to be updated.
+		LitmConfig.heroLimit = LitmSettings.heroLimit;
+		LitmConfig.themeLimit = game.settings.get("litmv2", "theme_limit");
 		game.settings.register("litmv2", "improve_threshold", {
 			name: "LITM.Settings.improve_threshold",
 			hint: "LITM.Settings.improve_threshold_hint",

@@ -5,8 +5,11 @@
  * shaped like `canvas.scene.flags.litmv2.camping`. No Foundry calls live
  * here — the scene-flag persistence and socket sync layer in camping-scene.js
  * is responsible for that. Keeping the data layer Foundry-free lets us
- * unit-test the bug-prone bits without booting a game.
+ * unit-test the bug-prone bits without booting a game. (`status-tiers.js` is
+ * Foundry-free for the same reason and is safe to import here.)
  */
+
+import { maxStatusTier } from "../../active-effects/status-tiers.js";
 
 const VALID_DURATIONS = new Set(["days", "weeks", "months"]);
 const PERIOD_COUNT = 3; // Always 3 slots; thirdPeriodActive gates rendering/use.
@@ -198,7 +201,8 @@ export function setRestChoice(
 	const slot = h.activities[period];
 	if (!slot.restChoices) slot.restChoices = {};
 	const raw = Number.isFinite(amount) ? Math.floor(amount) : 1;
-	const cap = Number.isFinite(maxTier) && maxTier > 0 ? maxTier : 6;
+	const cap =
+		Number.isFinite(maxTier) && maxTier > 0 ? maxTier : maxStatusTier();
 	const safeAmount = Math.max(1, Math.min(raw, cap));
 	slot.restChoices[statusEffectId] = {
 		action: action ?? "",
@@ -220,12 +224,13 @@ export function adjustRestChoice(
 	heroId,
 	period,
 	statusEffectId,
-	{ delta = 0, maxTier = 6 } = {},
+	{ delta = 0, maxTier = maxStatusTier() } = {},
 ) {
 	const h = ensureHeroState(state, heroId);
 	const slot = h.activities[period];
 	if (!slot.restChoices) slot.restChoices = {};
-	const cap = Number.isFinite(maxTier) && maxTier > 0 ? maxTier : 6;
+	const cap =
+		Number.isFinite(maxTier) && maxTier > 0 ? maxTier : maxStatusTier();
 	const current = slot.restChoices[statusEffectId] ?? {
 		action: "",
 		amount: 1,

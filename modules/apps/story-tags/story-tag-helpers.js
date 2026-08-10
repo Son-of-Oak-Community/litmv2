@@ -1,4 +1,8 @@
-import { StatusTagData } from "../../active-effects/index.js";
+import {
+	maxStatusTier,
+	padTiers,
+	StatusTagData,
+} from "../../active-effects/index.js";
 import { classifyTagString } from "../../item/action/tag-string.js";
 
 /**
@@ -64,21 +68,26 @@ function toValidUuid(id) {
 }
 
 /**
- * Convert form tier values to a normalized boolean[6] array.
- * Handles both checkbox-style (array of booleans/nulls) and
+ * Convert form tier values to a normalized boolean array of the world's track
+ * depth. Handles both checkbox-style (array of booleans/nulls) and
  * select-style (array of numeric strings) inputs.
  * @param {Array} [values=[]] Raw tier values from form data
- * @returns {boolean[]} Array of 6 booleans
+ * @returns {boolean[]}
  */
 export function toTiers(values = []) {
-	if (!Array.isArray(values)) return new Array(6).fill(false);
-	if (values.length === 6 && values.some((v) => v === null || v === false)) {
+	const length = maxStatusTier();
+	if (!Array.isArray(values)) return new Array(length).fill(false);
+	// Checkbox-style: one entry per box, already the track's own length.
+	if (
+		values.length >= length &&
+		values.some((v) => v === null || v === false)
+	) {
 		return values.map((v) => v !== null && v !== false && v !== "");
 	}
-	const tiers = new Array(6).fill(false);
+	const tiers = new Array(length).fill(false);
 	for (const value of values) {
 		const index = Number.parseInt(value, 10) - 1;
-		if (Number.isFinite(index) && index >= 0 && index < 6) {
+		if (Number.isFinite(index) && index >= 0 && index < length) {
 			tiers[index] = true;
 		}
 	}
@@ -132,7 +141,8 @@ export function parseQuickAddInput(raw) {
  * splits `[wounded-3]` into name + tier), so `[room 2:4]` never matches. But
  * quick-add has no such parsing constraint — "room 2:4" is a fine limit name.
  * Mirror the canonical suffix semantics on the raw text, conservatively:
- * status tiers stay 1–6 here ("level 2-9" is a name, not a status).
+ * status tiers stay within the world's track depth here ("level 2-9" is a
+ * name, not a status — unless the world's tracks really do run to 9).
  * Weakness markup ("-name") also falls through to the literal story tag —
  * quick-add can't create weakness effects.
  */
@@ -145,13 +155,12 @@ function parseUnbracketableInput(raw) {
 			limitMax: limit[2] ? Number(limit[2]) : null,
 		};
 	}
-	const status = raw.match(/^(.+)-([1-6])$/);
+	const status = raw.match(/^(.+)-(\d+)$/);
 	if (status) {
-		return {
-			type: "status_tag",
-			name: status[1].trim(),
-			tier: Number.parseInt(status[2], 10),
-		};
+		const tier = Number.parseInt(status[2], 10);
+		if (tier >= 1 && tier <= maxStatusTier()) {
+			return { type: "status_tag", name: status[1].trim(), tier };
+		}
 	}
 	const singleUse = raw.match(/^(.+)!$/);
 	if (singleUse) {
@@ -179,9 +188,7 @@ export function mapEffectForUI(e) {
 		hidden: e.system?.isHidden ?? false,
 		limitId: e.system?.limitId ?? null,
 		value: isStatus ? (e.system?.currentTier ?? 0) : 1,
-		values: isStatus
-			? (e.system?.tiers ?? new Array(6).fill(false))
-			: new Array(6).fill(false),
+		values: isStatus ? padTiers(e.system?.tiers) : [],
 	};
 }
 

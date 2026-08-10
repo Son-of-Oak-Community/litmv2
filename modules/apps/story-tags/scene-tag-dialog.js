@@ -1,3 +1,7 @@
+import {
+	maxStatusTier,
+	StatusTagData,
+} from "../../active-effects/status-tag-data.js";
 import { FLAGS } from "../../system/config.js";
 import { localize as t } from "../../utils.js";
 import { parseQuickAddInput, toTiers } from "./story-tag-helpers.js";
@@ -183,8 +187,8 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 		const tag = {
 			name: parsed.name,
 			values: isStatus
-				? Array.from({ length: 6 }, (_, i) => i === parsed.tier - 1)
-				: Array(6).fill(null),
+				? StatusTagData.oneHot(parsed.tier)
+				: Array(maxStatusTier()).fill(null),
 			type: parsed.type,
 			isScratched: false,
 			isSingleUse: parsed.isSingleUse ?? false,

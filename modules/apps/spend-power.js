@@ -1,4 +1,5 @@
 import { isEffectVisible } from "../active-effects/effect-queries.js";
+import { maxStatusTier } from "../active-effects/status-tiers.js";
 import {
 	computePowerBudget,
 	computeSuccessSpend,
@@ -543,16 +544,16 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	static #onCounter(_event, target) {
 		const statusItem = target.closest(".litm-spend-power__status-item");
 		const varTier = target.closest(".litm-spend-power__var-tier");
-		// Variable-tier counters clamp 0..6 — 0 means "skip this token" so a
-		// success listing many alternative statuses (eg. an Action Grimoire
-		// Attack with [ferido-] [cortado-] [perfurado-] …) lets the player
-		// pick which ones to apply. reduce_status clamps 0..currentTier.
-		// Everything else clamps 1..∞.
+		// Variable-tier counters clamp to the world's status track depth — 0
+		// means "skip this token" so a success listing many alternative
+		// statuses (eg. an Action Grimoire Attack with [ferido-] [cortado-]
+		// [perfurado-] …) lets the player pick which ones to apply.
+		// reduce_status clamps 0..currentTier. Everything else clamps 1..∞.
 		const min = statusItem || varTier ? 0 : 1;
 		const max = statusItem
 			? Number(statusItem.dataset.maxTier)
 			: varTier
-				? 6
+				? maxStatusTier()
 				: Infinity;
 		adjustCounter(target, { min, max });
 

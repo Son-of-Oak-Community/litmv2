@@ -1,5 +1,6 @@
 export { SUCCESS_VERBS } from "./verb-definitions.js";
 
+import { maxStatusTier } from "../../active-effects/index.js";
 import { SUCCESS_VERBS } from "./verb-definitions.js";
 
 export const ACTION_CATEGORIES = Object.freeze([
@@ -166,7 +167,7 @@ function _payloadToMarkup(payload) {
 		tokens.push(payload.isSingleUse ? `[${tagName}!]` : `[${tagName}]`);
 	}
 	if (statusName) {
-		if (Number.isInteger(tier) && tier >= 1 && tier <= 6) {
+		if (Number.isInteger(tier) && tier >= 1 && tier <= maxStatusTier()) {
 			tokens.push(`[${statusName}-${tier}]`);
 		} else {
 			tokens.push(`[${statusName}-]`);

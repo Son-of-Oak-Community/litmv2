@@ -1,5 +1,8 @@
 import { effectToPlain } from "../../active-effects/effect-queries.js";
-import { StatusTagData } from "../../active-effects/status-tag-data.js";
+import {
+	maxStatusTier,
+	StatusTagData,
+} from "../../active-effects/status-tag-data.js";
 import { ALL_TAG_TYPES, EFFECT_TAG_ORDER, FLAGS } from "../../system/config.js";
 import { renderAction } from "../../system/renderers/action-renderer.js";
 import { Sockets } from "../../system/sockets.js";
@@ -793,7 +796,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sacrificeLevelOptions: ["painful", "scarring", "grave"].map((key) => ({
 				value: key,
 				label: t(`LITM.Ui.sacrifice_${key}`),
-				description: t(`LITM.Ui.sacrifice_${key}_price`),
+				description: game.i18n.format(`LITM.Ui.sacrifice_${key}_price`, {
+					tier: maxStatusTier(),
+				}),
 				selected: this.#sacrificeLevel === key,
 			})),
 			// #ensureSacrificeThemeSelected auto-selects a valid theme (assigning
@@ -801,6 +806,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// and flags the chosen card via `selected` in its return value.
 			sacrificeThemes,
 			sacrificeStatusName: this.#sacrificeStatusName,
+			maxStatusTier: maxStatusTier(),
 			// The theme selector serves a different rhetorical purpose per
 			// level — Painful scratches it, Scarring removes it, Grave only
 			// touches it on Miracle. The legend/hint reflect that intent.
@@ -1111,7 +1117,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const showTheme =
 			level === "painful" || level === "scarring" || level === "grave";
 		if (themeFieldset) themeFieldset.classList.toggle("hidden", !showTheme);
-		// Grave-only: status name input for the tier-6 status on fail/snc.
+		// Grave-only: status name input for the top-tier status on fail/snc.
 		if (graveFieldset)
 			graveFieldset.classList.toggle("hidden", level !== "grave");
 	}

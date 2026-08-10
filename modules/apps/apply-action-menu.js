@@ -1,3 +1,4 @@
+import { maxStatusTier } from "../active-effects/index.js";
 import { applyConsequence } from "../item/action/chat-actions.js";
 import { error } from "../logger.js";
 import { FLAGS } from "../system/config.js";
@@ -151,7 +152,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		// min=0 so a consequence with multiple variable-tier statuses lets
 		// the GM pick which ones to apply (mirror to the apply-success path
 		// in SpendPowerApp). A token left at 0 is skipped.
-		adjustCounter(target, { min: 0, max: 6 });
+		adjustCounter(target, { min: 0, max: maxStatusTier() });
 	}
 
 	static async #onSubmit(_event, form, _formData) {

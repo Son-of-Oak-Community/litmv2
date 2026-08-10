@@ -1,3 +1,4 @@
+import { maxStatusTier } from "../../active-effects/status-tiers.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { collectSourceConsequences } from "../../apps/consequence-sources.js";
@@ -45,7 +46,8 @@ function effectiveSacrificeLevel(level, outcomeLabel) {
 
 /**
  * Apply the consequence of a sacrifice roll to a hero. The price is paid by
- * a theme for painful/scarring and by a tier-6 status for grave.
+ * a theme for painful/scarring and by a status at the world's top tier — the
+ * one that kills or transforms — for grave.
  * Performs document mutations only; notifications are shown by the caller.
  * @param {Actor} actor
  * @param {"painful"|"scarring"|"grave"} level - The *effective* price level
@@ -57,7 +59,7 @@ function effectiveSacrificeLevel(level, outcomeLabel) {
 async function applyThemeSacrifice(actor, level, { themeId, statusName } = {}) {
 	if (level === "grave") {
 		if (!statusName) return null;
-		await actor.system.addStatus(statusName, { tier: 6 });
+		await actor.system.addStatus(statusName, { tier: maxStatusTier() });
 		return { statusName };
 	}
 
@@ -277,6 +279,7 @@ async function _confirmAndApplySacrifice(
 			window: { title: t("LITM.Ui.sacrifice_confirm_title") },
 			content: dialogContent("LITM.Ui.sacrifice_confirm_grave_named", {
 				status: name,
+				tier: maxStatusTier(),
 			}),
 			rejectClose: false,
 			modal: true,

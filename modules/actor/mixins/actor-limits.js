@@ -37,9 +37,9 @@ export function setActorLimits(actor, limits) {
  * @param {number} delta
  * @returns {Promise<LimitChangeResult|null>}
  */
-export async function advanceFlagLimit(actor, limitId, delta) {
+export async function advanceFlagLimit(actor, limitId, delta, { max } = {}) {
 	const limits = actor.getFlag("litmv2", "limits") ?? [];
-	const result = _shiftLimit(limits, limitId, delta);
+	const result = _shiftLimit(limits, limitId, delta, max);
 	if (!result) return null;
 	await actor.setFlag("litmv2", "limits", result.updated);
 	return result.change;
@@ -63,11 +63,26 @@ export async function advanceSystemLimit(actor, limitId, delta) {
 	return result.change;
 }
 
-function _shiftLimit(limits, limitId, delta) {
+function _firstFinite(...candidates) {
+	for (const candidate of candidates) {
+		if (candidate === null || candidate === undefined || candidate === "")
+			continue;
+		const n = Number(candidate);
+		if (Number.isFinite(n)) return n;
+	}
+	return 6;
+}
+
+function _shiftLimit(limits, limitId, delta, maxOverride) {
 	const idx = limits.findIndex((l) => l.id === limitId);
 	if (idx < 0) return null;
 	const limit = limits[idx];
-	const max = Number(limit.max) || 6;
+	// `maxOverride` lets a caller supply an effective max that differs from the
+	// stored one — heroes derive theirs from the world's Hero Limit setting, so
+	// a limit created under an older setting keeps a stale `max` on the flag.
+	// A max of 0 is meaningful ("no maximum for that Limit", Core Book p.169),
+	// so test for finiteness rather than truthiness at each step.
+	const max = _firstFinite(maxOverride, limit.max, 6);
 	const newValue = Math.max(
 		0,
 		Math.min(max, (Number(limit.value) || 0) + delta),

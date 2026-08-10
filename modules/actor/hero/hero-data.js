@@ -307,7 +307,11 @@ export class HeroData extends LimitsMixin(
 		const highestStatus = this.statusEffects
 			.filter((e) => e.active)
 			.reduce((max, e) => Math.max(max, e.system.currentTier), 0);
-		this.limit.value = baseLimit - highestStatus;
+		// Floors at 0: a status can now exceed the Limit (that's what makes it
+		// permanent), and the token bar has no state for "past overcome". 0
+		// means "at or past the Limit" — whether the hero is overcome or dead
+		// is fiction the bar can't know.
+		this.limit.value = Math.max(0, baseLimit - highestStatus);
 		this.limit.max = baseLimit;
 	}
 
@@ -374,6 +378,11 @@ export class HeroData extends LimitsMixin(
 	 * @returns {Promise<import("../actor-limits.js").LimitChangeResult|null>}
 	 */
 	async advanceLimit(limitId, delta) {
-		return advanceFlagLimit(this.parent, limitId, delta);
+		// Hero limits ignore the stored per-limit max (see `getEffectiveMax`),
+		// so the manual Advance path must clamp to the same effective value the
+		// status-driven path checks against.
+		return advanceFlagLimit(this.parent, limitId, delta, {
+			max: this.getEffectiveMax(),
+		});
 	}
 }

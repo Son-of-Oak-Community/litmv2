@@ -7,6 +7,7 @@ import {
 	isEffectVisible,
 	resolveEffect,
 } from "../active-effects/effect-queries.js";
+import { clampTier, maxStatusTier } from "../active-effects/index.js";
 import {
 	mapEffectForUI,
 	toTiers,
@@ -314,9 +315,8 @@ export class LitmActorSheet extends LitmSheetMixin(
 		for (const effect of effectsToUpdate) {
 			const system = effect.system;
 			if (system && system.tierValue !== undefined) {
-				const raw = Number(system.tierValue);
-				const value = Number.isFinite(raw) ? Math.max(0, Math.min(6, raw)) : 0;
-				system.tiers = Array(6)
+				const value = clampTier(system.tierValue);
+				system.tiers = Array(maxStatusTier())
 					.fill(false)
 					.map((_, index) => index < value);
 				delete system.tierValue;

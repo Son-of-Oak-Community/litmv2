@@ -8,7 +8,6 @@ import { registerTours } from "../tours.js";
 import { bootstrapWorldOnFirstLoad } from "../world-setup.js";
 
 export function registerReadyHooks() {
-	_seedConfigFromSettings();
 	_setupRollDialogHud();
 	_renderWelcomeScreen();
 	_popoutTagsSidebar();
@@ -25,12 +24,12 @@ function _applyColorblindMode() {
 	});
 }
 
-function _seedConfigFromSettings() {
-	Hooks.once("ready", () => {
-		CONFIG.litmv2.heroLimit = LitmSettings.heroLimit;
-		CONFIG.litmv2.themeLimit = LitmSettings.themeLimit;
-	});
-}
+// `heroLimit` / `themeLimit` used to be seeded here, on `ready`. They are now
+// seeded at registration time (init) in `LitmSettings.register()`, because
+// document data preparation reads them *before* `ready` — `heroLimit` drives
+// both the hero's limit readout and the status track depth
+// (`CONFIG.litmv2.maxStatusTier`). Re-seeding on ready would also stomp a
+// module that overrode either value during init.
 
 function _setupRollDialogHud() {
 	Hooks.once("ready", async () => {
