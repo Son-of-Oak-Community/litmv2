@@ -234,6 +234,12 @@ body,
 	--color-litm-status-text: #3f5a3f;
 	--color-litm-weakness-text: #8d4320;
 	--color-litm-banner: #c4b5a8;
+	/* GM-only marker (eye-slash on hidden tags/columns). Cool ink-violet: the
+	   one hue absent from the warm chip palette, so it can't be mistaken for a
+	   tag, status, limit or weakness — and it echoes Foundry's own secret /
+	   whisper hue. Chrome, not fiction; no colorblind variant needed since it
+	   never competes with the four chip colors. */
+	--color-litm-hidden: #6a5f8c;
 	--color-litm-track-promise: #7a6210;
 	--color-litm-track-improve: #3a5a34;
 	--color-litm-track-milestone: #6e4e12;
@@ -4634,10 +4640,45 @@ section.standard-form.litm-actions-app {
 	opacity: 0.5;
 }
 
-/* Hidden elements — visible to GM only, dimmed */
-.litm--tag-hidden,
-.litm--actor-hidden {
-	opacity: 0.4;
+/* Hidden elements — GM-only content, dimmed as a "players can't see this" cue.
+   `opacity` on a container makes a compositing group its children cannot
+   escape, so the dim must never sit on an element that also holds the
+   visibility toggle (the toggle would fade with it) or that can nest inside
+   another dimmed container — a hidden tag inside a hidden actor column used to
+   stack two groups at 0.4 each and land on 0.16, illegible on parchment.
+   Sheets get the plain content dim; the sidebar overrides below. */
+.litm--tag-hidden {
+	opacity: 0.55;
+}
+
+/* Sidebar rows hold the toggle as a sibling of the chip — dim the chip only. */
+.litm--story-tags .litm--tag-row.litm--tag-hidden {
+	opacity: 1;
+}
+
+.litm--story-tags .litm--tag-row.litm--tag-hidden .litm--tag-item {
+	opacity: 0.55;
+}
+
+/* Hidden actor column — same 0.55 the system uses everywhere else for hidden
+   content, so a hidden column and a hidden tag read at one weight. No
+   background wash: scene actors join hidden by default, so a tint would paint
+   the whole scene region rather than mark an exception. */
+.litm--story-tags .litm--actor-hidden .litm--section-body,
+.litm--story-tags
+	.litm--actor-hidden
+	.litm--section-header
+	[data-action="open-sheet"] {
+	opacity: 0.55;
+}
+
+/* Tags inside a hidden column: the column already reads as hidden — dimming
+   them again is the compounding that made the sidebar unreadable. */
+.litm--story-tags
+	.litm--actor-hidden
+	.litm--tag-row.litm--tag-hidden
+	.litm--tag-item {
+	opacity: 1;
 }
 
 /* Compact button style — shared by visibility toggles, add-tag, and any tag-row buttons */
@@ -4705,6 +4746,20 @@ section.standard-form.litm-actions-app {
 	cursor: pointer;
 }
 
+/* The eye-slash is the affordance that explains the dim, so on a hidden row it
+   drops the ghost resting color. Not full-strength text color — at that weight
+   it reads as a hovered button rather than a state marker. */
+.litm--story-tags .litm--tag-row.litm--tag-hidden .litm--visibility-toggle {
+	color: var(--color-litm-hidden);
+}
+
+/* Restores hover feedback the rule above would otherwise swallow — it has the
+   same specificity as the generic `:hover` at the top of this block but comes
+   later, so the hover state needs restating. */
+.litm--story-tags .litm--tag-row.litm--tag-hidden .litm--visibility-toggle:hover {
+	color: var(--color-text-primary);
+}
+
 /* Always show toggle indicators when checked */
 .litm--story-tags .litm--tag-row:has(.litm--single-use:checked)
 	.litm--single-use-label,
@@ -4745,6 +4800,14 @@ section.standard-form.litm-actions-app {
 .litm--story-tags .litm--section-header .litm--visibility-toggle:hover {
 	background: none;
 	color: var(--color-text-primary);
+}
+
+/* Same as the per-tag toggle: on a hidden column the eye-slash is the
+   affordance that explains the dim, so it drops the ghost resting color for
+   the GM-only hue. Must come after the ghost resting color above — equal
+   specificity. The `:hover` rule above still outranks this one. */
+.litm--story-tags .litm--actor-hidden .litm--header-visibility {
+	color: var(--color-litm-hidden);
 }
 
 .litm--collapse-chevron {
@@ -6095,6 +6158,7 @@ body.theme-dark .application:not(.theme-light),
 	--color-litm-status-text: #bcceb1;
 	--color-litm-weakness-text: #edbb89;
 	--color-litm-banner: #504438;
+	--color-litm-hidden: #9d97c9;
 	--color-litm-track-promise: #8a7018;
 	--color-litm-track-improve: #486842;
 	--color-litm-track-milestone: #7e5818;
@@ -6437,15 +6501,22 @@ body.litm--colorblind .themed.theme-dark,
 	padding: 6px;
 }
 
+/* The panel is as wide as its widest status row, which is usually wider than
+   the icon grid — so fit as many icon columns as that width allows instead of
+   leaving a dead gutter. `min-width` is the floor (Foundry's --effect-columns,
+   default 5) and it also drives the auto-fill count when there are no status
+   rows to widen the panel. No inline padding: the icons line up with the
+   status rows below, which sit against the panel's own 6px padding. */
 .litm-hud-grid {
 	display: grid;
-	grid-template-columns: repeat(
-			var(--effect-columns, 5),
-			var(--effect-size, 24px)
-		);
+	grid-template-columns: repeat(auto-fill, var(--effect-size, 24px));
+	justify-content: space-between;
 	gap: var(--effect-gap, 3px);
-	padding: var(--effect-gap, 3px);
-	margin-inline: auto;
+	padding-block: var(--effect-gap, 3px);
+	min-width: calc(
+		var(--effect-columns, 5) * var(--effect-size, 24px) +
+			(var(--effect-columns, 5) - 1) * var(--effect-gap, 3px)
+	);
 }
 
 .litm-hud-grid .effect-control {

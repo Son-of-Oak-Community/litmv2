@@ -1,4 +1,24 @@
+import { LitmSettings } from "../system/settings.js";
+
 const TOOLTIP_ID = "litm-token-tooltip";
+
+/**
+ * Chip markup for one effect. Names are escaped — they are free text a player
+ * can author, and the result goes through innerHTML.
+ * @param {string} baseClass  Tag chrome class (`litm-tag` / `litm-status`)
+ * @param {ActiveEffect} effect
+ * @param {string} label  Display text (statuses append their tier)
+ * @returns {string}
+ */
+function _chip(baseClass, effect, label) {
+	const esc = foundry.utils.escapeHTML;
+	// Only a GM/owner ever sees a hidden effect here, and it is content the
+	// players cannot see — dim it the way the sheets and sidebar do.
+	const cls = effect.system.isHidden
+		? `${baseClass} litm--tag-hidden`
+		: baseClass;
+	return `<span class="${cls}" data-text="${esc(label)}">${esc(label)}</span>`;
+}
 
 /**
  * Build tooltip HTML from an actor's story tags and status effects.
@@ -14,27 +34,24 @@ export function buildTooltipHTML(actor, isOwnerOrGM) {
 	const storyTags = actor.system.storyTags ?? [];
 	const statuses = actor.system.statusEffects ?? [];
 
-	const visibleTags = storyTags.filter(
-		(e) => e.active && (isOwnerOrGM || !e.system.isHidden),
-	);
-	const visibleStatuses = statuses.filter(
-		(e) => e.active && (isOwnerOrGM || !e.system.isHidden),
-	);
+	const isVisible = (e) => e.active && (isOwnerOrGM || !e.system.isHidden);
+	// Statuses are inflicted and worth tracking at a glance; story/backpack tags
+	// are reached for on demand, so the tooltip can be narrowed to statuses.
+	const visibleTags = LitmSettings.tokenTooltipStatusesOnly
+		? []
+		: storyTags.filter(isVisible);
+	const visibleStatuses = statuses.filter(isVisible);
 
 	if (!visibleTags.length && !visibleStatuses.length) return "";
 
-	const esc = foundry.utils.escapeHTML;
 	const parts = [];
 	for (const tag of visibleTags) {
-		const name = esc(tag.name);
-		parts.push(`<span class="litm-tag" data-text="${name}">${name}</span>`);
+		parts.push(_chip("litm-tag", tag, tag.name));
 	}
 	for (const status of visibleStatuses) {
 		const tier = status.system.currentTier;
-		const label = esc(tier > 0 ? `${status.name} ${tier}` : status.name);
-		parts.push(
-			`<span class="litm-status" data-text="${label}">${label}</span>`,
-		);
+		const label = tier > 0 ? `${status.name} ${tier}` : status.name;
+		parts.push(_chip("litm-status", status, label));
 	}
 	return parts.join("");
 }

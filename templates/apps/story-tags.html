@@ -124,7 +124,11 @@
 			<img class="litm--section-portrait" src="{{img}}" alt="{{name}}" />
 			{{name}}
 		</span>
-		{{#if (and ../isGM (not isUserCharacter))}}
+		{{!-- User characters have no hide toggle — they are the party's own
+		columns. A hidden one is still offered the toggle so a GM can recover it:
+		hidden user characters vanish entirely for players, and without this
+		there is no UI to put them back. --}}
+		{{#if (and ../isGM (or (not isUserCharacter) hidden))}}
 		<button type="button" class="litm--visibility-toggle litm--header-visibility"
 			data-action="toggle-visibility" data-id="{{id}}" data-type="actor"
 			data-tooltip="{{localize (ifThen hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}" aria-label="{{localize (ifThen hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}">

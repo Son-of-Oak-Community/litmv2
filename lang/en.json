@@ -243,6 +243,8 @@
 			"story_tags": "Story Tags",
 			"theme_limit": "Theme Limit",
 			"theme_limit_hint": "Maximum number of themes a hero can have. The default of 4 follows the core book; raise to allow more thematic breadth per hero.",
+			"token_tooltip_statuses_only": "Token Hover: Statuses Only",
+			"token_tooltip_statuses_only_hint": "Show only statuses when hovering a token, hiding story and backpack tags. Statuses are inflicted on a character and worth tracking at a glance; tags are reached for on demand.",
 			"use_fellowship": "Use Fellowship",
 			"use_fellowship_hint": "Enable the shared Fellowship actor, fellowship themes, and relationship tags. Disable for solo play or games without a fellowship. Requires reload.",
 			"welcome_screen": "Welcome Screen"
