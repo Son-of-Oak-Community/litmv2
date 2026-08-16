@@ -43,6 +43,10 @@ export class LitmSettings {
 		return game.settings.get("litmv2", "colorblind_mode");
 	}
 
+	static get tokenTooltipStatusesOnly() {
+		return game.settings.get("litmv2", "token_tooltip_statuses_only");
+	}
+
 	static get systemMigrationVersion() {
 		return game.settings.get("litmv2", "systemMigrationVersion");
 	}
@@ -289,6 +293,14 @@ export class LitmSettings {
 		game.settings.register("litmv2", "popout_tags_sidebar", {
 			name: "LITM.Settings.popout_tags_sidebar",
 			hint: "LITM.Settings.popout_tags_sidebar_hint",
+			scope: "client",
+			config: true,
+			type: Boolean,
+			default: false,
+		});
+		game.settings.register("litmv2", "token_tooltip_statuses_only", {
+			name: "LITM.Settings.token_tooltip_statuses_only",
+			hint: "LITM.Settings.token_tooltip_statuses_only_hint",
 			scope: "client",
 			config: true,
 			type: Boolean,

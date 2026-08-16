@@ -44,6 +44,14 @@ import { StoryTagsStore } from "./story-tags-store.js";
 
 const AbstractSidebarTab = foundry.applications.sidebar.AbstractSidebarTab;
 
+/**
+ * Actor types that join the sidebar visible rather than hidden. Challenges,
+ * journeys and story themes default to hidden so a GM can prep a scene and
+ * spring them later; the party's own columns have nothing to spring.
+ * @type {Set<string>}
+ */
+const DEFAULT_VISIBLE_ACTOR_TYPES = new Set(["hero", "fellowship"]);
+
 const STORY_TAG_OPERATIONS = {
 	createTags: (data) => ContentSources.createStoryTags(data),
 	updateTags: (data) => ContentSources.updateStoryTags(data),
@@ -954,7 +962,10 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			);
 		}
 
-		const hiddenActors = [...(this.config.hiddenActors ?? []), id];
+		const existingHidden = this.config.hiddenActors ?? [];
+		const hiddenActors = DEFAULT_VISIBLE_ACTOR_TYPES.has(actor.type)
+			? existingHidden
+			: [...existingHidden, id];
 		await LitmSettings.setStoryTags({
 			...this.config,
 			actors: [...this.config.actors, id],
@@ -1286,20 +1297,26 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	static async #onLoadSceneTokens(_event, _target) {
 		const config = this.config;
 		const existingUuids = new Set(this.actors.map((a) => a.id));
-		const tokenUuids = (canvas.tokens?.placeables ?? [])
-			.filter((t) => t.actor)
-			.map((t) => t.actor.uuid)
-			.filter((uuid) => !existingUuids.has(uuid));
 
-		if (!tokenUuids.length) return;
+		// Keyed by uuid so multiple tokens sharing an actor collapse to one entry
+		const newActors = new Map();
+		for (const token of canvas.tokens?.placeables ?? []) {
+			const actor = token.actor;
+			if (!actor || existingUuids.has(actor.uuid)) continue;
+			newActors.set(actor.uuid, actor);
+		}
 
-		// Deduplicate (multiple tokens may share the same actor)
-		const uniqueNewIds = [...new Set(tokenUuids)];
+		if (!newActors.size) return;
+
+		const uniqueNewIds = [...newActors.keys()];
+		const newHiddenIds = [...newActors.values()]
+			.filter((a) => !DEFAULT_VISIBLE_ACTOR_TYPES.has(a.type))
+			.map((a) => a.uuid);
 
 		await LitmSettings.setStoryTags({
 			...config,
 			actors: [...config.actors, ...uniqueNewIds],
-			hiddenActors: [...(config.hiddenActors ?? []), ...uniqueNewIds],
+			hiddenActors: [...(config.hiddenActors ?? []), ...newHiddenIds],
 		});
 		this.#broadcastRender();
 	}

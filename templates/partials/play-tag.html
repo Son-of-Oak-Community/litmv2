@@ -1,9 +1,10 @@
 {{!-- Renders a single clickable tag span. Context must have: id, name, type, and system.isScratched (AE) or isScratched (plain obj).
 Optional hash args: action (default "selectTag"), tooltip (override auto tooltip), noBurn (suppress burn text), extraClass.
 Tooltip auto-selects based on type: power_tag = full (or no-burn if noBurn set), weakness_tag/status_tag = click only, others = no burn.
-Tooltips and pointer cursor are suppressed for non-owners (uses @root.isOwner). --}}
+Tooltips and pointer cursor are suppressed for non-owners (uses @root.isOwner).
+Story/status tags carrying system.isHidden get the GM-only dim. --}}
 <span
-	class="noflex litm-{{type}} {{ifThen (or system.isScratched isScratched) 'scratched' ''}}{{#if extraClass}} {{extraClass}}{{/if}}"
+	class="noflex litm-{{type}} {{ifThen (or system.isScratched isScratched) 'scratched' ''}}{{#if system.isHidden}} litm--tag-hidden{{/if}}{{#if extraClass}} {{extraClass}}{{/if}}"
 	{{#if @root.isOwner}}data-action="{{#if action}}{{action}}{{else}}selectTag{{/if}}" role="button" tabindex="0"{{/if}}
 	data-tag-type="{{type}}"
 	data-tag-id="{{_id}}"
