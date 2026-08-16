@@ -3,8 +3,8 @@
 // future edit to either sink can't silently reopen the hole.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { applySpendIntent } from "../modules/apps/spend-power-service.js";
-import { dialogContent } from "../modules/system/renderers/renderer-utils.js";
 import { buildTooltipHTML } from "../modules/hud/token-tooltip.js";
+import { dialogContent } from "../modules/system/renderers/renderer-utils.js";
 import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
 
 vi.mock("../modules/system/sockets.js", () => ({

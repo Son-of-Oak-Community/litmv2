@@ -7,7 +7,11 @@ const OTHER = "player-2";
 const MESSAGE_ID = "msg-1";
 
 /** Roll data as the requester's own client stored it on the moderation card. */
-const STORED = { actorId: "hero-1", tags: { "tag-1": "positive" }, type: "quick" };
+const STORED = {
+	actorId: "hero-1",
+	tags: { "tag-1": "positive" },
+	type: "quick",
+};
 
 /** Pass `data: null` to model a card whose `data` flag was never written. */
 function moderationMessage({ authorId = ME, data = STORED } = {}) {

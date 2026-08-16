@@ -8,8 +8,7 @@ import { localize as t } from "../../utils.js";
 import { parseQuickAddInput, toTiers } from "./story-tag-helpers.js";
 
 /** One boolean per box, whatever truthy shape the flag stored a mark in. */
-const toMarks = (values) =>
-	Array.isArray(values) ? values.map(Boolean) : [];
+const toMarks = (values) => (Array.isArray(values) ? values.map(Boolean) : []);
 
 export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,

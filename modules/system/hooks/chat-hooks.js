@@ -23,10 +23,7 @@ import {
 	IMPROVE_MARKING_TAG_TYPES,
 	POWER_TAG_TYPES,
 } from "../config.js";
-import {
-	dialogContent,
-	formatCostLabel,
-} from "../renderers/renderer-utils.js";
+import { dialogContent, formatCostLabel } from "../renderers/renderer-utils.js";
 import { Sockets } from "../sockets.js";
 
 /**

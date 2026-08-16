@@ -4674,8 +4674,7 @@ section.standard-form.litm-actions-app {
 
 /* Tags inside a hidden column: the column already reads as hidden — dimming
    them again is the compounding that made the sidebar unreadable. */
-.litm--story-tags
-	.litm--actor-hidden
+.litm--story-tags .litm--actor-hidden
 	.litm--tag-row.litm--tag-hidden
 	.litm--tag-item {
 	opacity: 1;
@@ -4756,7 +4755,8 @@ section.standard-form.litm-actions-app {
 /* Restores hover feedback the rule above would otherwise swallow — it has the
    same specificity as the generic `:hover` at the top of this block but comes
    later, so the hover state needs restating. */
-.litm--story-tags .litm--tag-row.litm--tag-hidden .litm--visibility-toggle:hover {
+.litm--story-tags .litm--tag-row.litm--tag-hidden
+	.litm--visibility-toggle:hover {
 	color: var(--color-text-primary);
 }
 
@@ -6514,8 +6514,10 @@ body.litm--colorblind .themed.theme-dark,
 	gap: var(--effect-gap, 3px);
 	padding-block: var(--effect-gap, 3px);
 	min-width: calc(
-		var(--effect-columns, 5) * var(--effect-size, 24px) +
-			(var(--effect-columns, 5) - 1) * var(--effect-gap, 3px)
+		var(--effect-columns, 5) *
+		var(--effect-size, 24px) +
+		(var(--effect-columns, 5) - 1) *
+		var(--effect-gap, 3px)
 	);
 }
 

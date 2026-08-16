@@ -7,10 +7,7 @@ import {
 	isEffectVisible,
 	resolveEffect,
 } from "../active-effects/effect-queries.js";
-import {
-	clampTier,
-	maxStatusTier,
-} from "../active-effects/status-tag-data.js";
+import { clampTier, maxStatusTier } from "../active-effects/status-tag-data.js";
 import {
 	mapEffectForUI,
 	toTiers,
