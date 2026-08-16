@@ -1,3 +1,4 @@
+import { maxStatusTier } from "../active-effects/status-tag-data.js";
 import { descriptorToEffectData } from "../item/action/tag-string.js";
 import { error, info } from "../logger.js";
 import { LitmSettings } from "./settings.js";
@@ -261,7 +262,7 @@ export class ContentSources {
 			disabled: false,
 			system: {
 				isHidden: false,
-				tiers: [false, false, false, false, false, false],
+				tiers: Array(maxStatusTier()).fill(false),
 				limitId: null,
 			},
 		}));

@@ -278,7 +278,7 @@ function _syncStoryThemeActorToItem() {
 		const updates = {};
 		if ("name" in data && theme.name !== data.name) updates.name = data.name;
 		if ("img" in data && theme.img !== data.img) updates.img = data.img;
-		if (Object.keys(updates).length) theme.update(updates);
+		if (Object.keys(updates).length) theme.update(updates).catch(console.error);
 	});
 }
 

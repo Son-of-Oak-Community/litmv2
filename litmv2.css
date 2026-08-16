@@ -4589,6 +4589,16 @@ section.standard-form.litm-actions-app {
 	margin-left: auto;
 }
 
+/* Homebrew worlds deepen every status track (CONFIG.litmv2.maxStatusTier),
+   so a chip can carry up to ten pips. Past the core book's six, let the row
+   wrap rather than squeeze the status name — a smaller pip would read as a
+   different control. Six-pip worlds never match this rule. */
+.litm--tag-item-status:has(> :nth-child(7)) {
+	flex-wrap: wrap;
+	flex-shrink: 1;
+	justify-content: flex-end;
+}
+
 .litm--tier-label {
 	display: flex;
 	align-items: center;

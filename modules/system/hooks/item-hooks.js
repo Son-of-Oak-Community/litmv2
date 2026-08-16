@@ -50,7 +50,7 @@ function _syncTitleTagOnRename() {
 		if (!("name" in data)) return;
 		const titleTag = item.system.themeTag;
 		if (!titleTag || titleTag.name === data.name) return;
-		titleTag.update({ name: data.name });
+		titleTag.update({ name: data.name }).catch(console.error);
 	});
 }
 
@@ -79,7 +79,7 @@ function _syncStoryThemeItemToActor() {
 		const updates = {};
 		if ("name" in data && actor.name !== data.name) updates.name = data.name;
 		if ("img" in data && actor.img !== data.img) updates.img = data.img;
-		if (Object.keys(updates).length) actor.update(updates);
+		if (Object.keys(updates).length) actor.update(updates).catch(console.error);
 	});
 }
 
@@ -88,7 +88,9 @@ function _syncAddonEffectsOnUpdate() {
 		if (item.type !== "addon") return;
 		const actor = item.parent;
 		if (!actor || actor.documentName !== "Actor") return;
-		resyncAddonEffects(actor, item);
+		// Delete-then-recreate: a partial failure wipes the addon's synced tags
+		// with nothing but an unhandledrejection to show for it.
+		resyncAddonEffects(actor, item).catch(console.error);
 	});
 }
 

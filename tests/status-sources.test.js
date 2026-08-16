@@ -68,8 +68,11 @@ describe("collectReducibleStatuses", () => {
 		expect(collectReducibleStatuses(hero, [])).toEqual([]);
 	});
 
-	it("applies statusFilter to candidate groups but never to the own group", () => {
+	// A hidden status is a Narrator secret — the hero sheet already hides it from
+	// its own owner, so the reduce picker must not be the surface that leaks it.
+	it("applies statusFilter to the own group as well as candidate groups", () => {
 		const hero = actor("h1", "Gerrin", [
+			status("e0", "winded", 1),
 			status("e1", "cursed", 2, { hiddenMark: true }),
 		]);
 		const foe = actor("c1", "Serpent", [
@@ -84,7 +87,7 @@ describe("collectReducibleStatuses", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				statuses: [{ id: "e1", name: "cursed", tier: 2 }],
+				statuses: [{ id: "e0", name: "winded", tier: 1 }],
 			},
 			{
 				ownerId: "c1",
@@ -93,5 +96,15 @@ describe("collectReducibleStatuses", () => {
 				statuses: [{ id: "e3", name: "enraged", tier: 4 }],
 			},
 		]);
+	});
+
+	it("omits the own group when every own status is filtered out", () => {
+		const hero = actor("h1", "Gerrin", [
+			status("e1", "cursed", 2, { hiddenMark: true }),
+		]);
+		const groups = collectReducibleStatuses(hero, [], {
+			statusFilter: (e) => !e.hiddenMark,
+		});
+		expect(groups).toEqual([]);
 	});
 });

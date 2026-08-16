@@ -7,7 +7,10 @@
 		</div>
 	</header>
 	{{#if summary}}
-	<div class="litm-spend-chat__body">{{{summary}}}</div>
+	{{!-- Double-stache on purpose: appliedSummary is plain text (bracket markup,
+	      never HTML) built with i18n.format, which does not escape. Status/limit
+	      names inside it are player-set and this card is broadcast. --}}
+	<div class="litm-spend-chat__body">{{summary}}</div>
 	{{/if}}
 	{{#if footer}}
 	<footer class="litm-spend-chat__cost">{{footer}}</footer>

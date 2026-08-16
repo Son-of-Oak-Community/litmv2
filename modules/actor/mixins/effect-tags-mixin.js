@@ -59,8 +59,9 @@ export function EffectTagsMixin(Base) {
 		 *
 		 * @param {string} name
 		 * @param {object} [options]
-		 * @param {number} [options.tier]       Single tier (1–6); preferred for stacking
-		 * @param {boolean[]} [options.tiers]   Full 6-element tiers array; alternative to `tier`
+		 * @param {number} [options.tier]       Single tier (1 to the world's
+		 *   track depth); preferred for stacking
+		 * @param {boolean[]} [options.tiers]   Full tiers array; alternative to `tier`
 		 * @param {string} [options.img]
 		 * @param {boolean} [options.isHidden=false]
 		 * @param {string|null} [options.limitId=null]

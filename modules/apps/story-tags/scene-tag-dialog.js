@@ -1,6 +1,15 @@
+import {
+	maxStatusTier,
+	padTiers,
+	StatusTagData,
+} from "../../active-effects/status-tag-data.js";
 import { FLAGS } from "../../system/config.js";
 import { localize as t } from "../../utils.js";
 import { parseQuickAddInput, toTiers } from "./story-tag-helpers.js";
+
+/** One boolean per box, whatever truthy shape the flag stored a mark in. */
+const toMarks = (values) =>
+	Array.isArray(values) ? values.map(Boolean) : [];
 
 export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
@@ -42,13 +51,24 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 	get sceneData() {
 		const data = this.scene?.getFlag("litmv2", FLAGS.sceneTags);
 		if (!data || foundry.utils.isEmpty(data)) return { tags: [], limits: [] };
-		const tags = (data.tags ?? []).map((tag) =>
-			tag.type === "status"
-				? { ...tag, type: "status_tag" }
-				: tag.type === "tag"
-					? { ...tag, type: "story_tag" }
-					: tag,
-		);
+		const tags = (data.tags ?? []).map((tag) => {
+			const type =
+				tag.type === "status"
+					? "status_tag"
+					: tag.type === "tag"
+						? "story_tag"
+						: tag.type;
+			// Scene tags live on a flag, so no DataModel pads them on load the way
+			// `StatusTagData#prepareDerivedData` pads effect-backed statuses. A tag
+			// authored under a shallower Hero Limit would otherwise render fewer
+			// boxes than the world's track has, putting its top tiers out of reach.
+			// `padTiers` keeps only strict `true`, and this array is written back
+			// on the next edit — so coerce first, or a legacy mark stored as 1 or
+			// "1" would be cleared rather than carried over.
+			return type === "status_tag"
+				? { ...tag, type, values: padTiers(toMarks(tag.values)) }
+				: { ...tag, type };
+		});
 		return { ...data, tags };
 	}
 
@@ -183,8 +203,8 @@ export class SceneTagDialog extends foundry.applications.api.HandlebarsApplicati
 		const tag = {
 			name: parsed.name,
 			values: isStatus
-				? Array.from({ length: 6 }, (_, i) => i === parsed.tier - 1)
-				: Array(6).fill(null),
+				? StatusTagData.oneHot(parsed.tier)
+				: Array(maxStatusTier()).fill(null),
 			type: parsed.type,
 			isScratched: false,
 			isSingleUse: parsed.isSingleUse ?? false,

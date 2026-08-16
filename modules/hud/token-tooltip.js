@@ -3,11 +3,14 @@ const TOOLTIP_ID = "litm-token-tooltip";
 /**
  * Build tooltip HTML from an actor's story tags and status effects.
  * Respects isHidden — hidden tags only visible to GM/owner.
+ *
+ * Names are player-controlled on owned documents and land in `innerHTML`, so
+ * every interpolation is escaped. Exported for unit tests that pin that.
  * @param {Actor} actor
  * @param {boolean} isOwnerOrGM
  * @returns {string} HTML string, or empty string if no visible tags
  */
-function _buildTooltipHTML(actor, isOwnerOrGM) {
+export function buildTooltipHTML(actor, isOwnerOrGM) {
 	const storyTags = actor.system.storyTags ?? [];
 	const statuses = actor.system.statusEffects ?? [];
 
@@ -20,15 +23,15 @@ function _buildTooltipHTML(actor, isOwnerOrGM) {
 
 	if (!visibleTags.length && !visibleStatuses.length) return "";
 
+	const esc = foundry.utils.escapeHTML;
 	const parts = [];
 	for (const tag of visibleTags) {
-		parts.push(
-			`<span class="litm-tag" data-text="${tag.name}">${tag.name}</span>`,
-		);
+		const name = esc(tag.name);
+		parts.push(`<span class="litm-tag" data-text="${name}">${name}</span>`);
 	}
 	for (const status of visibleStatuses) {
 		const tier = status.system.currentTier;
-		const label = tier > 0 ? `${status.name} ${tier}` : status.name;
+		const label = esc(tier > 0 ? `${status.name} ${tier}` : status.name);
 		parts.push(
 			`<span class="litm-status" data-text="${label}">${label}</span>`,
 		);
@@ -47,7 +50,7 @@ function _showTooltip(token) {
 	if (!actor) return;
 
 	const isOwnerOrGM = game.user.isGM || actor.isOwner;
-	const html = _buildTooltipHTML(actor, isOwnerOrGM);
+	const html = buildTooltipHTML(actor, isOwnerOrGM);
 	if (!html) return;
 
 	const tooltip = document.createElement("div");

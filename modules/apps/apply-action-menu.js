@@ -1,3 +1,4 @@
+import { maxStatusTier } from "../active-effects/status-tag-data.js";
 import { applyConsequence } from "../item/action/chat-actions.js";
 import { error } from "../logger.js";
 import { FLAGS } from "../system/config.js";
@@ -118,9 +119,12 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 			enrich: (text, doc) => enrichHTML(text, doc),
 		});
 
-		// Scene actors as one-click target chips. Consequences land only on the
-		// player side, so the list is heroes / story themes / fellowship. The
-		// rolling actor is pre-selected for the common case.
+		// In-play actors as one-click target chips. Deliberately narrowed to the
+		// player side (heroes / story themes / fellowship): RAW, Consequences are
+		// what a Challenge delivers *to* the Heroes (Core p.147/149). A Challenge
+		// changing itself as a Consequence (a group rallying more Numbers) is the
+		// Narrator's call on that sheet, not a batch-apply target. The rolling
+		// actor is pre-selected for the common case.
 		const rollingActorId =
 			message.rolls?.[0]?.litm?.actorId ?? message.speaker?.actor ?? null;
 		const targets = getTargetCandidates({
@@ -151,7 +155,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		// min=0 so a consequence with multiple variable-tier statuses lets
 		// the GM pick which ones to apply (mirror to the apply-success path
 		// in SpendPowerApp). A token left at 0 is skipped.
-		adjustCounter(target, { min: 0, max: 6 });
+		adjustCounter(target, { min: 0, max: maxStatusTier() });
 	}
 
 	static async #onSubmit(_event, form, _formData) {

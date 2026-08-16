@@ -4,7 +4,10 @@ import {
 	updateEffectsByParent,
 } from "../../active-effects/effect-factories.js";
 import { resolveEffect } from "../../active-effects/effect-queries.js";
-import { StatusTagData } from "../../active-effects/status-tag-data.js";
+import {
+	maxStatusTier,
+	StatusTagData,
+} from "../../active-effects/status-tag-data.js";
 import {
 	classifyTagStringMatch,
 	isStatusDescriptor,
@@ -276,7 +279,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			? {
 					...statusTagEffect({
 						name: t("LITM.Ui.name_status"),
-						tiers: [true, false, false, false, false, false],
+						tiers: StatusTagData.oneHot(1),
 						isHidden: game.user.isGM,
 					}),
 					img: "systems/litmv2/assets/media/icons/consequences.svg",
@@ -304,8 +307,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			name: effectData.name,
 			type: isStatus ? "status_tag" : "story_tag",
 			values: isStatus
-				? [true, false, false, false, false, false]
-				: Array(6)
+				? StatusTagData.oneHot(1)
+				: Array(maxStatusTier())
 						.fill()
 						.map(() => null),
 			isScratched: false,
@@ -1087,7 +1090,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const isStatus = parsed.type === "status_tag";
 		const values = isStatus
 			? StatusTagData.oneHot(parsed.tier)
-			: Array(6)
+			: Array(maxStatusTier())
 					.fill()
 					.map(() => null);
 

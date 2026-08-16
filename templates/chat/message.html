@@ -32,7 +32,7 @@
 			{{else}}
 			<p class="outcome-description"><em>{{{localize outcome.description}}}</em></p>
 			{{#if sacrificeLevel}}
-			<p class="litm--sacrifice-price"><strong>{{localize (concat "LITM.Ui.sacrifice_" sacrificeLevel)}}</strong> — {{localize (concat "LITM.Ui.sacrifice_" sacrificeLevel "_price")}}{{#if sacrificeThemeName}} ({{sacrificeThemeName}}){{/if}}</p>
+			<p class="litm--sacrifice-price"><strong>{{localize (concat "LITM.Ui.sacrifice_" sacrificeLevel)}}</strong> — {{localize (concat "LITM.Ui.sacrifice_" sacrificeLevel "_price") tier=maxStatusTier}}{{#if sacrificeThemeName}} ({{sacrificeThemeName}}){{/if}}</p>
 			{{/if}}
 			{{/if}}
 		</div>

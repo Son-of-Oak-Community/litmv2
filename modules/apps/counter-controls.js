@@ -1,3 +1,5 @@
+import { clampTier } from "../active-effects/status-tag-data.js";
+
 /**
  * Shared +/- counter handler for SpendPowerApp and ApplyActionMenuApp. Walks
  * up to the nearest counter container (status-reduce row, spend-power counter,
@@ -30,7 +32,8 @@ export function adjustCounter(target, { min = 1, max = Infinity } = {}) {
 
 /**
  * Read chosen tiers from a container's variable-tier counter rows into a sparse
- * array indexed by `data-var-idx`, each clamped to [0, 6]. Shared by the Spend
+ * array indexed by `data-var-idx`, each clamped to the world's status track
+ * depth (0 means "skip this token"). Shared by the Spend
  * Power dialog and the Apply Action menu, which both render
  * `.litm-spend-power__var-tier` rows with a `.litm-spend-power__counter-value`.
  *
@@ -44,11 +47,9 @@ export function readVariableTiers(containerEl) {
 		.forEach((row) => {
 			const idx = Number(row.dataset.varIdx);
 			if (!Number.isInteger(idx) || idx < 0) return;
-			const raw = Number(
+			chosenTiers[idx] = clampTier(
 				row.querySelector(".litm-spend-power__counter-value")?.textContent ?? 0,
 			);
-			const val = Number.isFinite(raw) ? raw : 0;
-			chosenTiers[idx] = Math.max(0, Math.min(6, val));
 		});
 	return chosenTiers;
 }

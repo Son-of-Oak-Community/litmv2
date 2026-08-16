@@ -1,6 +1,10 @@
 import { storyTagEffect } from "../../active-effects/effect-factories.js";
 import { findApplicableEffect } from "../../active-effects/effect-queries.js";
-import { StatusTagData } from "../../active-effects/status-tag-data.js";
+import {
+	clampTier,
+	maxStatusTier,
+	StatusTagData,
+} from "../../active-effects/status-tag-data.js";
 import { pickLimit, pickTargetActor } from "../../apps/target-picker.js";
 import { Sockets } from "../../system/sockets.js";
 import { localize as t } from "../../utils.js";
@@ -26,8 +30,7 @@ const publicName = (actor) => actor.system?.publicName ?? actor.name;
  */
 function resolveTier(token, chosenTiers, variableIndex) {
 	if (!token.isVariable) return token.tier;
-	const raw = Number(chosenTiers?.[variableIndex]) || 0;
-	return Math.max(0, Math.min(6, raw));
+	return clampTier(chosenTiers?.[variableIndex]);
 }
 
 /**
@@ -49,7 +52,7 @@ function substituteVariableTiers(text, chosenTiers) {
 		const raw = Number(chosenTiers?.[varIdx]);
 		varIdx++;
 		if (!Number.isFinite(raw) || raw <= 0) return args[0];
-		const tier = Math.min(6, raw);
+		const tier = Math.min(maxStatusTier(), raw);
 		return `[${c.name}-${tier}]`;
 	});
 }
@@ -443,6 +446,17 @@ async function _applyProcess({ success, limitInfo, chosenTiers }) {
 		return null;
 	}
 
+	// A Limit with no maximum is an immunity: the status lands, the Limit does
+	// not move, and the table is told so (Core Book p.169).
+	if (result.immune) {
+		return {
+			appliedSummary: game.i18n.format("LITM.Actions.applied_immune", {
+				actor: publicName(actor),
+				name: result.limit.label || t("LITM.Terms.limit"),
+			}),
+		};
+	}
+
 	const verbKey =
 		success.verb === "advance" ? "applied_advance" : "applied_setback";
 	return {
@@ -510,9 +524,7 @@ export async function applyConsequence({ text, actor, chosenTiers = [] }) {
 		const c = classifyTagStringMatch(match);
 		if (c.kind === "status") {
 			const isVariable = c.tier === 0;
-			const tier = isVariable
-				? Math.max(0, Math.min(6, Number(chosenTiers?.[varIdx]) || 0))
-				: c.tier;
+			const tier = isVariable ? clampTier(chosenTiers?.[varIdx]) : c.tier;
 			if (isVariable) varIdx++;
 			if (tier <= 0) continue;
 			await actor.system.addStatus(c.name, { tier, isHidden: false });

@@ -3,6 +3,7 @@ import {
 	IMPROVE_MARKING_TAG_TYPES,
 	ROLL_TYPES,
 } from "../../system/config.js";
+import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { LitmSettings } from "../../system/settings.js";
 import { localize as t } from "../../utils.js";
 
@@ -135,6 +136,9 @@ export class LitmRoll extends foundry.dice.Roll {
 			tradePower: this.litm.tradePower || 0,
 			sacrificeLevel: this.litm.sacrificeLevel || null,
 			sacrificeThemeName: this.#getSacrificeThemeName(),
+			// Grave's price is "a status at the tier that kills you", which
+			// tracks the world's track depth rather than a fixed 6.
+			maxStatusTier: maxStatusTier(),
 			user: game.user.id,
 			isOwner: game.user.isGM || this.actor?.isOwner,
 			canSpendPower:

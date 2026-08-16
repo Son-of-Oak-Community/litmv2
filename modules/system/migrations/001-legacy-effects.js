@@ -136,7 +136,7 @@ async function applyChanges(changes) {
 	for (const { parentUuid, flagsToUnset, systemFieldsToUnset } of entries) {
 		if (!flagsToUnset.length && !systemFieldsToUnset.length) continue;
 		try {
-			const doc = await fromUuid(parentUuid);
+			const doc = await foundry.utils.fromUuid(parentUuid);
 			const update = {};
 			if (flagsToUnset.length) {
 				const flags = {};

@@ -1,20 +1,47 @@
+import { maxStatusTier, padTiers } from "./status-tiers.js";
+
+// Re-exported so `status-tag-data.js` stays the one import site for tier
+// semantics; `status-tiers.js` exists only to keep the primitives free of
+// `foundry.*`, and is imported directly only by modules that must stay that
+// way themselves (the camping data layer). Import from here everywhere else —
+// no third path, and `active-effects/index.js` deliberately doesn't offer one.
+export {
+	clampTier,
+	maxStatusTier,
+	padTiers,
+	RAW_MAX_STATUS_TIER,
+} from "./status-tiers.js";
+
 export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
 		return {
 			...super.defineSchema(),
 			isHidden: new fields.BooleanField({ initial: false }),
+			// Length is the world's track depth, not a fixed 6 — a function so
+			// it is evaluated per-instantiation, after CONFIG exists.
 			tiers: new fields.ArrayField(new fields.BooleanField(), {
-				initial: [false, false, false, false, false, false],
-				validate: (tiers) => {
-					if (tiers.length !== 6)
-						throw new foundry.data.validation.DataModelValidationError(
-							`tiers must have exactly 6 entries, got ${tiers.length}`,
-						);
-				},
+				initial: () => Array(maxStatusTier()).fill(false),
 			}),
 			limitId: new fields.StringField({ initial: null, nullable: true }),
 		};
+	}
+
+	/**
+	 * Widen the stored track to this world's depth. Effects authored under a
+	 * shallower ceiling — legacy worlds, compendium content, converter output
+	 * — therefore need no migration: they read as full-length here and the
+	 * longer array reaches storage on the next write.
+	 * @override
+	 */
+	prepareDerivedData() {
+		super.prepareDerivedData();
+		this.tiers = padTiers(this.tiers);
+	}
+
+	/** How many boxes this particular status has. */
+	get trackLength() {
+		return this.tiers.length;
 	}
 
 	get canBurn() {
@@ -33,7 +60,7 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 	}
 
 	/**
-	 * The highest marked tier in a 6-slot boolean `tiers` array (1-based),
+	 * The highest marked tier in a boolean `tiers` array (1-based),
 	 * or 0 when nothing is marked / the input isn't an array. This is the
 	 * single source for the `lastIndexOf(true) + 1` primitive reused across
 	 * renderers, chat actions, the roll dialog, camping, and spend-power.
@@ -53,13 +80,16 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 	}
 
 	/**
-	 * A 6-slot tiers array with exactly the given tier (1-based) marked.
-	 * Out-of-range tiers yield an all-false (tier-less) array.
+	 * A tiers array with exactly the given tier (1-based) marked, sized to the
+	 * world's track depth. Tiers outside the track — including above it, which
+	 * would put a status past the tier that kills — yield an all-false
+	 * (tier-less) array.
 	 * @param {number} tier
+	 * @param {number} [length]
 	 * @returns {boolean[]}
 	 */
-	static oneHot(tier) {
-		return Array.from({ length: 6 }, (_, i) => i + 1 === tier);
+	static oneHot(tier, length = maxStatusTier()) {
+		return Array.from({ length }, (_, i) => i + 1 === tier);
 	}
 
 	/**
@@ -74,7 +104,7 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 	 */
 	async toggleTier(tier, { deleteOnEmpty = false } = {}) {
 		const index = tier - 1;
-		if (index < 0 || index >= 6) return;
+		if (index < 0 || index >= this.trackLength) return;
 		const newTiers = [...this.tiers];
 		newTiers[index] = !newTiers[index];
 		return this.#persistTiers(newTiers, deleteOnEmpty);
@@ -98,15 +128,27 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 		return this.parent.update({ "system.tiers": newTiers });
 	}
 
+	/**
+	 * Mark `tier` (1-based), spilling right into the first free box when it is
+	 * already marked — the Core Book's stacking rule (p.167). The track first
+	 * grows to this world's depth, so marking tier 8 on an effect still stored
+	 * with six boxes widens it rather than dropping the mark; a tier beyond
+	 * the world's depth is still refused.
+	 * @param {boolean[]} tiers
+	 * @param {number} tier
+	 * @returns {boolean[]}
+	 */
 	static markTier(tiers, tier) {
 		const index = tier - 1;
-		if (index < 0 || index >= 6) return [...tiers];
+		const newTiers = padTiers(tiers);
+		if (index < 0) return newTiers;
 
-		const newTiers = [...tiers];
+		if (index >= newTiers.length) return newTiers;
+
 		if (!newTiers[index]) {
 			newTiers[index] = true;
 		} else {
-			for (let i = index + 1; i < 6; i++) {
+			for (let i = index + 1; i < newTiers.length; i++) {
 				if (!newTiers[i]) {
 					newTiers[i] = true;
 					break;
@@ -116,10 +158,20 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 		return newTiers;
 	}
 
+	/**
+	 * The tier several stacked status tracks add up to — each mark from every
+	 * input folded into one track, spilling right as it goes.
+	 * @param {boolean[][]} tierArrays
+	 * @returns {number}
+	 */
 	static stackedTier(tierArrays) {
-		let combined = [false, false, false, false, false, false];
+		const length = tierArrays.reduce(
+			(longest, tiers) => Math.max(longest, tiers?.length ?? 0),
+			maxStatusTier(),
+		);
+		let combined = Array(length).fill(false);
 		for (const tiers of tierArrays) {
-			for (let i = 0; i < 6; i++) {
+			for (let i = 0; i < (tiers?.length ?? 0); i++) {
 				if (tiers[i]) {
 					combined = StatusTagData.markTier(combined, i + 1);
 				}
@@ -133,8 +185,8 @@ export class StatusTagData extends foundry.data.ActiveEffectTypeDataModel {
 	}
 
 	calculateReduction(amount) {
-		const newTiers = Array(6).fill(false);
-		for (let i = 0; i < 6; i++) {
+		const newTiers = Array(this.trackLength).fill(false);
+		for (let i = 0; i < this.trackLength; i++) {
 			if (this.tiers[i]) {
 				const newIndex = i - amount;
 				if (newIndex >= 0) {

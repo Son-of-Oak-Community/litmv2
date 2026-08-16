@@ -34,7 +34,10 @@ import {
 	statusTagEffect,
 	storyTagEffect,
 } from "../../active-effects/effect-factories.js";
-import { StatusTagData } from "../../active-effects/status-tag-data.js";
+import {
+	maxStatusTier,
+	StatusTagData,
+} from "../../active-effects/status-tag-data.js";
 import { ACTOR_TAG_TYPES, makeTagStringRe } from "../../system/config.js";
 
 /** The world-configurable tag regex, falling back to the built-in source. */
@@ -57,7 +60,8 @@ function tagStringRe() {
  *   value: string|undefined,
  *   isSingleUse: boolean,
  * }} `name` is cleaned (weakness dash stripped); `tier` is status-only
- *   (1–6, 0 = variable or out-of-range); `value` is the raw numeric string
+ *   (1 to the world's track depth, 0 = variable or out-of-range); `value` is
+ *   the raw numeric string
  *   (status tier / limit max); `isSingleUse` is story-only (`[name!]`).
  */
 export function classifyTagStringMatch(match) {
@@ -76,7 +80,7 @@ export function classifyTagStringMatch(match) {
 	}
 	if (separator === "-") {
 		const raw = Number.parseInt(value, 10) || 0;
-		const tier = raw >= 1 && raw <= 6 ? raw : 0;
+		const tier = raw >= 1 && raw <= maxStatusTier() ? raw : 0;
 		return { kind: "status", name: rawName, tier, value, isSingleUse: false };
 	}
 	return {
@@ -222,7 +226,7 @@ export function tagDragData(c, extras = {}) {
 		id: foundry.utils.randomID(),
 		name: c.name,
 		type: DRAG_TYPES[c.kind] ?? "story_tag",
-		values: Array(6)
+		values: Array(maxStatusTier())
 			.fill(null)
 			.map((_, i) => (Number.parseInt(c.value, 10) === i + 1 ? c.value : null)),
 		isScratched: false,

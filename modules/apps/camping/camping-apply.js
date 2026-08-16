@@ -1,5 +1,8 @@
 import { relationshipTagEffect } from "../../active-effects/effect-factories.js";
-import { StatusTagData } from "../../active-effects/status-tag-data.js";
+import {
+	maxStatusTier,
+	StatusTagData,
+} from "../../active-effects/status-tag-data.js";
 import { parseTagString } from "../../item/action/tag-string.js";
 import { completeTrackUpdate, fireTrackCompletion } from "../../system/chat.js";
 import { Sockets } from "../../system/sockets.js";
@@ -253,7 +256,10 @@ function buildRestOps(act, allFx, ops, lines) {
 			});
 		} else if (choice.action === "reduce") {
 			const cap = effect.system?.currentTier ?? 0;
-			const amount = Math.max(1, Math.min(choice.amount ?? 1, cap || 6));
+			const amount = Math.max(
+				1,
+				Math.min(choice.amount ?? 1, cap || maxStatusTier()),
+			);
 			ops.statusReductions.push({ effect, amount });
 			// A reduction down to 0 deletes the status at apply time — recap
 			// it as cleared rather than "becomes name-0".

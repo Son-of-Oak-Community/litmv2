@@ -35,9 +35,19 @@ describe("HeroData.addStoryTag", () => {
 
 		expect(backpack.createEmbeddedDocuments).toHaveBeenCalledWith(
 			"ActiveEffect",
-			[{ ...data, transfer: true }],
+			[data],
 		);
 		expect(actor.createEmbeddedDocuments).not.toHaveBeenCalled();
+	});
+
+	it("does not set `transfer` explicitly — it is the Foundry default", async () => {
+		const backpack = fakeItem({ type: "backpack" });
+		const { model } = makeHero({ items: [backpack] });
+
+		await model.addStoryTag(storyTagEffect({ name: "lantern" }));
+
+		const [, [created]] = backpack.createEmbeddedDocuments.mock.calls[0];
+		expect(created).not.toHaveProperty("transfer");
 	});
 
 	it("warns and bails when a hero has no backpack", async () => {

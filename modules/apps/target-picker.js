@@ -1,16 +1,25 @@
 import { localize as t } from "../utils.js";
+import { StoryTagsStore } from "./story-tags/story-tags-store.js";
 
 const { DialogV2 } = foundry.applications.api;
 
 /**
- * Build the list of targetable actors — scene tokens first (deduped by
- * actor), falling back to observable sidebar actors so theatre-of-mind
- * sessions aren't gated on token placement. Shared by the picker dialog
- * below and the target chip row in the Spend Power dialog.
+ * Build the list of targetable actors: everyone in play. That is the union of
+ * the scene's tokens and the story-tag sidebar's tracked actors — the latter so
+ * theatre-of-mind sessions aren't gated on token placement, and so token-less
+ * entities (the fellowship, story themes) stay targetable in a tokened scene.
+ *
+ * The world actor directory is deliberately *not* a source: a content module's
+ * story-theme library would flood every picker with actors that were never in
+ * play. Sidebar visibility rules carry over — hidden columns stay GM-only and
+ * concealed challenges wear their mask.
+ *
+ * Shared by the picker dialog below, the Apply Consequences target chips and
+ * the Spend Power dialog's target/scratch/reduce/inflict pickers.
  * @param {object} [options]
  * @param {boolean} [options.allowSelf=false]   Whether to include the rolling actor.
  * @param {Actor|null} [options.exclude=null]   Actor to exclude from the list.
- * @param {string[]|null} [options.types=null]  Restrict to these actor types (default: all targetable types).
+ * @param {string[]|null} [options.types=null]  Restrict to these actor types (default: any).
  * @returns {object[]}  Entries of `{id, label, img, actor}`.
  */
 export function getTargetCandidates({
@@ -19,47 +28,64 @@ export function getTargetCandidates({
 	types = null,
 } = {}) {
 	const allowedTypes = types ? new Set(types) : null;
+	const tracked = StoryTagsStore.resolveTrackedActors();
+	const hiddenActorIds = _hiddenActorIds(tracked);
 	const seen = new Set();
 	const candidates = [];
-	for (const tk of canvas.tokens?.placeables ?? []) {
-		const a = tk.actor;
-		if (!a || seen.has(a.id)) continue;
-		if (!allowSelf && a === exclude) continue;
-		if (allowedTypes && !allowedTypes.has(a.type)) continue;
-		seen.add(a.id);
-		candidates.push({
-			id: a.id,
-			label: a.system?.maskedName ?? a.name,
-			img: a.img ?? tk.document?.texture?.src,
-			actor: a,
-		});
-	}
-	if (candidates.length) return candidates;
 
-	const TARGETABLE_TYPES = new Set([
-		"hero",
-		"challenge",
-		"journey",
-		"fellowship",
-		"story_theme",
-	]);
-	return (game.actors?.contents ?? [])
-		.filter((a) => (allowedTypes ?? TARGETABLE_TYPES).has(a.type))
-		.filter((a) => a.testUserPermission(game.user, "OBSERVER"))
-		.filter((a) => allowSelf || a !== exclude)
-		.map((a) => ({
-			id: a.id,
-			label: a.system.maskedName ?? a.name,
-			img: a.img,
-			actor: a,
-		}));
+	const add = (actor, img) => {
+		if (!actor || seen.has(actor.id)) return;
+		if (!allowSelf && actor === exclude) return;
+		if (allowedTypes && !allowedTypes.has(actor.type)) return;
+		// Checked here rather than per source: an actor hidden in the sidebar is
+		// hidden however it is reached, including through a token on the scene.
+		if (hiddenActorIds.has(actor.id)) return;
+		seen.add(actor.id);
+		candidates.push({
+			id: actor.id,
+			label: actor.system?.maskedName ?? actor.name,
+			img,
+			actor,
+		});
+	};
+
+	// Scene tokens first; a token's texture stands in for a portrait-less actor.
+	for (const tk of canvas.tokens?.placeables ?? []) {
+		// A GM-hidden token isn't in play as far as its players are concerned.
+		if (!game.user.isGM && tk.document?.hidden) continue;
+		add(tk.actor, tk.actor?.img ?? tk.document?.texture?.src);
+	}
+
+	for (const { actor } of tracked) add(actor, actor.img);
+
+	return candidates;
 }
 
 /**
- * Pick a token (or its actor) from the canvas. If the user has tokens
- * currently targeted, those are preferred. Otherwise a DialogV2 lists scene
- * placeables, falling back to observable sidebar actors. Returns the
- * selected token's actor (or `null` if cancelled).
+ * Actor ids a non-GM may not see, from the story-tag sidebar's hidden columns.
+ * Resolved to ids because the picker is keyed by actor, not by column: an actor
+ * reached by several tracked uuids (its own and an unlinked token's) stays
+ * visible as long as one of those columns is.
+ * @param {{uuid: string, actor: Actor}[]} tracked
+ * @returns {Set<string>}
+ */
+function _hiddenActorIds(tracked) {
+	if (game.user.isGM) return new Set();
+	const hiddenUuids = new Set(StoryTagsStore.config.hiddenActors ?? []);
+	const visible = new Set();
+	const hidden = new Set();
+	for (const { uuid, actor } of tracked) {
+		(hiddenUuids.has(uuid) ? hidden : visible).add(actor.id);
+	}
+	for (const id of visible) hidden.delete(id);
+	return hidden;
+}
+
+/**
+ * Pick an actor to act on. If the user has tokens currently targeted, those
+ * are preferred. Otherwise a DialogV2 lists everyone in play — see
+ * {@link getTargetCandidates} for what that means. Returns the selected
+ * actor (or `null` if cancelled).
  * @param {object} [options]
  * @param {boolean} [options.allowSelf=false]   Whether to include the rolling actor's own token.
  * @param {Actor|null} [options.exclude=null]   Actor to exclude from the picker.

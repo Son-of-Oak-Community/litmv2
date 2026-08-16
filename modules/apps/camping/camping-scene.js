@@ -688,7 +688,10 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			LitmCampingScene.open();
 		});
 		Hooks.on("litm.camping.saveOp", async ({ key, payload }) => {
-			if (!game.user.isGM) return;
+			// Exactly one GM applies the op, matching scratchEffect /
+			// storyTagsUpdate. With every GM applying it, `rest-tier-delta`
+			// (which computes from the persisted value) double-applies.
+			if (game.user !== game.users.activeGM) return;
 			await applyOpOnGM(key, payload);
 		});
 		Hooks.on("litm.camping.end", () => {

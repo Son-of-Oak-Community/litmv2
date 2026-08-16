@@ -4,6 +4,8 @@
  * effects that may live on either an actor or one of its embedded items.
  */
 
+import { maxStatusTier } from "./status-tag-data.js";
+
 export function powerTagEffect({
 	name,
 	isActive = false,
@@ -81,14 +83,15 @@ export function storyTagEffect({
  * Build ActiveEffect creation data for a status_tag effect.
  * @param {object} options
  * @param {string} options.name - Status name
- * @param {boolean[]} [options.tiers] - 6-element tier array
+ * @param {boolean[]} [options.tiers] - Tier array; defaults to an empty track
+ *   of this world's depth
  * @param {boolean} [options.isHidden=false]
  * @param {string|null} [options.limitId=null]
  * @returns {object} Effect creation data
  */
 export function statusTagEffect({
 	name,
-	tiers = [false, false, false, false, false, false],
+	tiers = Array(maxStatusTier()).fill(false),
 	isHidden = false,
 	limitId = null,
 } = {}) {

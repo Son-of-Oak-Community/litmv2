@@ -8,6 +8,10 @@ import {
 	resolveEffect,
 } from "../active-effects/effect-queries.js";
 import {
+	clampTier,
+	maxStatusTier,
+} from "../active-effects/status-tag-data.js";
+import {
 	mapEffectForUI,
 	toTiers,
 } from "../apps/story-tags/story-tag-helpers.js";
@@ -312,18 +316,22 @@ export class LitmActorSheet extends LitmSheetMixin(
 			...data,
 		}));
 		for (const effect of effectsToUpdate) {
-			const system = effect.system;
-			if (system && system.tierValue !== undefined) {
-				const raw = Number(system.tierValue);
-				const value = Number.isFinite(raw) ? Math.max(0, Math.min(6, raw)) : 0;
-				system.tiers = Array(6)
-					.fill(false)
-					.map((_, index) => index < value);
-				delete system.tierValue;
-			}
 			const existingEffect = resolveEffect(effect._id, this.document, {
 				fellowship: true,
 			});
+			const system = effect.system;
+			if (system && system.tierValue !== undefined) {
+				// Write the track at the stored depth when that is deeper than this
+				// world's — a Hero Limit lowered after the fact must not destroy
+				// boxes someone already marked (`padTiers` never shrinks either).
+				const length = Math.max(
+					maxStatusTier(),
+					existingEffect?.system?.tiers?.length ?? 0,
+				);
+				const value = clampTier(system.tierValue, { max: length });
+				system.tiers = Array.from({ length }, (_, index) => index < value);
+				delete system.tierValue;
+			}
 			const effectType = existingEffect?.type;
 			const defaults = EFFECT_DEFAULTS[effectType];
 			if (defaults) {
