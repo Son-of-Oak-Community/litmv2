@@ -114,6 +114,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			"quick-add": StoryTagSidebar.#onQuickAdd,
 			"load-scene-tags": StoryTagSidebar.#onLoadSceneTags,
 			"load-scene-tokens": StoryTagSidebar.#onLoadSceneTokens,
+			"narrator-call": StoryTagSidebar.#onNarratorCall,
 			viewLinkedRef: viewLinkedRefAction,
 		},
 	};
@@ -1013,6 +1014,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/* -------------------------------------------- */
 	/*  Action Handlers                             */
 	/* -------------------------------------------- */
+
+	/**
+	 * Open the Narrator's Call from the Tags sidebar — the Narrator's home
+	 * base is where they already have the whole scene in front of them, so it
+	 * is where calling for a roll belongs.
+	 */
+	static async #onNarratorCall() {
+		const { NarratorCallApp } = await import("../roll/narrator-call.js");
+		NarratorCallApp.open();
+	}
 
 	static #onAddTag(_event, target) {
 		const id = target.dataset.id;

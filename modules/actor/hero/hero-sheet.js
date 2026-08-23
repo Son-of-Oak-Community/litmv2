@@ -8,6 +8,10 @@ import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ActionsApp } from "../../apps/actions-app.js";
 import { findBurnedSelection } from "../../apps/roll/burn-cap.js";
 import { resolveRollDialogOwnership } from "../../apps/roll/roll-dialog.js";
+import {
+	blockPlayerInitiatedRoll,
+	canUserInitiateRoll,
+} from "../../apps/roll/roll-pipeline.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
@@ -261,6 +265,9 @@ export class HeroSheet extends LitmActorSheet {
 			...mofContext,
 			limit: this.system.limit,
 			showCamping: game.user.isGM && !LitmSettings.useFellowship,
+			// Hidden when the table routes every roll through the Narrator — the
+			// Roll button is the main way a player would start one unprompted.
+			showRollButton: canUserInitiateRoll(),
 		};
 	}
 
@@ -409,6 +416,7 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	static #onOpenRollDialog(_event, _target) {
+		if (blockPlayerInitiatedRoll()) return;
 		// If the dialog was previously opened in sacrifice mode and then
 		// cancelled, the instance still has type="sacrifice". Clicking the
 		// regular Roll button should bring the user back to a standard roll —
@@ -806,6 +814,9 @@ export class HeroSheet extends LitmActorSheet {
 	 * @param {{ shiftKey?: boolean }} [options] - Modifier key state
 	 */
 	selectTagForRoll(_tagType, tagId, tagName, { shiftKey = false } = {}) {
+		// Clicking a tag on the sheet opens the roll dialog, so it is an
+		// instigating entry point like the Roll button — same gate.
+		if (blockPlayerInitiatedRoll()) return;
 		const allTags = this._buildAllRollTags();
 		const tagRef =
 			(tagId && allTags.find((t) => t.id === tagId)) ||

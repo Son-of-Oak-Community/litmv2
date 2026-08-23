@@ -1,3 +1,4 @@
+import { blockPlayerInitiatedRoll } from "../apps/roll/roll-pipeline.js";
 import { LitmActorSheet } from "../sheets/base-actor-sheet.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
 import { LitmSettings } from "./settings.js";
@@ -191,6 +192,10 @@ export class KeyBindings {
 						localize: true,
 					});
 				}
+				// Toggling a dialog that is already open is not instigation —
+				// only gate the case where this would start a new roll.
+				if (!sheet.rollDialogInstance?.rendered && blockPlayerInitiatedRoll())
+					return;
 				return sheet.renderRollDialog({ toggle: true });
 			},
 			onUp: () => {},

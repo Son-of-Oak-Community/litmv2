@@ -1,10 +1,12 @@
 <div class="litm--play-actions">
 	<p class="litm--play-actions__prompt">{{localize "LITM.Ui.what_do_you_do"}}</p>
 	<div class="litm--play-actions__buttons flexrow gap-sm">
+		{{#if showRollButton}}
 		<button type="button" data-action="openRollDialog" data-tour="roll-button"
 			data-tooltip="{{localize 'LITM.Ui.roll'}}" aria-label="{{localize 'LITM.Ui.roll'}}">
 			<i class="fa-solid fa-dice" aria-hidden="true"></i>
 		</button>
+		{{/if}}
 		<button type="button" data-action="openActionsApp"
 			data-tooltip="{{localize 'LITM.Actions.app_title'}}" aria-label="{{localize 'LITM.Actions.app_title'}}">
 			<i class="fa-solid fa-scroll" aria-hidden="true"></i>

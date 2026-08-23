@@ -56,6 +56,7 @@ export class HandlebarsPartials {
 	static partials = [
 		"systems/litmv2/templates/parts/description.html",
 		"systems/litmv2/templates/partials/play-tag.html",
+		"systems/litmv2/templates/partials/roll-tag.html",
 		"systems/litmv2/templates/partials/play-theme-tags.html",
 		"systems/litmv2/templates/partials/play-theme-tracks.html",
 		"systems/litmv2/templates/partials/theme-special-improvements.html",

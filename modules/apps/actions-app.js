@@ -2,6 +2,7 @@ import { ACTION_CATEGORIES } from "../item/action/action-data.js";
 import { error } from "../logger.js";
 import { dialogContent } from "../system/renderers/renderer-utils.js";
 import { localize as t, viewLinkedRefAction } from "../utils.js";
+import { blockPlayerInitiatedRoll } from "./roll/roll-pipeline.js";
 import { sendRollRequest } from "./roll/roll-request.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -264,6 +265,7 @@ export class ActionsApp extends HandlebarsApplicationMixin(ApplicationV2) {
 	}
 
 	static async #onRollAction(_event, target) {
+		if (blockPlayerInitiatedRoll()) return;
 		const id = target.closest("[data-action-id]")?.dataset.actionId;
 		const item = id ? this.actor.items.get(id) : null;
 		if (!item) return;

@@ -24,6 +24,7 @@
    18.  Party Overview .......... Hero cards with quests, weaknesses, statuses
    19.  Dark Mode ............... Theme overrides for dark interface
    20.  Active Effect Sheet ..... Simplified tag/status editing
+   24.  Narrator's Call ......... GM-initiated roll: move, target, invocations
    (Welcome Overlay styles are in litmv2-welcome.css)
 ======================================== */
 
@@ -4458,6 +4459,20 @@ section.standard-form.litm-actions-app {
 	opacity: 0.75;
 }
 
+/* The Narrator's Call is the primary act in this cluster — it keeps full
+   opacity and the gold accent while the housekeeping buttons recede. */
+.litm--story-tags .litm--narrator-call-btn {
+	flex: 1;
+	font-size: var(--font-size-11);
+	border-color: var(--color-litm-tag);
+	color: var(--color-litm-tag-text);
+	font-weight: 600;
+}
+
+.litm--story-tags .litm--narrator-call-btn:hover {
+	background: var(--color-warm-1-10);
+}
+
 .litm--story-tags .litm--load-scene-btn:hover {
 	opacity: 1;
 }
@@ -7582,4 +7597,175 @@ body.litm--colorblind .themed.theme-dark,
 
 #content-sources-config .litm--pack-hidden i {
 	opacity: 0.6;
+}
+
+/* ========================================
+   24. Narrator's Call
+   The GM's half of a roll, made first: move, target, invoked tags, Might.
+   Reuses the Roll Dialog chrome wholesale (§9) — only the target picker
+   and the invocation summary are new.
+======================================== */
+
+/* The call is a top-to-bottom form, so the invocation picker is the only
+   part that should absorb leftover height — everything above it is fixed
+   chrome. The roll dialog gets this for free from .litm--roll-dialog-grid
+   (flex: 1); without the equivalent here the flex column steals height from
+   the short rows and squashes the move bar to its borders. */
+.litm--narrator-call .litm--roll-dialog-content > * {
+	flex: 0 0 auto;
+}
+
+.litm--narrator-call .litm--roll-dialog-tags-column {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+/* Target picker — a row of hero plaques. Selection reads as a warm wash
+   plus a gold underline, matching .litm--segmented-option.is-active
+   rather than inventing a second "selected" language. */
+.litm--narrator-call-targets {
+	display: flex;
+	flex-flow: row wrap;
+	gap: var(--spacer-8);
+}
+
+.litm--narrator-call-target {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	width: auto;
+	padding: var(--spacer-4) var(--spacer-12) var(--spacer-4) var(--spacer-4);
+	background: transparent;
+	border: 1px solid var(--color-text-primary-15);
+	border-radius: var(--radius-md);
+	line-height: 1.2;
+	transition:
+		background var(--transition-normal),
+		border-color var(--transition-normal);
+}
+
+.litm--narrator-call-target:hover {
+	background: var(--color-text-primary-10);
+}
+
+.litm--narrator-call-target.is-selected {
+	background: var(--color-text-primary-15);
+	border-color: var(--color-litm-tag);
+	box-shadow: inset 0 -2px 0 var(--color-warm-1);
+}
+
+.litm--narrator-call-target-img {
+	flex: 0 0 auto;
+	width: 2rem;
+	height: 2rem;
+	object-fit: cover;
+	border: none;
+	border-radius: var(--radius-sm);
+}
+
+.litm--narrator-call-target-name {
+	font-family: var(--font-h2);
+	font-size: var(--font-size-14);
+}
+
+/* Presence dot: sage when the player is at the table, hollow when the
+   Narrator will be rolling on their behalf. */
+.litm--narrator-call-target-presence {
+	flex: 0 0 auto;
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: var(--radius-circle);
+	background: var(--color-litm-status);
+}
+
+.litm--narrator-call-target.is-offline .litm--narrator-call-target-presence {
+	background: transparent;
+	border: 1px solid var(--color-text-primary-40);
+}
+
+.litm--narrator-call-target.is-offline .litm--narrator-call-target-img {
+	opacity: 0.55;
+}
+
+/* Invocation summary in the footer — reads back what the Narrator has
+   picked, so the call can be checked before it is sent. */
+.litm--narrator-call-invoked {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+}
+
+.litm--narrator-call-invoked-line {
+	display: flex;
+	flex-flow: row wrap;
+	align-items: baseline;
+	gap: var(--spacer-4) var(--spacer-8);
+	margin: 0;
+}
+
+.litm--narrator-call-invoked-label {
+	font-size: var(--font-size-11);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	opacity: 0.7;
+}
+
+/* Banner in the roll dialog once a call has been handed over. */
+.litm--narrator-call-banner {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	margin-block-end: var(--spacer-4);
+}
+
+.litm--narrator-call-note {
+	margin: 0 0 var(--spacer-8);
+}
+
+/* A tag the Narrator invoked: quill mark, and locked for the roller. */
+.litm--roll-dialog-tag-narrator {
+	font-size: var(--font-size-11);
+	color: var(--color-litm-tag-text);
+	opacity: 0.8;
+}
+
+.litm--roll-dialog-tag.is-narrator.is-locked {
+	cursor: default;
+}
+
+/* Chat card additions — the Narrator's Call record. Chat content is not
+   `.litm`-scoped, so these hang off the card's own classes. */
+.litm--roll-request-target {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	margin: 0;
+	font-family: var(--font-h2);
+}
+
+.litm--roll-request-target-img {
+	width: 1.75rem;
+	height: 1.75rem;
+	object-fit: cover;
+	border: none;
+	border-radius: var(--radius-sm);
+}
+
+.litm--roll-request-invoked {
+	display: flex;
+	flex-flow: row wrap;
+	align-items: baseline;
+	gap: var(--spacer-4) var(--spacer-8);
+	margin: 0;
+}
+
+.litm--roll-request-invoked-label {
+	font-size: var(--font-size-11);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	opacity: 0.7;
+}
+
+.litm--roll-request-might {
+	font-weight: 600;
 }

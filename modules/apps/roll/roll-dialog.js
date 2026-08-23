@@ -1,8 +1,5 @@
 import { effectToPlain } from "../../active-effects/effect-queries.js";
-import {
-	maxStatusTier,
-	StatusTagData,
-} from "../../active-effects/status-tag-data.js";
+import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { ALL_TAG_TYPES, EFFECT_TAG_ORDER, FLAGS } from "../../system/config.js";
 import { renderAction } from "../../system/renderers/action-renderer.js";
 import { Sockets } from "../../system/sockets.js";
@@ -15,6 +12,7 @@ import { LitmEmbedPopout } from "../embed-popout.js";
 import { mitigationBannerText } from "../mitigation.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 import { findBurnedSelection, nextStateAfterScratched } from "./burn-cap.js";
+import { normalizeCallType } from "./narrator-call-rules.js";
 import { LitmRoll } from "./roll.js";
 import {
 	buildActionContext,
@@ -23,6 +21,8 @@ import {
 	buildGmViewerContext,
 	buildOwnerContext,
 	buildSceneActorTagGroups,
+	buildSceneStatusItems,
+	buildSceneStoryTagItems,
 	makeTagDecorator,
 	sortByTypeThenName,
 } from "./roll-dialog-context.js";
@@ -321,6 +321,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#actionDoc = null;
 	#sojournBonus = 0;
 	#mitigation = null;
+	/** @type {{narratorUserId: string, narratorName: string, note: string}|null} */
+	#narratorCall = null;
 
 	constructor(options = {}) {
 		if (options.actorId) options.id = `litm-roll-dialog-${options.actorId}`;
@@ -391,6 +393,64 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (this.rendered) this.render();
 	}
 
+	/** @returns {{narratorUserId: string, narratorName: string, note: string}|null} */
+	get narratorCall() {
+		return this.#narratorCall;
+	}
+
+	/**
+	 * Adopt a Narrator's Call: the move the Narrator asked for, the tags they
+	 * invoked for and against the Hero, and the Might they judged (Core Book
+	 * p.272). Everything the Narrator set is applied wholesale; the roller's
+	 * own selections survive untouched, because choosing those is the half of
+	 * the roll that stays theirs.
+	 *
+	 * A second call from the Narrator replaces the first: the previous
+	 * Narrator entries are dropped before the new ones land, so an adjusted
+	 * call doesn't accumulate stale opposition.
+	 *
+	 * @param {object} call
+	 * @param {string} call.type            One of NARRATOR_CALL_TYPES
+	 * @param {string} [call.title]         What the roll is for
+	 * @param {string} [call.note]          Free prose from the Narrator
+	 * @param {string|null} [call.actionUuid]
+	 * @param {number} [call.might]
+	 * @param {[string, object][]} [call.selections]  Narrator-stamped entries
+	 * @param {string} [call.narratorUserId]
+	 * @param {string} [call.narratorName]
+	 */
+	applyNarratorCall({
+		type,
+		title = "",
+		note = "",
+		actionUuid = null,
+		might = 0,
+		selections = [],
+		narratorUserId = null,
+		narratorName = "",
+	} = {}) {
+		this.#cachedTotalPower = null;
+		this.type = normalizeCallType(type);
+		// A called roll is never a sacrifice, so no sacrifice state can linger.
+		this.#sacrificeThemeId = null;
+		this.#sacrificeStatusName = "";
+		if (this.type !== "mitigate") this.#mitigation = null;
+		this.rollName = title || "";
+		this.#actionUuid = actionUuid || null;
+		this.#actionDoc = null;
+		this.#might = Number(might) || 0;
+
+		for (const [id, entry] of [...this.#selectionMap]) {
+			if (entry?.narrator) this.#selectionMap.delete(id);
+		}
+		for (const [id, entry] of selections) {
+			this.#selectionMap.set(id, { ...entry, effect: null });
+		}
+
+		this.#narratorCall = { narratorUserId, narratorName, note };
+		if (this.rendered) this.render();
+	}
+
 	setType(type) {
 		if (!type) return;
 		// Mitigation context only makes sense for a reaction; drop it when the
@@ -454,7 +514,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		effectId,
 		state,
 		contributorId = null,
-		{ effect = null, effectUuid = null, ...contributorMeta } = {},
+		{ effect = null, effectUuid = null, narrator, ...contributorMeta } = {},
 	) {
 		this.#cachedTotalPower = null;
 		if (!state) {
@@ -464,6 +524,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			const entry = {
 				state,
 				contributorId,
+				// Sticky: a Narrator invocation stays a Narrator invocation
+				// while it is selected, even when the GM cycles it to another
+				// polarity. Clearing it (state "") deletes the entry entirely,
+				// which is the way to un-invoke.
+				narrator: narrator ?? existing?.narrator ?? false,
 				effect: effect ?? existing?.effect ?? null,
 				effectUuid: effectUuid ?? effect?.uuid ?? existing?.effectUuid ?? null,
 				...(Object.keys(contributorMeta).length
@@ -498,45 +563,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	get statuses() {
-		const { tags = [] } = this.#storyTagSidebar;
-		const sceneStatuses = tags
-			.filter((tag) => tag.values?.some((v) => !!v))
-			.map((tag) => {
-				const sel = this.getSelection(tag.uuid);
-				return {
-					...tag,
-					type: "status_tag",
-					value: StatusTagData.tierOf(tag.values),
-					actorName: null,
-					actorImg: null,
-					state: sel.state || "",
-					contributorId: sel.contributorId || null,
-					states: ",negative,positive",
-				};
-			});
-		return sceneStatuses;
+		return buildSceneStatusItems((uuid) => this.getSelection(uuid));
 	}
 
 	get tags() {
 		if (!this.actor) return [];
-		const { tags = [] } = this.#storyTagSidebar;
-		const sceneTags = tags
-			.filter((tag) => tag.values.every((v) => !v))
-			.map((tag) => {
-				const sel = this.getSelection(tag.uuid);
-				return {
-					...tag,
-					type: "story_tag",
-					actorName: null,
-					actorImg: null,
-					state: sel.state || "",
-					contributorId: sel.contributorId || null,
-					states: tag.isSingleUse
-						? ",positive,negative"
-						: ",positive,negative,scratched",
-				};
-			});
-		return sceneTags;
+		return buildSceneStoryTagItems((uuid) => this.getSelection(uuid));
 	}
 
 	get gmTags() {
@@ -563,6 +595,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				...tag,
 				state: sel.state || "",
 				contributorId: sel.contributorId || null,
+				narrator: sel.narrator,
 			};
 		});
 	}
@@ -783,6 +816,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			type: this.type,
 			mitigationBanner:
 				this.type === "mitigate" ? mitigationBannerText(this.#mitigation) : "",
+			narratorCall: this.#narratorCall
+				? {
+						...this.#narratorCall,
+						typeLabel: t(`LITM.Ui.roll_${this.type}`),
+					}
+				: null,
 			isCampAction: this.type === "campAction",
 			sojournBonus: this.#sojournBonus,
 			totalPower: this.totalPower,
@@ -889,6 +928,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	#canModifyTag(selOrTag) {
+		// Narrator invocations outrank dialog ownership. When the Narrator
+		// calls for a roll they invoke the opposition's and the environment's
+		// tags (Core Book p.272); handing the dialog to the player makes that
+		// player the owner, so this check has to come BEFORE the owner
+		// short-circuit or the roller could quietly drop the Narrator's -2.
+		if (selOrTag?.narrator && !game.user.isGM) return false;
 		if (this.isOwner) return true;
 		if (!selOrTag) return false;
 		const contributorId = selOrTag.contributorId || null;
@@ -1009,6 +1054,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#actionDoc = null;
 		this.#sojournBonus = 0;
 		this.#mitigation = null;
+		this.#narratorCall = null;
 		this.rollName = "";
 		this.type = "quick";
 		// reset() is state-only — it must NOT close the dialog. Closing is

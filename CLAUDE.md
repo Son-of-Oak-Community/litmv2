@@ -119,6 +119,31 @@ HeroSheet roll → LitmRollDialog (tag selection)
 
 The dialog's `#selectionMap` is the source of truth for tag selections, not form fields.
 
+**GM-initiated (Narrator's Call).** The inverse path, Core Book p.269/p.272: the
+Narrator picks the move and the opposition first, the player finishes the roll.
+
+```
+NarratorCallApp (GM)  -- move type, target hero, invoked tags, Might
+  → sendNarratorCall()  ("litm.narratorCall" hook, cancellable)
+  → whispered chat card (durable) + "narratorCall" socket (nudge)
+  → applyNarratorCall() on the roller's client
+  → dialog.applyNarratorCall() seeds #selectionMap with narrator-stamped entries
+  → player picks their own tags and submits through the normal pipeline
+```
+
+`NarratorCallApp` duck-types the slice of `LitmRollDialog` that
+`buildGmViewerContext` consumes (`actor`, `actorId`, `getSelection`, `tabGroups`)
+so both surfaces share one tag picker. Selection entries carrying
+`narrator: true` are locked for non-GMs in both `makeTagDecorator` and
+`LitmRollDialog#canModifyTag` — the Narrator's invocations aren't the roller's
+to drop. When no active non-GM owner exists, the call falls back to the GM, who
+rolls on the Hero's behalf in the same dialog.
+
+The `player_initiated_rolls` world setting gates *instigation* only (hero-sheet
+Roll button, sheet tag click, rolling an Action, the `R` keybinding — see
+`blockPlayerInitiatedRoll` in `roll-pipeline.js`). Joining an open roll, taking
+a call, reacting, camp actions and Sacrifice stay open regardless.
+
 ### Sockets
 
 Namespace `system.litmv2`. Events cover roll-dialog sync, GM moderation, GM-proxied mutation of unowned documents (scratch, apply success/status, hero creation), story tags, and camping. Canonical list and payload shapes: `modules/system/sockets.js` — read it rather than guessing an event name.
@@ -202,6 +227,8 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.trackCompleted` — `{ actor, trackInfo: { text, type, actorId?, themeId? } }`
 - `litm.limitReached` — `{ actor, limit }` where `limit.max` is the effective max
 - `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits); no payload. Roll dialogs listen to refresh contributed-tag groups.
+- `litm.narratorCall` — `(payload, actor)` before a Narrator's Call is delivered; return `false` to cancel, or mutate `payload` to rewrite it
+- `litm.narratorCallReceived` — `(payload)` on the roller's client, before the dialog is seeded
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.
 

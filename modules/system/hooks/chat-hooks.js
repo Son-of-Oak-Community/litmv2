@@ -3,6 +3,7 @@ import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { collectSourceConsequences } from "../../apps/consequence-sources.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
+import { applyNarratorCall } from "../../apps/roll/roll-request.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
 import { StoryTagsStore } from "../../apps/story-tags/story-tags-store.js";
 import { ThemeAdvancementApp } from "../../apps/theme-advancement.js";
@@ -416,7 +417,7 @@ function _resolveReactingHero() {
 
 async function _handleTakeRollRequest(_target, app) {
 	const req = app.getFlag("litmv2", "rollRequest");
-	if (!req?.actionUuid || !req?.requestedActorId) return;
+	if (!req?.requestedActorId) return;
 
 	const actor = game.actors.get(req.requestedActorId);
 	if (!actor) {
@@ -428,6 +429,13 @@ async function _handleTakeRollRequest(_target, app) {
 		return;
 	}
 
+	// A Narrator's Call carries the whole configured roll — move, invoked
+	// tags, Might. Taking it seeds the dialog with all of that. This is also
+	// the path a player who was offline when the call went out arrives by.
+	if (req.call) return applyNarratorCall(req);
+
+	// Pre-Narrator's-Call cards only ever named an action.
+	if (!req.actionUuid) return;
 	const sheet = actor.sheet;
 	const dialog = sheet?.rollDialogInstance;
 	if (!dialog) return;

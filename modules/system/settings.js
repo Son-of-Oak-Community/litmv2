@@ -104,6 +104,18 @@ export class LitmSettings {
 		return game.settings.get("litmv2", "improve_threshold");
 	}
 
+	/**
+	 * Whether players may open a roll dialog on their own initiative.
+	 *
+	 * Off means the table runs rolls the way the Core Book describes them
+	 * (p.269): the Narrator decides an action needs dice and what kind, and
+	 * calls for it. Players still join, contribute, react, take a Narrator's
+	 * Call, and roll camp actions — they just don't start one unprompted.
+	 */
+	static get playerInitiatedRolls() {
+		return game.settings.get("litmv2", "player_initiated_rolls");
+	}
+
 	static get autoMarkImprove() {
 		return game.settings.get("litmv2", "auto_mark_improve");
 	}
@@ -279,6 +291,23 @@ export class LitmSettings {
 			type: Boolean,
 			default: true,
 			requiresReload: true,
+		});
+		game.settings.register("litmv2", "player_initiated_rolls", {
+			name: "LITM.Settings.player_initiated_rolls",
+			hint: "LITM.Settings.player_initiated_rolls_hint",
+			scope: "world",
+			config: true,
+			type: Boolean,
+			default: true,
+			// No reload: this only decides whether the hero sheet renders its
+			// Roll button, so re-rendering the open sheets is enough — a GM
+			// toggling it mid-session should see it take effect at once.
+			onChange: () => {
+				for (const actor of game.actors ?? []) {
+					if (actor.type === "hero" && actor.sheet?.rendered)
+						actor.sheet.render();
+				}
+			},
 		});
 		game.settings.register("litmv2", "use_fellowship", {
 			name: "LITM.Settings.use_fellowship",

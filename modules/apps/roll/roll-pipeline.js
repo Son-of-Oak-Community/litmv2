@@ -6,6 +6,8 @@ import { FLAGS, IMPROVE_MARKING_TAG_TYPES } from "../../system/config.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
+import { localize as t } from "../../utils.js";
+import { canInitiateRoll } from "./narrator-call-rules.js";
 import { LitmRoll } from "./roll.js";
 
 /**
@@ -328,4 +330,36 @@ export function resolveRollDialogOwnership(actor, userId) {
 			(!activeOwner?.active && hasActorPermission) ||
 			(activeOwner?.isGM && hasActorPermission));
 	return { isOwner, gmAsViewer, activeOwnerId };
+}
+
+/**
+ * Whether this client may start a roll of its own accord.
+ *
+ * The `player_initiated_rolls` world setting lets a table put the Narrator in
+ * charge of when dice come out (Core Book p.269). This gate covers the
+ * *instigating* entry points only — the hero sheet's Roll button, clicking a
+ * tag on a sheet to start a roll, rolling an Action from the browser, and the
+ * roll keybinding. Joining someone else's open roll, taking a Narrator's
+ * Call, reacting to a Consequence, camp actions, and Sacrifice all stay open:
+ * none of them decide that a roll happens.
+ *
+ * @param {User} [user]
+ * @returns {boolean}
+ */
+export function canUserInitiateRoll(user = game.user) {
+	return canInitiateRoll({
+		isGM: user?.isGM ?? false,
+		playerInitiatedRolls: LitmSettings.playerInitiatedRolls,
+	});
+}
+
+/**
+ * Gate an instigating entry point, warning the user when the table routes
+ * rolls through the Narrator. Returns true when the caller should stop.
+ * @returns {boolean}
+ */
+export function blockPlayerInitiatedRoll() {
+	if (canUserInitiateRoll()) return false;
+	ui.notifications?.info(t("LITM.Ui.narrator_call_player_rolls_disabled"));
+	return true;
 }

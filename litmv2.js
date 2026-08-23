@@ -16,6 +16,7 @@ import { StoryThemeActorData } from "./modules/actor/story-theme/story-theme-act
 import { ApplyActionMenuApp } from "./modules/apps/apply-action-menu.js";
 import { LitmCampingScene } from "./modules/apps/camping/camping-scene.js";
 import { DoubleSix } from "./modules/apps/dice.js";
+import { NarratorCallApp } from "./modules/apps/roll/narrator-call.js";
 import { LitmRoll } from "./modules/apps/roll/roll.js";
 import { LitmRollDialog } from "./modules/apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "./modules/apps/spend-power.js";
@@ -70,6 +71,9 @@ Hooks.once("init", () => {
 	 * - `fellowship` — the singleton fellowship actor (or null when disabled)
 	 * - `LitmRoll`, `LitmRollDialog` — replaceable roll classes; combine with
 	 *   `CONFIG.litmv2.roll.{formula,resolver}` for third-party roll customisation
+	 * - `NarratorCallApp` — the GM-initiated roll surface; `NarratorCallApp.open()`
+	 *   is the entry point, and `litm.narratorCall` / `litm.narratorCallReceived`
+	 *   are the hooks around a call going out and landing
 	 * - `StoryTagApp`, `SpendPowerApp`, `ApplyActionMenuApp`,
 	 *   `ThemeAdvancementApp`, `ThemeEvolutionWizard`, `WelcomeOverlay` —
 	 *   replaceable app classes
@@ -98,6 +102,7 @@ Hooks.once("init", () => {
 		},
 		LitmRollDialog,
 		LitmRoll,
+		NarratorCallApp,
 		WelcomeOverlay,
 		StoryTagApp: StoryTagSidebar,
 		SpendPowerApp,

@@ -8,6 +8,7 @@ import {
 	effectToPlain,
 	isEffectVisible,
 } from "../../active-effects/effect-queries.js";
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { ACTOR_TAG_TYPES, EFFECT_GROUP_LABELS } from "../../system/config.js";
 import { localize as t } from "../../utils.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
@@ -44,6 +45,12 @@ export function makeTagDecorator({
 	const isGM = game.user.isGM;
 	return (tag) => {
 		const contributorId = tag.contributorId || null;
+		// A tag the Narrator invoked when they called for this roll (Core Book
+		// p.272 — "invoke tags from the target of the action, the opposition,
+		// or the environment"). It is theirs to change, not the roller's, so
+		// it stays locked for everyone but a GM even after the dialog is
+		// handed to the player who owns the hero.
+		const isNarrator = tag.narrator === true;
 		const isOpposition =
 			tag.actorType === "challenge" || tag.actorType === "journey";
 		// Already-scratched (unavailable) tags cannot be invoked or re-burned;
@@ -72,8 +79,10 @@ export function makeTagDecorator({
 			displayName: tag.displayName || tag.name,
 			locked:
 				isUnavailable ||
+				(isNarrator && !isGM) ||
 				(!isOwner && contributorId && contributorId !== currentUserId),
 			isUnavailable,
+			isNarrator,
 			states,
 			value:
 				tag.type === "status_tag"
@@ -83,6 +92,60 @@ export function makeTagDecorator({
 			isNegativeSuggestion: negativeSuggestedIds.has(tagId),
 		};
 	};
+}
+
+/**
+ * Scene statuses from the story-tag pack — the environment's own tiers, not
+ * attached to any actor. Shared by the roll dialog and the Narrator's Call so
+ * both read the scene from one place.
+ *
+ * @param {(uuid: string) => {state?: string, contributorId?: string, narrator?: boolean}} getSelection
+ * @returns {object[]}
+ */
+export function buildSceneStatusItems(getSelection) {
+	return (StoryTagsStore.tags ?? [])
+		.filter((tag) => tag.values?.some((v) => !!v))
+		.map((tag) => {
+			const sel = getSelection(tag.uuid) ?? {};
+			return {
+				...tag,
+				type: "status_tag",
+				value: StatusTagData.tierOf(tag.values),
+				actorName: null,
+				actorImg: null,
+				state: sel.state || "",
+				contributorId: sel.contributorId || null,
+				narrator: sel.narrator,
+				states: ",negative,positive",
+			};
+		});
+}
+
+/**
+ * Scene story tags from the story-tag pack — tier-less environment tags.
+ * Counterpart to {@link buildSceneStatusItems}.
+ *
+ * @param {(uuid: string) => {state?: string, contributorId?: string, narrator?: boolean}} getSelection
+ * @returns {object[]}
+ */
+export function buildSceneStoryTagItems(getSelection) {
+	return (StoryTagsStore.tags ?? [])
+		.filter((tag) => tag.values.every((v) => !v))
+		.map((tag) => {
+			const sel = getSelection(tag.uuid) ?? {};
+			return {
+				...tag,
+				type: "story_tag",
+				actorName: null,
+				actorImg: null,
+				state: sel.state || "",
+				contributorId: sel.contributorId || null,
+				narrator: sel.narrator,
+				states: tag.isSingleUse
+					? ",positive,negative"
+					: ",positive,negative,scratched",
+			};
+		});
 }
 
 /**
@@ -136,6 +199,7 @@ export function buildContributedTagGroups(
 				...rawTag,
 				state: sel.state,
 				contributorId: sel.contributorId,
+				narrator: sel.narrator,
 			});
 			const themeMap = ensureActorEntry(
 				sel.contributorActorId,
@@ -165,6 +229,7 @@ export function buildContributedTagGroups(
 					...rawTag,
 					state: sel.state,
 					contributorId: sel.contributorId,
+					narrator: sel.narrator,
 				});
 				pushThemeGroup(themeMap, rawTag, e.parent?.img ?? null, tag);
 			}
@@ -237,6 +302,7 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 			parent: effect.parent,
 			state: sel.state,
 			contributorId: sel.contributorId,
+			narrator: sel.narrator,
 		});
 	};
 
@@ -388,6 +454,7 @@ function buildSidebarActorTagGroups(
 					actorType: sidebarActor.type,
 					state: sel.state,
 					contributorId: sel.contributorId,
+					narrator: sel.narrator,
 				});
 			})
 			.filter(Boolean);
@@ -461,6 +528,7 @@ export function buildGmViewerContext(
 				...rawTag,
 				state: sel.state,
 				contributorId: sel.contributorId,
+				narrator: sel.narrator,
 			});
 			// story_tag and status_tag effects always group by type so that
 			// backpack-item tags and actor-level tags share one section.

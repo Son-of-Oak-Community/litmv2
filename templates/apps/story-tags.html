@@ -207,6 +207,10 @@
 
 	{{#if isGM}}
 	<div class="litm--load-scene-btns flexcol">
+		<button type="button" class="litm--narrator-call-btn" data-action="narrator-call"
+			data-tooltip="{{localize 'LITM.Ui.narrator_call_open'}}">
+			<i class="fa-solid fa-feather" aria-hidden="true"></i> {{localize "LITM.Ui.narrator_call_open"}}
+		</button>
 		<button type="button" class="litm--add-actor-btn" data-action="add-actor"
 			data-tooltip="{{localize 'LITM.Ui.add_actor'}}">
 			<i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{localize "LITM.Ui.add_actor"}}
