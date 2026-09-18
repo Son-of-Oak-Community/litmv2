@@ -1,0 +1,96 @@
+{
+	"title": "TOURS.NarratorsCallTitle",
+	"description": "TOURS.NarratorsCallDescription",
+	"canBeResumed": false,
+	"display": true,
+	"restricted": true,
+	"steps": [
+		{
+			"id": "intro",
+			"selector": "",
+			"title": "TOURS.NarratorsCallIntroTitle",
+			"content": "TOURS.NarratorsCallIntroContent"
+		},
+		{
+			"id": "sidebar",
+			"selector": ".litm--narrator-call-btn",
+			"title": "TOURS.NarratorsCallSidebarTitle",
+			"content": "TOURS.NarratorsCallSidebarContent",
+			"action": "activateSidebar:combat"
+		},
+		{
+			"id": "pick-who",
+			"selector": ".litm--narrator-call-targets",
+			"title": "TOURS.NarratorsCallPickWhoTitle",
+			"content": "TOURS.NarratorsCallPickWhoContent",
+			"action": "openRollCall"
+		},
+		{
+			"id": "acting-together",
+			"selector": "[data-action='setMode'][data-mode='group']",
+			"title": "TOURS.NarratorsCallActingTogetherTitle",
+			"content": "TOURS.NarratorsCallActingTogetherContent"
+		},
+		{
+			"id": "shared-window",
+			"selector": ".litm--roll-dialog-body",
+			"title": "TOURS.NarratorsCallSharedWindowTitle",
+			"content": "TOURS.NarratorsCallSharedWindowContent",
+			"action": "openCalledRoll"
+		},
+		{
+			"id": "narrators-half",
+			"selector": ".litm--roll-dialog-might",
+			"title": "TOURS.NarratorsCallNarratorsHalfTitle",
+			"content": "TOURS.NarratorsCallNarratorsHalfContent"
+		},
+		{
+			"id": "invocations",
+			"selector": ".litm--roll-dialog-tags-fieldset",
+			"title": "TOURS.NarratorsCallInvocationsTitle",
+			"content": "TOURS.NarratorsCallInvocationsContent"
+		},
+		{
+			"id": "rollers-half",
+			"selector": ".litm--roll-dialog-footer",
+			"title": "TOURS.NarratorsCallRollersHalfTitle",
+			"content": "TOURS.NarratorsCallRollersHalfContent"
+		},
+		{
+			"id": "pickup",
+			"selector": "#players",
+			"title": "TOURS.NarratorsCallPickupTitle",
+			"content": "TOURS.NarratorsCallPickupContent"
+		},
+		{
+			"id": "outro",
+			"selector": "",
+			"title": "TOURS.NarratorsCallOutroTitle",
+			"content": "TOURS.NarratorsCallOutroContent"
+		}
+	],
+	"localization": {
+		"TOURS.NarratorsCallTitle": "The Narrator's Call",
+		"TOURS.NarratorsCallDescription": "How rolls start at this table: the Narrator calls for one, and both sides finish it in the same window.",
+		"TOURS.NarratorsCallIntroTitle": "The Narrator calls for the roll",
+		"TOURS.NarratorsCallIntroContent": "<p>In Legend in the Mist the Narrator decides an action needs dice and picks how it resolves — a Quick outcome, a Detailed one, or a Reaction (Core Book p.269).</p><p>So rolls here start with you, not with a player pressing a button. This tour walks that path: calling for a roll, sharing the window, and Acting Together as a group.</p>",
+		"TOURS.NarratorsCallSidebarTitle": "Call from where you already are",
+		"TOURS.NarratorsCallSidebarContent": "<p>The Tags sidebar is your view of the whole scene, so the call lives here. One click and you are picking who rolls.</p>",
+		"TOURS.NarratorsCallPickWhoTitle": "Pick who is rolling — and nothing else",
+		"TOURS.NarratorsCallPickWhoContent": "<p>That is the only decision this window asks for. The dot beside each Hero tells you whether their player is connected; if nobody is, the roll falls to you and you make it on their behalf.</p><p>Everything else — the move, the Might, the tags you invoke — you set inside the roll window itself, where the player can watch you do it.</p>",
+		"TOURS.NarratorsCallActingTogetherTitle": "Acting Together",
+		"TOURS.NarratorsCallActingTogetherContent": "<p>When the whole group pushes at the same thing, that is one roll, not several (Core Book p.157). Switch to Acting Together and tick everyone taking part.</p><p>The roll rides the Fellowship, you press the dice, and each Hero contributes a single tag — with one burn shared across the lot of them.</p>",
+		"TOURS.NarratorsCallSharedWindowTitle": "One window, two halves",
+		"TOURS.NarratorsCallSharedWindowContent": "<p>This is the same roll dialog the player is looking at. Not a copy — the same roll. What either of you changes, the other sees.</p>",
+		"TOURS.NarratorsCallNarratorsHalfTitle": "Your half: the move and the Might",
+		"TOURS.NarratorsCallNarratorsHalfContent": "<p>You judge how the Hero measures up to what they are facing, and which move this is. On a roll you called, these are yours — the player sees them settled and cannot move them.</p>",
+		"TOURS.NarratorsCallInvocationsTitle": "Your half: the opposition",
+		"TOURS.NarratorsCallInvocationsContent": "<p>Invoke the tags of the target, the opposition, or the environment (p.272). Your invocations carry a quill mark and are locked to the roller, so your -2 cannot quietly disappear.</p><p>A tag from an actor you have hidden in the sidebar still counts — the player sees its weight as <em>Something unseen</em>, never its name, on the dialog and on the chat card alike.</p>",
+		"TOURS.NarratorsCallRollersHalfTitle": "Their half: their own tags, and the dice",
+		"TOURS.NarratorsCallRollersHalfContent": "<p>The player picks their own tags, trades Power if the move allows it, and presses Roll. The Total updates live for both of you as either side changes anything.</p><p>On an Acting Together roll you press it instead — there is no single roller to.</p>",
+		"TOURS.NarratorsCallPickupTitle": "Everyone else can join",
+		"TOURS.NarratorsCallPickupContent": "<p>While a roll is open, a <em>click to join</em> strip sits above the player list for everyone not already in it. That is how a helper adds a tag, and how a player who closed the window gets back to it.</p><p>There is no chat card to hunt for — the roll posts its own when it lands.</p>",
+		"TOURS.NarratorsCallOutroTitle": "That is the loop",
+		"TOURS.NarratorsCallOutroContent": "<p>Call it, set your half, let the player set theirs, and the dice come out.</p><p>If your table would rather players reached for the dice themselves, turn on <strong>Let Players Start Rolls Themselves</strong> in the system settings. Everything in this tour still works either way.</p>"
+	}
+}

@@ -296,13 +296,24 @@ export class LitmSettings {
 			default: true,
 			requiresReload: true,
 		});
+		// Defaults to OFF: the Narrator's Call is how this system expects rolls
+		// to start (Core Book p.269 — the Narrator decides an action needs dice
+		// and picks the outcome method), so a table opts *out* of that rather
+		// than into it.
+		//
+		// The stored key is deliberately unchanged. `ClientSettings#get` builds
+		// an in-memory Setting from the registered default when no document is
+		// stored and only `set()` ever writes, so flipping the default reaches
+		// every world that never touched this toggle while preserving the
+		// choice of any table that did. Renaming the key would silently discard
+		// those stored choices.
 		game.settings.register("litmv2", "player_initiated_rolls", {
 			name: "LITM.Settings.player_initiated_rolls",
 			hint: "LITM.Settings.player_initiated_rolls_hint",
 			scope: "world",
 			config: true,
 			type: Boolean,
-			default: true,
+			default: false,
 			// No reload: this only decides whether the hero sheet renders its
 			// Roll button, so re-rendering the open sheets is enough — a GM
 			// toggling it mid-session should see it take effect at once.

@@ -1,5 +1,6 @@
 import { error, info } from "../logger.js";
 import { getStoryTagSidebar } from "../utils.js";
+import { FLAGS } from "./config.js";
 import { createSampleHero } from "./sample-hero.js";
 import { LitmSettings } from "./settings.js";
 
@@ -97,6 +98,15 @@ export class LitmTour extends Tour {
 				game.actors.find(
 					(a) => a.type === "hero" && a.getFlag("litmv2", "isSampleHero"),
 				);
+			// A tour that opened a real shared roll has to take it down again,
+			// advert included — otherwise the table is left with a "click to
+			// join" strip for a roll that was only ever a demonstration.
+			await foundry.applications.instances.get("litm-call-for-roll")?.close();
+			if (hero?.sheet?.hasRollDialog) {
+				const dialog = hero.sheet.rollDialogInstance;
+				if (dialog.rendered) await dialog.close();
+				await hero.unsetFlag("litmv2", FLAGS.rollDialogOwner);
+			}
 			if (hero?.sheet?.rendered) await hero.sheet.close();
 
 			const fellowship = game.litmv2?.fellowship;
@@ -114,6 +124,8 @@ export class LitmTour extends Tour {
 		else if (action === "openFellowshipSheet")
 			await this.#openFellowshipSheet();
 		else if (action === "ensureSampleTags") await this.#ensureSampleTags();
+		else if (action === "openRollCall") await this.#openRollCall();
+		else if (action === "openCalledRoll") await this.#openCalledRoll();
 		else if (action?.startsWith("activateSidebar:")) {
 			const tab = action.split(":")[1];
 			await ui[tab]?.activate();
@@ -187,6 +199,34 @@ export class LitmTour extends Tour {
 	}
 
 	/**
+	 * Open the Narrator's Call picker.
+	 */
+	async #openRollCall() {
+		const { CallForRollApp } = await import("../apps/roll/call-for-roll.js");
+		CallForRollApp.open();
+		await waitForElement("#litm-call-for-roll").catch(() => {});
+	}
+
+	/**
+	 * Open a real shared roll on the tour's hero, so the two halves of the
+	 * dialog can be pointed at rather than described.
+	 *
+	 * Deliberately the real path and not a mock — this is the feature being
+	 * taught. It lands on the sample hero, who has no player owner, so the roll
+	 * resolves to the Narrator and nobody else's screen is interrupted by a
+	 * tutorial. {@link _postStep} closes it and clears the advert at the end.
+	 */
+	async #openCalledRoll() {
+		const hero = await this.#getOrCreateHero();
+		if (!hero) return;
+		const callApp = foundry.applications.instances.get("litm-call-for-roll");
+		await callApp?.close();
+		const { openSharedRoll } = await import("../apps/roll/roll-request.js");
+		await openSharedRoll({ actorId: hero.id });
+		await waitForElement(`#litm-roll-dialog-${hero.id}`).catch(() => {});
+	}
+
+	/**
 	 * Ensure the story tag sidebar has at least one tag and one status
 	 * so tour selectors have something to point at.
 	 */
@@ -217,6 +257,9 @@ async function _doRegisterTours() {
 	const tours = [
 		["heroSheetBasics", "tours/hero-sheet-basics.json"],
 		["storyTagSidebar", "tours/story-tag-sidebar.json"],
+		// GM-only (`restricted` in its JSON): calling for a roll is the
+		// Narrator's step, so the tutorial is theirs too.
+		["narratorsCall", "tours/narrators-call.json"],
 	];
 
 	if (LitmSettings.useFellowship) {
