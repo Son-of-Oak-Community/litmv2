@@ -1,3 +1,4 @@
+import { resolveTagActorId } from "../../active-effects/effect-queries.js";
 import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import {
 	BURN_POWER,
@@ -6,6 +7,8 @@ import {
 } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
 import { localize as t } from "../../utils.js";
+import { StoryTagsStore } from "../story-tags/story-tags-store.js";
+import { maskConcealedTags } from "./concealment.js";
 
 export class LitmRoll extends foundry.dice.Roll {
 	static CHAT_TEMPLATE = "systems/litmv2/templates/chat/message.html";
@@ -256,15 +259,32 @@ export class LitmRoll extends foundry.dice.Roll {
 		};
 	}
 
+	/**
+	 * Hide the identity of tags belonging to actors this viewer may not see,
+	 * the way the roll dialog does. The tooltip is rendered per client, so the
+	 * mask is per viewer: the Narrator still reads the real names.
+	 *
+	 * Without this the dialog's "Something unseen-4" is undone one click later
+	 * by the card it produced — concealment that lasts until someone hovers is
+	 * not concealment.
+	 */
+	#maskConcealed(tags) {
+		return maskConcealedTags(tags, {
+			concealedActorIds: StoryTagsStore.concealedActorIds,
+			resolveActorId: (tag) => resolveTagActorId(tag.uuid),
+			maskName: t("LITM.Ui.roll_concealed_tag"),
+		});
+	}
+
 	getTooltipData() {
 		const { label: outcome } = this.outcome;
 		return {
 			mitigate: this.litm.type === "mitigate" && outcome === "success",
-			scratchedTags: this.litm.scratchedTags ?? [],
-			powerTags: this.litm.powerTags,
-			weaknessTags: this.litm.weaknessTags,
-			positiveStatuses: this.litm.positiveStatuses,
-			negativeStatuses: this.litm.negativeStatuses,
+			scratchedTags: this.#maskConcealed(this.litm.scratchedTags ?? []),
+			powerTags: this.#maskConcealed(this.litm.powerTags),
+			weaknessTags: this.#maskConcealed(this.litm.weaknessTags),
+			positiveStatuses: this.#maskConcealed(this.litm.positiveStatuses),
+			negativeStatuses: this.#maskConcealed(this.litm.negativeStatuses),
 			modifier: this.modifier,
 			mightOffset: this.litm.mightOffset || 0,
 			might: this.litm.might ?? 0,

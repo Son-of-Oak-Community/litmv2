@@ -29,7 +29,7 @@ export function getTargetCandidates({
 } = {}) {
 	const allowedTypes = types ? new Set(types) : null;
 	const tracked = StoryTagsStore.resolveTrackedActors();
-	const hiddenActorIds = _hiddenActorIds(tracked);
+	const hiddenActorIds = StoryTagsStore.concealedActorIds;
 	const seen = new Set();
 	const candidates = [];
 
@@ -59,26 +59,6 @@ export function getTargetCandidates({
 	for (const { actor } of tracked) add(actor, actor.img);
 
 	return candidates;
-}
-
-/**
- * Actor ids a non-GM may not see, from the story-tag sidebar's hidden columns.
- * Resolved to ids because the picker is keyed by actor, not by column: an actor
- * reached by several tracked uuids (its own and an unlinked token's) stays
- * visible as long as one of those columns is.
- * @param {{uuid: string, actor: Actor}[]} tracked
- * @returns {Set<string>}
- */
-function _hiddenActorIds(tracked) {
-	if (game.user.isGM) return new Set();
-	const hiddenUuids = new Set(StoryTagsStore.config.hiddenActors ?? []);
-	const visible = new Set();
-	const hidden = new Set();
-	for (const { uuid, actor } of tracked) {
-		(hiddenUuids.has(uuid) ? hidden : visible).add(actor.id);
-	}
-	for (const id of visible) hidden.delete(id);
-	return hidden;
 }
 
 /**

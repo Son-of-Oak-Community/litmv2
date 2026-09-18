@@ -170,6 +170,14 @@ toward Power, so the dialog renders them as **masked rows** ("Something unseen",
 tier intact, no name, no actor). Concealment is the Narrator's tool; silent
 arithmetic is not. See `LitmRollDialog#buildConcealedRows`.
 
+**The chat card masks them too.** `LitmRoll#getTooltipData` runs every tag list
+through `maskConcealedTags` (`concealment.js`, pure and unit-tested), so the
+tooltip a player opens shows the same "Something unseen" with the same tier. The
+tooltip is rendered per client, so the Narrator still reads the real names.
+Without it the dialog's mask lasted exactly as long as it took someone to hover.
+The one definition of "concealed from this viewer" is
+`StoryTagsStore.concealedActorIds`; the target picker reads it too.
+
 **Acting Together (group roll).** Core Book p.157: one roll for the whole group.
 The same shared dialog, keyed to the **Fellowship actor** — that is what rolls, so
 the GM owns it and presses Roll. Where there is no Fellowship (`use_fellowship`
@@ -207,7 +215,12 @@ consequences to each of them is still a decision, not an automatic fan-out.
 
 **Two world settings, deliberately separate — do not collapse them.**
 
-- `player_initiated_rolls` gates *instigation* only (hero-sheet Roll button,
+- `player_initiated_rolls` — **default off**, because the Narrator's Call is how
+  this system expects rolls to start. Tables opt *out* of that, not into it. The
+  stored key is deliberately unchanged: `ClientSettings#get` builds a Setting
+  from the registered default when nothing is stored and only `set()` writes, so
+  flipping the default reaches every world that never touched the toggle while
+  preserving the choice of any table that did. It gates *instigation* only (hero-sheet Roll button,
   sheet tag click, rolling an Action, the `R` keybinding — see
   `blockPlayerInitiatedRoll` in `roll-pipeline.js`). Joining an open roll, being
   called into one, reacting, camp actions and Sacrifice stay open regardless.
