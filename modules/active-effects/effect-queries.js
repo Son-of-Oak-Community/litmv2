@@ -100,3 +100,27 @@ export function resolveEffect(effectId, actor, { fellowship = false } = {}) {
 	}
 	return null;
 }
+
+/**
+ * The Actor a tag belongs to, resolved from the effect itself.
+ *
+ * Effects hang off an Actor directly (statuses, story tags, relationship tags)
+ * or off an Item that Actor owns (theme tags). Both answer the same question:
+ * whose tag is this. Returns null for anything no world Actor owns — a scene
+ * tag in the story pack, most obviously.
+ *
+ * Used by the Acting Together one-tag-per-Hero cap, which has to know whose
+ * slot a selection fills without relying on who clicked it: the GM owns a group
+ * roll, and contributor metadata is only registered by non-owners.
+ *
+ * @param {string|null} uuid  An ActiveEffect UUID.
+ * @returns {string|null} Actor id, or null.
+ */
+export function resolveTagActorId(uuid) {
+	if (!uuid) return null;
+	const effect = foundry.utils.fromUuidSync(uuid);
+	const parent = effect?.parent;
+	if (!parent) return null;
+	const owner = parent.documentName === "Item" ? parent.parent : parent;
+	return owner?.documentName === "Actor" ? (owner.id ?? null) : null;
+}

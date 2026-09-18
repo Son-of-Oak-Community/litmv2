@@ -14,7 +14,7 @@ import {
 	toTiers,
 } from "../apps/story-tags/story-tag-helpers.js";
 import { completeTrackUpdate } from "../system/chat.js";
-import { ACTOR_TAG_TYPES, THEME_TAG_TYPES } from "../system/config.js";
+import { ACTOR_TAG_TYPES, FLAGS, THEME_TAG_TYPES } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
 import {
 	availableThemebookImprovements,
@@ -892,7 +892,12 @@ export class LitmActorSheet extends LitmSheetMixin(
 			return;
 		}
 
-		if (dialog.narratorCall?.narratorUserId && dialog.ownerId) {
+		// A roll the Narrator called already knows whose it is. The flag is the
+		// durable record of that — the local dialog may be brand new, after a
+		// reload or a HUD-strip join — so ownership is read, not recomputed.
+		const assigned = this.document.getFlag("litmv2", FLAGS.rollDialogOwner);
+		if (assigned?.narrator && assigned.ownerId) {
+			dialog.ownerId = assigned.ownerId;
 			if (!dialog.isOwner)
 				Sockets.dispatch("requestRollDialogSync", {
 					actorId: this.document.id,

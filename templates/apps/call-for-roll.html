@@ -1,6 +1,9 @@
 {{!-- The Narrator picks who is rolling, and nothing else. Everything the
       Narrator used to set here — the move, the Might, their invocations —
-      now happens inside the shared roll dialog, beside the player's half. --}}
+      now happens inside the shared roll dialog, beside the player's half.
+
+      One list of heroes, two readings of it: a plaque is the call in solo
+      mode and a participant tick in Acting Together. --}}
 <div class="standard-form litm--roll-call-body">
 
 	{{#if actionName}}
@@ -19,39 +22,47 @@
 	</header>
 	{{/if}}
 
-	<p class="hint">{{localize "LITM.Ui.narrator_call_who_hint"}}</p>
-
-	{{#if fellowship}}
-	<fieldset>
-		<legend>{{localize "LITM.Ui.acting_together"}}</legend>
-		<p class="hint">{{localize "LITM.Ui.acting_together_hint"}}</p>
-		<div class="litm--narrator-call-targets">
-			<button type="button" class="litm--narrator-call-target"
-				data-action="callTarget" data-actor-id="{{fellowship.id}}">
-				<img class="litm--narrator-call-target-img" src="{{fellowship.img}}" alt="" />
-				<span class="litm--narrator-call-target-name">{{fellowship.name}}</span>
-			</button>
-		</div>
-	</fieldset>
+	{{!-- Acting Together (p.157) is only a thing where the table uses a
+	      Fellowship: the group roll rides that actor, and there is no
+	      fallback without it. --}}
+	{{#if hasFellowship}}
+	<div class="litm--roll-type-bar" role="radiogroup" aria-label="{{localize 'LITM.Ui.narrator_call_who'}}">
+		{{#each modes as |mode|}}
+		<label class="litm--segmented-option litm--roll-type-option {{#if mode.active}}is-active{{/if}}"
+			data-action="setMode" data-mode="{{mode.id}}">
+			<input type="radio" name="callMode" value="{{mode.id}}" {{checked mode.active}} />
+			<span>{{mode.label}}</span>
+		</label>
+		{{/each}}
+	</div>
 	{{/if}}
 
-	<fieldset>
-		<legend>{{localize "LITM.Ui.narrator_call_who"}}</legend>
-		{{#if hasHeroes}}
-		<div class="litm--narrator-call-targets">
-			{{#each targets as |target|}}
-			<button type="button"
-				class="litm--narrator-call-target {{#unless target.online}}is-offline{{/unless}}"
-				data-action="callTarget" data-actor-id="{{target.id}}"
-				data-tooltip="{{target.statusLabel}}" aria-label="{{target.name}} — {{target.statusLabel}}">
-				<img class="litm--narrator-call-target-img" src="{{target.img}}" alt="" />
-				<span class="litm--narrator-call-target-name">{{target.name}}</span>
-				<span class="litm--narrator-call-target-presence" aria-hidden="true"></span>
-			</button>
-			{{/each}}
-		</div>
-		{{else}}
-		<p class="hint">{{localize "LITM.Actions.request_no_heroes"}}</p>
-		{{/if}}
-	</fieldset>
+	<p class="hint">{{hint}}</p>
+
+	{{#if hasHeroes}}
+	<div class="litm--narrator-call-targets">
+		{{#each targets as |target|}}
+		<button type="button"
+			class="litm--narrator-call-target {{#if target.selected}}is-selected{{/if}} {{#unless target.online}}is-offline{{/unless}}"
+			data-action="pickTarget" data-actor-id="{{target.id}}"
+			aria-pressed="{{#if target.selected}}true{{else}}false{{/if}}"
+			data-tooltip="{{target.statusLabel}}" aria-label="{{target.name}} — {{target.statusLabel}}">
+			<img class="litm--narrator-call-target-img" src="{{target.img}}" alt="" />
+			<span class="litm--narrator-call-target-name">{{target.name}}</span>
+			<span class="litm--narrator-call-target-presence" aria-hidden="true"></span>
+		</button>
+		{{/each}}
+	</div>
+	{{else}}
+	<p class="hint">{{localize "LITM.Actions.request_no_heroes"}}</p>
+	{{/if}}
+
+	{{#if isGroup}}
+	<footer class="form-footer">
+		<button type="button" class="bright" data-action="callGroup" {{#unless canOpenGroup}}disabled{{/unless}}>
+			<i class="fa-solid fa-people-group" aria-hidden="true"></i>
+			{{localize "LITM.Ui.acting_together_open"}}
+		</button>
+	</footer>
+	{{/if}}
 </div>

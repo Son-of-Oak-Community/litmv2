@@ -1,5 +1,6 @@
 import { LitmSettings } from "../../system/settings.js";
 import { localize as t } from "../../utils.js";
+import { resolveGroupParticipants } from "./group-roll.js";
 import { openSharedRoll } from "./roll-request.js";
 
 /**
@@ -31,7 +32,9 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 		},
 		position: { width: 480, height: "auto" },
 		actions: {
-			callTarget: CallForRollApp.#onCallTarget,
+			pickTarget: CallForRollApp.#onPickTarget,
+			setMode: CallForRollApp.#onSetMode,
+			callGroup: CallForRollApp.#onCallGroup,
 			clearAction: CallForRollApp.#onClearAction,
 		},
 	};
@@ -66,6 +69,10 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 	#actionDoc = null;
 	#title = "";
 	#type = "quick";
+	/** @type {Set<string>} Heroes ticked for an Acting Together roll. */
+	#participants = new Set();
+	/** @type {"solo"|"group"} */
+	#mode = "solo";
 
 	configure({ actionUuid, title, type } = {}) {
 		if (actionUuid !== undefined) {
@@ -95,24 +102,31 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 
 	async _prepareContext(_options) {
 		await this.#resolveAction();
-		// No Fellowship, no Acting Together — there is nothing for the group
-		// roll to ride, and the brief is explicit that there is no fallback.
+		// No Fellowship, no Acting Together — there is nothing for the group roll
+		// to ride, so the mode bar doesn't appear and `solo` is the only shape.
 		const fellowship = LitmSettings.useFellowship
 			? game.litmv2?.fellowship
 			: null;
+		const isGroup = !!fellowship && this.#mode === "group";
+		const targets = this.heroes.map((hero) => ({
+			...this.#targetContext(hero),
+			selected: isGroup && this.#participants.has(hero.id),
+		}));
 		return {
 			actionName: this.#actionDoc?.name ?? "",
 			actionImg: this.#actionDoc?.img ?? "",
-			hasHeroes: this.heroes.length > 0,
-			targets: this.heroes.map((hero) => this.#targetContext(hero)),
-			fellowship: fellowship
-				? {
-						id: fellowship.id,
-						name: fellowship.name,
-						img: fellowship.img,
-						label: t("LITM.Ui.acting_together"),
-					}
-				: null,
+			hasHeroes: targets.length > 0,
+			targets,
+			hasFellowship: !!fellowship,
+			isGroup,
+			modes: [
+				{ id: "solo", label: t("LITM.Ui.narrator_call_who"), active: !isGroup },
+				{ id: "group", label: t("LITM.Ui.acting_together"), active: isGroup },
+			],
+			hint: isGroup
+				? t("LITM.Ui.acting_together_hint")
+				: t("LITM.Ui.narrator_call_who_hint"),
+			canOpenGroup: this.#participants.size > 0,
 		};
 	}
 
@@ -135,11 +149,49 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 		};
 	}
 
-	static async #onCallTarget(_event, target) {
+	/**
+	 * One plaque, two meanings: in solo mode it *is* the call, so the roll
+	 * window opens on the spot; in Acting Together mode it ticks a participant
+	 * and the roll opens from the button below.
+	 */
+	static async #onPickTarget(_event, target) {
 		const actorId = target?.dataset?.actorId;
 		if (!actorId) return;
+		if (this.#mode === "group" && LitmSettings.useFellowship) {
+			if (this.#participants.has(actorId)) this.#participants.delete(actorId);
+			else this.#participants.add(actorId);
+			this.render();
+			return;
+		}
 		await openSharedRoll({
 			actorId,
+			actionUuid: this.#actionUuid,
+			title: this.#title,
+			type: this.#type,
+		});
+		this.close();
+	}
+
+	static #onSetMode(_event, target) {
+		const mode = target?.dataset?.mode;
+		if (!mode || mode === this.#mode) return;
+		this.#mode = mode;
+		this.render();
+	}
+
+	static async #onCallGroup() {
+		const fellowship = LitmSettings.useFellowship
+			? game.litmv2?.fellowship
+			: null;
+		if (!fellowship) return;
+		const participantIds = resolveGroupParticipants({
+			heroes: this.heroes,
+			selectedIds: [...this.#participants],
+		});
+		if (!participantIds.length) return;
+		await openSharedRoll({
+			actorId: fellowship.id,
+			participantIds,
 			actionUuid: this.#actionUuid,
 			title: this.#title,
 			type: this.#type,

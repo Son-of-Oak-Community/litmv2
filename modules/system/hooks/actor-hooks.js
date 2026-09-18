@@ -6,7 +6,12 @@ import {
 	getStoryTagSidebar,
 	localize as t,
 } from "../../utils.js";
-import { ACTOR_TAG_TYPES, FLAGS, THEME_TAG_TYPES } from "../config.js";
+import {
+	ACTOR_TAG_TYPES,
+	ACTOR_TYPES,
+	FLAGS,
+	THEME_TAG_TYPES,
+} from "../config.js";
 
 export function registerActorHooks() {
 	_prepareCharacterOnCreate();
@@ -310,12 +315,22 @@ function _migrateLegacyActorOnCreate() {
 }
 
 /**
- * Re-render the roll dialog HUD when a hero actor is updated
- * (e.g. flag changes indicating dialog open/close).
+ * Re-render the roll dialog HUD when an actor that can host a roll dialog is
+ * updated (e.g. flag changes indicating dialog open/close).
+ *
+ * The Fellowship belongs here as much as a Hero does: Acting Together rides
+ * that actor. Gated on the hero type alone, the strip for a group roll never
+ * refreshed — it kept showing a call that had already moved on, and never
+ * cleared when the roll ended.
  */
+const ROLL_DIALOG_HOST_TYPES = new Set([
+	ACTOR_TYPES.hero,
+	ACTOR_TYPES.fellowship,
+]);
+
 function _syncRollDialogHudOnUpdate() {
 	Hooks.on("updateActor", (actor) => {
-		if (actor.type !== "hero") return;
+		if (!ROLL_DIALOG_HOST_TYPES.has(actor.type)) return;
 		game.litmv2.rollDialogHud?.render?.();
 	});
 }

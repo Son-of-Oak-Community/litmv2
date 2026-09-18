@@ -127,6 +127,13 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		// actor is pre-selected for the common case.
 		const rollingActorId =
 			message.rolls?.[0]?.litm?.actorId ?? message.speaker?.actor ?? null;
+		// Acting Together (p.157): the outcome affects the entire group, and the
+		// rolling actor is the Fellowship rather than anyone who can take a
+		// status. Pre-select the participants the roll recorded instead.
+		const participantIds = message.rolls?.[0]?.litm?.participantIds ?? [];
+		const preselected = participantIds.length
+			? new Set(participantIds)
+			: new Set([rollingActorId]);
 		const targets = getTargetCandidates({
 			allowSelf: true,
 			types: ["hero", "story_theme", "fellowship"],
@@ -134,7 +141,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 			id: c.id,
 			name: c.label,
 			img: c.img,
-			selected: c.id === rollingActorId,
+			selected: preselected.has(c.id),
 		}));
 
 		return {

@@ -1,4 +1,7 @@
-import { effectToPlain } from "../../active-effects/effect-queries.js";
+import {
+	effectToPlain,
+	resolveTagActorId,
+} from "../../active-effects/effect-queries.js";
 import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { ALL_TAG_TYPES, EFFECT_TAG_ORDER, FLAGS } from "../../system/config.js";
 import { renderAction } from "../../system/renderers/action-renderer.js";
@@ -12,6 +15,7 @@ import { LitmEmbedPopout } from "../embed-popout.js";
 import { mitigationBannerText } from "../mitigation.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 import { findBurnedSelection, nextStateAfterScratched } from "./burn-cap.js";
+import { findHeroTagConflict } from "./group-roll.js";
 import { LitmRoll } from "./roll.js";
 import {
 	canEditNarratorFields,
@@ -24,11 +28,13 @@ import {
 	buildAllyTagGroups,
 	buildContributedTagGroups,
 	buildGmViewerContext,
+	buildGroupRollTabs,
 	buildOwnerContext,
 	buildSceneActorTagGroups,
 	buildSceneStatusItems,
 	buildSceneStoryTagItems,
 	makeTagDecorator,
+	ownedParticipantIds,
 	sortByTypeThenName,
 } from "./roll-dialog-context.js";
 import {
@@ -301,6 +307,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					: undefined,
 			actionUuid: this.#actionUuid,
 			mitigation: type === "mitigate" ? this.#mitigation : null,
+			// Acting Together: the outcome lands on the whole group (p.157), so
+			// the card carries who was in it and the GM's apply flow offers them
+			// as targets. Applying to each of them is still a decision, not an
+			// automatic fan-out.
+			participantIds: this.isGroupRoll ? [...this.#participantIds] : [],
 		};
 	}
 
@@ -608,6 +619,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				narrator: narrator ?? existing?.narrator ?? false,
 				effect: effect ?? existing?.effect ?? null,
 				effectUuid: effectUuid ?? effect?.uuid ?? existing?.effectUuid ?? null,
+				// Whose tag this is, resolved from the effect rather than from
+				// who clicked it: the GM owns an Acting Together roll, so
+				// contributor metadata (which only non-owners register) would be
+				// blind to exactly the selections the GM makes.
+				tagActorId:
+					existing?.tagActorId ?? resolveTagActorId(effect?.uuid ?? effectId),
 				...(Object.keys(contributorMeta).length
 					? contributorMeta
 					: {
@@ -753,10 +770,16 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				.filter(Boolean),
 		);
 
+		// Acting Together: a participant may move their own Hero's tags and no
+		// one else's. The GM owns the roll and is unrestricted.
+		const actableActorIds =
+			this.isGroupRoll && !isOwner ? ownedParticipantIds(this) : null;
+
 		const decorateTag = makeTagDecorator({
 			isOwner,
 			positiveSuggestedIds,
 			negativeSuggestedIds,
+			actableActorIds,
 		});
 
 		const gmTagsFlat = sortByTypeThenName(
@@ -875,7 +898,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		let allyTagGroups = [];
 		let sceneActorTagGroups = [];
 		let gmViewerTabs = [];
-		if (isGMViewer) {
+		// An Acting Together roll is a per-Hero picker for everyone, owner
+		// included: the question is what each participant contributes, not what
+		// one character can reach.
+		if (this.isGroupRoll) {
+			gmViewerTabs = buildGroupRollTabs(this, shared);
+		} else if (isGMViewer) {
 			gmViewerTabs = buildGmViewerContext(this, shared);
 		} else {
 			({ characterTagGroups, fellowshipTagGroups } = buildOwnerContext(
@@ -902,7 +930,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			fellowshipTagGroups = filterSelected(fellowshipTagGroups);
 		}
 
-		const contributedTagGroups = buildContributedTagGroups(this, shared);
+		// A group roll's own per-Hero tabs already show every participant's
+		// tags; the contributed panel would list them a second time.
+		const contributedTagGroups = this.isGroupRoll
+			? []
+			: buildContributedTagGroups(this, shared);
 
 		const concealedTags = this.#buildConcealedRows([
 			characterTagGroups,
@@ -921,7 +953,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// tags and don't need the tab chrome. GM viewers have their own
 		// per-actor tab group above and are handled separately.
 		let ownerTabs = [];
-		if (isOwner) {
+		if (isOwner && !this.isGroupRoll) {
 			this.tabGroups["roll-tags"] ??= "hero";
 			ownerTabs = [
 				{ id: "hero", label: t("LITM.Ui.roll_tab_hero") },
@@ -955,6 +987,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			concealedTags,
 			isGM: game.user.isGM,
 			isGMViewer,
+			// The per-actor tab picker serves two surfaces: a GM watching a
+			// player's roll, and everyone in an Acting Together roll.
+			useTabbedPicker: isGMViewer || this.isGroupRoll,
 			gmViewerTabs,
 			isOwner,
 			// The settings column carries both halves of the roll now, so it
@@ -1120,7 +1155,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		}
 	}
 
-	#canModifyTag(selOrTag) {
+	/**
+	 * @param {object|null} selOrTag  A selection entry or a decorated tag row.
+	 * @param {string|null} [uuid]    The tag's uuid. A selection entry is keyed
+	 *   by uuid in the map rather than carrying one, so the caller supplies it.
+	 */
+	#canModifyTag(selOrTag, uuid = null) {
 		// Narrator invocations outrank dialog ownership. When the Narrator
 		// calls for a roll they invoke the opposition's and the environment's
 		// tags (Core Book p.272); handing the dialog to the player makes that
@@ -1129,8 +1169,43 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (selOrTag?.narrator && !game.user.isGM) return false;
 		if (this.isOwner) return true;
 		if (!selOrTag) return false;
+		// Acting Together: a participant contributes their own Hero's tag and
+		// nothing else. Contributor-based locking alone wouldn't do it — an
+		// unclaimed tag on someone else's Hero has no contributor yet.
+		if (this.isGroupRoll && !game.user.isGM) {
+			const tagActorId =
+				selOrTag.tagActorId ??
+				resolveTagActorId(
+					uuid ?? selOrTag.effectUuid ?? selOrTag.uuid ?? selOrTag.key,
+				);
+			if (!tagActorId || !ownedParticipantIds(this).has(tagActorId))
+				return false;
+		}
 		const contributorId = selOrTag.contributorId || null;
 		return !contributorId || contributorId === game.user.id;
+	}
+
+	/**
+	 * The one-tag-per-Hero cap (Core Book p.157). Returns true (and warns) when
+	 * the selection should be refused because this Hero already has a tag in
+	 * the roll. Fellowship theme tags and the opposition's are exempt for free:
+	 * they don't resolve to a participating Hero.
+	 *
+	 * @param {string} uuid
+	 * @param {string} value
+	 * @returns {boolean}
+	 */
+	#blocksHeroTagCap(uuid, value) {
+		if (!value || !this.isGroupRoll) return false;
+		const tagActorId = resolveTagActorId(uuid);
+		const conflict = findHeroTagConflict(this.#selectionMap, {
+			tagActorId,
+			uuid,
+			participantIds: this.#participantIds,
+		});
+		if (!conflict) return false;
+		ui.notifications?.warn(t("LITM.Ui.group_tag_cap_warning"));
+		return true;
 	}
 
 	#revertTagChange(target, currentValue) {
@@ -1150,7 +1225,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 		// Check permission: non-owners can only modify tags they contributed or unclaimed tags
 		const existingSel = this.getSelection(id);
-		if (!this.#canModifyTag(existingSel)) {
+		if (!this.#canModifyTag(existingSel, id)) {
+			this.#revertTagChange(target, existingSel.state);
+			return;
+		}
+
+		// One tag per Hero in an Acting Together roll (p.157).
+		if (this.#blocksHeroTagCap(id, value)) {
 			this.#revertTagChange(target, existingSel.state);
 			return;
 		}
@@ -1254,10 +1335,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	setCharacterTagState(tagId, state) {
 		// Sheet-side tag clicks land here rather than in `_onTagChange`, so the
-		// gate has to hold on this path too. A Narrator can invert one of the
-		// Hero's own power tags (p.76), which puts a narrator-stamped row on
+		// same two gates have to hold on this path. A Narrator can invert one of
+		// the Hero's own power tags (p.76), which puts a narrator-stamped row on
 		// that Hero's sheet — clicking it there must not drop the invocation.
 		if (!this.#canModifyTag(this.getSelection(tagId), tagId)) return;
+		if (this.#blocksHeroTagCap(tagId, state)) return;
 		const contributorId = state ? game.user.id : null;
 		this.setSelection(tagId, state || "", contributorId);
 		this.#updateTotalPower();

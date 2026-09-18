@@ -80,6 +80,12 @@ export async function openSharedRoll({
 		ownerId: payload.ownerId,
 		openedAt: Date.now(),
 		type: payload.type,
+		// Marks the seat as assigned rather than merely occupied.
+		// `resolveRollDialogOwnership` lets a player take over a dialog a GM is
+		// holding, which is right for an ordinary roll and wrong here: on a
+		// group roll it would hand the Fellowship's dialog to whichever player
+		// happens to own that actor.
+		narrator: true,
 	});
 
 	Sockets.dispatch("openRollDialog", payload);

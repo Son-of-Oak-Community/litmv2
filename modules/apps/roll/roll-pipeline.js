@@ -89,6 +89,7 @@ export function executeRoll({
 	sacrificeStatusName,
 	actionUuid = null,
 	mitigation = null,
+	participantIds = [],
 }) {
 	const {
 		scratchedTags,
@@ -180,6 +181,10 @@ export function executeRoll({
 			sacrificeThemeId,
 			sacrificeStatusName,
 			mitigation,
+			// Acting Together (p.157): the outcome affects the entire group, so
+			// the card remembers who was in it. The GM apply flow reads this to
+			// pre-select the participants as targets.
+			participantIds,
 		},
 	);
 

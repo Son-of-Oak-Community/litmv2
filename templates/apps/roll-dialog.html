@@ -65,8 +65,9 @@
 		</div>
 		{{/if}}
 
-		{{#if isGMViewer}}
-		<!-- GM Viewer: tabbed view per actor -->
+		{{!-- Per-actor tabs: the Narrator watching a player's roll, and everyone
+		     in an Acting Together roll. --}}
+		{{#if useTabbedPicker}}
 		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">
 			{{#each gmViewerTabs as |tab|}}
 			<a class="item {{tab.cssClass}}" data-action="tab" data-group="gm-viewer" data-tab="{{tab.id}}">
@@ -306,7 +307,7 @@
 		     sections by data-group, so they don't need to be siblings. --}}
 		<div class="litm--roll-dialog-tags-column">
 		{{#if isOwner}}
-		{{#unless isGMViewer}}
+		{{#unless useTabbedPicker}}
 		<nav class="tabs litm--roll-dialog-tabs" data-group="roll-tags">
 			{{#each ownerTabs as |tab|}}
 			<a class="item {{tab.cssClass}}" data-action="tab" data-group="roll-tags" data-tab="{{tab.id}}">
@@ -321,7 +322,7 @@
 		<fieldset class="litm--roll-dialog-tags-fieldset">
 			<legend>{{localize "LITM.Terms.tags"}}</legend>
 
-			{{#if isGMViewer}}
+			{{#if useTabbedPicker}}
 			{{#each gmViewerTabs as |tab|}}
 			<section class="tab {{tab.cssClass}}" data-group="gm-viewer" data-tab="{{tab.id}}">
 				{{#each tab.groups as |group|}}

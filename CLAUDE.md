@@ -170,6 +170,41 @@ toward Power, so the dialog renders them as **masked rows** ("Something unseen",
 tier intact, no name, no actor). Concealment is the Narrator's tool; silent
 arithmetic is not. See `LitmRollDialog#buildConcealedRows`.
 
+**Acting Together (group roll).** Core Book p.157: one roll for the whole group.
+The same shared dialog, keyed to the **Fellowship actor** — that is what rolls, so
+the GM owns it and presses Roll. Where there is no Fellowship (`use_fellowship`
+off) Acting Together is simply not offered; there is no fallback.
+
+```
+CallForRollApp → "Acting Together" mode → tick participants → openSharedRoll({
+    actorId: fellowship.id, participantIds: [...] })
+  → dialog.isGroupRoll (actorId === fellowship.id)
+  → buildGroupRollTabs(): one tab per participant + Fellowship + Story
+  → each participant's client opens it and contributes from their own tab
+```
+
+The rules live in `modules/apps/roll/group-roll.js` (pure, unit-tested):
+
+- **One tag per Hero.** `findHeroTagConflict` keys off `tagActorId`, stamped on
+  every selection by `resolveTagActorId` (effect → parent → Actor). Resolved from
+  the effect and *not* from who clicked: the GM owns the dialog, and contributor
+  metadata is only registered by non-owners. Relationship tags count against the
+  Hero's one for free — they live on the Hero. Fellowship theme tags and the
+  opposition's are exempt for free — they don't resolve to a participant.
+- **One burn for the whole group** needs no new code: `findBurnedSelection` in
+  `burn-cap.js` already caps the entire selection map at one scratched tag.
+- **Participants** are a GM-selected subset (`resolveGroupParticipants`). An
+  offline participant stays in the roll and contributes nothing. Changing them
+  re-runs `configureSharedRoll`, which resets the dialog.
+- A participant may only touch their own Hero's tags — `actableActorIds` in
+  `makeTagDecorator` locks the rest, and `#canModifyTag` refuses them.
+
+Post-roll bookkeeping lands per tag, not per rolling actor: `scratchTag` resolves
+through the uuid, and `gainImprovement` traces effect → theme → owner, so a burn
+or an invoked weakness marks the contributing Hero. The card records
+`participantIds`, and the GM's apply flow pre-selects them as targets. Applying
+consequences to each of them is still a decision, not an automatic fan-out.
+
 The `player_initiated_rolls` world setting gates *instigation* only (hero-sheet
 Roll button, sheet tag click, rolling an Action, the `R` keybinding — see
 `blockPlayerInitiatedRoll` in `roll-pipeline.js`). Joining an open roll, taking
