@@ -4,6 +4,7 @@ import {
 	canEditTradePower,
 	canInitiateRoll,
 	isNarratorControlled,
+	requiresRollApproval,
 	resolveSharedRollOwner,
 	showsRollSettings,
 } from "../modules/apps/roll/roll-authority.js";
@@ -147,6 +148,51 @@ describe("resolveSharedRollOwner", () => {
 
 	it("returns null when there is nobody at all", () => {
 		expect(resolveSharedRollOwner()).toBe(null);
+	});
+});
+
+describe("requiresRollApproval", () => {
+	it("routes a player's roll past the Narrator when the table asks for it", () => {
+		expect(requiresRollApproval({ isGM: false, requireApproval: true })).toBe(
+			true,
+		);
+	});
+
+	it("leaves a player's roll alone when it is off", () => {
+		expect(requiresRollApproval({ isGM: false, requireApproval: false })).toBe(
+			false,
+		);
+	});
+
+	it("never moderates the Narrator", () => {
+		expect(requiresRollApproval({ isGM: true, requireApproval: true })).toBe(
+			false,
+		);
+	});
+
+	it("skips a group roll — the Narrator is already the one pressing Roll", () => {
+		expect(
+			requiresRollApproval({
+				isGM: false,
+				requireApproval: true,
+				isGroupRoll: true,
+			}),
+		).toBe(false);
+	});
+
+	it("is independent of player instigation: both settings can be read separately", () => {
+		// `canInitiateRoll` governs starting a roll, `requiresRollApproval`
+		// governs executing one. Neither implies the other.
+		expect(canInitiateRoll({ isGM: false, playerInitiatedRolls: true })).toBe(
+			true,
+		);
+		expect(requiresRollApproval({ isGM: false, requireApproval: true })).toBe(
+			true,
+		);
+	});
+
+	it("defaults to off", () => {
+		expect(requiresRollApproval()).toBe(false);
 	});
 });
 

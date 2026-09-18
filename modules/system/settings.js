@@ -116,6 +116,10 @@ export class LitmSettings {
 		return game.settings.get("litmv2", "player_initiated_rolls");
 	}
 
+	static get requireRollApproval() {
+		return game.settings.get("litmv2", "require_roll_approval");
+	}
+
 	static get autoMarkImprove() {
 		return game.settings.get("litmv2", "auto_mark_improve");
 	}
@@ -306,6 +310,27 @@ export class LitmSettings {
 				for (const actor of game.actors ?? []) {
 					if (actor.type === "hero" && actor.sheet?.rendered)
 						actor.sheet.render();
+				}
+			},
+		});
+		// Deliberately separate from `player_initiated_rolls`: that one decides
+		// whether a player may start composing a roll, this one whether the roll
+		// they composed executes. A table can want either without the other.
+		game.settings.register("litmv2", "require_roll_approval", {
+			name: "LITM.Settings.require_roll_approval",
+			hint: "LITM.Settings.require_roll_approval_hint",
+			scope: "world",
+			config: true,
+			type: Boolean,
+			default: false,
+			// No reload: it only changes where a player's Roll press goes, read
+			// at submit time. A GM toggling it mid-session should see it at once.
+			onChange: () => {
+				for (const actor of game.actors ?? []) {
+					if (actor.sheet?.hasRollDialog) {
+						const dialog = actor.sheet.rollDialogInstance;
+						if (dialog?.rendered) dialog.render();
+					}
 				}
 			},
 		});

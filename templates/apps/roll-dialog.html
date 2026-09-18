@@ -662,13 +662,23 @@
 		<!-- Footer Buttons -->
 		<div class="form-footer flexrow gap-md">
 			{{#if isOwner}}
+			{{!-- With mandatory approval on, Roll *is* "send to the Narrator",
+			      so the opt-in button beside it would be the same button twice.
+			      The label says where the press goes. --}}
+			{{#unless requiresApproval}}
 			<button type="button" class="flex1" data-action="sendToNarrator">
 				<i class="fa-solid fa-envelope" aria-hidden="true"></i>
 				{{localize "LITM.Ui.send_to_narrator"}}
 			</button>
+			{{/unless}}
 			<button type="submit" class="flex1 bright">
+				{{#if requiresApproval}}
+				<i class="fa-solid fa-envelope" aria-hidden="true"></i>
+				{{localize "LITM.Ui.roll_ask_narrator"}}
+				{{else}}
 				<i class="fa-solid fa-dice" aria-hidden="true"></i>
 				{{localize "LITM.Ui.roll"}}
+				{{/if}}
 			</button>
 			{{#if isCampAction}}
 			<button type="button" class="flex1 bright" data-action="spend-half">

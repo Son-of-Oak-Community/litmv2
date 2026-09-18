@@ -112,6 +112,33 @@ export function canInitiateRoll({ isGM = false, playerInitiatedRolls = true }) {
 }
 
 /**
+ * Whether a player's Roll press has to go past the Narrator before it happens.
+ *
+ * Deliberately a separate setting from `player_initiated_rolls`: that one
+ * decides whether a player may *start* composing a roll, this one whether the
+ * roll they composed *executes*. A table can want either without the other — a
+ * Narrator who calls every roll but trusts the dice once called, or one who
+ * lets players reach for the dice but wants the last word on the total.
+ *
+ * The Narrator is never moderated, and neither is an Acting Together roll: the
+ * Narrator owns that dialog and is the one pressing Roll.
+ *
+ * @param {object} args
+ * @param {boolean} [args.isGM]
+ * @param {boolean} [args.requireApproval]
+ * @param {boolean} [args.isGroupRoll]
+ * @returns {boolean}
+ */
+export function requiresRollApproval({
+	isGM = false,
+	requireApproval = false,
+	isGroupRoll = false,
+} = {}) {
+	if (isGM || isGroupRoll) return false;
+	return !!requireApproval;
+}
+
+/**
  * Whether the settings column (move bar, Might, modifiers) renders at all.
  * The roller needs it because it is their roll; the Narrator needs it on a
  * called roll even while watching as a non-owner, because the move and the

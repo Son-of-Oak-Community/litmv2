@@ -205,10 +205,23 @@ or an invoked weakness marks the contributing Hero. The card records
 `participantIds`, and the GM's apply flow pre-selects them as targets. Applying
 consequences to each of them is still a decision, not an automatic fan-out.
 
-The `player_initiated_rolls` world setting gates *instigation* only (hero-sheet
-Roll button, sheet tag click, rolling an Action, the `R` keybinding — see
-`blockPlayerInitiatedRoll` in `roll-pipeline.js`). Joining an open roll, taking
-a call, reacting, camp actions and Sacrifice stay open regardless.
+**Two world settings, deliberately separate — do not collapse them.**
+
+- `player_initiated_rolls` gates *instigation* only (hero-sheet Roll button,
+  sheet tag click, rolling an Action, the `R` keybinding — see
+  `blockPlayerInitiatedRoll` in `roll-pipeline.js`). Joining an open roll, being
+  called into one, reacting, camp actions and Sacrifice stay open regardless.
+- `require_roll_approval` gates *execution*: a player pressing Roll posts the
+  existing moderation card instead of rolling, and the GM's approval executes it
+  on the player's own client, so the resulting chat card is authored by the
+  player. Same hardened path as the opt-in "Send to Narrator" button —
+  `resolveApprovedRoll` reads the roll back off the ChatMessage the roller
+  authored rather than trusting the socket payload. Group rolls skip it: the GM
+  already owns that dialog. Predicate: `requiresRollApproval` in
+  `roll-authority.js`.
+
+A table can want either without the other, which is why they are two booleans
+and not one three-state setting.
 
 ### Sockets
 

@@ -5,6 +5,7 @@ import {
 import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { ALL_TAG_TYPES, EFFECT_TAG_ORDER, FLAGS } from "../../system/config.js";
 import { renderAction } from "../../system/renderers/action-renderer.js";
+import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import {
 	getStoryTagSidebar,
@@ -21,6 +22,7 @@ import {
 	canEditNarratorFields,
 	canEditTradePower,
 	isNarratorControlled,
+	requiresRollApproval,
 	showsRollSettings,
 } from "./roll-authority.js";
 import {
@@ -100,7 +102,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	static async _onSubmit(_event, _form, formData) {
 		if (!this.isOwner) return;
 		if (this.painfulSacrificeHasNoTarget()) return;
-		return executeRoll(this.extractRollData(formData));
+		const rollData = this.extractRollData(formData);
+		// Tables that want the Narrator to have the last word on a total route
+		// every player roll through the moderation card they already had as an
+		// opt-in button. Same hardened path: approval reads the roll back off
+		// the ChatMessage the roller authored rather than trusting a socket.
+		if (this.requiresApproval) {
+			await this._createModerationRequest(rollData);
+			ui.notifications?.info(t("LITM.Ui.roll_sent_for_approval"));
+			return;
+		}
+		return executeRoll(rollData);
 	}
 
 	static async #onSendToNarrator(_event, _target) {
@@ -464,6 +476,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			isGM: game.user.isGM,
 			isOwner: this.isOwner,
 			narratorControlled: isNarratorControlled(this.#narratorCall),
+		});
+	}
+
+	/**
+	 * Whether pressing Roll asks the Narrator rather than rolling.
+	 * @returns {boolean}
+	 */
+	get requiresApproval() {
+		return requiresRollApproval({
+			isGM: game.user.isGM,
+			requireApproval: LitmSettings.requireRollApproval,
+			isGroupRoll: this.isGroupRoll,
 		});
 	}
 
@@ -997,6 +1021,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// a called roll even while the player owns the dialog.
 			showSettings: showsRollSettings({ isOwner, isGM: game.user.isGM }),
 			canSetNarratorFields: this.canSetNarratorFields,
+			requiresApproval: this.requiresApproval,
 			canTradePower: canEditTradePower({
 				isOwner,
 				isGroupRoll: this.isGroupRoll,
