@@ -2,6 +2,18 @@ import { ContentSourcesConfig } from "../apps/content-sources-config.js";
 import { LitmConfig } from "./config.js";
 import { ContentSources } from "./content-sources.js";
 
+/**
+ * Redraw the on-canvas token labels after a setting that governs them changes.
+ * Imported lazily on purpose: `token-tooltip.js` reads `LitmSettings`, so a
+ * static import back would close an import cycle.
+ */
+const refreshTokenLabels = () =>
+	import("../hud/token-tooltip.js")
+		.then((m) => m.refreshPersistentLabels())
+		// Foundry does not await onChange, so a throw here would be a silent
+		// unhandled rejection: the toggle would just appear to do nothing.
+		.catch(console.error);
+
 export class LitmSettings {
 	static get popoutTagsSidebar() {
 		return game.settings.get("litmv2", "popout_tags_sidebar");
@@ -45,6 +57,10 @@ export class LitmSettings {
 
 	static get tokenTooltipStatusesOnly() {
 		return game.settings.get("litmv2", "token_tooltip_statuses_only");
+	}
+
+	static get persistentTokenLabels() {
+		return game.settings.get("litmv2", "persistent_token_labels");
 	}
 
 	static get systemMigrationVersion() {
@@ -305,6 +321,18 @@ export class LitmSettings {
 			config: true,
 			type: Boolean,
 			default: false,
+			// The hover tooltip rebuilds on the next hover, but persistent
+			// labels are already on screen and would sit stale.
+			onChange: refreshTokenLabels,
+		});
+		game.settings.register("litmv2", "persistent_token_labels", {
+			name: "LITM.Settings.persistent_token_labels",
+			hint: "LITM.Settings.persistent_token_labels_hint",
+			scope: "client",
+			config: true,
+			type: Boolean,
+			default: false,
+			onChange: refreshTokenLabels,
 		});
 		game.settings.register("litmv2", "colorblind_mode", {
 			name: "LITM.Settings.colorblind_mode",
