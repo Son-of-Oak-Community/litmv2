@@ -87,7 +87,7 @@
 		"TOURS.NarratorsCallInvocationsTitle": "Your half: the opposition",
 		"TOURS.NarratorsCallInvocationsContent": "<p>Invoke the tags of the target, the opposition, or the environment (p.272). Your invocations carry a quill mark and are locked to the roller, so your -2 cannot quietly disappear.</p><p>A tag from an actor you have hidden in the sidebar still counts — the player sees its weight as <em>Something unseen</em>, never its name, on the dialog and on the chat card alike.</p>",
 		"TOURS.NarratorsCallRollersHalfTitle": "Their half: their own tags, and the dice",
-		"TOURS.NarratorsCallRollersHalfContent": "<p>The player picks their own tags, trades Power if the move allows it, and presses Roll. The Total updates live for both of you as either side changes anything.</p><p>On an Acting Together roll you press it instead — there is no single roller to.</p>",
+		"TOURS.NarratorsCallRollersHalfContent": "<p>The player picks their own tags, trades Power if the move allows it, and presses Roll. The Total updates live for both of you as either side changes anything.</p><p>On an Acting Together roll you press it instead — there is no single roller to press it.</p>",
 		"TOURS.NarratorsCallPickupTitle": "Everyone else can join",
 		"TOURS.NarratorsCallPickupContent": "<p>While a roll is open, a <em>click to join</em> strip sits above the player list for everyone not already in it. That is how a helper adds a tag, and how a player who closed the window gets back to it.</p><p>There is no chat card to hunt for — the roll posts its own when it lands.</p>",
 		"TOURS.NarratorsCallOutroTitle": "That is the loop",
