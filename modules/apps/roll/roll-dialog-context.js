@@ -624,9 +624,16 @@ export function buildGmViewerContext(
 	if (mergedStoryTab) gmViewerTabs.push(mergedStoryTab);
 	if (fellowshipTab) gmViewerTabs.push(fellowshipTab);
 	gmViewerTabs.push(...otherTabs);
-	// Initialize native tab group tracking
+	// Initialize native tab group tracking. `??=` alone is not enough: the tab
+	// set is rebuilt from the story-tag sidebar and, for a group roll, from the
+	// participant list, so a remembered id can name a tab that no longer
+	// exists. Nothing then gets `.active`, and `.tab[data-tab]:not(.active) {
+	// display: none }` hides every pane — a tag picker that renders empty while
+	// `hasTags` is true.
 	const initialTab = gmViewerTabs[0]?.id;
-	dialog.tabGroups["gm-viewer"] ??= initialTab;
+	const remembered = dialog.tabGroups["gm-viewer"];
+	if (!remembered || !gmViewerTabs.some((tab) => tab.id === remembered))
+		dialog.tabGroups["gm-viewer"] = initialTab;
 	for (const tab of gmViewerTabs) {
 		tab.cssClass = dialog.tabGroups["gm-viewer"] === tab.id ? "active" : "";
 	}

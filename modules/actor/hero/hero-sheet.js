@@ -7,14 +7,12 @@ import {
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ActionsApp } from "../../apps/actions-app.js";
 import { findBurnedSelection } from "../../apps/roll/burn-cap.js";
-import { resolveRollDialogOwnership } from "../../apps/roll/roll-dialog.js";
 import {
 	blockPlayerInitiatedRoll,
 	canUserInitiateRoll,
 } from "../../apps/roll/roll-pipeline.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { LitmSettings } from "../../system/settings.js";
-import { Sockets } from "../../system/sockets.js";
 import { enrichHTML, transferBackpackTags } from "../../utils.js";
 
 /**
@@ -141,13 +139,6 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	/**
-	 * Roll dialog instance
-	 * @type {LitmRollDialog}
-	 * @private
-	 */
-	#rollDialog = null;
-
-	/**
 	 * Actions browser app instance
 	 * @type {ActionsApp}
 	 * @private
@@ -173,28 +164,6 @@ export class HeroSheet extends LitmActorSheet {
 
 	static #onOpenCamping() {
 		game.litmv2?.LitmCampingScene?.open();
-	}
-
-	/**
-	 * Whether a roll dialog instance exists (without creating one)
-	 * @type {boolean}
-	 */
-	get hasRollDialog() {
-		return !!this.#rollDialog;
-	}
-
-	/**
-	 * Get or create the roll dialog instance
-	 * @returns {LitmRollDialog}
-	 * @private
-	 */
-	get rollDialogInstance() {
-		if (!this.#rollDialog) {
-			this.#rollDialog = game.litmv2.LitmRollDialog.create({
-				actorId: this.document.id,
-			});
-		}
-		return this.#rollDialog;
 	}
 
 	/** @override */
@@ -799,14 +768,6 @@ export class HeroSheet extends LitmActorSheet {
 	/* -------------------------------------------- */
 
 	/**
-	 * Update the roll dialog with new data
-	 * @param {object} data Data to update
-	 */
-	updateRollDialog(data) {
-		this.#rollDialog?.receiveUpdate(data);
-	}
-
-	/**
 	 * Select a tag for the roll dialog from an external source (e.g., fellowship sheet).
 	 * @param {string} tagType - The tag type (e.g., "power_tag", "weakness_tag")
 	 * @param {string} tagId - The tag effect ID
@@ -847,43 +808,6 @@ export class HeroSheet extends LitmActorSheet {
 		} else {
 			this.rollDialogInstance.render();
 		}
-		this.render();
-	}
-
-	/**
-	 * Render the roll dialog
-	 * @param {object} options Render options
-	 */
-	renderRollDialog(options = {}) {
-		const { isOwner, activeOwnerId } = resolveRollDialogOwnership(
-			this.document,
-			game.user.id,
-		);
-
-		if (options.toggle && this.rollDialogInstance.rendered) {
-			this.rollDialogInstance.close();
-			return;
-		}
-
-		if (isOwner) {
-			this.rollDialogInstance.ownerId = game.user.id;
-			const shouldBroadcast = activeOwnerId !== game.user.id;
-			if (shouldBroadcast) this.rollDialogInstance.updatePresence(true);
-		} else {
-			this.rollDialogInstance.ownerId = activeOwnerId;
-			Sockets.dispatch("requestRollDialogSync", {
-				actorId: this.document.id,
-			});
-		}
-
-		this.rollDialogInstance.render(true);
-	}
-
-	/**
-	 * Reset the roll dialog
-	 */
-	resetRollDialog() {
-		this.rollDialogInstance.reset();
 		this.render();
 	}
 }

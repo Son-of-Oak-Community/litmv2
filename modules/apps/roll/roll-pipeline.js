@@ -7,8 +7,8 @@ import { ContentSources } from "../../system/content-sources.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import { localize as t } from "../../utils.js";
-import { canInitiateRoll } from "./narrator-call-rules.js";
 import { LitmRoll } from "./roll.js";
+import { canInitiateRoll } from "./roll-authority.js";
 
 /**
  * Roll execution + post-roll bookkeeping, lifted out of the dialog so the

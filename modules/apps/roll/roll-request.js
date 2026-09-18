@@ -1,65 +1,43 @@
 import { warn } from "../../logger.js";
-import { tagChipHtml } from "../../system/renderers/renderer-utils.js";
+import { FLAGS } from "../../system/config.js";
 import { Sockets } from "../../system/sockets.js";
 import { localize as t } from "../../utils.js";
-import {
-	buildNarratorSelections,
-	normalizeCallType,
-	resolveCallDelivery,
-	summarizeNarratorTags,
-} from "./narrator-call-rules.js";
+import { resolveSharedRollOwner } from "./roll-authority.js";
 
 /**
- * Delivery for the Narrator's Call: turning the Narrator's half of a roll
- * into something a player can pick up.
+ * The Narrator's Call, as a shared table rather than a handoff.
  *
- * Two channels, deliberately. The **chat card** is the durable artefact — it
- * is whispered to every owner of the Hero, so a player who was disconnected
- * finds the call waiting at login, and the Narrator keeps a record of what
- * they asked for. The **socket** is only the nudge that opens the dialog on
- * an already-connected player's screen. Neither is load-bearing alone.
+ * Core Book p.269 puts the choice of outcome method in the Narrator's hands,
+ * and p.272 has them invoke the tags of "the target of the action, the
+ * opposition, or the environment" before the dice come out. The old shape of
+ * this module shipped that whole judgement to the player in a whispered card;
+ * the shape here opens **one roll object** on both screens instead. The
+ * Narrator picks who is rolling and nothing else — everything after that
+ * happens inside `LitmRollDialog`, where the Narrator sets the move, the Might
+ * and their invocations while the roller sets theirs.
+ *
+ * Pickup is the roll-dialog HUD strip in `#players`, driven by the same
+ * `rollDialogOwner` flag every other open roll uses. There is no durable chat
+ * record of a call: the roll produces its own card.
  */
 
 /**
- * Render the Narrator's invocations as tag chips, through the system's one
- * sanctioned chip builder so the card matches every other tag surface.
- * @param {{name: string, type: string, value?: number}[]} tags
- * @returns {string} HTML
- */
-export function narratorTagChips(tags = []) {
-	return tags
-		.map((tag) => {
-			if (tag.type === "status_tag")
-				return tagChipHtml({ kind: "status", name: tag.name, tier: tag.value });
-			if (tag.type === "weakness_tag")
-				return tagChipHtml({ kind: "weakness", name: tag.name });
-			return tagChipHtml({ kind: "tag", name: tag.name });
-		})
-		.join(" ");
-}
-
-/**
- * Hand a configured roll to the table.
+ * Open a shared roll on every screen that belongs in it.
  *
  * @param {object} call
- * @param {string} call.actorId       The Hero being called on.
- * @param {string} call.type          quick | tracked | mitigate
- * @param {string} [call.title]       What the roll is for.
- * @param {string} [call.note]        Free prose from the Narrator.
- * @param {number} [call.might]       Might difference the Narrator judged.
+ * @param {string} call.actorId            Hero, or the Fellowship for a group roll.
+ * @param {string[]} [call.participantIds] Acting Together participants.
  * @param {string|null} [call.actionUuid]
- * @param {Map<string, object>|[string, object][]} [call.selections]
- *   The Narrator's tag invocations, straight off the call app.
- * @returns {Promise<ChatMessage|null>}
+ * @param {string} [call.title]
+ * @param {string} [call.type]             quick | tracked | mitigate
+ * @returns {Promise<object|null>} The dispatched payload, or null.
  */
-export async function sendNarratorCall({
+export async function openSharedRoll({
 	actorId,
-	type,
-	title = "",
-	note = "",
-	might = 0,
+	participantIds = [],
 	actionUuid = null,
-	selections = [],
+	title = "",
+	type = "quick",
 }) {
 	if (!game.user.isGM) {
 		ui.notifications.warn(t("LITM.Actions.gm_only"));
@@ -71,123 +49,90 @@ export async function sendNarratorCall({
 		return null;
 	}
 
-	const narratorUserId = game.user.id;
+	// A group roll rides the Fellowship, which the Narrator owns and rolls —
+	// so it deliberately offers no player owners and falls through to the GM.
+	const isGroupRoll = actor.id === game.litmv2?.fellowship?.id;
+	const owners = isGroupRoll
+		? []
+		: game.users
+				.filter((u) => actor.testUserPermission(u, "OWNER"))
+				.map((u) => ({ id: u.id, active: u.active, isGM: u.isGM }));
+
 	const payload = {
-		call: true,
 		actorId,
-		requestedActorId: actorId,
-		type: normalizeCallType(type),
-		title,
-		note,
-		might: Number(might) || 0,
+		ownerId: resolveSharedRollOwner({ owners, gmUserId: game.user.id }),
+		participantIds: [...participantIds],
 		actionUuid,
-		selections: buildNarratorSelections(selections, narratorUserId),
-		narratorUserId,
+		title,
+		type,
+		narratorUserId: game.user.id,
 		narratorName: game.user.name,
-		fromUserId: narratorUserId,
 	};
 
 	// Cancellable: a module may veto or rewrite a call before it goes out.
 	if (Hooks.call("litm.narratorCall", payload, actor) === false) return null;
 
-	const owners = game.users
-		.filter((u) => actor.testUserPermission(u, "OWNER"))
-		.map((u) => ({ id: u.id, active: u.active, isGM: u.isGM }));
-	const { mode, rollerIds, whisper } = resolveCallDelivery({
-		owners,
-		narratorUserId,
+	// Advertise the roll before opening it, so the HUD strip lights up for
+	// everyone the call didn't reach directly. The GM writes this flag on the
+	// roller's behalf — `updatePresence` would refuse, since the GM is not the
+	// owner of a single-hero call.
+	await actor.setFlag("litmv2", FLAGS.rollDialogOwner, {
+		ownerId: payload.ownerId,
+		openedAt: Date.now(),
+		type: payload.type,
 	});
 
-	const message = await _postCallCard({ actor, payload, mode, whisper });
-
-	if (mode === "player") {
-		Sockets.dispatch("narratorCall", { ...payload, rollerIds });
-	} else {
-		// Nobody is connected to play this Hero. Rather than dropping the call
-		// or parking it in a queue, the Narrator finishes it themselves in the
-		// same dialog — post-roll writes to the unowned Hero are already the
-		// GM's to make, so no extra authorization path is needed.
-		ui.notifications.info(
-			game.i18n.format("LITM.Ui.narrator_call_rolling_yourself", {
-				name: actor.name,
-			}),
-		);
-		applyNarratorCall(payload);
-	}
-
-	return message;
+	Sockets.dispatch("openRollDialog", payload);
+	applySharedRoll(payload);
+	return payload;
 }
 
-async function _postCallCard({ actor, payload, mode, whisper }) {
-	const tags = [];
-	for (const [uuid, sel] of payload.selections) {
-		const effect = foundry.utils.fromUuidSync(uuid);
-		if (!effect) continue;
-		tags.push({
-			name: effect.name,
-			type: effect.type,
-			value: effect.system?.currentTier ?? 0,
-			state: sel.state,
-		});
-	}
-	const { helpful, hindering } = summarizeNarratorTags(tags);
-	const action = payload.actionUuid
-		? await foundry.utils.fromUuid(payload.actionUuid)
-		: null;
-
-	const content = await foundry.applications.handlebars.renderTemplate(
-		"systems/litmv2/templates/chat/roll-request.html",
-		{
-			narratorName: payload.narratorName,
-			typeLabel: t(`LITM.Ui.roll_${payload.type}`),
-			requestedActorName: actor.name,
-			requestedActorImg: actor.prototypeToken?.texture?.src || actor.img,
-			rollTitle: payload.title,
-			actionName: action?.name ?? "",
-			practitioners: action?.system?.practitioners ?? "",
-			note: payload.note,
-			might: payload.might,
-			helpfulChips: helpful.length ? narratorTagChips(helpful) : "",
-			hinderingChips: hindering.length ? narratorTagChips(hindering) : "",
-			// When the call already landed on the Narrator's own screen there is
-			// nothing left to take — the card is just the record of it.
-			showTake: mode === "player",
-		},
-	);
-
-	return foundry.documents.ChatMessage.create({
-		content,
-		whisper,
-		flags: { litmv2: { rollRequest: payload } },
+/**
+ * Whether this client is *in* the roll, as opposed to merely at the table.
+ *
+ * The roller is, and so is any player who owns a participating Hero in an
+ * Acting Together roll — they have a tag to contribute. Everyone else learns
+ * about it from the HUD strip and joins if they want to, which is what Filip
+ * asked for: "players whose character was not selected get the notification".
+ *
+ * @param {{ownerId?: string, participantIds?: string[]}} call
+ * @returns {boolean}
+ */
+export function shouldJoinSharedRoll({ ownerId, participantIds = [] } = {}) {
+	if (ownerId === game.user.id) return true;
+	return participantIds.some((id) => {
+		const hero = game.actors.get(id);
+		return !!hero?.testUserPermission(game.user, "OWNER");
 	});
 }
 
 /**
- * Adopt a Narrator's Call on this client: seed the Hero's roll dialog with
- * the Narrator's move, invocations and Might, then open it. Shared by the
- * socket handler, the chat card's Take button, and the Narrator's own
- * offline fallback — one apply path, so the dialog can only be seeded one
- * way.
+ * Adopt a shared roll on this client: seed the actor's roll dialog with who
+ * owns it, what it is about and the Narrator's stamp, then open it. Shared by
+ * the socket handler and the Narrator's own client, so the dialog can only be
+ * seeded one way.
  *
  * @param {object} call
  */
-export function applyNarratorCall(call) {
-	const actor = game.actors.get(call.actorId ?? call.requestedActorId);
-	if (!actor) return warn("Narrator's Call: target actor not found", call);
+export function applySharedRoll(call) {
+	const actor = game.actors.get(call.actorId);
+	if (!actor) return warn("Shared roll: target actor not found", call);
 	const sheet = actor.sheet;
 	const dialog = sheet?.rollDialogInstance;
-	if (!dialog) return warn("Narrator's Call: hero has no roll dialog", call);
+	if (!dialog) return warn("Shared roll: actor sheet has no roll dialog", call);
 
-	dialog.applyNarratorCall(call);
-	if (typeof sheet.renderRollDialog === "function") sheet.renderRollDialog();
-	else if (!dialog.rendered) dialog.render(true);
+	dialog.configureSharedRoll(call);
+	dialog.render(true);
+	// The roller's client is the one that syncs the shared object outward, so
+	// a peer opening later sees the same selections.
+	if (dialog.isOwner) dialog.dispatchSync();
 }
 
 /**
- * Ask for a roll of a specific Action item. Kept as the entry point the
- * action sheet, the actions browser and the `@action` enricher already call;
- * it now opens the Narrator's Call pre-linked to the action rather than its
- * own one-off prompt, so there is a single "GM asks for a roll" surface.
+ * Ask for a roll of a specific Action item. Kept as the entry point the action
+ * sheet, the actions browser and the `@action` enricher already call; it opens
+ * the roll call pre-linked to the action, so there is one "GM asks for a roll"
+ * surface.
  *
  * @param {object} args
  * @param {Item} args.action
@@ -202,8 +147,8 @@ export async function sendRollRequest({ action }) {
 		ui.notifications.warn(t("LITM.Actions.request_no_heroes"));
 		return null;
 	}
-	const { NarratorCallApp } = await import("./narrator-call.js");
-	return NarratorCallApp.open({
+	const { CallForRollApp } = await import("./call-for-roll.js");
+	return CallForRollApp.open({
 		actionUuid: action.uuid,
 		title: action.name,
 	});

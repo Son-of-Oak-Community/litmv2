@@ -1,7 +1,10 @@
 import { scratchTag } from "../active-effects/scratchable-mixin.js";
 import { resolveApprovedRoll } from "../apps/roll/moderation.js";
 import { LitmRollDialog } from "../apps/roll/roll-dialog.js";
-import { applyNarratorCall } from "../apps/roll/roll-request.js";
+import {
+	applySharedRoll,
+	shouldJoinSharedRoll,
+} from "../apps/roll/roll-request.js";
 import {
 	handleApplyStatusAsGM,
 	handleApplySuccessAsGM,
@@ -45,7 +48,7 @@ export class Sockets {
 	static registerListeners() {
 		this.#registerRollUpdateListener();
 		this.#registerRollModerationListeners();
-		this.#registerNarratorCallListener();
+		this.#registerSharedRollListener();
 		this.#registerStoryTagsListeners();
 		this.#registerCampingListeners();
 		this.#registerHeroCreationListener();
@@ -68,17 +71,15 @@ export class Sockets {
 		});
 	}
 
-	// The Narrator's Call: the GM configured a roll (move type, the tags they
-	// invoke for and against the Hero, Might) and handed it to the player who
-	// owns that Hero. `rollerIds` names the seats the call is addressed to, so
-	// other connected players ignore it — the whispered chat card is what the
-	// rest of the table (and a player who reconnects later) reads.
-	static #registerNarratorCallListener() {
-		Sockets.on("narratorCall", ({ data }) => {
-			const { rollerIds } = data;
-			if (Array.isArray(rollerIds) && !rollerIds.includes(game.user.id)) return;
-			Hooks.callAll("litm.narratorCallReceived", data);
-			applyNarratorCall(data);
+	// The Narrator's Call: the GM opened a shared roll and named who finishes
+	// it. Everyone in the roll — the owner, plus any player who owns a
+	// participating Hero in an Acting Together roll — opens the same dialog;
+	// the rest of the table sees it on the roll-dialog HUD strip and joins if
+	// they want to. There is no chat card: the roll posts its own.
+	static #registerSharedRollListener() {
+		Sockets.on("openRollDialog", ({ data }) => {
+			if (!shouldJoinSharedRoll(data)) return;
+			applySharedRoll(data);
 		});
 	}
 

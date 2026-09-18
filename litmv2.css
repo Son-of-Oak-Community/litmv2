@@ -7601,23 +7601,19 @@ body.litm--colorblind .themed.theme-dark,
 
 /* ========================================
    24. Narrator's Call
-   The GM's half of a roll, made first: move, target, invoked tags, Might.
-   Reuses the Roll Dialog chrome wholesale (§9) — only the target picker
-   and the invocation summary are new.
+   The Narrator picks who is rolling — a short column of plaques and
+   nothing else. The move, the Might and the Narrator's invocations all
+   happen inside the shared roll dialog (§9), beside the player's half.
 ======================================== */
 
-/* The call is a top-to-bottom form, so the invocation picker is the only
-   part that should absorb leftover height — everything above it is fixed
-   chrome. The roll dialog gets this for free from .litm--roll-dialog-grid
-   (flex: 1); without the equivalent here the flex column steals height from
-   the short rows and squashes the move bar to its borders. */
-.litm--narrator-call .litm--roll-dialog-content > * {
-	flex: 0 0 auto;
+.litm--roll-call-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-8);
 }
 
-.litm--narrator-call .litm--roll-dialog-tags-column {
-	flex: 1 1 auto;
-	min-height: 0;
+.litm--roll-call-body > .hint {
+	margin: 0;
 }
 
 /* Target picker — a row of hero plaques. Selection reads as a warm wash
@@ -7639,6 +7635,8 @@ body.litm--colorblind .themed.theme-dark,
 	border: 1px solid var(--color-text-primary-15);
 	border-radius: var(--radius-md);
 	line-height: 1.2;
+	text-align: start;
+	cursor: pointer;
 	transition:
 		background var(--transition-normal),
 		border-color var(--transition-normal);
@@ -7687,39 +7685,39 @@ body.litm--colorblind .themed.theme-dark,
 	opacity: 0.55;
 }
 
-/* Invocation summary in the footer — reads back what the Narrator has
-   picked, so the call can be checked before it is sent. */
-.litm--narrator-call-invoked {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacer-4);
-}
-
-.litm--narrator-call-invoked-line {
-	display: flex;
-	flex-flow: row wrap;
-	align-items: baseline;
-	gap: var(--spacer-4) var(--spacer-8);
-	margin: 0;
-}
-
-.litm--narrator-call-invoked-label {
-	font-size: var(--font-size-11);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	opacity: 0.7;
-}
-
-/* Banner in the roll dialog once a call has been handed over. */
-.litm--narrator-call-banner {
+/* Banners in the roll dialog: who called the roll, and whether the whole
+   group is acting together. */
+.litm--narrator-call-banner,
+.litm--acting-together-banner {
 	display: flex;
 	align-items: center;
 	gap: var(--spacer-8);
 	margin-block-end: var(--spacer-4);
 }
 
-.litm--narrator-call-note {
-	margin: 0 0 var(--spacer-8);
+/* A control whose half of the roll belongs to someone else — the move and
+   the Might on a called roll. Reads as settled rather than broken: the
+   current value stays legible, the rest recedes. */
+.litm--roll-type-bar.is-locked,
+.litm--might-radio-row.is-locked {
+	opacity: 0.75;
+}
+
+.litm--roll-type-bar.is-locked .litm--segmented-option,
+.litm--might-radio-row.is-locked .litm--segmented-option {
+	cursor: default;
+}
+
+.litm--roll-type-bar.is-locked .litm--segmented-option:not(.is-active),
+.litm--might-radio-row.is-locked .litm--segmented-option:not(.is-active) {
+	opacity: 0.5;
+}
+
+/* Invocations that move this roll's Power but belong to something this
+   client can't see. Masked, not hidden: the tier still reads, the source
+   doesn't. */
+.litm--roll-dialog-concealed .litm--roll-dialog-tag {
+	font-style: italic;
 }
 
 /* A tag the Narrator invoked: quill mark, and locked for the roller. */

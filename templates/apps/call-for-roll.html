@@ -1,0 +1,57 @@
+{{!-- The Narrator picks who is rolling, and nothing else. Everything the
+      Narrator used to set here — the move, the Might, their invocations —
+      now happens inside the shared roll dialog, beside the player's half. --}}
+<div class="standard-form litm--roll-call-body">
+
+	{{#if actionName}}
+	<header class="flexrow gap-sm litm--roll-action-strip">
+		{{#if actionImg}}
+		<img class="noflex litm--roll-action-strip-img" src="{{actionImg}}" alt="" />
+		{{/if}}
+		<div class="flexcol flex1 litm--roll-action-strip-meta">
+			<strong>{{actionName}}</strong>
+		</div>
+		<button type="button" class="noflex" data-action="clearAction"
+			data-tooltip="{{localize 'LITM.Actions.clear_action'}}"
+			aria-label="{{localize 'LITM.Actions.clear_action'}}">
+			<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+		</button>
+	</header>
+	{{/if}}
+
+	<p class="hint">{{localize "LITM.Ui.narrator_call_who_hint"}}</p>
+
+	{{#if fellowship}}
+	<fieldset>
+		<legend>{{localize "LITM.Ui.acting_together"}}</legend>
+		<p class="hint">{{localize "LITM.Ui.acting_together_hint"}}</p>
+		<div class="litm--narrator-call-targets">
+			<button type="button" class="litm--narrator-call-target"
+				data-action="callTarget" data-actor-id="{{fellowship.id}}">
+				<img class="litm--narrator-call-target-img" src="{{fellowship.img}}" alt="" />
+				<span class="litm--narrator-call-target-name">{{fellowship.name}}</span>
+			</button>
+		</div>
+	</fieldset>
+	{{/if}}
+
+	<fieldset>
+		<legend>{{localize "LITM.Ui.narrator_call_who"}}</legend>
+		{{#if hasHeroes}}
+		<div class="litm--narrator-call-targets">
+			{{#each targets as |target|}}
+			<button type="button"
+				class="litm--narrator-call-target {{#unless target.online}}is-offline{{/unless}}"
+				data-action="callTarget" data-actor-id="{{target.id}}"
+				data-tooltip="{{target.statusLabel}}" aria-label="{{target.name}} — {{target.statusLabel}}">
+				<img class="litm--narrator-call-target-img" src="{{target.img}}" alt="" />
+				<span class="litm--narrator-call-target-name">{{target.name}}</span>
+				<span class="litm--narrator-call-target-presence" aria-hidden="true"></span>
+			</button>
+			{{/each}}
+		</div>
+		{{else}}
+		<p class="hint">{{localize "LITM.Actions.request_no_heroes"}}</p>
+		{{/if}}
+	</fieldset>
+</div>

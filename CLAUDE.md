@@ -107,6 +107,8 @@ Typed sheets inherit through `LitmSheetMixin` → `LitmActorSheet` (items: `Litm
 
 All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — sheets switch templates by overriding `_getEditModeTemplate()` and `_configureRenderParts()`. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
 
+`LitmActorSheet` also owns the roll dialog (`hasRollDialog`, `rollDialogInstance`, `renderRollDialog`, `resetRollDialog`, `updateRollDialog`). They live on the base, not on `HeroSheet`, because Acting Together rides the Fellowship actor — and because the roll-dialog HUD and the roll sockets address whatever actor the `rollDialogOwner` flag names, without checking its type.
+
 ### Roll Flow
 
 ```
@@ -119,25 +121,54 @@ HeroSheet roll → LitmRollDialog (tag selection)
 
 The dialog's `#selectionMap` is the source of truth for tag selections, not form fields.
 
-**GM-initiated (Narrator's Call).** The inverse path, Core Book p.269/p.272: the
-Narrator picks the move and the opposition first, the player finishes the roll.
+**GM-initiated (Narrator's Call).** The inverse path, Core Book p.269/p.272 — and
+it is a **shared table, not a handoff**: one roll object that the Narrator and the
+roller look at live.
 
 ```
-NarratorCallApp (GM)  -- move type, target hero, invoked tags, Might
-  → sendNarratorCall()  ("litm.narratorCall" hook, cancellable)
-  → whispered chat card (durable) + "narratorCall" socket (nudge)
-  → applyNarratorCall() on the roller's client
-  → dialog.applyNarratorCall() seeds #selectionMap with narrator-stamped entries
-  → player picks their own tags and submits through the normal pipeline
+CallForRollApp (GM)  -- picks WHO is rolling, and nothing else
+  → openSharedRoll()  ("litm.narratorCall" hook, cancellable)
+  → actor flag rollDialogOwner  (HUD strip lights up for the rest of the table)
+  → "openRollDialog" socket  →  shouldJoinSharedRoll() on every client
+  → applySharedRoll() → dialog.configureSharedRoll() on the roller's client
+                                                  and on the Narrator's
+  → Narrator sets move / Might / their invocations IN that window;
+    roller sets their own tags and Trade Power and presses Roll
 ```
 
-`NarratorCallApp` duck-types the slice of `LitmRollDialog` that
-`buildGmViewerContext` consumes (`actor`, `actorId`, `getSelection`, `tabGroups`)
-so both surfaces share one tag picker. Selection entries carrying
-`narrator: true` are locked for non-GMs in both `makeTagDecorator` and
-`LitmRollDialog#canModifyTag` — the Narrator's invocations aren't the roller's
-to drop. When no active non-GM owner exists, the call falls back to the GM, who
-rolls on the Hero's behalf in the same dialog.
+The authority split lives in `modules/apps/roll/roll-authority.js` (pure,
+unit-tested):
+
+- **Narrator's half** — move type and Might. Locked for non-GMs whenever the roll
+  carries a narrator stamp (`canEditNarratorFields`). Enforced in the template
+  (`disabled`), in `#handleTypeChange` / `#handleMightChange`, which revert, and
+  in `setType`, which the hero sheet's Sacrifice button calls directly; the
+  markup is not the boundary. **The GM may set the move and the Might on any
+  roll, called or not** — judging Might is the Narrator's job (p.272), so the
+  settings column renders for them even as a non-owner viewer. That is a
+  deliberate widening of the pre-branch behaviour, where the column was
+  owner-only.
+- **Nothing that contributes to Power is read from the form.** `extractRollData`
+  takes it all from the dialog's own fields, because `FormDataExtended` skips
+  `:disabled` controls — reading Might off the form would drop exactly the value
+  the Narrator had just set, and `modifier`/`title` have no form control at all.
+- **Roller's half** — their own tags, modifier, Trade Power. Trade Power is
+  additionally off for a group roll (`canEditTradePower`).
+- Selection entries carrying `narrator: true` stay locked for non-GMs in both
+  `makeTagDecorator` and `LitmRollDialog#canModifyTag`.
+
+`resolveSharedRollOwner` picks the seat: an active non-GM owner of the Hero, else
+the Narrator, who rolls on the Hero's behalf in the same window.
+
+There is **no durable chat record** of a call. Pickup is the existing roll-dialog
+HUD strip in `#players`, driven by the same `rollDialogOwner` flag every other
+open roll uses; the roll posts its own card. `litm.narratorCallReceived` is gone
+with the receive step it named.
+
+Invocations the roller can't see — a concealed Challenge's tags, say — still count
+toward Power, so the dialog renders them as **masked rows** ("Something unseen",
+tier intact, no name, no actor). Concealment is the Narrator's tool; silent
+arithmetic is not. See `LitmRollDialog#buildConcealedRows`.
 
 The `player_initiated_rolls` world setting gates *instigation* only (hero-sheet
 Roll button, sheet tag click, rolling an Action, the `R` keybinding — see
@@ -146,7 +177,15 @@ a call, reacting, camp actions and Sacrifice stay open regardless.
 
 ### Sockets
 
-Namespace `system.litmv2`. Events cover roll-dialog sync, GM moderation, GM-proxied mutation of unowned documents (scratch, apply success/status, hero creation), story tags, and camping. Canonical list and payload shapes: `modules/system/sockets.js` — read it rather than guessing an event name.
+Namespace `system.litmv2`. Events cover roll-dialog open/sync/close, GM moderation, GM-proxied mutation of unowned documents (scratch, apply success/status, hero creation), story tags, and camping. Canonical list and payload shapes: `modules/system/sockets.js` — read it rather than guessing an event name.
+
+`openRollDialog` starts a shared roll: the payload names the actor, the resolved
+`ownerId`, the participants (Acting Together only) and the Narrator's stamp.
+`shouldJoinSharedRoll` decides who opens it — the owner, plus any player owning a
+participating Hero. Everyone else sees the HUD strip. `updateRollDialog` carries
+the narrator stamp and the participant list alongside the selections, so a client
+that joins later learns the roll was *called* rather than rendering the
+Narrator's half as its own.
 
 ## Active Effects: the canonical tag store
 
@@ -227,8 +266,7 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.trackCompleted` — `{ actor, trackInfo: { text, type, actorId?, themeId? } }`
 - `litm.limitReached` — `{ actor, limit }` where `limit.max` is the effective max
 - `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits); no payload. Roll dialogs listen to refresh contributed-tag groups.
-- `litm.narratorCall` — `(payload, actor)` before a Narrator's Call is delivered; return `false` to cancel, or mutate `payload` to rewrite it
-- `litm.narratorCallReceived` — `(payload)` on the roller's client, before the dialog is seeded
+- `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.
 

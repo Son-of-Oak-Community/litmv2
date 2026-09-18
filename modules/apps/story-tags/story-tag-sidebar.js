@@ -1021,8 +1021,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	 * is where calling for a roll belongs.
 	 */
 	static async #onNarratorCall() {
-		const { NarratorCallApp } = await import("../roll/narrator-call.js");
-		NarratorCallApp.open();
+		const { CallForRollApp } = await import("../roll/call-for-roll.js");
+		CallForRollApp.open();
 	}
 
 	static #onAddTag(_event, target) {
