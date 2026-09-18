@@ -6547,8 +6547,9 @@ body.litm--colorblind .themed.theme-dark,
 	cursor: pointer;
 }
 
-/* Token hover tooltip */
-#litm-token-tooltip {
+/* Token tag/status label: the hover tooltip and the persistent on-canvas
+   labels share this chrome. */
+.litm-token-tooltip {
 	position: absolute;
 	z-index: 100;
 	pointer-events: none;
@@ -6566,8 +6567,8 @@ body.litm--colorblind .themed.theme-dark,
 	text-overflow: ellipsis;
 }
 
-#litm-token-tooltip .litm-tag,
-#litm-token-tooltip .litm-status {
+.litm-token-tooltip .litm-tag,
+.litm-token-tooltip .litm-status {
 	font-size: var(--font-size-24);
 }
 
