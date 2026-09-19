@@ -135,10 +135,35 @@ export function applySharedRoll(call) {
 }
 
 /**
- * Ask for a roll of a specific Action item. Kept as the entry point the action
- * sheet, the actions browser and the `@action` enricher already call; it opens
- * the roll call pre-linked to the action, so there is one "GM asks for a roll"
- * surface.
+ * What the "ask for a roll" button on an Action should say.
+ *
+ * An Action embedded on a Hero calls the roll for that Hero, so the button
+ * has to read as calling on them by name rather than as sending a request
+ * into the void. Anything else falls back to the generic label, because it
+ * genuinely does open a picker.
+ *
+ * @param {Actor|null} [owner] The Actor the Action is embedded on, if any.
+ * @returns {string}
+ */
+export function callForRollLabel(owner) {
+	return owner?.type === "hero"
+		? game.i18n.format("LITM.Actions.call_for_actor", { name: owner.name })
+		: t("LITM.Actions.request_dialog_title");
+}
+
+/**
+ * Ask for a roll of a specific Action item. The entry point the action sheet,
+ * the actions browser and the `@action` enricher all call.
+ *
+ * **An Action embedded on a Hero already knows who is rolling it**, so it
+ * calls the roll for that Hero instead of opening a picker with nobody
+ * chosen. Both call sites had the actor in hand and threw it away; the Action
+ * itself is the better discriminator, because it is right for the enricher
+ * too, which has no surrounding actor to consult.
+ *
+ * A world or compendium Action, or one embedded on something that is not a
+ * Hero, still opens the picker pre-linked — there is genuinely no answer to
+ * "who" in that case.
  *
  * @param {object} args
  * @param {Item} args.action
@@ -149,6 +174,15 @@ export async function sendRollRequest({ action }) {
 		return null;
 	}
 	if (!action || action.type !== "action") return null;
+
+	const owner = action.parent;
+	if (owner?.type === "hero")
+		return openSharedRoll({
+			actorId: owner.id,
+			actionUuid: action.uuid,
+			title: action.name,
+		});
+
 	if (!game.actors.some((a) => a.type === "hero")) {
 		ui.notifications.warn(t("LITM.Actions.request_no_heroes"));
 		return null;

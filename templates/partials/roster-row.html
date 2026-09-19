@@ -18,7 +18,7 @@
       selected at once. --}}
 <label
     class="litm--roster-row{{#if row.variant}} litm--roster-row--{{row.variant}}{{/if}}{{#if row.muted}} is-offline{{/if}}"
-    {{#if row.actorId}}data-actor-id="{{row.actorId}}"{{/if}}>
+    data-row-id="{{row.id}}">
     <input class="litm--roster-input" type="{{#if row.multi}}checkbox{{else}}radio{{/if}}"
         name="{{row.inputName}}" value="{{row.value}}" {{checked row.selected}} />
     <img class="litm--roster-portrait" src="{{row.img}}" alt="" />

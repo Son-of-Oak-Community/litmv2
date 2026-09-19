@@ -1,4 +1,7 @@
-import { sendRollRequest } from "../../apps/roll/roll-request.js";
+import {
+	callForRollLabel,
+	sendRollRequest,
+} from "../../apps/roll/roll-request.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
 import { POWER_REF_TAG_TYPES } from "../../system/config.js";
 import { removeAtIndex, localize as t } from "../../utils.js";
@@ -83,6 +86,9 @@ export class ActionSheet extends LitmItemSheet {
 			categoryOptions,
 			isRote: this.system.isRote,
 			isGM: game.user.isGM,
+			// An Action on a Hero calls the roll for that Hero rather than
+			// opening a picker, so the button says so.
+			callLabel: callForRollLabel(this.document.parent),
 		};
 	}
 

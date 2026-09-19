@@ -6734,6 +6734,7 @@ body.litm--colorblind .themed.theme-dark,
 	margin-block-start: var(--spacer-8);
 	border-block-start: 1px solid var(--color-text-primary-15);
 	padding-block-start: var(--spacer-8);
+	border-block-end-color: transparent;
 }
 
 .litm--roster-row--fellowship .litm--roster-name {
@@ -7729,7 +7730,73 @@ body.litm--colorblind .themed.theme-dark,
 
 /* Who rolls is a roster (§21) under a standard section header — this
    surface adds no row chrome of its own, which was the whole complaint
-   about what it used to draw here. */
+   about what it used to draw here.
+
+   Side by side, and the columns carry a fixed block-size rather than a
+   max: Foundry is wide and short, so the window must not grow downward as
+   a Hero accumulates Actions. A Hero with twenty opens the same window as
+   a Hero with none; the list scrolls inside the column instead. */
+.litm--roll-call-columns {
+	display: flex;
+	gap: var(--spacer-16);
+	align-items: stretch;
+}
+
+.litm--roll-call-col {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+}
+
+.litm--roll-call-scroll {
+	block-size: 17rem;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
+}
+
+/* The Heroes scroll; Acting Together is pinned under them and does not. The
+   fixed height belongs to the box, so the window still cannot grow. */
+.litm--roll-call-who {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.litm--roll-call-heroes {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
+}
+
+.litm--roll-call-pinned {
+	flex: none;
+}
+
+/* A row clipped mid-height is the signal that the list scrolls, so the hint
+   below needs air or the two read as one broken block. */
+.litm--roll-call-body > .hint {
+	margin: var(--spacer-8) 0 0;
+}
+
+.litm--roll-call-empty {
+	block-size: 17rem;
+	margin: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 0 var(--spacer-8);
+}
+
+/* An Action is not a character, so its row drops the portrait's rounding
+   to the icon scale and never carries a presence dot. */
+.litm--roster-row--action .litm--roster-portrait {
+	width: 1.75rem;
+	height: 1.75rem;
+}
 
 /* Banners in the roll dialog: who called the roll, and whether the whole
    group is acting together. */

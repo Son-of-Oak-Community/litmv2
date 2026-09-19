@@ -86,7 +86,60 @@ export function rosterPresence(actor) {
 }
 
 /**
- * Build one roster row's render context.
+ * Build one row's render context: the shape `roster-row.html` consumes.
+ *
+ * Kept separate from {@link buildRosterEntry} because the picker's right-hand
+ * column lists a Hero's Actions in the same rows, and an Action is not a
+ * character. Everything about a row that is *not* "read it off an Actor" lives
+ * here, so the markup has exactly one contract.
+ *
+ * @param {object} [fields]
+ * @param {string} [fields.id]                Row id, read back off the DOM.
+ * @param {string|number} [fields.value]      Input value; defaults to the id.
+ * @param {string} [fields.inputName="rosterPick"]
+ * @param {boolean} [fields.selected=false]
+ * @param {boolean} [fields.multi=false]      Checkbox instead of radio.
+ * @param {string} [fields.img]
+ * @param {string} [fields.name]
+ * @param {string} [fields.meta]              The context line under the name.
+ * @param {boolean} [fields.presence=false]   Render the presence dot.
+ * @param {boolean} [fields.online=false]
+ * @param {boolean} [fields.muted=false]      Dim the portrait.
+ * @param {string} [fields.variant=""]        Row modifier, e.g. "fellowship".
+ * @returns {object}
+ */
+export function buildRow({
+	id = "",
+	value,
+	inputName = "rosterPick",
+	selected = false,
+	multi = false,
+	img = "",
+	name = "",
+	meta = "",
+	presence = false,
+	online = false,
+	muted = false,
+	variant = "",
+} = {}) {
+	return {
+		id,
+		value: value ?? id,
+		inputName,
+		selected,
+		multi,
+		img,
+		name,
+		meta,
+		presence,
+		online,
+		muted,
+		variant,
+	};
+}
+
+/**
+ * Build one roster row for an Actor.
  *
  * @param {Actor} actor
  * @param {object} [options]
@@ -95,15 +148,15 @@ export function rosterPresence(actor) {
  *                                           when nobody is holding it.
  *                                           Player-ownable actors only.
  * @param {boolean} [options.selected=false]
- * @param {string}  [options.value]          Radio value; defaults to the id.
+ * @param {boolean} [options.multi=false]    Checkbox instead of radio, for the
+ *                                           surfaces that tick several.
+ * @param {string|number} [options.value]    Input value; defaults to the id.
  * @param {string}  [options.inputName="rosterPick"]
  * @param {string}  [options.meta=""]        Context line, when not derived.
  * @param {string}  [options.img]            Portrait override, for callers that
  *                                           already resolved a better one (a
  *                                           placed token's own texture).
  * @param {string}  [options.name]           Name override, same reason.
- * @param {boolean} [options.multi=false]    Checkbox instead of radio, for the
- *                                           surfaces that tick several.
  * @param {string}  [options.variant=""]     Row modifier, e.g. "fellowship".
  * @returns {object}
  */
@@ -124,17 +177,16 @@ export function buildRosterEntry(actor, options = {}) {
 		? rosterPresence(actor)
 		: { meta, online: false, unowned: false };
 
-	return {
+	return buildRow({
 		id: actor?.id ?? "",
-		actorId: actor?.id ?? "",
-		value: value ?? actor?.id ?? "",
+		value,
 		inputName,
 		selected,
+		multi,
 		img: img || rosterPortrait(actor),
 		name: name || rosterName(actor),
 		meta: seat.meta,
 		muted: presence && !seat.online,
-		multi,
 		variant,
-	};
+	});
 }

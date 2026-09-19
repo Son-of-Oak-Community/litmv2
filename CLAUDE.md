@@ -126,7 +126,7 @@ it is a **shared table, not a handoff**: one roll object that the Narrator and t
 roller look at live.
 
 ```
-CallForRollApp (GM)  -- picks WHO is rolling, and nothing else
+CallForRollApp (GM)  -- picks WHO is rolling, and optionally WHICH Action
   → openSharedRoll()  ("litm.narratorCall" hook, cancellable)
   → actor flag rollDialogOwner  (HUD strip lights up for the rest of the table)
   → "openRollDialog" socket  →  shouldJoinSharedRoll() on every client
@@ -159,6 +159,18 @@ unit-tested):
 
 `resolveSharedRollOwner` picks the seat: an active non-GM owner of the Hero, else
 the Narrator, who rolls on the Hero's behalf in the same window.
+
+The picker lays out side by side — roster left, the chosen character's Actions
+right — and both columns carry a **fixed** block-size rather than a max, so the
+window does not grow downward as a Hero accumulates Actions. Foundry gives you
+width and withholds height; spend the width.
+
+`sendRollRequest` is the one entry the action sheet, the actions browser and
+the `@action` enricher all call. **An Action embedded on a Hero calls the roll
+for that Hero** and never opens the picker — `action.parent` is the
+discriminator rather than the surrounding app, because it is also right for the
+enricher, which has no surrounding actor. `callForRollLabel` labels the button
+to match.
 
 There is **no durable chat record** of a call. Pickup is the existing roll-dialog
 HUD strip in `#players`, driven by the same `rollDialogOwner` flag every other
