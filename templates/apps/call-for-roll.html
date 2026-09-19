@@ -2,8 +2,9 @@
       Narrator used to set here — the move, the Might, their invocations —
       now happens inside the shared roll dialog, beside the player's half.
 
-      One list of heroes, two readings of it: a plaque is the call in solo
-      mode and a participant tick in Acting Together. --}}
+      One roster, and the Fellowship is the last row in it. Acting Together
+      (p.157) is not a mode you switch into; it is one of the things you can
+      call on, which is what it is at the table. --}}
 <div class="standard-form litm--roll-call-body">
 
 	{{#if actionName}}
@@ -22,38 +23,23 @@
 	</header>
 	{{/if}}
 
-	{{!-- Acting Together (p.157) is only a thing where the table uses a
-	      Fellowship: the group roll rides that actor, and there is no
-	      fallback without it. --}}
-	{{#if hasFellowship}}
-	<div class="litm--roll-type-bar" role="radiogroup" aria-label="{{localize 'LITM.Ui.narrator_call_who'}}">
-		{{#each modes as |mode|}}
-		<label class="litm--segmented-option litm--roll-type-option {{#if mode.active}}is-active{{/if}}"
-			data-action="setMode" data-mode="{{mode.id}}">
-			<input type="radio" name="callMode" value="{{mode.id}}" {{checked mode.active}} />
-			<span>{{mode.label}}</span>
-		</label>
-		{{/each}}
-	</div>
-	{{/if}}
-
-	<p class="hint">{{hint}}</p>
-
 	{{#if hasHeroes}}
+	<p class="litm-render__section-header">{{localize "LITM.Ui.narrator_call_who"}}</p>
 	<div class="litm--roster" role="radiogroup" aria-label="{{localize 'LITM.Ui.narrator_call_who'}}">
 		{{#each targets as |target|}}
 		{{> "systems/litmv2/templates/partials/roster-row.html" row=target}}
 		{{/each}}
 	</div>
+	<p class="hint">{{hint}}</p>
 	{{else}}
 	<p class="hint">{{localize "LITM.Actions.request_no_heroes"}}</p>
 	{{/if}}
 
-	{{#if isGroup}}
+	{{#if hasHeroes}}
 	<footer class="form-footer">
-		<button type="button" class="bright" data-action="callGroup" {{#unless canOpenGroup}}disabled{{/unless}}>
-			<i class="fa-solid fa-people-group" aria-hidden="true"></i>
-			{{localize "LITM.Ui.acting_together_open"}}
+		<button type="button" class="bright" data-action="callRoll" {{#unless hasSelection}}disabled{{/unless}}>
+			<i class="fa-solid fa-dice" aria-hidden="true"></i>
+			{{localize "LITM.Ui.call_the_roll"}}
 		</button>
 	</footer>
 	{{/if}}

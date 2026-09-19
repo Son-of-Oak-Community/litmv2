@@ -184,8 +184,8 @@ the GM owns it and presses Roll. Where there is no Fellowship (`use_fellowship`
 off) Acting Together is simply not offered; there is no fallback.
 
 ```
-CallForRollApp → "Acting Together" mode → tick participants → openSharedRoll({
-    actorId: fellowship.id, participantIds: [...] })
+CallForRollApp → the Fellowship row of the roster → openSharedRoll({
+    actorId: fellowship.id, participantIds: resolveFellowshipParticipants(...) })
   → dialog.isGroupRoll (actorId === fellowship.id)
   → buildGroupRollTabs(): one tab per participant + Fellowship + Story
   → each participant's client opens it and contributes from their own tab
@@ -201,9 +201,15 @@ The rules live in `modules/apps/roll/group-roll.js` (pure, unit-tested):
   opposition's are exempt for free — they don't resolve to a participant.
 - **One burn for the whole group** needs no new code: `findBurnedSelection` in
   `burn-cap.js` already caps the entire selection map at one scratched tag.
-- **Participants** are a GM-selected subset (`resolveGroupParticipants`). An
-  offline participant stays in the roll and contributes nothing. Changing them
-  re-runs `configureSharedRoll`, which resets the dialog.
+- **Participants are the whole group** — every Hero linked to the Fellowship
+  (`resolveFellowshipParticipants`, which normalises through
+  `resolveGroupParticipants` so hero order and de-duplication have one
+  definition). "Linked" mirrors `HeroData#fellowshipActor`: this Fellowship's
+  id, or none at all, which falls back to the singleton. There is no subset to
+  tick — Helping Each Other is the mechanic for "some of us pitch in", and it
+  is already implemented as contributed tags. An offline participant stays in
+  the roll and contributes nothing. Changing participants re-runs
+  `configureSharedRoll`, which resets the dialog.
 - A participant may only touch their own Hero's tags — `actableActorIds` in
   `makeTagDecorator` locks the rest, and `#canModifyTag` refuses them.
 

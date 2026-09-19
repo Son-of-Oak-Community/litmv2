@@ -27,7 +27,7 @@
 		},
 		{
 			"id": "acting-together",
-			"selector": "[data-action='setMode'][data-mode='group']",
+			"selector": ".litm--roster-row--fellowship",
 			"title": "TOURS.NarratorsCallActingTogetherTitle",
 			"content": "TOURS.NarratorsCallActingTogetherContent"
 		},
@@ -79,7 +79,7 @@
 		"TOURS.NarratorsCallPickWhoTitle": "Pick who is rolling — and nothing else",
 		"TOURS.NarratorsCallPickWhoContent": "<p>That is the only decision this window asks for. The dot beside each Hero tells you whether their player is connected; if nobody is, the roll falls to you and you make it on their behalf.</p><p>Everything else — the move, the Might, the tags you invoke — you set inside the roll window itself, where the player can watch you do it.</p>",
 		"TOURS.NarratorsCallActingTogetherTitle": "Acting Together",
-		"TOURS.NarratorsCallActingTogetherContent": "<p>When the whole group pushes at the same thing, that is one roll, not several (Core Book p.157). Switch to Acting Together and tick everyone taking part.</p><p>The roll rides the Fellowship, you press the dice, and each Hero contributes a single tag — with one burn shared across the lot of them.</p>",
+		"TOURS.NarratorsCallActingTogetherContent": "<p>When the whole group pushes at the same thing, that is one roll, not several (Core Book p.157). The Fellowship is the last row of the roster, so calling on the group is the same gesture as calling on one Hero.</p><p>Every Hero in the Fellowship is in it — there is nobody to tick. The roll rides the Fellowship, you press the dice, and each Hero contributes a single tag, with one burn shared across the lot of them.</p>",
 		"TOURS.NarratorsCallSharedWindowTitle": "One window, two halves",
 		"TOURS.NarratorsCallSharedWindowContent": "<p>This is the same roll dialog the player is looking at. Not a copy — the same roll. What either of you changes, the other sees.</p>",
 		"TOURS.NarratorsCallNarratorsHalfTitle": "Your half: the move and the Might",

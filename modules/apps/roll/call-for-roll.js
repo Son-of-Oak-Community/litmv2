@@ -1,7 +1,7 @@
 import { LitmSettings } from "../../system/settings.js";
 import { localize as t } from "../../utils.js";
 import { buildRosterEntry } from "../roster.js";
-import { resolveGroupParticipants } from "./group-roll.js";
+import { resolveFellowshipParticipants } from "./group-roll.js";
 import { openSharedRoll } from "./roll-request.js";
 
 /**
@@ -15,9 +15,12 @@ import { openSharedRoll } from "./roll-request.js";
  * dialog opens on both screens, and the Narrator does their invoking there,
  * beside the player doing theirs.
  *
- * So: no tag picking here, no Might, no note. A hero, or the Fellowship when
- * the table uses one — Acting Together (p.157) is a single roll for the group,
- * and the Fellowship actor is the thing that rolls it.
+ * So: no tag picking here, no Might, no note. A Hero — or the Fellowship,
+ * which is **the last row of the same roster** rather than a mode you switch
+ * into. Acting Together (p.157) is one of the things a Narrator can call on,
+ * and burying it behind a segmented bar made it read as a setting. Choosing it
+ * takes every Hero linked to the Fellowship: the whole group acts, so there is
+ * no subset to tick.
  */
 export class CallForRollApp extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
@@ -33,8 +36,7 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 		},
 		position: { width: 480, height: "auto" },
 		actions: {
-			setMode: CallForRollApp.#onSetMode,
-			callGroup: CallForRollApp.#onCallGroup,
+			callRoll: CallForRollApp.#onCallRoll,
 			clearAction: CallForRollApp.#onClearAction,
 		},
 	};
@@ -69,10 +71,8 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 	#actionDoc = null;
 	#title = "";
 	#type = "quick";
-	/** @type {Set<string>} Heroes ticked for an Acting Together roll. */
-	#participants = new Set();
-	/** @type {"solo"|"group"} */
-	#mode = "solo";
+	/** @type {string|null} The chosen Hero, or the Fellowship's id. */
+	#selectedId = null;
 
 	configure({ actionUuid, title, type } = {}) {
 		if (actionUuid !== undefined) {
@@ -86,6 +86,18 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 	/** Heroes the Narrator can call on, in directory order. */
 	get heroes() {
 		return game.actors.filter((a) => a.type === "hero");
+	}
+
+	/**
+	 * The Fellowship, when the table uses one. Acting Together rides this
+	 * actor, and where there is none it is simply not offered — no fallback.
+	 *
+	 * @returns {Actor|null}
+	 */
+	get fellowship() {
+		return LitmSettings.useFellowship
+			? (game.litmv2?.fellowship ?? null)
+			: null;
 	}
 
 	async #resolveAction() {
@@ -102,43 +114,53 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 
 	async _prepareContext(_options) {
 		await this.#resolveAction();
-		// No Fellowship, no Acting Together — there is nothing for the group roll
-		// to ride, so the mode bar doesn't appear and `solo` is the only shape.
-		const fellowship = LitmSettings.useFellowship
-			? game.litmv2?.fellowship
-			: null;
-		const isGroup = !!fellowship && this.#mode === "group";
-		const targets = this.heroes.map((hero) =>
+		const fellowship = this.fellowship;
+		const heroes = this.heroes;
+
+		// A selection that is no longer on the roster — a Hero deleted, or the
+		// Fellowship switched off under a chosen Acting Together — must not
+		// survive into the render, or the CTA offers to call on nobody.
+		const onRoster =
+			heroes.some((h) => h.id === this.#selectedId) ||
+			this.#selectedId === fellowship?.id;
+		if (this.#selectedId && !onRoster) this.#selectedId = null;
+
+		const targets = heroes.map((hero) =>
 			buildRosterEntry(hero, {
 				presence: true,
-				selected: isGroup && this.#participants.has(hero.id),
+				selected: this.#selectedId === hero.id,
 				inputName: "callTarget",
-				multi: isGroup,
 			}),
 		);
+
+		if (fellowship)
+			targets.push(
+				buildRosterEntry(fellowship, {
+					selected: this.#selectedId === fellowship.id,
+					inputName: "callTarget",
+					name: t("LITM.Ui.acting_together"),
+					meta: t("LITM.Ui.acting_together_meta"),
+					variant: "fellowship",
+				}),
+			);
+
+		const isGroup = !!fellowship && this.#selectedId === fellowship.id;
 		return {
 			actionName: this.#actionDoc?.name ?? "",
 			actionImg: this.#actionDoc?.img ?? "",
-			hasHeroes: targets.length > 0,
+			hasHeroes: heroes.length > 0,
 			targets,
-			hasFellowship: !!fellowship,
-			isGroup,
-			modes: [
-				{ id: "solo", label: t("LITM.Ui.narrator_call_who"), active: !isGroup },
-				{ id: "group", label: t("LITM.Ui.acting_together"), active: isGroup },
-			],
+			hasSelection: !!this.#selectedId,
 			hint: isGroup
 				? t("LITM.Ui.acting_together_hint")
 				: t("LITM.Ui.narrator_call_who_hint"),
-			canOpenGroup: this.#participants.size > 0,
 		};
 	}
 
 	/**
 	 * The roster's inputs are the only event path — see the partial's header
-	 * for why. One row, two meanings: in solo mode picking it *is* the call,
-	 * so the roll window opens on the spot; in Acting Together it ticks a
-	 * participant, which is why those rows are checkboxes.
+	 * for why. Picking a row selects it; the footer calls the roll. Two steps,
+	 * because the Narrator may also want to pick an action for it.
 	 */
 	_onRender(context, options) {
 		super._onRender(context, options);
@@ -148,45 +170,33 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 				const input = event.target.closest(".litm--roster-input");
 				if (!input) return;
 				const actorId = input.closest("[data-actor-id]")?.dataset?.actorId;
-				if (actorId) this.#pickTarget(actorId, input.checked);
+				if (!actorId || actorId === this.#selectedId) return;
+				this.#selectedId = actorId;
+				this.render();
 			});
 	}
 
-	async #pickTarget(actorId, checked) {
-		if (this.#mode === "group" && LitmSettings.useFellowship) {
-			if (checked) this.#participants.add(actorId);
-			else this.#participants.delete(actorId);
-			this.render();
+	static async #onCallRoll() {
+		if (!this.#selectedId) return;
+		const fellowship = this.fellowship;
+		const isGroup = !!fellowship && this.#selectedId === fellowship.id;
+
+		// Acting Together takes the whole group. Filip's call, reversing the
+		// GM-selected subset this used to ask for: when the group acts
+		// together, everyone linked to the Fellowship is in it.
+		const participantIds = isGroup
+			? resolveFellowshipParticipants({
+					heroes: this.heroes,
+					fellowshipId: fellowship.id,
+				})
+			: [];
+		if (isGroup && !participantIds.length) {
+			ui.notifications.warn(t("LITM.Actions.request_no_heroes"));
 			return;
 		}
-		await openSharedRoll({
-			actorId,
-			actionUuid: this.#actionUuid,
-			title: this.#title,
-			type: this.#type,
-		});
-		this.close();
-	}
 
-	static #onSetMode(_event, target) {
-		const mode = target?.dataset?.mode;
-		if (!mode || mode === this.#mode) return;
-		this.#mode = mode;
-		this.render();
-	}
-
-	static async #onCallGroup() {
-		const fellowship = LitmSettings.useFellowship
-			? game.litmv2?.fellowship
-			: null;
-		if (!fellowship) return;
-		const participantIds = resolveGroupParticipants({
-			heroes: this.heroes,
-			selectedIds: [...this.#participants],
-		});
-		if (!participantIds.length) return;
 		await openSharedRoll({
-			actorId: fellowship.id,
+			actorId: this.#selectedId,
 			participantIds,
 			actionUuid: this.#actionUuid,
 			title: this.#title,

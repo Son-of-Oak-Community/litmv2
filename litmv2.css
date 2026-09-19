@@ -6727,6 +6727,20 @@ body.litm--colorblind .themed.theme-dark,
 	opacity: 0.8;
 }
 
+/* The Fellowship sits at the foot of the roster as "Acting Together" — one of
+   the things you can call on rather than a mode you switch into. Set apart
+   from the Heroes above it, because it is not one of them. */
+.litm--roster-row--fellowship {
+	margin-block-start: var(--spacer-8);
+	border-block-start: 1px solid var(--color-text-primary-15);
+	padding-block-start: var(--spacer-8);
+}
+
+.litm--roster-row--fellowship .litm--roster-name {
+	font-family: var(--font-h2);
+	letter-spacing: 0.04em;
+}
+
 /* ========================================
    22. Camping Scene
    Manuscript-style page for camp/sojourn activities.

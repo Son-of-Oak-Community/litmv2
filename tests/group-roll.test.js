@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { findBurnedSelection } from "../modules/apps/roll/burn-cap.js";
 import {
 	findHeroTagConflict,
+	resolveFellowshipParticipants,
 	resolveGroupParticipants,
 } from "../modules/apps/roll/group-roll.js";
 
@@ -172,5 +173,56 @@ describe("the group burn cap needs no group-specific code", () => {
 			["h2-tag", { state: "negative", tagActorId: "h2" }],
 		]);
 		expect(findBurnedSelection(map, "h3-tag")).toBe(null);
+	});
+});
+
+describe("resolveFellowshipParticipants", () => {
+	const linked = (id, fellowshipId) => ({ id, system: { fellowshipId } });
+
+	it("takes every Hero pointing at this Fellowship", () => {
+		const heroes = [linked("h1", "f1"), linked("h2", "f1"), linked("h3", "f1")];
+		expect(
+			resolveFellowshipParticipants({ heroes, fellowshipId: "f1" }),
+		).toEqual(["h1", "h2", "h3"]);
+	});
+
+	it("takes an unlinked Hero too, which falls back to the singleton", () => {
+		const heroes = [linked("h1", "f1"), { id: "h2", system: {} }, { id: "h3" }];
+		expect(
+			resolveFellowshipParticipants({ heroes, fellowshipId: "f1" }),
+		).toEqual(["h1", "h2", "h3"]);
+	});
+
+	it("leaves out a Hero linked to a different Fellowship", () => {
+		const heroes = [linked("h1", "f1"), linked("h2", "other")];
+		expect(
+			resolveFellowshipParticipants({ heroes, fellowshipId: "f1" }),
+		).toEqual(["h1"]);
+	});
+
+	it("keeps hero order rather than link order", () => {
+		const heroes = [linked("h1", "f1"), linked("h2", "f1")];
+		expect(
+			resolveFellowshipParticipants({ heroes, fellowshipId: "f1" }),
+		).toEqual(["h1", "h2"]);
+	});
+
+	it("is empty without a Fellowship, since Acting Together has nothing to ride", () => {
+		const heroes = [linked("h1", "f1")];
+		expect(resolveFellowshipParticipants({ heroes })).toEqual([]);
+		expect(
+			resolveFellowshipParticipants({ heroes, fellowshipId: null }),
+		).toEqual([]);
+		expect(resolveFellowshipParticipants()).toEqual([]);
+	});
+
+	it("does not consult presence — an offline Hero is still in the roll", () => {
+		const heroes = [
+			{ id: "h1", system: { fellowshipId: "f1" }, active: false },
+			{ id: "h2", system: { fellowshipId: "f1" }, active: true },
+		];
+		expect(
+			resolveFellowshipParticipants({ heroes, fellowshipId: "f1" }),
+		).toEqual(["h1", "h2"]);
 	});
 });

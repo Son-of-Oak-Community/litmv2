@@ -352,8 +352,8 @@
 		"Ui": {
 			"acting_together": "Acting Together",
 			"acting_together_banner": "Acting Together — one roll for the whole group",
-			"acting_together_hint": "One roll for the whole group. Each Hero taking part contributes a single tag.",
-			"acting_together_open": "Open the group roll",
+			"acting_together_meta": "the whole Fellowship",
+			"acting_together_hint": "One roll for the whole group — every Hero in the Fellowship is in it, each contributing a single tag, with one burn shared between them.",
 			"activate_improvement": "Activate Improvement",
 			"activate_tag": "Activate Tag",
 			"add_actor": "Add Actor",
@@ -487,6 +487,7 @@
 			"camping_threats_hint": "Narrator's promise of trouble during the camp or sojourn. Delivered as Consequences if left unaddressed.",
 			"camping_threats_new": "New Threat",
 			"camping_title": "Camping",
+			"call_the_roll": "Call the roll",
 			"cancel": "Cancel",
 			"category_placeholder": "e.g. pursuer",
 			"change": "Change",
