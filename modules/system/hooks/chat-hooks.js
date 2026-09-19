@@ -444,6 +444,29 @@ async function _handleTakeRollRequest(_target, app) {
 	else if (!dialog.rendered) dialog.render(true);
 }
 
+/**
+ * The Narrator picking up a player's "I'd like to roll" (see
+ * `requestRollFromNarrator`). Turning the ask into a call is the whole action,
+ * so the card goes as soon as it is answered — same claim-by-delete the
+ * moderation cards use, which keeps a second Narrator from calling it twice.
+ */
+async function _handleCallRequestedRoll(_target, app) {
+	if (!game.user.isGM) return;
+	const actorId = app.getFlag("litmv2", "rollRequestFrom")?.actorId;
+	const actor = actorId ? game.actors.get(actorId) : null;
+	if (!actor) {
+		ui.notifications.warn(t("LITM.Actions.apply_no_actor"));
+		return;
+	}
+	const claimed = await app.delete().catch(() => null);
+	if (!claimed) {
+		warn(`Roll request ${app.id} was already answered elsewhere.`);
+		return;
+	}
+	const { openSharedRoll } = await import("../../apps/roll/roll-request.js");
+	await openSharedRoll({ actorId: actor.id });
+}
+
 const CLICK_HANDLERS = {
 	"spend-power": _handleSpendPower,
 	"push-roll": _handlePushRoll,
@@ -456,6 +479,7 @@ const CLICK_HANDLERS = {
 	"action-view-ref": _handleViewActionRef,
 	"action-open-consequences": _handleOpenApplyConsequences,
 	"take-roll-request": _handleTakeRollRequest,
+	"call-requested-roll": _handleCallRequestedRoll,
 	react: _handleReact,
 };
 

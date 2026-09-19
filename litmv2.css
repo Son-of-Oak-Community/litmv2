@@ -3580,10 +3580,16 @@ section.standard-form.litm-actions-app {
 	width: 100%;
 	min-height: unset;
 	height: auto;
-	padding: var(--spacer-4) var(--spacer-8);
+	/* Sized against the roll-dialog strip item directly above it, which is
+	   ~80px tall because it stacks avatar, title, meta and an action row. The
+	   strip's own 8px/10px padding gets a one-line button nowhere near that,
+	   so match its *presence* instead: this is the control you reach for most,
+	   and beside a live notification it was reading as a footnote. */
+	padding: 14px 12px;
 	font: inherit;
 	font-family: var(--font-h2);
-	font-size: var(--font-size-13);
+	font-size: var(--font-size-16);
+	font-weight: 600;
 	appearance: none;
 	cursor: pointer;
 	color: var(--color-litm-tag-text);
@@ -3592,6 +3598,10 @@ section.standard-form.litm-actions-app {
 	border-radius: var(--radius-lg);
 	box-shadow: var(--shadow-md);
 	transition: background var(--transition-normal);
+}
+
+.litm-call-for-roll-hud__button > i {
+	font-size: var(--font-size-18);
 }
 
 .litm-call-for-roll-hud__button:hover {

@@ -1,5 +1,6 @@
 import { CallForRollApp } from "../apps/roll/call-for-roll.js";
-import { blockPlayerInitiatedRoll } from "../apps/roll/roll-pipeline.js";
+import { canUserInitiateRoll } from "../apps/roll/roll-pipeline.js";
+import { requestRollFromNarrator } from "../apps/roll/roll-request.js";
 import { LitmActorSheet } from "../sheets/base-actor-sheet.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
 import { LitmSettings } from "./settings.js";
@@ -205,9 +206,11 @@ export class KeyBindings {
 					});
 				}
 				// Toggling a dialog that is already open is not instigation —
-				// only gate the case where this would start a new roll.
-				if (!sheet.rollDialogInstance?.rendered && blockPlayerInitiatedRoll())
-					return;
+				// only gate the case where this would start a new roll. Where
+				// the player may not start one, `R` asks for one, the same as
+				// the sheet's Roll button: one gesture, one behaviour.
+				if (!sheet.rollDialogInstance?.rendered && !canUserInitiateRoll())
+					return requestRollFromNarrator(sheet.actor);
 				return sheet.renderRollDialog({ toggle: true });
 			},
 			onUp: () => {},

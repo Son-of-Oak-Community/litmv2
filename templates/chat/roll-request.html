@@ -1,0 +1,18 @@
+{{!-- A player raising a hand: posted, whispered to the Narrators, when the
+      table routes every roll through them. The counterpart to the Narrator's
+      Call, which needs no card because the shared dialog is its own notice. --}}
+<div class="litm dice-roll litm--roll-request">
+	<div class="dice-effect">
+		<p class="litm--moderation-gm-hint"><em><a class="content-link" draggable="true" data-link=""
+					data-uuid="Actor.{{actorId}}" data-id="{{actorId}}" data-type="Actor" data-tooltip="{{name}}"><i
+						class="fas fa-user" aria-hidden="true"></i>{{name}}</a>
+				{{localize "LITM.Ui.roll_request_card"}}</em></p>
+	</div>
+	<div class="dice-result">
+		<footer class="dice-footer flexrow litm--moderation-actions">
+			<button type="button" class="litm--roll-approve-button" data-click="call-requested-roll">
+				<i class="fas fa-feather" aria-hidden="true"></i> {{localize 'LITM.Ui.roll_request_call'}}
+			</button>
+		</footer>
+	</div>
+</div>

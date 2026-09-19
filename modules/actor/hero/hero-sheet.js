@@ -11,6 +11,7 @@ import {
 	blockPlayerInitiatedRoll,
 	canUserInitiateRoll,
 } from "../../apps/roll/roll-pipeline.js";
+import { requestRollFromNarrator } from "../../apps/roll/roll-request.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { LitmSettings } from "../../system/settings.js";
 import { enrichHTML, transferBackpackTags } from "../../utils.js";
@@ -234,9 +235,12 @@ export class HeroSheet extends LitmActorSheet {
 			...mofContext,
 			limit: this.system.limit,
 			showCamping: game.user.isGM && !LitmSettings.useFellowship,
-			// Hidden when the table routes every roll through the Narrator — the
-			// Roll button is the main way a player would start one unprompted.
-			showRollButton: canUserInitiateRoll(),
+			// The Roll button is always there. Where the table routes every roll
+			// through the Narrator it asks for one instead of opening the dialog
+			// — hiding it left the player with no way to say "I'd like to roll",
+			// and it was the only button in this row that vanished. One value,
+			// not two that can disagree: the template swaps its own label off it.
+			rollButtonAsksNarrator: !canUserInitiateRoll(),
 		};
 	}
 
@@ -385,7 +389,9 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	static #onOpenRollDialog(_event, _target) {
-		if (blockPlayerInitiatedRoll()) return;
+		// Where the player may not start a roll, the button raises a hand
+		// instead. `R` does the same — it is the same gesture on a keyboard.
+		if (!canUserInitiateRoll()) return requestRollFromNarrator(this.actor);
 		// If the dialog was previously opened in sacrifice mode and then
 		// cancelled, the instance still has type="sacrifice". Clicking the
 		// regular Roll button should bring the user back to a standard roll —

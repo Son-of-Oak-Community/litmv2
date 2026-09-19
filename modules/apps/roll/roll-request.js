@@ -193,3 +193,47 @@ export async function sendRollRequest({ action }) {
 		title: action.name,
 	});
 }
+
+/**
+ * A player raising a hand: "I'd like to roll."
+ *
+ * The reverse of the Narrator's Call, and deliberately not its mirror image.
+ * A call opens a whole roll object on both screens, so it needs no chat
+ * record. A request opens nothing — the player cannot compose a roll when
+ * `player_initiated_rolls` is off, so there is nothing to look at together and
+ * the ask has to survive a Narrator who is mid-sentence. That makes a
+ * whispered card the right shape: durable, and it carries the one button that
+ * turns the ask into a call.
+ *
+ * The card's only client-authored datum is which Hero asked, and the Narrator
+ * reads that name before clicking. Nothing executes on anyone else's client —
+ * `openSharedRoll` is GM-gated and runs on the Narrator's own initiative — so
+ * this needs none of `resolveApprovedRoll`'s hardening.
+ *
+ * @param {Actor} actor The Hero whose player is asking.
+ * @returns {Promise<ChatMessage|null>}
+ */
+export async function requestRollFromNarrator(actor) {
+	if (!actor) return null;
+	// A live roll for this Hero is already the thing they are asking for.
+	if (actor.getFlag("litmv2", FLAGS.rollDialogOwner)) {
+		ui.notifications?.info(t("LITM.Ui.roll_request_already_open"));
+		return null;
+	}
+	const narrators = game.users.filter((u) => u.isGM && u.active);
+	if (!narrators.length) {
+		ui.notifications?.warn(t("LITM.Ui.roll_request_no_narrator"));
+		return null;
+	}
+	const message = await foundry.documents.ChatMessage.create({
+		whisper: narrators.map((u) => u.id),
+		speaker: foundry.documents.ChatMessage.getSpeaker({ actor }),
+		content: await foundry.applications.handlebars.renderTemplate(
+			"systems/litmv2/templates/chat/roll-request.html",
+			{ actorId: actor.id, name: actor.name },
+		),
+		flags: { litmv2: { rollRequestFrom: { actorId: actor.id } } },
+	});
+	ui.notifications?.info(t("LITM.Ui.roll_request_sent"));
+	return message;
+}
