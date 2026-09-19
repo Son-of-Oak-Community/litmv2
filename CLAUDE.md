@@ -281,6 +281,29 @@ Each effect has a `type` mapping to a TypeDataModel in `modules/active-effects/`
 
 **Gotcha:** `<button>` in a `<form>` defaults to `type="submit"`. Always use `type="button"` for non-submit buttons in `tag: "form"` ApplicationV2 apps.
 
+### Choosing a character
+
+There is one character-selection control and new surfaces use it rather than
+inventing a row: `modules/apps/roster.js` builds the entry,
+`templates/partials/roster-row.html` renders it, `.litm--roster*` styles it
+(`litmv2.css` §21). A row is portrait, name, and one line of context under the
+name — a cast list, not a row of tiles.
+
+- **The input is the only event path.** Each row is a `<label>` wrapping a real
+  radio (or a checkbox, for surfaces that tick several). A `change` listener
+  fires for both a mouse click and a keyboard Space or arrow key; a
+  `data-action` click handler would fire for the mouse and stay silent for the
+  keyboard. It is also the whole form contract for the DialogV2 pickers, which
+  read `input[name=…]:checked`.
+- **Presence is opt-in** (`presence: true`). The dot and the "who is playing
+  them" line belong to player-ownable characters. Challenges and Limits go
+  through the same control without them — a Challenge wearing a hollow dot and
+  "no player assigned" reads as a broken Hero.
+- **Names are masked** (`system.maskedName ?? name`) and **portraits always
+  resolve** (prototype token → actor image → `CONFIG.litmv2.assets.icons.defaultActor`).
+  Both were inconsistent across the surfaces this replaced, and the masked name
+  is load-bearing: the target picker lists concealed Challenges.
+
 ### Template paths
 
 All Handlebars paths prefixed with `systems/litmv2/`. Same for partials: `{{> "systems/litmv2/templates/partials/play-tag.html"}}`.

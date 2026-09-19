@@ -1,5 +1,6 @@
 import { LitmSettings } from "../../system/settings.js";
 import { localize as t } from "../../utils.js";
+import { buildRosterEntry } from "../roster.js";
 import { resolveGroupParticipants } from "./group-roll.js";
 import { openSharedRoll } from "./roll-request.js";
 
@@ -32,7 +33,6 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 		},
 		position: { width: 480, height: "auto" },
 		actions: {
-			pickTarget: CallForRollApp.#onPickTarget,
 			setMode: CallForRollApp.#onSetMode,
 			callGroup: CallForRollApp.#onCallGroup,
 			clearAction: CallForRollApp.#onClearAction,
@@ -108,10 +108,14 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 			? game.litmv2?.fellowship
 			: null;
 		const isGroup = !!fellowship && this.#mode === "group";
-		const targets = this.heroes.map((hero) => ({
-			...this.#targetContext(hero),
-			selected: isGroup && this.#participants.has(hero.id),
-		}));
+		const targets = this.heroes.map((hero) =>
+			buildRosterEntry(hero, {
+				presence: true,
+				selected: isGroup && this.#participants.has(hero.id),
+				inputName: "callTarget",
+				multi: isGroup,
+			}),
+		);
 		return {
 			actionName: this.#actionDoc?.name ?? "",
 			actionImg: this.#actionDoc?.img ?? "",
@@ -130,36 +134,28 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 		};
 	}
 
-	/** Per-hero plaque: who plays them, and are they here. */
-	#targetContext(hero) {
-		const owners = game.users.filter(
-			(u) => !u.isGM && hero.testUserPermission(u, "OWNER"),
-		);
-		const online = owners.filter((u) => u.active);
-		return {
-			id: hero.id,
-			name: hero.name,
-			img: hero.prototypeToken?.texture?.src || hero.img,
-			online: online.length > 0,
-			statusLabel: online.length
-				? online.map((u) => u.name).join(", ")
-				: owners.length
-					? t("LITM.Ui.narrator_call_player_offline")
-					: t("LITM.Ui.narrator_call_no_player"),
-		};
+	/**
+	 * The roster's inputs are the only event path — see the partial's header
+	 * for why. One row, two meanings: in solo mode picking it *is* the call,
+	 * so the roll window opens on the spot; in Acting Together it ticks a
+	 * participant, which is why those rows are checkboxes.
+	 */
+	_onRender(context, options) {
+		super._onRender(context, options);
+		this.element
+			.querySelector(".litm--roster")
+			?.addEventListener("change", (event) => {
+				const input = event.target.closest(".litm--roster-input");
+				if (!input) return;
+				const actorId = input.closest("[data-actor-id]")?.dataset?.actorId;
+				if (actorId) this.#pickTarget(actorId, input.checked);
+			});
 	}
 
-	/**
-	 * One plaque, two meanings: in solo mode it *is* the call, so the roll
-	 * window opens on the spot; in Acting Together mode it ticks a participant
-	 * and the roll opens from the button below.
-	 */
-	static async #onPickTarget(_event, target) {
-		const actorId = target?.dataset?.actorId;
-		if (!actorId) return;
+	async #pickTarget(actorId, checked) {
 		if (this.#mode === "group" && LitmSettings.useFellowship) {
-			if (this.#participants.has(actorId)) this.#participants.delete(actorId);
-			else this.#participants.add(actorId);
+			if (checked) this.#participants.add(actorId);
+			else this.#participants.delete(actorId);
 			this.render();
 			return;
 		}

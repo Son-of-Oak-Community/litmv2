@@ -40,17 +40,9 @@
 	<p class="hint">{{hint}}</p>
 
 	{{#if hasHeroes}}
-	<div class="litm--narrator-call-targets">
+	<div class="litm--roster" role="radiogroup" aria-label="{{localize 'LITM.Ui.narrator_call_who'}}">
 		{{#each targets as |target|}}
-		<button type="button"
-			class="litm--narrator-call-target {{#if target.selected}}is-selected{{/if}} {{#unless target.online}}is-offline{{/unless}}"
-			data-action="pickTarget" data-actor-id="{{target.id}}"
-			aria-pressed="{{#if target.selected}}true{{else}}false{{/if}}"
-			data-tooltip="{{target.statusLabel}}" aria-label="{{target.name}} — {{target.statusLabel}}">
-			<img class="litm--narrator-call-target-img" src="{{target.img}}" alt="" />
-			<span class="litm--narrator-call-target-name">{{target.name}}</span>
-			<span class="litm--narrator-call-target-presence" aria-hidden="true"></span>
-		</button>
+		{{> "systems/litmv2/templates/partials/roster-row.html" row=target}}
 		{{/each}}
 	</div>
 	{{else}}

@@ -1,11 +1,11 @@
+{{!-- The picker's rows are the shared roster control (modules/apps/roster.js),
+      so choosing a character looks the same here as it does when the Narrator
+      calls for a roll. The radio is kept because it is this form's whole
+      contract: the DialogV2 callback reads `input[name='picked']:checked`. --}}
 <form class="standard-form">
-	<fieldset>
+	<fieldset class="litm--roster">
 		{{#each entries as |entry|}}
-		<label class="flexrow gap-sm litm--picker-row">
-			<input type="radio" name="picked" value="{{@index}}" {{#if (eq @index 0)}}checked{{/if}} />
-			{{#if entry.img}}<img class="litm--picker-img" src="{{entry.img}}" alt="" />{{/if}}
-			<span>{{entry.label}}</span>
-		</label>
+		{{> "systems/litmv2/templates/partials/roster-row.html" row=entry}}
 		{{/each}}
 	</fieldset>
 </form>

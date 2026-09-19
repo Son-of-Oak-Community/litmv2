@@ -6611,23 +6611,120 @@ body.litm--colorblind .themed.theme-dark,
 }
 
 /* ========================================
-   21. Target Picker
-   Picker dialog rows for selecting actors/tokens.
+   21. Roster
+   The system's one character-selection control — a cast list rather than a
+   row of tiles: portrait, name, and a line of context under the name. Used
+   by the Narrator's Call and by the target-picker dialogs, and it is where
+   any future "which character?" surface belongs.
+
+   The context line is text, not a tooltip, because a Narrator deciding who
+   to call on has to read who is at the table at a glance.
 ======================================== */
 
-.litm--picker .litm--picker-row {
-	align-items: center;
-	padding: var(--spacer-4) 0;
-	cursor: pointer;
+.litm--roster {
+	display: flex;
+	flex-direction: column;
 }
 
-.litm--picker .litm--picker-img {
-	flex: 0 0 32px;
-	width: 32px;
-	height: 32px;
+.litm--roster-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	width: 100%;
+	padding: var(--spacer-4) var(--spacer-8);
+	background: transparent;
+	/* A rule under every row, gold under the selected one, the same width in
+	   both states so picking never shifts the list. Deliberately not a left
+	   border and never dashed — both are house rules. */
+	border-block-end: 2px solid var(--color-text-primary-10);
+	line-height: 1.15;
+	text-align: start;
+	cursor: pointer;
+	transition:
+		background var(--transition-normal),
+		border-color var(--transition-normal);
+}
+
+.litm--roster-row:hover {
+	background: var(--color-text-primary-10);
+}
+
+/* `:checked` is the only source of the selected look. A class rendered into
+   the markup goes stale in the DialogV2 pickers, which never re-render — the
+   row the server marked stays lit after the user picks another, and two rows
+   read as selected at once. */
+.litm--roster-row:has(.litm--roster-input:checked) {
+	background: var(--color-warm-1-10);
+	border-block-end-color: var(--color-litm-tag);
+}
+
+/* The radio carries the keyboard path and, in the DialogV2 pickers, the whole
+   form contract — so it is hidden visually rather than with `display: none`,
+   which would take it out of the tab order with it. */
+.litm--roster-input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.litm--roster-row:has(.litm--roster-input:focus-visible) {
+	outline: 2px solid var(--color-litm-tag);
+	outline-offset: -2px;
+}
+
+.litm--roster-portrait {
+	flex: 0 0 auto;
+	width: 2.375rem;
+	height: 2.375rem;
+	object-fit: cover;
 	border: none;
 	border-radius: var(--radius-sm);
-	object-fit: cover;
+}
+
+.litm--roster-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-2);
+}
+
+.litm--roster-name {
+	font-family: var(--font-h2);
+	font-size: var(--font-size-14);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Inherited colour at reduced opacity rather than --color-text-secondary:
+   this control renders on the parchment surface and inside chat-scoped
+   chrome, and that token is unreliable on both. */
+.litm--roster-meta {
+	font-size: var(--font-size-11);
+	opacity: 0.75;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Nobody holding this seat. Said in words on the context line, because a row
+   has to be readable at a glance without hovering anything; the dim portrait
+   is the reinforcement, not the message. Deliberately no presence dot — the
+   rows already contain a (visually hidden) radio, and a second small circle
+   on the right read as an unchecked one. */
+.litm--roster-row.is-offline .litm--roster-portrait {
+	opacity: 0.55;
+}
+
+.litm--roster-row.is-offline .litm--roster-name {
+	opacity: 0.8;
 }
 
 /* ========================================
@@ -7616,74 +7713,9 @@ body.litm--colorblind .themed.theme-dark,
 	margin: 0;
 }
 
-/* Target picker — a row of hero plaques. Selection reads as a warm wash
-   plus a gold underline, matching .litm--segmented-option.is-active
-   rather than inventing a second "selected" language. */
-.litm--narrator-call-targets {
-	display: flex;
-	flex-flow: row wrap;
-	gap: var(--spacer-8);
-}
-
-.litm--narrator-call-target {
-	display: flex;
-	align-items: center;
-	gap: var(--spacer-8);
-	width: auto;
-	padding: var(--spacer-4) var(--spacer-12) var(--spacer-4) var(--spacer-4);
-	background: transparent;
-	border: 1px solid var(--color-text-primary-15);
-	border-radius: var(--radius-md);
-	line-height: 1.2;
-	text-align: start;
-	cursor: pointer;
-	transition:
-		background var(--transition-normal),
-		border-color var(--transition-normal);
-}
-
-.litm--narrator-call-target:hover {
-	background: var(--color-text-primary-10);
-}
-
-.litm--narrator-call-target.is-selected {
-	background: var(--color-text-primary-15);
-	border-color: var(--color-litm-tag);
-	box-shadow: inset 0 -2px 0 var(--color-warm-1);
-}
-
-.litm--narrator-call-target-img {
-	flex: 0 0 auto;
-	width: 2rem;
-	height: 2rem;
-	object-fit: cover;
-	border: none;
-	border-radius: var(--radius-sm);
-}
-
-.litm--narrator-call-target-name {
-	font-family: var(--font-h2);
-	font-size: var(--font-size-14);
-}
-
-/* Presence dot: sage when the player is at the table, hollow when the
-   Narrator will be rolling on their behalf. */
-.litm--narrator-call-target-presence {
-	flex: 0 0 auto;
-	width: 0.5rem;
-	height: 0.5rem;
-	border-radius: var(--radius-circle);
-	background: var(--color-litm-status);
-}
-
-.litm--narrator-call-target.is-offline .litm--narrator-call-target-presence {
-	background: transparent;
-	border: 1px solid var(--color-text-primary-40);
-}
-
-.litm--narrator-call-target.is-offline .litm--narrator-call-target-img {
-	opacity: 0.55;
-}
+/* Who rolls is a roster (§21) under a standard section header — this
+   surface adds no row chrome of its own, which was the whole complaint
+   about what it used to draw here. */
 
 /* Banners in the roll dialog: who called the roll, and whether the whole
    group is acting together. */

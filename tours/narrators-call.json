@@ -20,7 +20,7 @@
 		},
 		{
 			"id": "pick-who",
-			"selector": ".litm--narrator-call-targets",
+			"selector": ".litm--roster",
 			"title": "TOURS.NarratorsCallPickWhoTitle",
 			"content": "TOURS.NarratorsCallPickWhoContent",
 			"action": "openRollCall"
