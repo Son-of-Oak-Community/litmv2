@@ -597,6 +597,7 @@
 			"gm_welcome_creation_granted": "Players can now create actors!",
 			"gm_welcome_enable_creation": "Allow Players to Create Heroes",
 			"gm_welcome_message": "Welcome to Legend in the Mist! Here are a few things to set up before your players join.",
+			"group_roll_no_character": "You need to own a Hero in the Fellowship to contribute to an Acting Together roll. Ask your Narrator to assign you a character.",
 			"group_tag_cap_warning": "Each Hero contributes one tag to an Acting Together roll.",
 			"hero_create_no_gm": "A Game Master must be online to create your hero. Ask your GM to come online, or to grant players permission to create characters.",
 			"hero_create_timeout": "Creating your hero timed out. Check that a Game Master is connected and try again.",

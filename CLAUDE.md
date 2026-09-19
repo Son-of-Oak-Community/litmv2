@@ -237,8 +237,16 @@ The rules live in `modules/apps/roll/group-roll.js` (pure, unit-tested):
   is already implemented as contributed tags. An offline participant stays in
   the roll and contributes nothing. Changing participants re-runs
   `configureSharedRoll`, which resets the dialog.
-- A participant may only touch their own Hero's tags — `actableActorIds` in
-  `makeTagDecorator` locks the rest, and `#canModifyTag` refuses them.
+- A participant may touch their own Hero's tags **and the Fellowship's**, and
+  nothing else. `actableActorIds` (`roll-dialog-context.js`) is the one
+  definition, gating three surfaces that must agree: whether a tab renders in
+  full (`buildGroupRollTabs`), whether a row is locked (`makeTagDecorator`),
+  and whether a change is accepted (`#canModifyTag`). The Fellowship is in that
+  set by rule, not by ownership — p.157, "any or all of the Fellowship theme
+  power tags may be invoked". Being exempt from the per-Hero cap and being
+  reachable are separate questions; conflating them once hid the Fellowship tab
+  from every player, since an unselected tab renders as nothing at all. A client
+  owning no participating Hero is not in the roll and gets neither.
 
 Post-roll bookkeeping lands per tag, not per rolling actor: `scratchTag` resolves
 through the uuid, and `gainImprovement` traces effect → theme → owner, so a burn

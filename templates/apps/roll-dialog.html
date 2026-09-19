@@ -67,7 +67,7 @@
 
 		{{!-- Per-actor tabs: the Narrator watching a player's roll, and everyone
 		     in an Acting Together roll. --}}
-		{{#if useTabbedPicker}}
+		{{#if gmViewerTabs.length}}
 		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">
 			{{#each gmViewerTabs as |tab|}}
 			<a class="item {{tab.cssClass}}" data-action="tab" data-group="gm-viewer" data-tab="{{tab.id}}">
@@ -339,6 +339,9 @@
 				{{/each}}
 			</section>
 			{{/each}}
+			{{#if groupRollSpectator}}
+			<p class="hint">{{localize "LITM.Ui.group_roll_no_character"}}</p>
+			{{/if}}
 
 			{{else if isOwner}}
 			{{!-- Owner view: three tabs mirror the GM sidebar's column

@@ -716,7 +716,7 @@ function seedTabGroup(dialog, tabs) {
 export function buildGroupRollTabs(dialog, shared) {
 	const { sceneStoryItems, isOwner } = shared;
 	const tabs = [];
-	const actable = isOwner ? null : ownedParticipantIds(dialog);
+	const actable = isOwner ? null : actableActorIds(dialog);
 
 	const pushActor = (actor) => {
 		if (!actor) return;
@@ -778,16 +778,36 @@ export function buildGroupRollTabs(dialog, shared) {
 }
 
 /**
- * The participating Heroes this client may act for — its own characters, in
- * practice. Used both to unlock their tabs and to refuse selections elsewhere.
+ * The actors this client may act for in an Acting Together roll: its own
+ * participating Heroes, plus the Fellowship the roll rides on.
+ *
+ * The Fellowship earns its place from the rules, not from ownership — Core
+ * Book p.157: "Any or all of the Fellowship theme power tags may be invoked as
+ * well, if they are relevant." The theme belongs to the whole group, so every
+ * Hero in the roll can reach it. It is the one actor here nobody has to own.
+ *
+ * Being exempt from the one-tag-per-Hero cap and being reachable are two
+ * different things, and collapsing them is what hid the Fellowship: the cap
+ * skips it because it is not a participant (`findHeroTagConflict`), and the
+ * same participant list used to decide reach, which hid the tab outright.
+ *
+ * A client with no Hero in the roll is not in the roll, so it gets nothing —
+ * the Fellowship included.
+ *
+ * Gates three surfaces that must agree: whether a tab renders in full
+ * ({@link buildGroupRollTabs}), whether a row is locked
+ * ({@link makeTagDecorator}), and whether a change is accepted
+ * (`LitmRollDialog#canModifyTag`).
+ *
  * @param {LitmRollDialog} dialog
  * @returns {Set<string>}
  */
-export function ownedParticipantIds(dialog) {
+export function actableActorIds(dialog) {
 	const ids = new Set();
 	for (const id of dialog.participantIds) {
 		const hero = game.actors.get(id);
 		if (hero?.testUserPermission(game.user, "OWNER")) ids.add(id);
 	}
+	if (ids.size) ids.add(dialog.actorId);
 	return ids;
 }

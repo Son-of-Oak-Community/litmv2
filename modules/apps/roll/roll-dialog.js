@@ -36,7 +36,7 @@ import {
 	buildSceneStatusItems,
 	buildSceneStoryTagItems,
 	makeTagDecorator,
-	ownedParticipantIds,
+	actableActorIds,
 	sortByTypeThenName,
 } from "./roll-dialog-context.js";
 import {
@@ -794,16 +794,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				.filter(Boolean),
 		);
 
-		// Acting Together: a participant may move their own Hero's tags and no
-		// one else's. The GM owns the roll and is unrestricted.
-		const actableActorIds =
-			this.isGroupRoll && !isOwner ? ownedParticipantIds(this) : null;
+		// Acting Together: a participant may move their own Hero's tags and the
+		// Fellowship's, and no one else's. The GM owns the roll and is
+		// unrestricted.
+		const actable =
+			this.isGroupRoll && !isOwner ? actableActorIds(this) : null;
 
 		const decorateTag = makeTagDecorator({
 			isOwner,
 			positiveSuggestedIds,
 			negativeSuggestedIds,
-			actableActorIds,
+			actableActorIds: actable,
 		});
 
 		const gmTagsFlat = sortByTypeThenName(
@@ -925,8 +926,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// An Acting Together roll is a per-Hero picker for everyone, owner
 		// included: the question is what each participant contributes, not what
 		// one character can reach.
+		// Acting Together with no Hero of your own in it: every tab collapses to
+		// selected-only and an unselected tab renders as nothing, so the window
+		// would come up blank. Say why instead.
+		let groupRollSpectator = false;
 		if (this.isGroupRoll) {
 			gmViewerTabs = buildGroupRollTabs(this, shared);
+			groupRollSpectator = !isOwner && !actableActorIds(this).size;
 		} else if (isGMViewer) {
 			gmViewerTabs = buildGmViewerContext(this, shared);
 		} else {
@@ -1015,6 +1021,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// player's roll, and everyone in an Acting Together roll.
 			useTabbedPicker: isGMViewer || this.isGroupRoll,
 			gmViewerTabs,
+			groupRollSpectator,
 			isOwner,
 			// The settings column carries both halves of the roll now, so it
 			// renders for the Narrator too — they set the move and the Might on
@@ -1194,7 +1201,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (selOrTag?.narrator && !game.user.isGM) return false;
 		if (this.isOwner) return true;
 		if (!selOrTag) return false;
-		// Acting Together: a participant contributes their own Hero's tag and
+		// Acting Together: a participant contributes their own Hero's tag, plus
+		// the Fellowship's, which the whole group may invoke (p.157), and
 		// nothing else. Contributor-based locking alone wouldn't do it — an
 		// unclaimed tag on someone else's Hero has no contributor yet.
 		if (this.isGroupRoll && !game.user.isGM) {
@@ -1203,8 +1211,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				resolveTagActorId(
 					uuid ?? selOrTag.effectUuid ?? selOrTag.uuid ?? selOrTag.key,
 				);
-			if (!tagActorId || !ownedParticipantIds(this).has(tagActorId))
-				return false;
+			if (!tagActorId || !actableActorIds(this).has(tagActorId)) return false;
 		}
 		const contributorId = selOrTag.contributorId || null;
 		return !contributorId || contributorId === game.user.id;
