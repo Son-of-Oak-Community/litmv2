@@ -3597,16 +3597,22 @@ section.standard-form.litm-actions-app {
 	border: 1px solid var(--color-litm-tag);
 	border-radius: var(--radius-lg);
 	box-shadow: var(--shadow-md);
-	transition: background var(--transition-normal);
+	transition: box-shadow var(--transition-normal);
 }
 
 .litm-call-for-roll-hud__button > i {
 	font-size: var(--font-size-18);
 }
 
+/* Warm the surface on hover without taking it away. #players hands us a
+   translucent --background-color, so *replacing* it with a 10% tint let the
+   scene flood through: over a bright map the button went brighter on hover
+   than at rest. An inset shadow lays the wash over the panel colour instead —
+   backdrop-independent, radius-aware, and it still animates. */
 .litm-call-for-roll-hud__button:hover {
-	background: var(--color-warm-1-10);
-	border-color: var(--color-litm-tag);
+	box-shadow:
+		var(--shadow-md),
+		inset 0 0 0 100vmax var(--color-warm-1-10);
 }
 
 @keyframes rollHudPulse {

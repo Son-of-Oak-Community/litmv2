@@ -421,6 +421,11 @@ function _resolveReactingHero() {
  * dialog directly instead of whispering a card. The handler stays because the
  * cards v14.66 posted are still sitting in players' chat logs, with their
  * rendered Take button baked into the stored message content.
+ *
+ * Not to be confused with `_handleCallRequestedRoll` below, which runs the
+ * opposite direction: this one is a dead GM→player card, that one is the live
+ * player→GM ask. Hence the separate `rollRequestFrom` flag — deleting either
+ * of these because the other looks like a duplicate would be a mistake.
  */
 async function _handleTakeRollRequest(_target, app) {
 	const req = app.getFlag("litmv2", "rollRequest");
@@ -450,21 +455,34 @@ async function _handleTakeRollRequest(_target, app) {
  * so the card goes as soon as it is answered — same claim-by-delete the
  * moderation cards use, which keeps a second Narrator from calling it twice.
  */
+const _requestsInFlight = new Set();
+
 async function _handleCallRequestedRoll(_target, app) {
 	if (!game.user.isGM) return;
-	const actorId = app.getFlag("litmv2", "rollRequestFrom")?.actorId;
-	const actor = actorId ? game.actors.get(actorId) : null;
-	if (!actor) {
-		ui.notifications.warn(t("LITM.Actions.apply_no_actor"));
-		return;
+	// Claim-by-delete alone settles the race correctly — the loser finds the
+	// card gone and stops. This is for the console: a second click on the same
+	// client makes Foundry log its own "ChatMessage does not exist" before the
+	// delete rejects, and two red errors for a double-click is a bad look for
+	// a working outcome. Same guard, same reason, as the moderation handlers.
+	if (_requestsInFlight.has(app.id)) return;
+	_requestsInFlight.add(app.id);
+	try {
+		const actorId = app.getFlag("litmv2", "rollRequestFrom")?.actorId;
+		const actor = actorId ? game.actors.get(actorId) : null;
+		if (!actor) {
+			ui.notifications.warn(t("LITM.Actions.apply_no_actor"));
+			return;
+		}
+		const claimed = await app.delete().catch(() => null);
+		if (!claimed) {
+			warn(`Roll request ${app.id} was already answered elsewhere.`);
+			return;
+		}
+		const { openSharedRoll } = await import("../../apps/roll/roll-request.js");
+		await openSharedRoll({ actorId: actor.id });
+	} finally {
+		_requestsInFlight.delete(app.id);
 	}
-	const claimed = await app.delete().catch(() => null);
-	if (!claimed) {
-		warn(`Roll request ${app.id} was already answered elsewhere.`);
-		return;
-	}
-	const { openSharedRoll } = await import("../../apps/roll/roll-request.js");
-	await openSharedRoll({ actorId: actor.id });
 }
 
 const CLICK_HANDLERS = {
