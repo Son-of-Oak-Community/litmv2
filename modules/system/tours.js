@@ -88,30 +88,61 @@ export class LitmTour extends Tour {
 		return super._renderStep();
 	}
 
+	/**
+	 * Take down whatever the tour put up.
+	 *
+	 * The Narrator's Call tour opens a **real** shared roll, deliberately —
+	 * it is the feature being taught, and a mock would teach the mock. That
+	 * roll sets the `rollDialogOwner` flag, which advertises it on every
+	 * client's HUD strip, so leaving it up leaves the table with a "click to
+	 * join" invitation to a demonstration.
+	 *
+	 * Idempotent: it runs on completion and on exit, and the two can both
+	 * happen for one tour.
+	 */
+	async #teardownDemo() {
+		const hero =
+			this.targetActor ??
+			game.actors.find(
+				(a) => a.type === "hero" && a.getFlag("litmv2", "isSampleHero"),
+			);
+		await foundry.applications.instances.get("litm-call-for-roll")?.close();
+		if (hero?.sheet?.hasRollDialog) {
+			const dialog = hero.sheet.rollDialogInstance;
+			if (dialog.rendered) await dialog.close();
+			await hero.unsetFlag("litmv2", FLAGS.rollDialogOwner);
+		}
+		if (hero?.sheet?.rendered) await hero.sheet.close();
+
+		const fellowship = game.litmv2?.fellowship;
+		if (fellowship?.sheet?.rendered) await fellowship.sheet.close();
+	}
+
 	/** @override */
 	async _postStep() {
 		await super._postStep();
+		// `_postStep` also runs between steps, where `hasNext` is still the
+		// *old* step's — so this is the completion path and nothing else.
+		if (!this.hasNext) await this.#teardownDemo();
+	}
 
-		if (!this.hasNext) {
-			const hero =
-				this.targetActor ??
-				game.actors.find(
-					(a) => a.type === "hero" && a.getFlag("litmv2", "isSampleHero"),
-				);
-			// A tour that opened a real shared roll has to take it down again,
-			// advert included — otherwise the table is left with a "click to
-			// join" strip for a roll that was only ever a demonstration.
-			await foundry.applications.instances.get("litm-call-for-roll")?.close();
-			if (hero?.sheet?.hasRollDialog) {
-				const dialog = hero.sheet.rollDialogInstance;
-				if (dialog.rendered) await dialog.close();
-				await hero.unsetFlag("litmv2", FLAGS.rollDialogOwner);
-			}
-			if (hero?.sheet?.rendered) await hero.sheet.close();
-
-			const fellowship = game.litmv2?.fellowship;
-			if (fellowship?.sheet?.rendered) await fellowship.sheet.close();
-		}
+	/**
+	 * Quitting is not completing, and the demonstration roll has to come down
+	 * either way. Every exit route lands here: Escape
+	 * (`client-keybindings.mjs` → `Tour.activeTour.exit()`), the tour card's
+	 * own close button (`_onButtonClick`, case "exit"), and `progress()`'s
+	 * catch when a step fails to render.
+	 *
+	 * `Tour#exit` is synchronous and does not await `_postStep`, so the
+	 * teardown is kicked off rather than awaited — there is no caller to hand
+	 * the promise to.
+	 *
+	 * @override
+	 */
+	exit() {
+		const result = super.exit();
+		this.#teardownDemo().catch(console.error);
+		return result;
 	}
 
 	/** @override */
