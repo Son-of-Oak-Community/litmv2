@@ -575,10 +575,19 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			this.#actionDoc = null;
 		}
 		this.type = type;
+		// Re-render rather than poke the DOM: the move is named in three places
+		// that all read `type` out of the render context — the segmented bar,
+		// the "Narrator calls for a … roll" banner, and the mitigation banner.
+		// `_onRender` reapplies the sacrifice and Trade Power toggles from
+		// `this.type`, so the rendered state is the whole state.
 		if (this.rendered) this.render();
 		// Refresh presence so peers can react to the new type — e.g. the
 		// sacrifice banner fires off the flag transition to "sacrifice".
 		this.updatePresence(true);
+		// And tell the table. A shared roll is one object several people are
+		// looking at; a move only this client knows about is how the Narrator
+		// ends up calling for one roll while the roller reads another.
+		this.#dispatchUpdate();
 	}
 
 	/**
@@ -1464,24 +1473,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#handleTypeChange(target) {
 		// The template renders these disabled, but the change handler is the
 		// boundary that actually holds — same shape as `#canModifyTag`, which
-		// reverts rather than trusting the markup.
+		// reverts rather than trusting the markup. Kept here rather than left
+		// to `setType`, whose gate deliberately lets a reaction through: the
+		// bar offers `mitigate` too, and on a called roll it is not the
+		// roller's to pick.
 		if (!this.canSetNarratorFields) {
 			this.#restoreRadio("type", this.type);
 			return;
 		}
-		this.type = target.value;
-		// Update active state on toggle bar — use closest bar to scope the query
-		const bar = target.closest(".litm--roll-type-bar");
-		if (bar) {
-			for (const label of bar.children) {
-				const radio = label.querySelector("input[type='radio']");
-				if (radio)
-					label.classList.toggle("is-active", radio.value === this.type);
-			}
-		}
-		this.#toggleSacrificeMode(this.type === "sacrifice");
-		this.#toggleTradePower(this.type === "tracked");
-		this.#dispatchUpdate();
+		// One way to change the move. The bar used to set `this.type` and patch
+		// the DOM itself, which left every other thing that names the move —
+		// the call banner above all — reading the previous one.
+		this.setType(target.value);
 	}
 
 	#toggleSacrificeMode(isSacrifice) {
