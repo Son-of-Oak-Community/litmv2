@@ -263,11 +263,23 @@ consequences to each of them is still a decision, not an automatic fan-out.
   wants every roll to come from the Narrator turns it off. Every GM entry point —
   the main-screen control, the sidebar's window-header entry, `R` — is therefore
   gated on `isGM` alone and never on this setting, even though `canInitiateRoll`
-  would answer the same today; a test pins that. It gates *instigation* only
-  (hero-sheet Roll button, sheet tag click, rolling an Action, a player's `R` —
-  see `blockPlayerInitiatedRoll` in `roll-pipeline.js`). Joining an open roll,
-  being called into one, reacting, camp actions and Sacrifice stay open
-  regardless. The stored key is deliberately unchanged: `ClientSettings#get`
+  would answer the same today; a test pins that. It gates *instigation* only.
+  Joining an open roll, being called into one, reacting, camp actions and
+  Sacrifice stay open regardless.
+
+  Instigation splits two ways, and the split is deliberate. The **hero-sheet
+  Roll button and `R`** — the same gesture, one with a mouse — stay available
+  and *ask* for a roll: `requestRollFromNarrator` (`roll-request.js`) whispers
+  the Narrators a card whose one button calls the roll through `openSharedRoll`.
+  Hiding the button instead left the player mute, and it was the only control in
+  that row that vanished. **Sheet tag click and rolling an Action** still take
+  `blockPlayerInitiatedRoll`'s toast: they name a specific tag or Action, and a
+  request card that silently dropped it would answer a question nobody asked.
+
+  A call needs no chat record because the shared dialog is its own notice; an
+  ask opens nothing and must survive a Narrator who is mid-sentence, which is
+  why this direction gets a durable card. A live `rollDialogOwner` flag on that
+  Hero suppresses a second one. The stored key is deliberately unchanged: `ClientSettings#get`
   builds a Setting from the registered default when nothing is stored and only
   `set()` writes, so the default reaches every world that never touched the
   toggle while preserving the choice of any table that did.
