@@ -526,7 +526,7 @@
 			"deactivate_tag": "Deactivate Tag",
 			"decrease": "Decrease",
 			"dice_roller": "Dice Roller",
-			"dice_roller_hint": "Opens the dice roll dialog if a character is attached to the user.",
+			"dice_roller_hint": "For a Narrator, opens the Narrator's Call to pick who rolls. For a player, opens their own character's roll dialog.",
 			"drag_apply": "Drag onto Actors or Story Window to apply",
 			"drop_actors": "Drop actors here",
 			"drop_general_consequence": "Drop a vignette here to use its consequences.",

@@ -4533,7 +4533,11 @@ section.standard-form.litm-actions-app {
 	font-family: var(--font-h2);
 	font-size: var(--font-size-12);
 	font-weight: normal;
-	color: var(--color-litm-tag);
+	/* The *text* gold, not the fill gold. The window header is transparent over
+	   the window's own chrome, so in light mode --color-litm-tag (pale #efd693)
+	   lands on cream and all but disappears; --color-litm-tag-text is the token
+	   that darkens for light surfaces and pales for dark ones. */
+	color: var(--color-litm-tag-text);
 }
 
 .litm--frame-button-label {
