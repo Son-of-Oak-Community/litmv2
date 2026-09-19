@@ -4518,18 +4518,25 @@ section.standard-form.litm-actions-app {
 	opacity: 1;
 }
 
-/* The window-header entry. Foundry's frame-button template is icon-only, so
-   the label is appended in `_renderFrameButtons`; this gives it room and the
-   gold that marks it as the one action rather than a window control. */
+/* The window-header entry. Foundry's frame-button template is icon-only and
+   puts the icon classes on the button itself, so `#labelFrameCallButton` in
+   the sidebar moves the glyph into its own <i> and appends the label —
+   otherwise everything inside inherits Font Awesome at weight 900. This gives
+   the result room, its own typeface, and the gold that marks it as the one
+   action here rather than a window control. */
 .litm--frame-button--call {
-	width: auto;
+	display: flex;
+	align-items: center;
 	gap: var(--spacer-4);
+	width: auto;
 	padding: 0 var(--spacer-8);
+	font-family: var(--font-h2);
+	font-size: var(--font-size-12);
+	font-weight: normal;
 	color: var(--color-litm-tag);
 }
 
 .litm--frame-button-label {
-	font-size: var(--font-size-12);
 	white-space: nowrap;
 }
 
@@ -6672,6 +6679,10 @@ body.litm--colorblind .themed.theme-dark,
 	align-items: center;
 	gap: var(--spacer-8);
 	width: 100%;
+	/* Containing block for the visually hidden input below. Without it the
+	   input positions against the viewport, escapes the scrolling list, and
+	   focusing it never brings its own row into view. */
+	position: relative;
 	padding: var(--spacer-4) var(--spacer-8);
 	background: transparent;
 	/* A rule under every row, gold under the selected one, the same width in
@@ -7832,8 +7843,8 @@ body.litm--colorblind .themed.theme-dark,
 	padding: 0 var(--spacer-8);
 }
 
-/* An Action is not a character, so its row drops the portrait's rounding
-   to the icon scale and never carries a presence dot. */
+/* An Action is not a character, so its row takes the portrait down to the
+   icon scale. */
 .litm--roster-row--action .litm--roster-portrait {
 	width: 1.75rem;
 	height: 1.75rem;

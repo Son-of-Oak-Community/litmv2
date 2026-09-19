@@ -19,7 +19,13 @@
 <label
     class="litm--roster-row{{#if row.variant}} litm--roster-row--{{row.variant}}{{/if}}{{#if row.muted}} is-offline{{/if}}"
     data-row-id="{{row.id}}">
-    <input class="litm--roster-input" type="{{#if row.multi}}checkbox{{else}}radio{{/if}}"
+    {{!-- The id is what Foundry keys focus restoration on across a re-render.
+          Without it it falls back to the first input sharing this name, so
+          every arrow-key move would bounce focus back to row one. Keyed on
+          `value`, not `id`: the limit picker lists one actor several times and
+          only the index is unique there. --}}
+    <input class="litm--roster-input" id="{{row.inputName}}-{{row.value}}"
+        type="{{#if row.multi}}checkbox{{else}}radio{{/if}}"
         name="{{row.inputName}}" value="{{row.value}}" {{checked row.selected}} />
     <img class="litm--roster-portrait" src="{{row.img}}" alt="" />
     <span class="litm--roster-text">

@@ -49,7 +49,13 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 	};
 
 	static PARTS = {
-		form: { template: "systems/litmv2/templates/apps/call-for-roll.html" },
+		form: {
+			template: "systems/litmv2/templates/apps/call-for-roll.html",
+			// Picking a row re-renders, and Foundry only restores scroll for
+			// selectors listed here. Without them the Heroes list snaps back to
+			// the top every time the Narrator picks someone below the fold.
+			scrollable: [".litm--roll-call-heroes", "[data-roster='action']"],
+		},
 	};
 
 	/**

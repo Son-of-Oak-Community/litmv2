@@ -334,10 +334,12 @@ name — a cast list, not a row of tiles.
   `data-action` click handler would fire for the mouse and stay silent for the
   keyboard. It is also the whole form contract for the DialogV2 pickers, which
   read `input[name=…]:checked`.
-- **Presence is opt-in** (`presence: true`). The dot and the "who is playing
-  them" line belong to player-ownable characters. Challenges and Limits go
-  through the same control without them — a Challenge wearing a hollow dot and
-  "no player assigned" reads as a broken Hero.
+- **Presence is opt-in** (`presence: true`). The "who is playing them" line and
+  the dimmed portrait belong to player-ownable characters. Challenges and
+  Limits go through the same control without them — a Challenge reading
+  "no player assigned" would read as a broken Hero. There is deliberately no
+  presence *dot*: the rows already contain a visually hidden radio, and a
+  second small circle on the right read as an unchecked one.
 - **Names are masked** (`system.maskedName ?? name`) and **portraits always
   resolve** (prototype token → actor image → `CONFIG.litmv2.assets.icons.defaultActor`).
   Both were inconsistent across the surfaces this replaced, and the masked name

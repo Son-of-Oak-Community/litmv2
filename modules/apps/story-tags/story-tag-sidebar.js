@@ -162,11 +162,20 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			'.window-header .header-control[data-action="narrator-call"]',
 		);
 		if (!button || button.querySelector(".litm--frame-button-label")) return;
+		// Foundry's frame-button template puts the icon classes on the <button>
+		// itself, which sets Font Awesome at weight 900 on everything inside —
+		// a label appended there renders in whatever face the platform falls
+		// back to for Latin glyphs. So the glyph moves into its own element and
+		// the button gets its typography back.
+		button.classList.remove("icon", "fa-solid", "fa-feather");
+		button.classList.add("litm--frame-button--call");
+		const icon = document.createElement("i");
+		icon.className = "fa-solid fa-feather";
+		icon.ariaHidden = "true";
 		const label = document.createElement("span");
 		label.className = "litm--frame-button-label";
 		label.textContent = t("LITM.Ui.narrator_call_open");
-		button.append(label);
-		button.classList.add("litm--frame-button--call");
+		button.replaceChildren(icon, label);
 	}
 
 	/**

@@ -24,8 +24,9 @@ import { localize as t } from "../utils.js";
  *   would turn one shared control into a concealment leak.
  *
  * **Presence is opt-in.** It is a property of player-ownable characters, so a
- * Challenge or a Limit must not render a hollow dot and "no player assigned" —
- * that reads as a broken Hero. Only the call-for-roll roster asks for it.
+ * Challenge or a Limit must not read "no player assigned" and wear a dimmed
+ * portrait — that reads as a broken Hero. Only the call-for-roll roster asks
+ * for it.
  *
  * No rendering here; `templates/partials/roster-row.html` owns the markup.
  */
@@ -102,8 +103,6 @@ export function rosterPresence(actor) {
  * @param {string} [fields.img]
  * @param {string} [fields.name]
  * @param {string} [fields.meta]              The context line under the name.
- * @param {boolean} [fields.presence=false]   Render the presence dot.
- * @param {boolean} [fields.online=false]
  * @param {boolean} [fields.muted=false]      Dim the portrait.
  * @param {string} [fields.variant=""]        Row modifier, e.g. "fellowship".
  * @returns {object}
@@ -117,8 +116,6 @@ export function buildRow({
 	img = "",
 	name = "",
 	meta = "",
-	presence = false,
-	online = false,
 	muted = false,
 	variant = "",
 } = {}) {
@@ -131,8 +128,6 @@ export function buildRow({
 		img,
 		name,
 		meta,
-		presence,
-		online,
 		muted,
 		variant,
 	};
