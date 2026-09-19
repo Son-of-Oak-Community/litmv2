@@ -120,6 +120,56 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	};
 
 	/**
+	 * The Narrator's Call keeps a secondary entry here, in the window header.
+	 *
+	 * It used to head a stack of four full-width buttons at the foot of this
+	 * panel. The primary entry is on the main screen now; this one rides the
+	 * title bar, which Foundry already draws and which has width to spare, so
+	 * it costs no vertical space at all — the axis this panel has least of.
+	 *
+	 * v14 inserts frame buttons inline before the close button, unlike header
+	 * *controls*, which go into the overflow menu.
+	 *
+	 * @override
+	 */
+	_getFrameButtons(options) {
+		const buttons = super._getFrameButtons(options);
+		// Gated on isGM alone, never on `player_initiated_rolls`: calling for a
+		// roll is an unconditional Narrator capability, and that setting decides
+		// only whether players may *also* start one.
+		if (!game.user.isGM) return buttons;
+		return [
+			{
+				action: "narrator-call",
+				icon: "fa-solid fa-feather",
+				label: "LITM.Ui.narrator_call_open",
+			},
+			...buttons,
+		];
+	}
+
+	/**
+	 * Foundry's frame-button template is icon-only. The call is the one action
+	 * in this window worth a word, so it gets its label back.
+	 *
+	 * Done here rather than in `_renderFrameButtons`, which runs while the
+	 * frame is still being built and before `this.element` is assigned.
+	 * Idempotent, because `_onRender` runs on every render while the frame
+	 * persists across them.
+	 */
+	#labelFrameCallButton() {
+		const button = this.element?.querySelector(
+			'.window-header .header-control[data-action="narrator-call"]',
+		);
+		if (!button || button.querySelector(".litm--frame-button-label")) return;
+		const label = document.createElement("span");
+		label.className = "litm--frame-button-label";
+		label.textContent = t("LITM.Ui.narrator_call_open");
+		button.append(label);
+		button.classList.add("litm--frame-button--call");
+	}
+
+	/**
 	 * Register this app as the combat sidebar tab replacement.
 	 * Called once from the system init hook.
 	 */
@@ -668,6 +718,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	async _onRender(context, options) {
 		await super._onRender(context, options);
+		this.#labelFrameCallButton();
 		this._dragDrop.bind(this.element);
 
 		// Dragover highlighting for limit headers (per-element drag handlers)

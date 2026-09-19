@@ -1,5 +1,6 @@
 import { FLAGS } from "../system/config.js";
 import { localize as t } from "../utils.js";
+import { mountPlayersHud } from "./players-hud.js";
 
 /**
  * Minimal HUD widget showing which heroes have active roll dialogs.
@@ -9,8 +10,7 @@ export class RollDialogHud {
 	#container = null;
 
 	async render() {
-		const parent = document.getElementById("players");
-		if (!parent) return;
+		if (!document.getElementById("players")) return;
 
 		if (!this.#container) {
 			this.#container = document.createElement("div");
@@ -24,8 +24,7 @@ export class RollDialogHud {
 				actor.sheet.renderRollDialog();
 			});
 		}
-		// Foundry replaces #players contents on re-render, detaching our node.
-		if (!this.#container.isConnected) parent.prepend(this.#container);
+		mountPlayersHud(this.#container);
 
 		await this.#renderEntries();
 	}

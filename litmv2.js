@@ -80,6 +80,8 @@ Hooks.once("init", () => {
 	 * - `ContentSources` — compendium loading and status seeding entry point
 	 * - `storyTags` — set at ready time to the sidebar tab instance
 	 * - `rollDialogHud` — mutable reference to the active roll-dialog HUD
+	 * - `callForRollHud` — mutable reference to the Narrator's main-screen
+	 *   call-for-roll control, which shares the players-panel region with it
 	 * - `showSacrificeBanner` — flash the sacrifice rite on peer clients;
 	 *   reassign to replace the default visual treatment
 	 */
@@ -112,6 +114,7 @@ Hooks.once("init", () => {
 		LitmCampingScene,
 		ContentSources,
 		rollDialogHud: null,
+		callForRollHud: null,
 		showSacrificeBanner,
 	};
 

@@ -232,7 +232,7 @@
 			"persistent_token_labels": "Always Show Token Tags",
 			"persistent_token_labels_hint": "Keep every visible token's tags and statuses on the canvas without hovering. Made for a shared screen at the table, where the group needs to read the whole scene at a glance.",
 			"player_initiated_rolls": "Let Players Start Rolls Themselves",
-			"player_initiated_rolls_hint": "Off by default: rolls start with the Narrator's Call, the way the Core Book describes — the Narrator decides an action needs dice, picks who is rolling, and the shared roll window opens on both screens. Players can always join an open roll, contribute tags, react to a Consequence, sacrifice, and roll camp actions. Turn this on to also let them open a roll unprompted from their sheet.",
+			"player_initiated_rolls_hint": "On by default: players may open a roll from their own sheet. Turn it off to run rolls the way the Core Book describes — the Narrator decides an action needs dice, picks who is rolling, and the shared roll window opens on both screens. Either way the Narrator can always call for a roll, and players can always join an open one, contribute tags, react to a Consequence, sacrifice, and roll camp actions.",
 			"popout_tags_sidebar": "Auto Pop-out Tags Sidebar",
 			"popout_tags_sidebar_hint": "Automatically open the Tags sidebar in a pop-out window on load.",
 			"require_roll_approval": "Narrator Approves Every Roll",

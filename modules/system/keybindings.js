@@ -1,3 +1,4 @@
+import { CallForRollApp } from "../apps/roll/call-for-roll.js";
 import { blockPlayerInitiatedRoll } from "../apps/roll/roll-pipeline.js";
 import { LitmActorSheet } from "../sheets/base-actor-sheet.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
@@ -186,6 +187,17 @@ export class KeyBindings {
 				},
 			],
 			onDown: () => {
+				// For a Narrator, R is the call. Rolls start with them deciding
+				// one is needed, so the key that reaches for the dice should
+				// reach for the picker — including for a GM who happens to have
+				// a character assigned, whose own sheet is not what R is for.
+				//
+				// Gated on isGM alone, never on `player_initiated_rolls`:
+				// calling for a roll is an unconditional Narrator capability.
+				if (game.user.isGM) {
+					const app = foundry.applications.instances.get("litm-call-for-roll");
+					return smartToggle(app, () => CallForRollApp.open());
+				}
 				const sheet = game.user.character?.sheet;
 				if (!sheet) {
 					return ui.notifications.warn("LITM.Ui.warn_no_character", {

@@ -206,28 +206,29 @@
 	</form>
 
 	{{#if isGM}}
-	<div class="litm--load-scene-btns flexcol">
-		<button type="button" class="litm--narrator-call-btn" data-action="narrator-call"
-			data-tooltip="{{localize 'LITM.Ui.narrator_call_open'}}">
-			<i class="fa-solid fa-feather" aria-hidden="true"></i> {{localize "LITM.Ui.narrator_call_open"}}
-		</button>
+	{{!-- Setup is housekeeping, so it is one row of tooltipped icons rather
+	      than three stacked full-width buttons. Foundry is wide and short and
+	      the columns above need every row they can get; calling for a roll,
+	      which used to head this stack, rides the window header instead. --}}
+	<div class="litm--load-scene-btns flexrow">
 		<button type="button" class="litm--add-actor-btn" data-action="add-actor"
-			data-tooltip="{{localize 'LITM.Ui.add_actor'}}">
-			<i class="fa-solid fa-user-plus" aria-hidden="true"></i> {{localize "LITM.Ui.add_actor"}}
+			data-tooltip="{{localize 'LITM.Ui.add_actor'}}"
+			aria-label="{{localize 'LITM.Ui.add_actor'}}">
+			<i class="fa-solid fa-user-plus" aria-hidden="true"></i>
 		</button>
-		{{#if (or hasSceneTags hasSceneTokens)}}
-			{{#if hasSceneTags}}
-			<button type="button" class="litm--load-scene-btn" data-action="load-scene-tags"
-				data-tooltip="{{localize 'LITM.Ui.load_scene_tags'}}">
-				<i class="fa-solid fa-tags" aria-hidden="true"></i> {{localize "LITM.Ui.load_scene_tags"}}
-			</button>
-			{{/if}}
-			{{#if hasSceneTokens}}
-			<button type="button" class="litm--load-scene-btn" data-action="load-scene-tokens"
-				data-tooltip="{{localize 'LITM.Ui.load_scene_tokens'}}">
-				<i class="fa-solid fa-users" aria-hidden="true"></i> {{localize "LITM.Ui.load_scene_tokens"}}
-			</button>
-			{{/if}}
+		{{#if hasSceneTags}}
+		<button type="button" class="litm--load-scene-btn" data-action="load-scene-tags"
+			data-tooltip="{{localize 'LITM.Ui.load_scene_tags'}}"
+			aria-label="{{localize 'LITM.Ui.load_scene_tags'}}">
+			<i class="fa-solid fa-tags" aria-hidden="true"></i>
+		</button>
+		{{/if}}
+		{{#if hasSceneTokens}}
+		<button type="button" class="litm--load-scene-btn" data-action="load-scene-tokens"
+			data-tooltip="{{localize 'LITM.Ui.load_scene_tokens'}}"
+			aria-label="{{localize 'LITM.Ui.load_scene_tokens'}}">
+			<i class="fa-solid fa-users" aria-hidden="true"></i>
+		</button>
 		{{/if}}
 	</div>
 	{{/if}}

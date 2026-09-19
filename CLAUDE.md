@@ -177,6 +177,21 @@ HUD strip in `#players`, driven by the same `rollDialogOwner` flag every other
 open roll uses; the roll posts its own card. `litm.narratorCallReceived` is gone
 with the receive step it named.
 
+**Where a Narrator calls from.** The primary control is on the main screen,
+directly above the player list (`CallForRollHud`) — the one place already
+showing who is at the table becomes the place you call on them, and it costs no
+layout Foundry was not already spending, since `#players` is anchored
+bottom-left and grows upward into canvas. It shares that region with the HUD
+strip, and **order there is CSS, not insertion**: `#players` is a `flexcol`
+whose own first child is the collapsed `#players-inactive`, so both litm widgets
+carry a negative `order` (`mountPlayersHud` only guarantees presence). The strip
+is above the control, so the control never moves when a roll goes live. The
+story-tag sidebar keeps a secondary entry in its **window header** via
+`_getFrameButtons` — v14 renders those inline before the close button, unlike
+header *controls*, which go to the overflow menu. `R` opens the picker for a GM,
+with the same toggle behaviour it has for players, and a GM with an assigned
+character still gets the picker rather than their own sheet.
+
 Invocations the roller can't see — a concealed Challenge's tags, say — still count
 toward Power, so the dialog renders them as **masked rows** ("Something unseen",
 tier intact, no name, no actor). Concealment is the Narrator's tool; silent
@@ -233,15 +248,21 @@ consequences to each of them is still a decision, not an automatic fan-out.
 
 **Two world settings, deliberately separate — do not collapse them.**
 
-- `player_initiated_rolls` — **default off**, because the Narrator's Call is how
-  this system expects rolls to start. Tables opt *out* of that, not into it. The
-  stored key is deliberately unchanged: `ClientSettings#get` builds a Setting
-  from the registered default when nothing is stored and only `set()` writes, so
-  flipping the default reaches every world that never touched the toggle while
-  preserving the choice of any table that did. It gates *instigation* only (hero-sheet Roll button,
-  sheet tag click, rolling an Action, the `R` keybinding — see
-  `blockPlayerInitiatedRoll` in `roll-pipeline.js`). Joining an open roll, being
-  called into one, reacting, camp actions and Sacrifice stay open regardless.
+- `player_initiated_rolls` — **default on**, and it gates **players only**. GM
+  initiation and player initiation are not two halves of one toggle: calling for
+  a roll is an unconditional Narrator capability (p.269), and this setting
+  decides whether players may *also* reach for the dice unprompted. A table that
+  wants every roll to come from the Narrator turns it off. Every GM entry point —
+  the main-screen control, the sidebar's window-header entry, `R` — is therefore
+  gated on `isGM` alone and never on this setting, even though `canInitiateRoll`
+  would answer the same today; a test pins that. It gates *instigation* only
+  (hero-sheet Roll button, sheet tag click, rolling an Action, a player's `R` —
+  see `blockPlayerInitiatedRoll` in `roll-pipeline.js`). Joining an open roll,
+  being called into one, reacting, camp actions and Sacrifice stay open
+  regardless. The stored key is deliberately unchanged: `ClientSettings#get`
+  builds a Setting from the registered default when nothing is stored and only
+  `set()` writes, so the default reaches every world that never touched the
+  toggle while preserving the choice of any table that did.
 - `require_roll_approval` gates *execution*: a player pressing Roll posts the
   existing moderation card instead of rolling, and the GM's approval executes it
   on the player's own client, so the resulting chat card is authored by the

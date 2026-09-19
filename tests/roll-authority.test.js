@@ -209,10 +209,19 @@ describe("canInitiateRoll", () => {
 		);
 	});
 
-	it("never gates the Narrator", () => {
+	// Pinned deliberately rather than left incidental to an `||`. GM
+	// initiation and player initiation are not two halves of one toggle:
+	// calling for a roll is an unconditional Narrator capability, and every GM
+	// entry point — the main-screen control, the sidebar's header entry, `R` —
+	// is gated on `isGM` alone for the same reason.
+	it("never gates the Narrator, whatever the table has configured", () => {
 		expect(canInitiateRoll({ isGM: true, playerInitiatedRolls: false })).toBe(
 			true,
 		);
+		expect(canInitiateRoll({ isGM: true, playerInitiatedRolls: true })).toBe(
+			true,
+		);
+		expect(canInitiateRoll({ isGM: true })).toBe(true);
 	});
 
 	it("defaults to permitted when the setting is unavailable", () => {

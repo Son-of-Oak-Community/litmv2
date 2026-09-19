@@ -3542,7 +3542,15 @@ section.standard-form.litm-actions-app {
    Overlay for tracking open roll dialogs.
 ======================================== */
 
+/* Order, not insertion point. `#players` is a flexcol whose own first child
+   is `#players-inactive` — the collapsed list that expands to 300px when a
+   user opens it. A widget merely prepended sits above that list and is shoved
+   off the active roster the moment it expands. Negative order pins both litm
+   widgets above everything Foundry draws here, in either state, and the
+   transient strip sits above the control that is always there, so the control
+   never moves when a roll goes live. */
 .litm-roll-dialog-hud {
+	order: -2;
 	width: 200px;
 	display: flex;
 	flex-direction: column;
@@ -3551,6 +3559,44 @@ section.standard-form.litm-actions-app {
 
 .litm-roll-dialog-hud.is-hidden {
 	display: none;
+}
+
+/* The Narrator's call-for-roll control: the one thing on the main screen that
+   starts a roll. Costs no layout Foundry was not already spending — #players
+   is anchored bottom-left and grows upward into canvas, which is exactly what
+   the strip above it already does. */
+.litm-call-for-roll-hud {
+	order: -1;
+	width: 200px;
+	display: flex;
+}
+
+.litm-call-for-roll-hud__button {
+	pointer-events: all;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacer-8);
+	width: 100%;
+	min-height: unset;
+	height: auto;
+	padding: var(--spacer-4) var(--spacer-8);
+	font: inherit;
+	font-family: var(--font-h2);
+	font-size: var(--font-size-13);
+	appearance: none;
+	cursor: pointer;
+	color: var(--color-litm-tag-text);
+	background: var(--background-color);
+	border: 1px solid var(--color-litm-tag);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-md);
+	transition: background var(--transition-normal);
+}
+
+.litm-call-for-roll-hud__button:hover {
+	background: var(--color-warm-1-10);
+	border-color: var(--color-litm-tag);
 }
 
 @keyframes rollHudPulse {
@@ -4447,49 +4493,44 @@ section.standard-form.litm-actions-app {
 	}
 }
 
+/* Setup is one row of tooltipped icons, not three stacked full-width rows.
+   Three rows of height recovered on the axis this panel has least of; the
+   call that used to head the stack rides the window header instead. */
 .litm--story-tags .litm--load-scene-btns {
-	margin: 0 4px var(--spacer-4);
+	margin: 0 var(--spacer-8) var(--spacer-4);
 	gap: var(--spacer-4);
 	flex: none;
+	align-items: center;
+	justify-content: flex-end;
 }
 
 .litm--story-tags :is(.litm--load-scene-btn, .litm--add-actor-btn) {
-	flex: 1;
-	font-size: var(--font-size-11);
+	flex: 0 0 auto;
+	width: 2rem;
+	min-height: unset;
+	height: 1.75rem;
+	padding: 0;
+	font-size: var(--font-size-12);
 	opacity: 0.75;
-}
-
-/* The Narrator's Call is the primary act in this cluster — it keeps full
-   opacity and the gold accent while the housekeeping buttons recede. */
-.litm--story-tags .litm--narrator-call-btn {
-	flex: 1;
-	font-size: var(--font-size-11);
-	border-color: var(--color-litm-tag);
-	color: var(--color-litm-tag-text);
-	font-weight: 600;
-}
-
-.litm--story-tags .litm--narrator-call-btn:hover {
-	background: var(--color-warm-1-10);
 }
 
 .litm--story-tags .litm--load-scene-btn:hover {
 	opacity: 1;
 }
 
-@container (min-width: 480px) {
-	.litm--story-tags .litm--load-scene-btns {
-		flex-direction: row;
-		align-items: center;
-		margin: 0 var(--spacer-12) var(--spacer-4);
-	}
+/* The window-header entry. Foundry's frame-button template is icon-only, so
+   the label is appended in `_renderFrameButtons`; this gives it room and the
+   gold that marks it as the one action rather than a window control. */
+.litm--frame-button--call {
+	width: auto;
+	gap: var(--spacer-4);
+	padding: 0 var(--spacer-8);
+	color: var(--color-litm-tag);
 }
 
-@container (min-width: 720px) {
-	.litm--story-tags .litm--load-scene-btns {
-		width: calc(100% / 3);
-		margin: 0 auto var(--spacer-4);
-	}
+.litm--frame-button-label {
+	font-size: var(--font-size-12);
+	white-space: nowrap;
 }
 
 /* Individual tag/status row — inherits litm-tag/litm-status badge styling */

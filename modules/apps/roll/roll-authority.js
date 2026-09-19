@@ -94,11 +94,12 @@ export function resolveSharedRollOwner({ owners = [], gmUserId = null } = {}) {
 /**
  * Whether a user may open a roll dialog on their own initiative.
  *
- * The `player_initiated_rolls` world setting exists because tables running the
- * Narrator's Call flow want the Narrator to be the only way in — p.269 puts
- * the choice of outcome method in the Narrator's hands, and a table can choose
- * to enforce that. The Narrator is never gated; a player is gated only when the
- * setting is off.
+ * **The Narrator is never gated**, whatever the setting says. Calling for a
+ * roll is an unconditional capability: p.269 puts the choice of outcome method
+ * in the Narrator's hands, and nothing a table configures takes that away.
+ * `player_initiated_rolls` decides whether players may *also* reach for the
+ * dice unprompted — on by default, and a table wanting every roll to come from
+ * the Narrator turns it off.
  *
  * This governs *instigation* only. Joining a roll another player already
  * opened, being called into one, reacting to a Consequence, and camp actions

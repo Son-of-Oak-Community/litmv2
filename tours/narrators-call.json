@@ -13,10 +13,9 @@
 		},
 		{
 			"id": "sidebar",
-			"selector": ".litm--narrator-call-btn",
+			"selector": "#litm-call-for-roll-hud",
 			"title": "TOURS.NarratorsCallSidebarTitle",
-			"content": "TOURS.NarratorsCallSidebarContent",
-			"action": "activateSidebar:combat"
+			"content": "TOURS.NarratorsCallSidebarContent"
 		},
 		{
 			"id": "pick-who",
@@ -73,9 +72,9 @@
 		"TOURS.NarratorsCallTitle": "The Narrator's Call",
 		"TOURS.NarratorsCallDescription": "How rolls start at this table: the Narrator calls for one, and both sides finish it in the same window.",
 		"TOURS.NarratorsCallIntroTitle": "The Narrator calls for the roll",
-		"TOURS.NarratorsCallIntroContent": "<p>In Legend in the Mist the Narrator decides an action needs dice and picks how it resolves — a Quick outcome, a Detailed one, or a Reaction (Core Book p.269).</p><p>So rolls here start with you, not with a player pressing a button. This tour walks that path: calling for a roll, sharing the window, and Acting Together as a group.</p>",
-		"TOURS.NarratorsCallSidebarTitle": "Call from where you already are",
-		"TOURS.NarratorsCallSidebarContent": "<p>The Tags sidebar is your view of the whole scene, so the call lives here. One click and you are picking who rolls.</p>",
+		"TOURS.NarratorsCallIntroContent": "<p>In Legend in the Mist the Narrator decides an action needs dice and picks how it resolves — a Quick outcome, a Detailed one, or a Reaction (Core Book p.269).</p><p>So a roll can start with you, whatever else your table allows — the Narrator's Call is always open to you. This tour walks that path: calling for a roll, sharing the window, and Acting Together as a group.</p>",
+		"TOURS.NarratorsCallSidebarTitle": "It is on your screen already",
+		"TOURS.NarratorsCallSidebarContent": "<p>Sitting right above the player list \u2014 the one place on screen already showing who is at the table. One click and you are picking who rolls, and <strong>R</strong> opens the same window from anywhere.</p><p>The Tags sidebar keeps a quiet copy in its title bar, for when you are already in there.</p>",
 		"TOURS.NarratorsCallPickWhoTitle": "Pick who is rolling",
 		"TOURS.NarratorsCallPickWhoContent": "<p>Each row names the Hero and the player holding them. If nobody is connected, the roll falls to you and you make it on their behalf.</p><p>Pick one and their Actions appear beside the roster — choosing an Action is optional, and it only fills in what the roll is for. Everything else — the move, the Might, the tags you invoke — you set inside the roll window itself, where the player can watch you do it.</p>",
 		"TOURS.NarratorsCallActingTogetherTitle": "Acting Together",
@@ -91,6 +90,6 @@
 		"TOURS.NarratorsCallPickupTitle": "Everyone else can join",
 		"TOURS.NarratorsCallPickupContent": "<p>While a roll is open, a <em>click to join</em> strip sits above the player list for everyone not already in it. That is how a helper adds a tag, and how a player who closed the window gets back to it.</p><p>There is no chat card to hunt for — the roll posts its own when it lands.</p>",
 		"TOURS.NarratorsCallOutroTitle": "That is the loop",
-		"TOURS.NarratorsCallOutroContent": "<p>Call it, set your half, let the player set theirs, and the dice come out.</p><p>If your table would rather players reached for the dice themselves, turn on <strong>Let Players Start Rolls Themselves</strong> in the system settings. Everything in this tour still works either way.</p>"
+		"TOURS.NarratorsCallOutroContent": "<p>Call it, set your half, let the player set theirs, and the dice come out.</p><p>Players can reach for the dice themselves too, unless you turn off <strong>Let Players Start Rolls Themselves</strong> in the system settings. Everything in this tour works either way — calling for a roll is always yours.</p>"
 	}
 }
