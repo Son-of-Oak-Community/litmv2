@@ -891,12 +891,14 @@ export class LitmActorSheet extends LitmSheetMixin(
 			dialog.close();
 			return;
 		}
+		dialog.activateSync();
 
 		// A roll the Narrator called already knows whose it is. The flag is the
 		// durable record of that — the local dialog may be brand new, after a
 		// reload or a HUD-strip join — so ownership is read, not recomputed.
 		const assigned = this.document.getFlag("litmv2", FLAGS.rollDialogOwner);
 		if (assigned?.narrator && assigned.ownerId) {
+			dialog.activateSync(assigned.syncSession);
 			dialog.ownerId = assigned.ownerId;
 			if (!dialog.isOwner)
 				Sockets.dispatch("requestRollDialogSync", {

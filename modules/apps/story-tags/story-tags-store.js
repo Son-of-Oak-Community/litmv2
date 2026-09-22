@@ -131,9 +131,22 @@ class StoryTagsStoreImpl {
 	 */
 	get concealedActorIds() {
 		if (game.user.isGM) return new Set();
+		return this.hiddenActorIds;
+	}
+
+	/** Viewer-independent policy, also used when a GM records a roll. */
+	get hiddenActorIds() {
 		const hiddenUuids = new Set(this.config.hiddenActors ?? []);
+		if (!hiddenUuids.size) return new Set();
 		const visible = new Set();
 		const hidden = new Set();
+		// Hidden entries need not still be tracked in the sidebar.
+		for (const uuid of hiddenUuids) {
+			const doc = foundry.utils.fromUuidSync(uuid, { strict: false });
+			const actor = doc?.documentName === "Token" ? doc.actor : doc;
+			const id = actor?.id ?? /^Actor\.([^.]+)$/.exec(uuid)?.[1];
+			if (id) hidden.add(id);
+		}
 		for (const { uuid, actor } of this.resolveTrackedActors()) {
 			(hiddenUuids.has(uuid) ? hidden : visible).add(actor.id);
 		}

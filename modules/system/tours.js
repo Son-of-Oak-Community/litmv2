@@ -1,6 +1,5 @@
 import { error, info } from "../logger.js";
 import { getStoryTagSidebar } from "../utils.js";
-import { FLAGS } from "./config.js";
 import { createSampleHero } from "./sample-hero.js";
 import { LitmSettings } from "./settings.js";
 
@@ -52,6 +51,9 @@ export class LitmTour extends Tour {
 	 */
 	#skipSetupTheme = false;
 
+	/** The tour owns only this private preview, never the actor's live roll. */
+	#demoDialog = null;
+
 	/** @override */
 	async start() {
 		// The "setup-theme" step points at the fellowship's "drop a themebook"
@@ -91,11 +93,9 @@ export class LitmTour extends Tour {
 	/**
 	 * Take down whatever the tour put up.
 	 *
-	 * The Narrator's Call tour opens a **real** shared roll, deliberately —
-	 * it is the feature being taught, and a mock would teach the mock. That
-	 * roll sets the `rollDialogOwner` flag, which advertises it on every
-	 * client's HUD strip, so leaving it up leaves the table with a "click to
-	 * join" invitation to a demonstration.
+	 * The Narrator's Call tour uses the real dialog in local-only mode.
+	 * Cleanup must never close a live shared roll on the target actor or
+	 * erase its presence flag.
 	 *
 	 * Idempotent: it runs on completion and on exit, and the two can both
 	 * happen for one tour.
@@ -107,11 +107,9 @@ export class LitmTour extends Tour {
 				(a) => a.type === "hero" && a.getFlag("litmv2", "isSampleHero"),
 			);
 		await foundry.applications.instances.get("litm-call-for-roll")?.close();
-		if (hero?.sheet?.hasRollDialog) {
-			const dialog = hero.sheet.rollDialogInstance;
-			if (dialog.rendered) await dialog.close();
-			await hero.unsetFlag("litmv2", FLAGS.rollDialogOwner);
-		}
+		const dialog = this.#demoDialog;
+		this.#demoDialog = null;
+		if (dialog) await dialog.close();
 		if (hero?.sheet?.rendered) await hero.sheet.close();
 
 		const fellowship = game.litmv2?.fellowship;
@@ -239,22 +237,29 @@ export class LitmTour extends Tour {
 	}
 
 	/**
-	 * Open a real shared roll on the tour's hero, so the two halves of the
-	 * dialog can be pointed at rather than described.
-	 *
-	 * Deliberately the real path and not a mock — this is the feature being
-	 * taught. It lands on the sample hero, who has no player owner, so the roll
-	 * resolves to the Narrator and nobody else's screen is interrupted by a
-	 * tutorial. {@link _postStep} closes it and clears the advert at the end.
+	 * Show the real dialog without advertising a private sample actor or
+	 * opening windows on other clients. A separate instance also leaves any
+	 * existing roll on an explicitly supplied targetActor untouched.
 	 */
 	async #openCalledRoll() {
 		const hero = await this.#getOrCreateHero();
 		if (!hero) return;
 		const callApp = foundry.applications.instances.get("litm-call-for-roll");
 		await callApp?.close();
-		const { openSharedRoll } = await import("../apps/roll/roll-request.js");
-		await openSharedRoll({ actorId: hero.id });
-		await waitForElement(`#litm-roll-dialog-${hero.id}`).catch(() => {});
+		if (!this.#demoDialog) {
+			this.#demoDialog = game.litmv2.LitmRollDialog.create({
+				id: "litm-roll-tour-preview",
+				actorId: hero.id,
+				ownerId: game.user.id,
+				localOnly: true,
+			});
+			this.#demoDialog.configureSharedRoll({
+				ownerId: game.user.id,
+				narratorUserId: game.user.id,
+				narratorName: game.user.name,
+			});
+		}
+		await this.#demoDialog.render(true);
 	}
 
 	/**

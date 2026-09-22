@@ -3,6 +3,21 @@ import { localize as t } from "../utils.js";
 import { mountPlayersHud } from "./players-hud.js";
 
 /**
+ * Pickup is for a live shared roll that this client is not already viewing.
+ * Do not gate on actor ownership: helpers and Fellowship participants need
+ * to be able to reopen rolls on actors they do not own.
+ */
+export function shouldShowRollPickup({ flag, userId, ownerActive, rendered }) {
+	return !!(
+		flag &&
+		flag.ownerId !== userId &&
+		flag.type !== "sacrifice" &&
+		ownerActive &&
+		!rendered
+	);
+}
+
+/**
  * Minimal HUD widget showing which heroes have active roll dialogs.
  * Injected into the #players panel.
  */
@@ -34,11 +49,15 @@ export class RollDialogHud {
 			game.actors
 				?.filter((a) => {
 					const flag = a.getFlag("litmv2", FLAGS.rollDialogOwner);
-					if (!flag || flag.ownerId === game.user.id) return false;
-					// Sacrifice rolls get their own dramatic banner — don't
-					// double up by also showing a "click to join" entry.
-					if (flag.type === "sacrifice") return false;
-					return game.users.get(flag.ownerId)?.active;
+					const dialog = foundry.applications.instances.get(
+						`litm-roll-dialog-${a.id}`,
+					);
+					return shouldShowRollPickup({
+						flag,
+						userId: game.user.id,
+						ownerActive: game.users.get(flag?.ownerId)?.active,
+						rendered: dialog?.rendered,
+					});
 				})
 				.map((a) => {
 					const flag = a.getFlag("litmv2", FLAGS.rollDialogOwner);

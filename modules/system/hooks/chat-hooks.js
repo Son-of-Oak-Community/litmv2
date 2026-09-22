@@ -2,6 +2,7 @@ import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { collectSourceConsequences } from "../../apps/consequence-sources.js";
+import { renderModerationTooltip } from "../../apps/roll/moderation-render.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
 import { StoryTagsStore } from "../../apps/story-tags/story-tags-store.js";
@@ -715,6 +716,7 @@ function onRenderChatMessage(app, html, _data) {
 	}
 
 	// Moderation messages: show actions only to GMs, toggle hint text
+	renderModerationTooltip(app, element).catch(console.error);
 	const moderationActions = element.querySelector(".litm--moderation-actions");
 	if (moderationActions) {
 		if (!game.user.isGM) moderationActions.remove();

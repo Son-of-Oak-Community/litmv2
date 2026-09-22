@@ -8,7 +8,7 @@ import {
 import { LitmSettings } from "../../system/settings.js";
 import { localize as t } from "../../utils.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
-import { maskConcealedTags } from "./concealment.js";
+import { isTagConcealed, maskConcealedTags } from "./concealment.js";
 
 export class LitmRoll extends foundry.dice.Roll {
 	static CHAT_TEMPLATE = "systems/litmv2/templates/chat/message.html";
@@ -259,6 +259,56 @@ export class LitmRoll extends foundry.dice.Roll {
 		};
 	}
 
+	/** Persist policy, not redacted data: execution and GM views keep real names. */
+	static captureConcealment(tags = []) {
+		const concealedActorIds = StoryTagsStore.hiddenActorIds;
+		return tags.map((tag) => ({
+			...tag,
+			tagActorId: tag.tagActorId ?? this.resolveConcealmentActorId(tag),
+			concealedAtRoll: isTagConcealed(tag, {
+				concealedActorIds,
+				resolveActorId: (entry) => this.resolveConcealmentActorId(entry),
+			}),
+		}));
+	}
+
+	/** Effects may be consumed after a roll while their owning actor lives on. */
+	static resolveConcealmentActorId(tag) {
+		const id = resolveTagActorId(tag.uuid);
+		if (id) return id;
+		const ownerUuid = /^(Actor\.[^.]+|Scene\.[^.]+\.Token\.[^.]+)\./.exec(
+			tag.uuid ?? "",
+		)?.[1];
+		const doc = ownerUuid
+			? foundry.utils.fromUuidSync(ownerUuid, { strict: false })
+			: null;
+		return (
+			(doc?.documentName === "Token" ? doc.actor?.id : doc?.id) ??
+			game.actors.get(tag.tagActorId)?.id ??
+			null
+		);
+	}
+
+	/** Presentation-only projection shared by finished rolls and moderation. */
+	static maskTooltipData(data, { isGM = game.user.isGM } = {}) {
+		const result = { ...data };
+		for (const key of [
+			"scratchedTags",
+			"powerTags",
+			"weaknessTags",
+			"positiveStatuses",
+			"negativeStatuses",
+		]) {
+			result[key] = maskConcealedTags(data[key], {
+				isGM,
+				concealedActorIds: StoryTagsStore.hiddenActorIds,
+				resolveActorId: (tag) => this.resolveConcealmentActorId(tag),
+				maskName: t("LITM.Ui.roll_concealed_tag"),
+			});
+		}
+		return result;
+	}
+
 	/**
 	 * Hide the identity of tags belonging to actors this viewer may not see,
 	 * the way the roll dialog does. The tooltip is rendered per client, so the
@@ -268,26 +318,18 @@ export class LitmRoll extends foundry.dice.Roll {
 	 * by the card it produced — concealment that lasts until someone hovers is
 	 * not concealment.
 	 */
-	#maskConcealed(tags) {
-		return maskConcealedTags(tags, {
-			concealedActorIds: StoryTagsStore.concealedActorIds,
-			resolveActorId: (tag) => resolveTagActorId(tag.uuid),
-			maskName: t("LITM.Ui.roll_concealed_tag"),
-		});
-	}
-
 	getTooltipData() {
 		const { label: outcome } = this.outcome;
-		return {
+		return this.constructor.maskTooltipData({
 			mitigate: this.litm.type === "mitigate" && outcome === "success",
-			scratchedTags: this.#maskConcealed(this.litm.scratchedTags ?? []),
-			powerTags: this.#maskConcealed(this.litm.powerTags),
-			weaknessTags: this.#maskConcealed(this.litm.weaknessTags),
-			positiveStatuses: this.#maskConcealed(this.litm.positiveStatuses),
-			negativeStatuses: this.#maskConcealed(this.litm.negativeStatuses),
+			scratchedTags: this.litm.scratchedTags,
+			powerTags: this.litm.powerTags,
+			weaknessTags: this.litm.weaknessTags,
+			positiveStatuses: this.litm.positiveStatuses,
+			negativeStatuses: this.litm.negativeStatuses,
 			modifier: this.modifier,
 			mightOffset: this.litm.mightOffset || 0,
 			might: this.litm.might ?? 0,
-		};
+		});
 	}
 }

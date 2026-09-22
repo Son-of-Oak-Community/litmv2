@@ -67,6 +67,7 @@ export async function openSharedRoll({
 		type,
 		narratorUserId: game.user.id,
 		narratorName: game.user.name,
+		syncSession: foundry.utils.randomID(),
 	};
 
 	// Cancellable: a module may veto or rewrite a call before it goes out.
@@ -80,6 +81,7 @@ export async function openSharedRoll({
 		ownerId: payload.ownerId,
 		openedAt: Date.now(),
 		type: payload.type,
+		syncSession: payload.syncSession,
 		// Marks the seat as assigned rather than merely occupied.
 		// `resolveRollDialogOwnership` lets a player take over a dialog a GM is
 		// holding, which is right for an ordinary roll and wrong here: on a

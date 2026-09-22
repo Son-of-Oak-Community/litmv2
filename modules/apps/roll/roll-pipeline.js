@@ -90,7 +90,9 @@ export function executeRoll({
 	actionUuid = null,
 	mitigation = null,
 	participantIds = [],
+	syncSession = null,
 }) {
+	tags = LitmRoll.captureConcealment(tags);
 	const {
 		scratchedTags,
 		powerTags,
@@ -205,8 +207,16 @@ export function executeRoll({
 				powerTags,
 				weaknessTags,
 			});
-			res.rolls[0]?.actor?.sheet.resetRollDialog();
-			Sockets.dispatch("resetRollDialog", { actorId });
+			const sheet = res.rolls[0]?.actor?.sheet;
+			// An approval may finish after the actor has started another roll.
+			// Its bookkeeping belongs to this result, not that newer draft.
+			if (
+				!syncSession ||
+				(sheet?.hasRollDialog &&
+					sheet.rollDialogInstance.syncSession === syncSession)
+			)
+				sheet?.resetRollDialog();
+			Sockets.dispatch("resetRollDialog", { actorId, syncSession });
 			return res;
 		});
 }

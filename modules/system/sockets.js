@@ -60,7 +60,7 @@ export class Sockets {
 			const { data } = event;
 			const actor = game.actors.get(data.actorId);
 			if (!actor) return warn(`Actor ${data.actorId} not found`);
-			actor.sheet?.updateRollDialog(data);
+			actor.sheet?.updateRollDialog({ ...data, senderId: event.senderId });
 		});
 
 		Sockets.on("requestRollDialogSync", ({ data: { actorId } }) => {
@@ -99,18 +99,25 @@ export class Sockets {
 			actor.sheet.renderRollDialog();
 		});
 
-		Sockets.on("resetRollDialog", ({ data: { actorId } }) => {
+		Sockets.on("resetRollDialog", ({ data: { actorId, syncSession } }) => {
 			const actor = game.actors.get(actorId);
 			if (!actor?.sheet?.hasRollDialog) return;
+			if (!actor.sheet.rollDialogInstance.matchesSyncSession(syncSession))
+				return;
 			actor.sheet.resetRollDialog();
 		});
 
-		Sockets.on("closeRollDialog", ({ data: { actorId } }) => {
-			const actor = game.actors.get(actorId);
-			if (!actor?.sheet?.hasRollDialog) return;
-			const dialog = actor.sheet.rollDialogInstance;
-			if (dialog?.rendered) dialog.close();
-		});
+		Sockets.on(
+			"closeRollDialog",
+			({ data: { actorId, syncSession, preserveAuthority = false } }) => {
+				const actor = game.actors.get(actorId);
+				if (!actor?.sheet?.hasRollDialog) return;
+				const dialog = actor.sheet.rollDialogInstance;
+				if (!dialog.matchesSyncSession(syncSession)) return;
+				dialog.endSharedRoll({ preserveAuthority });
+				if (dialog?.rendered) dialog.close();
+			},
+		);
 
 		// Post-roll bookkeeping for ally tags: the rolling client can't
 		// update an effect on an actor it doesn't own, so it asks the

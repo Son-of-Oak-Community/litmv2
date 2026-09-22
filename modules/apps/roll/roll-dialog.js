@@ -26,6 +26,7 @@ import {
 	showsRollSettings,
 } from "./roll-authority.js";
 import {
+	actableActorIds,
 	buildActionContext,
 	buildAllyTagGroups,
 	buildContributedTagGroups,
@@ -36,7 +37,6 @@ import {
 	buildSceneStatusItems,
 	buildSceneStoryTagItems,
 	makeTagDecorator,
-	actableActorIds,
 	sortByTypeThenName,
 } from "./roll-dialog-context.js";
 import {
@@ -44,6 +44,7 @@ import {
 	executeRoll,
 	resolveRollDialogOwnership,
 } from "./roll-pipeline.js";
+import { RollSync } from "./roll-sync.js";
 import { hasPainfulSacrificeTarget, isThemeSpent } from "./sacrifice-rules.js";
 
 export { resolveRollDialogOwnership };
@@ -100,7 +101,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	static async _onSubmit(_event, _form, formData) {
-		if (!this.isOwner) return;
+		if (!this.isOwner || this.localOnly) return;
 		if (this.painfulSacrificeHasNoTarget()) return;
 		const rollData = this.extractRollData(formData);
 		// Tables that want the Narrator to have the last word on a total route
@@ -109,6 +110,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// the ChatMessage the roller authored rather than trusting a socket.
 		if (this.requiresApproval) {
 			await this._createModerationRequest(rollData);
+			this.suspendForModeration();
 			ui.notifications?.info(t("LITM.Ui.roll_sent_for_approval"));
 			return;
 		}
@@ -116,11 +118,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	static async #onSendToNarrator(_event, _target) {
-		if (!this.isOwner) return;
+		if (!this.isOwner || this.localOnly) return;
 		if (this.painfulSacrificeHasNoTarget()) return;
 		const formData = new foundry.applications.ux.FormDataExtended(this.element);
 		const rollData = this.extractRollData(formData);
 		await this._createModerationRequest(rollData);
+		this.suspendForModeration();
 		this.close();
 	}
 
@@ -303,6 +306,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const isSacrifice = type === "sacrifice";
 		return {
 			actorId: this.actorId,
+			syncSession: this.syncSession,
 			type,
 			tags,
 			title: this.rollName,
@@ -354,6 +358,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#sacrificeThemeId = null;
 	#sacrificeStatusName = "";
 	#ownerId = null;
+	#localOnly = false;
+	#preserveAuthorityOnClose = false;
 	#cachedTotalPower = null;
 	#actionUuid = null;
 	#actionDoc = null;
@@ -373,9 +379,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	 * @type {string[]}
 	 */
 	#participantIds = [];
+	#sync;
+	#syncActive = true;
+	#endedSyncSessions = new Set();
 
 	constructor(options = {}) {
-		if (options.actorId) options.id = `litm-roll-dialog-${options.actorId}`;
+		if (options.actorId)
+			options.id ??= options.localOnly
+				? `litm-roll-preview-${foundry.utils.randomID()}`
+				: `litm-roll-dialog-${options.actorId}`;
 		super(options);
 
 		this.#modifier = options.modifier || 0;
@@ -385,6 +397,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#sacrificeThemeId = options.sacrificeThemeId || null;
 		this.#sacrificeStatusName = options.sacrificeStatusName || "";
 		this.#ownerId = options.ownerId || null;
+		this.#localOnly = options.localOnly === true;
 		this.#actionUuid = options.actionUuid || null;
 
 		this.actorId = options.actorId;
@@ -393,6 +406,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			foundry.documents.ChatMessage.getSpeaker({ actor: this.actor });
 		this.rollName = options.title || "";
 		this.type = options.type || "quick";
+		this.#sync = new RollSync(this.#syncState(), foundry.utils.randomID());
 	}
 
 	/**
@@ -406,9 +420,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			return null;
 		}
 		if (this.#actionDoc?.uuid === this.#actionUuid) return this.#actionDoc;
-		this.#actionDoc = await foundry.utils.fromUuid(this.#actionUuid);
-		if (this.#actionDoc?.name && !this.rollName)
+		const uuid = this.#actionUuid;
+		const action = await foundry.utils.fromUuid(uuid);
+		// An earlier compendium lookup may finish after Clear or replacement.
+		if (uuid !== this.#actionUuid) return this.#actionDoc;
+		this.#actionDoc = action;
+		if (this.#actionDoc?.name && !this.rollName) {
 			this.rollName = this.#actionDoc.name;
+			this.#dispatchUpdate();
+		}
 		return this.#actionDoc;
 	}
 
@@ -430,6 +450,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			this.type = "quick";
 			this.updatePresence(true);
 		}
+		this.rollName = "";
+		this.#dispatchUpdate();
 		if (this.rendered) this.render();
 	}
 
@@ -513,6 +535,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	 * @param {string[]} [call.participantIds]  Acting Together only.
 	 * @param {string} [call.narratorUserId]
 	 * @param {string} [call.narratorName]
+	 * @param {string|null} [call.syncSession]
 	 */
 	configureSharedRoll({
 		ownerId = null,
@@ -522,6 +545,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		participantIds = [],
 		narratorUserId = null,
 		narratorName = "",
+		syncSession = null,
 	} = {}) {
 		this.#cachedTotalPower = null;
 		if (ownerId) this.ownerId = ownerId;
@@ -541,6 +565,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#participantIds = [...participantIds];
 		this.#selectionMap.clear();
 		this.#narratorCall = { narratorUserId, narratorName };
+		this.#syncActive = true;
+		this.#sync = new RollSync(
+			this.#syncState(),
+			foundry.utils.randomID(),
+			syncSession,
+		);
 		// The GM viewer's per-actor tab set changes with the participants, so a
 		// remembered tab id can name a tab that no longer exists. Drop it and
 		// let `buildGmViewerContext` re-seed.
@@ -608,11 +638,22 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	set ownerId(value) {
+		const becomingOwner = value === game.user.id && value !== this.#ownerId;
 		this.#ownerId = value;
+		// Sheet tag clicks can precede the ownership claim in renderRollDialog.
+		// Promote that local draft, including its first selection, rather than
+		// publishing the empty canonical state from before the click.
+		if (becomingOwner && this.#sync)
+			this.#sync = new RollSync(this.#syncState(), foundry.utils.randomID());
 	}
 
 	get isOwner() {
 		return this.#ownerId === game.user.id;
+	}
+
+	/** A tutorial preview: never advertises, synchronizes, or executes a roll. */
+	get localOnly() {
+		return this.#localOnly;
 	}
 
 	get actor() {
@@ -806,8 +847,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// Acting Together: a participant may move their own Hero's tags and the
 		// Fellowship's, and no one else's. The GM owns the roll and is
 		// unrestricted.
-		const actable =
-			this.isGroupRoll && !isOwner ? actableActorIds(this) : null;
+		const actable = this.isGroupRoll && !isOwner ? actableActorIds(this) : null;
 
 		const decorateTag = makeTagDecorator({
 			isOwner,
@@ -1382,7 +1422,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (!this.#canModifyTag(this.getSelection(tagId), tagId)) return;
 		if (this.#blocksHeroTagCap(tagId, state)) return;
 		const contributorId = state ? game.user.id : null;
-		this.setSelection(tagId, state || "", contributorId);
+		this.setSelection(
+			tagId,
+			state || "",
+			contributorId,
+			this.#selectionStamp(),
+		);
 		this.#updateTotalPower();
 		this.#dispatchUpdate();
 	}
@@ -1416,10 +1461,29 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (this.actor?.sheet?.rendered) this.actor.sheet.render(true);
 	}
 
+	/**
+	 * Release a finished or cancelled call without discarding its draft.
+	 * Rejected moderation requests can still reopen those selections, but an
+	 * abandoned call must not keep a subsequent independent roll GM-locked.
+	 * Viewers closing their own window do not end the shared roll.
+	 */
+	endSharedRoll({ preserveAuthority = false } = {}) {
+		if (!preserveAuthority) {
+			this.#narratorCall = null;
+			for (const entry of this.#selectionMap.values()) entry.narrator = false;
+		}
+		this.invalidateSync();
+	}
+
+	/** Keep a submitted draft's authority intact until moderation resolves. */
+	suspendForModeration() {
+		this.#preserveAuthorityOnClose = true;
+	}
+
 	async updatePresence(isOpen) {
-		// Normally only the owner advertises their own open dialog. The one
-		// exception is a roll the Narrator called: they set the flag on the
-		// roller's behalf when they opened it, so retracting it is theirs too.
+		if (this.localOnly) return;
+		// The Narrator can refresh a called roll's type on behalf of its owner.
+		// Closing a viewer does not retract presence; only the owner ends it.
 		const mayWrite =
 			this.isOwner ||
 			(game.user.isGM && isNarratorControlled(this.#narratorCall));
@@ -1436,6 +1500,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				// would drop the marker `renderRollDialog` reads, and a reload
 				// would recompute ownership on a roll that already has an owner.
 				...(isNarratorControlled(this.#narratorCall) ? { narrator: true } : {}),
+				syncSession: this.syncSession,
 			});
 		} else {
 			await this.actor?.unsetFlag("litmv2", FLAGS.rollDialogOwner);
@@ -1444,28 +1509,30 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	async close(options) {
 		const wasRendered = this.rendered;
-		// The Narrator who called a roll wrote the presence flag on the roller's
-		// behalf, so closing their own copy takes the advert down with it —
-		// otherwise a call nobody picked up leaves a "click to join" strip on
-		// the whole table with nothing behind it.
-		//
-		// It does NOT close the roller's window. The Narrator closing a dialog
-		// to look at something else is not them withdrawing the roll, and the
-		// two are indistinguishable from here: Escape, the X and the `R`
-		// keybinding all land in this method. Tearing down a player's
-		// in-progress roll on any of them is the worse failure.
-		const narratorRetracting =
-			!this.isOwner &&
-			game.user.isGM &&
-			isNarratorControlled(this.#narratorCall);
+		const syncSession = this.syncSession;
+		const wasOwner = this.isOwner;
+		const preserveAuthority = this.#preserveAuthorityOnClose;
+		this.#preserveAuthorityOnClose = false;
+		// Release local authority immediately; closing an abandoned call must
+		// not depend on the latency or success of its presence flag update.
+		// Moderation suspends the same draft rather than abandoning it.
+		if (wasOwner) this.endSharedRoll({ preserveAuthority });
 		const result = await super.close(options);
-		if (this.isOwner) {
-			await this.updatePresence(false);
-			if (wasRendered)
-				Sockets.dispatch("closeRollDialog", { actorId: this.actorId });
-		} else if (narratorRetracting) {
-			await this.updatePresence(false);
+		if (wasOwner) {
+			try {
+				if (this.matchesSyncSession(syncSession))
+					await this.updatePresence(false);
+			} finally {
+				if (wasRendered && !this.localOnly)
+					Sockets.dispatch("closeRollDialog", {
+						actorId: this.actorId,
+						syncSession,
+						preserveAuthority,
+					});
+			}
 		}
+		// A viewer (including the Narrator) closing a window only leaves that
+		// view. The owner's live roll must remain discoverable in the HUD.
 		if (wasRendered) Hooks.callAll("litm.rollDialogClosed", this.actor);
 		return result;
 	}
@@ -1763,6 +1830,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	async _createModerationRequest(data) {
+		// Keep execution data intact, but persist the concealment policy before
+		// the Narrator can remove a source from the sidebar while approving.
+		data = { ...data, tags: LitmRoll.captureConcealment(data.tags) };
 		const id = foundry.utils.randomID();
 		const userId = game.user.id;
 		const type = data.type || "quick";
@@ -1804,7 +1874,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					themeName,
 					name: this.actor.name,
 					hasTooltipData: preview?.hasTooltipData ?? false,
-					tooltipData: preview?.tooltipData ?? {},
+					// Stored HTML is public even when its author is a GM.
+					tooltipData: LitmRoll.maskTooltipData(preview?.tooltipData ?? {}, {
+						isGM: false,
+					}),
 					totalPower: preview?.totalPower ?? 0,
 				},
 			),
@@ -1812,17 +1885,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		});
 	}
 
-	#dispatchUpdate() {
-		// Same self-heal as `_onRender`, on the other path a live roll takes:
-		// most owner edits update the DOM in place rather than re-rendering, so
-		// without this the advert stays down until something forces a render.
-		this.#restorePresenceIfMissing();
+	#syncState() {
 		// Strip non-serializable AE references from selection entries
 		const selections = [...this.#selectionMap].map(([id, entry]) => {
 			const { effect, ...serializable } = entry;
 			return [id, serializable];
 		});
-		Sockets.dispatch("updateRollDialog", {
+		return {
 			actorId: this.actorId,
 			selections,
 			type: this.type,
@@ -1833,22 +1902,125 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sacrificeThemeId: this.#sacrificeThemeId,
 			sacrificeStatusName: this.#sacrificeStatusName,
 			ownerId: this.ownerId,
-			// The stamp rides the sync, not just the opening socket: a client
-			// that joins through the HUD strip or `requestRollDialogSync` has to
-			// learn the roll was *called*, or it renders the Narrator's move and
-			// Might as the joiner's to change.
+			actionUuid: this.#actionUuid,
+			title: this.rollName,
 			narratorCall: this.#narratorCall,
 			participantIds: this.#participantIds,
+		};
+	}
+
+	#sendSync(sync) {
+		if (!sync) return;
+		Sockets.dispatch("updateRollDialog", {
+			...this.#sync.view,
+			actorId: this.actorId,
+			sync,
 		});
 	}
 
-	dispatchSync() {
-		this.#dispatchUpdate();
+	#dispatchUpdate() {
+		if (this.localOnly || !this.#syncActive) return;
+		this.#restorePresenceIfMissing();
+		const state = this.#syncState();
+		// Rendering can populate defaults (e.g. a sacrifice theme or Action
+		// title). A viewer must never turn those local defaults into edits to
+		// fields owned by another seat.
+		for (const key of [
+			"modifier",
+			"tradePower",
+			"sacrificeLevel",
+			"sacrificeThemeId",
+			"sacrificeStatusName",
+			"ownerId",
+			"narratorCall",
+			"participantIds",
+		]) {
+			if (!this.isOwner) state[key] = this.#sync.view[key];
+		}
+		for (const key of ["type", "might"]) {
+			// The explicit reaction entry point is allowed to change the move
+			// even on a called roll. The radio handler still rejects player edits.
+			const reaction =
+				key === "type" && this.isOwner && this.type === "mitigate";
+			if (!this.canSetNarratorFields && !reaction)
+				state[key] = this.#sync.view[key];
+		}
+		if (!this.isOwner && !game.user.isGM) {
+			state.actionUuid = this.#sync.view.actionUuid;
+			state.title = this.#sync.view.title;
+		}
+		const message = this.#sync.edit(state, this.isOwner);
+		if (this.isOwner) this.#applySyncState(this.#sync.view);
+		this.#sendSync(message);
 	}
 
-	async receiveUpdate({
+	dispatchSync() {
+		if (this.localOnly || !this.#syncActive) return;
+		this.#dispatchUpdate();
+		if (this.isOwner) this.#sendSync(this.#sync.snapshot());
+	}
+
+	/** Generation token for lifecycle sockets; null before a viewer's first sync. */
+	get syncSession() {
+		return this.#sync.session ?? (this.isOwner ? this.#sync.peerId : null);
+	}
+
+	matchesSyncSession(session) {
+		return !session || !this.syncSession || session === this.syncSession;
+	}
+
+	invalidateSync() {
+		if (this.#sync.session) this.#endedSyncSessions.add(this.#sync.session);
+		this.#syncActive = false;
+	}
+
+	activateSync(session = null) {
+		if (this.#syncActive) {
+			// A late HUD join learns the generation from the presence flag before
+			// its first snapshot, so a delayed close from the previous roll cannot
+			// tear down the new one in that gap.
+			if (session && !this.#sync.session) this.#sync.session = session;
+			return;
+		}
+		this.#syncActive = true;
+		this.#sync = new RollSync(
+			this.#syncState(),
+			foundry.utils.randomID(),
+			session,
+		);
+	}
+
+	async receiveUpdate(data) {
+		if (this.localOnly || !this.#syncActive || data.actorId !== this.actorId)
+			return;
+		if (data.sync) {
+			if (this.#endedSyncSessions.has(data.sync.session)) return;
+			// Only the owner serializes edits; all other peers ignore proposals.
+			if (data.sync.kind === "edit" && !this.isOwner) return;
+			if (
+				data.sync.kind === "snapshot" &&
+				data.senderId &&
+				data.senderId !== this.ownerId
+			)
+				return;
+			const response = this.#sync.receive(data.sync, this.isOwner);
+			this.#applySyncState(this.#sync.view);
+			this.#sendSync(response);
+		} else {
+			// Preserve the public partial-update API used by modules/macros.
+			// An owner-side caller updates the canonical draft without replacing
+			// its generation; dispatchSync() can then publish it to current peers.
+			this.#applySyncState(data);
+			if (this.isOwner) this.#sync.edit(this.#syncState(), true);
+			else
+				this.#sync = new RollSync(this.#syncState(), foundry.utils.randomID());
+		}
+		if (this.actor?.sheet?.rendered) this.actor.sheet.render();
+		if (this.rendered) this.render();
+	}
+
+	#applySyncState({
 		selections,
-		actorId,
 		type,
 		modifier,
 		might,
@@ -1859,9 +2031,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		ownerId,
 		narratorCall,
 		participantIds,
+		actionUuid,
+		title,
 	}) {
-		if (actorId !== this.actorId) return;
-
 		this.#cachedTotalPower = null;
 		if (narratorCall !== undefined) this.#narratorCall = narratorCall;
 		if (participantIds !== undefined)
@@ -1876,20 +2048,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (sacrificeStatusName !== undefined)
 			this.#sacrificeStatusName = sacrificeStatusName;
 		if (ownerId !== undefined) this.ownerId = ownerId;
-
-		// Merge selectionMap: prefer local entries where this user contributed
-		if (selections) {
-			const incoming = new Map(selections);
-			const merged = new Map(incoming);
-			for (const [id, local] of this.#selectionMap) {
-				if (local.contributorId === game.user.id && local.state) {
-					merged.set(id, local);
-				}
-			}
-			this.#selectionMap = merged;
+		if (actionUuid !== undefined && actionUuid !== this.#actionUuid) {
+			this.#actionUuid = actionUuid;
+			this.#actionDoc = null;
 		}
-
-		if (this.actor?.sheet?.rendered) this.actor.sheet.render();
-		if (this.rendered) this.render();
+		if (title !== undefined) this.rollName = title;
+		if (selections) this.#selectionMap = new Map(selections);
 	}
 }

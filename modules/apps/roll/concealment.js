@@ -19,28 +19,50 @@
  * Replace the names of tags belonging to actors this viewer may not see.
  *
  * The tier, polarity and everything else survive: what is masked is identity,
- * not magnitude. A tag that resolves to no actor at all — a scene tag in the
- * story pack — is never concealed, because no hidden actor owns it.
+ * not magnitude. Scene tags remain visible; unresolved actor-backed historical
+ * tags use their recorded policy, or fail closed when no policy was recorded.
  *
  * @param {object[]} tags  Tag entries as `LitmRoll` stores them.
  * @param {object} args
- * @param {Set<string>} args.concealedActorIds  Empty for a GM, who sees all.
+ * @param {Set<string>} args.concealedActorIds  Current hidden actor policy.
+ * @param {boolean} args.isGM  Explicit viewer bypass, including recorded secrets.
  * @param {(tag: object) => string|null} args.resolveActorId
  * @param {string} args.maskName  What a concealed tag is called instead.
  * @returns {object[]} A new array when anything was masked, else the original.
  */
 export function maskConcealedTags(
 	tags,
-	{ concealedActorIds, resolveActorId, maskName } = {},
+	{ concealedActorIds, resolveActorId, maskName, isGM = false } = {},
 ) {
 	if (!tags?.length) return tags ?? [];
-	if (!concealedActorIds?.size) return tags;
+	if (isGM) return tags;
 	let masked = false;
 	const result = tags.map((tag) => {
-		const actorId = resolveActorId(tag);
-		if (!actorId || !concealedActorIds.has(actorId)) return tag;
+		if (!isTagConcealed(tag, { concealedActorIds, resolveActorId })) return tag;
 		masked = true;
 		return { ...tag, name: maskName, isConcealed: true };
 	});
 	return masked ? result : tags;
+}
+
+/**
+ * Live sources follow the Narrator's current policy, including explicit reveals.
+ * Sidebar removal retains that policy. When a source is gone, its recorded
+ * policy is the fallback rather than silently revealing historical secrets.
+ * Legacy actor-backed tags with a missing source fail closed; scene tags do not.
+ */
+export function isTagConcealed(
+	tag,
+	{ concealedActorIds, resolveActorId } = {},
+) {
+	const resolved = resolveActorId?.(tag);
+	const actorId =
+		resolved ?? tag.tagActorId ?? /^Actor\.([^.]+)\./.exec(tag.uuid ?? "")?.[1];
+	if (actorId && concealedActorIds?.has(actorId)) return true;
+	if (resolved) return false;
+	if (tag.concealedAtRoll) return true;
+	return (
+		tag.concealedAtRoll === undefined &&
+		(!!actorId || /^Scene\.[^.]+\.Token\./.test(tag.uuid ?? ""))
+	);
 }

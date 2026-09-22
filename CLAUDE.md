@@ -177,6 +177,13 @@ HUD strip in `#players`, driven by the same `rollDialogOwner` flag every other
 open roll uses; the roll posts its own card. `litm.narratorCallReceived` is gone
 with the receive step it named.
 
+**Closing a view is not ending the roll.** A viewer, including the Narrator,
+can close their window without retracting the owner's presence. The owner
+closing an abandoned call releases its narrator stamp and tag locks. Submission
+for moderation instead suspends the same draft, preserving its authority if
+rejected. A subsequent independent Sacrifice must not inherit a cancelled
+call's authority. Local release happens before awaiting presence persistence.
+
 **Where a Narrator calls from.** The primary control is on the main screen,
 directly above the player list (`CallForRollHud`) — the one place already
 showing who is at the table becomes the place you call on them, and it costs no
@@ -192,6 +199,12 @@ header *controls*, which go to the overflow menu. `R` opens the picker for a GM,
 with the same toggle behaviour it has for players, and a GM with an assigned
 character still gets the picker rather than their own sheet.
 
+Pickup is only shown when the dialog is not already rendered on this client;
+the rendered/closed hooks refresh the HUD independently of actor flag updates.
+The Narrator tour uses a separate `localOnly` roll-dialog preview, with its own
+application ID: it never advertises presence, synchronizes, or executes a roll,
+and tour cleanup must not close an actor's live shared dialog.
+
 Invocations the roller can't see — a concealed Challenge's tags, say — still count
 toward Power, so the dialog renders them as **masked rows** ("Something unseen",
 tier intact, no name, no actor). Concealment is the Narrator's tool; silent
@@ -202,8 +215,17 @@ through `maskConcealedTags` (`concealment.js`, pure and unit-tested), so the
 tooltip a player opens shows the same "Something unseen" with the same tier. The
 tooltip is rendered per client, so the Narrator still reads the real names.
 Without it the dialog's mask lasted exactly as long as it took someone to hover.
-The one definition of "concealed from this viewer" is
-`StoryTagsStore.concealedActorIds`; the target picker reads it too.
+`StoryTagsStore.hiddenActorIds` holds policy independently of sidebar membership;
+`concealedActorIds` applies the viewer's GM bypass for the dialog and target
+picker. Removing an actor from the sidebar is not a reveal. Live sources follow
+an explicit reveal; roll tags record `tagActorId` and `concealedAtRoll` so a
+deleted source cannot accidentally reveal a historical secret. Missing legacy
+actor-backed sources fail closed.
+
+Moderation uses the same projection. Stored public card HTML is masked even
+when authored by a GM; `renderModerationTooltip` replaces it per viewer, using
+the unredacted execution data in message flags. Presentation masks must never
+replace the raw tags needed for approval, scratch, or improvement bookkeeping.
 
 **Acting Together (group roll).** Core Book p.157: one roll for the whole group.
 The same shared dialog, keyed to the **Fellowship actor** — that is what rolls, so
@@ -302,10 +324,16 @@ Namespace `system.litmv2`. Events cover roll-dialog open/sync/close, GM moderati
 `openRollDialog` starts a shared roll: the payload names the actor, the resolved
 `ownerId`, the participants (Acting Together only) and the Narrator's stamp.
 `shouldJoinSharedRoll` decides who opens it — the owner, plus any player owning a
-participating Hero. Everyone else sees the HUD strip. `updateRollDialog` carries
-the narrator stamp and the participant list alongside the selections, so a client
-that joins later learns the roll was *called* rather than rendering the
-Narrator's half as its own.
+participating Hero. Everyone else sees the HUD strip.
+
+`updateRollDialog` is owner-authoritative (`roll-sync.js`). Contributors send
+only the fields/tag IDs they changed; the owner merges them, rechecks the group
+tag and burn caps, and broadcasts a versioned canonical snapshot. Pending local
+edits replay until their sequence is acknowledged, so crossing Narrator/player
+updates and simultaneous group contributions do not erase each other. Session
+IDs keep delayed snapshots and close/reset events from mutating a newer roll.
+The canonical state includes the narrator stamp, participants, title and Action,
+so a late HUD join reconstructs the same draft.
 
 ## Active Effects: the canonical tag store
 

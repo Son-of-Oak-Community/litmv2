@@ -13,6 +13,7 @@ import {
 } from "../../apps/roll/roll-pipeline.js";
 import { requestRollFromNarrator } from "../../apps/roll/roll-request.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
+import { FLAGS } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
 import { enrichHTML, transferBackpackTags } from "../../utils.js";
 
@@ -516,6 +517,16 @@ export class HeroSheet extends LitmActorSheet {
 			return;
 		}
 
+		// The play sheet has its own click route, separate from
+		// selectTagForRoll. Gate instigation here too, but leave an existing
+		// roll and alt-click scratch bookkeeping available.
+		if (
+			!this.rollDialogInstance.rendered &&
+			!this.document.getFlag("litmv2", FLAGS.rollDialogOwner) &&
+			blockPlayerInitiatedRoll()
+		)
+			return;
+
 		// Can't select scratched tags, except weakness tags
 		if (!selected && isScratched && !isWeaknessTag) return;
 
@@ -781,9 +792,14 @@ export class HeroSheet extends LitmActorSheet {
 	 * @param {{ shiftKey?: boolean }} [options] - Modifier key state
 	 */
 	selectTagForRoll(_tagType, tagId, tagName, { shiftKey = false } = {}) {
-		// Clicking a tag on the sheet opens the roll dialog, so it is an
-		// instigating entry point like the Roll button — same gate.
-		if (blockPlayerInitiatedRoll()) return;
+		// Only starting a roll is gated; contributing to one already open is
+		// still allowed, just as it is through the play sheet's click handler.
+		if (
+			!(this.hasRollDialog && this.rollDialogInstance.rendered) &&
+			!this.document.getFlag("litmv2", FLAGS.rollDialogOwner) &&
+			blockPlayerInitiatedRoll()
+		)
+			return;
 		const allTags = this._buildAllRollTags();
 		const tagRef =
 			(tagId && allTags.find((t) => t.id === tagId)) ||

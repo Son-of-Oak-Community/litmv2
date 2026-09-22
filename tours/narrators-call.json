@@ -32,26 +32,26 @@
 		},
 		{
 			"id": "shared-window",
-			"selector": ".litm--roll-dialog-body",
+			"selector": "#litm-roll-tour-preview .litm--roll-dialog-body",
 			"title": "TOURS.NarratorsCallSharedWindowTitle",
 			"content": "TOURS.NarratorsCallSharedWindowContent",
 			"action": "openCalledRoll"
 		},
 		{
 			"id": "narrators-half",
-			"selector": ".litm--roll-dialog-might",
+			"selector": "#litm-roll-tour-preview .litm--roll-dialog-might",
 			"title": "TOURS.NarratorsCallNarratorsHalfTitle",
 			"content": "TOURS.NarratorsCallNarratorsHalfContent"
 		},
 		{
 			"id": "invocations",
-			"selector": ".litm--roll-dialog-tags-fieldset",
+			"selector": "#litm-roll-tour-preview .litm--roll-dialog-tags-fieldset",
 			"title": "TOURS.NarratorsCallInvocationsTitle",
 			"content": "TOURS.NarratorsCallInvocationsContent"
 		},
 		{
 			"id": "rollers-half",
-			"selector": ".litm--roll-dialog-footer",
+			"selector": "#litm-roll-tour-preview .litm--roll-dialog-footer",
 			"title": "TOURS.NarratorsCallRollersHalfTitle",
 			"content": "TOURS.NarratorsCallRollersHalfContent"
 		},
