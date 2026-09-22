@@ -2,6 +2,7 @@ import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { collectSourceConsequences } from "../../apps/consequence-sources.js";
+import { renderModerationTooltip } from "../../apps/roll/moderation-render.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
 import { StoryTagsStore } from "../../apps/story-tags/story-tags-store.js";
@@ -414,6 +415,19 @@ function _resolveReactingHero() {
 	return assigned?.type === "hero" ? assigned : null;
 }
 
+/**
+ * Legacy roll-request cards.
+ *
+ * Nothing posts these any more — the Narrator's Call opens the shared roll
+ * dialog directly instead of whispering a card. The handler stays because the
+ * cards v14.66 posted are still sitting in players' chat logs, with their
+ * rendered Take button baked into the stored message content.
+ *
+ * Not to be confused with `_handleCallRequestedRoll` below, which runs the
+ * opposite direction: this one is a dead GM→player card, that one is the live
+ * player→GM ask. Hence the separate `rollRequestFrom` flag — deleting either
+ * of these because the other looks like a duplicate would be a mistake.
+ */
 async function _handleTakeRollRequest(_target, app) {
 	const req = app.getFlag("litmv2", "rollRequest");
 	if (!req?.actionUuid || !req?.requestedActorId) return;
@@ -436,6 +450,42 @@ async function _handleTakeRollRequest(_target, app) {
 	else if (!dialog.rendered) dialog.render(true);
 }
 
+/**
+ * The Narrator picking up a player's "I'd like to roll" (see
+ * `requestRollFromNarrator`). Turning the ask into a call is the whole action,
+ * so the card goes as soon as it is answered — same claim-by-delete the
+ * moderation cards use, which keeps a second Narrator from calling it twice.
+ */
+const _requestsInFlight = new Set();
+
+async function _handleCallRequestedRoll(_target, app) {
+	if (!game.user.isGM) return;
+	// Claim-by-delete alone settles the race correctly — the loser finds the
+	// card gone and stops. This is for the console: a second click on the same
+	// client makes Foundry log its own "ChatMessage does not exist" before the
+	// delete rejects, and two red errors for a double-click is a bad look for
+	// a working outcome. Same guard, same reason, as the moderation handlers.
+	if (_requestsInFlight.has(app.id)) return;
+	_requestsInFlight.add(app.id);
+	try {
+		const actorId = app.getFlag("litmv2", "rollRequestFrom")?.actorId;
+		const actor = actorId ? game.actors.get(actorId) : null;
+		if (!actor) {
+			ui.notifications.warn(t("LITM.Actions.apply_no_actor"));
+			return;
+		}
+		const claimed = await app.delete().catch(() => null);
+		if (!claimed) {
+			warn(`Roll request ${app.id} was already answered elsewhere.`);
+			return;
+		}
+		const { openSharedRoll } = await import("../../apps/roll/roll-request.js");
+		await openSharedRoll({ actorId: actor.id });
+	} finally {
+		_requestsInFlight.delete(app.id);
+	}
+}
+
 const CLICK_HANDLERS = {
 	"spend-power": _handleSpendPower,
 	"push-roll": _handlePushRoll,
@@ -448,6 +498,7 @@ const CLICK_HANDLERS = {
 	"action-view-ref": _handleViewActionRef,
 	"action-open-consequences": _handleOpenApplyConsequences,
 	"take-roll-request": _handleTakeRollRequest,
+	"call-requested-roll": _handleCallRequestedRoll,
 	react: _handleReact,
 };
 
@@ -665,6 +716,7 @@ function onRenderChatMessage(app, html, _data) {
 	}
 
 	// Moderation messages: show actions only to GMs, toggle hint text
+	renderModerationTooltip(app, element).catch(console.error);
 	const moderationActions = element.querySelector(".litm--moderation-actions");
 	if (moderationActions) {
 		if (!game.user.isGM) moderationActions.remove();

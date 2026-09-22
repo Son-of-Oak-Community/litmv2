@@ -6,7 +6,9 @@ import { FLAGS, IMPROVE_MARKING_TAG_TYPES } from "../../system/config.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
+import { localize as t } from "../../utils.js";
 import { LitmRoll } from "./roll.js";
+import { canInitiateRoll } from "./roll-authority.js";
 
 /**
  * Roll execution + post-roll bookkeeping, lifted out of the dialog so the
@@ -87,7 +89,10 @@ export function executeRoll({
 	sacrificeStatusName,
 	actionUuid = null,
 	mitigation = null,
+	participantIds = [],
+	syncSession = null,
 }) {
+	tags = LitmRoll.captureConcealment(tags);
 	const {
 		scratchedTags,
 		powerTags,
@@ -178,6 +183,10 @@ export function executeRoll({
 			sacrificeThemeId,
 			sacrificeStatusName,
 			mitigation,
+			// Acting Together (p.157): the outcome affects the entire group, so
+			// the card remembers who was in it. The GM apply flow reads this to
+			// pre-select the participants as targets.
+			participantIds,
 		},
 	);
 
@@ -198,8 +207,16 @@ export function executeRoll({
 				powerTags,
 				weaknessTags,
 			});
-			res.rolls[0]?.actor?.sheet.resetRollDialog();
-			Sockets.dispatch("resetRollDialog", { actorId });
+			const sheet = res.rolls[0]?.actor?.sheet;
+			// An approval may finish after the actor has started another roll.
+			// Its bookkeeping belongs to this result, not that newer draft.
+			if (
+				!syncSession ||
+				(sheet?.hasRollDialog &&
+					sheet.rollDialogInstance.syncSession === syncSession)
+			)
+				sheet?.resetRollDialog();
+			Sockets.dispatch("resetRollDialog", { actorId, syncSession });
 			return res;
 		});
 }
@@ -328,4 +345,36 @@ export function resolveRollDialogOwnership(actor, userId) {
 			(!activeOwner?.active && hasActorPermission) ||
 			(activeOwner?.isGM && hasActorPermission));
 	return { isOwner, gmAsViewer, activeOwnerId };
+}
+
+/**
+ * Whether this client may start a roll of its own accord.
+ *
+ * The `player_initiated_rolls` world setting lets a table put the Narrator in
+ * charge of when dice come out (Core Book p.269). This gate covers the
+ * *instigating* entry points only — the hero sheet's Roll button, clicking a
+ * tag on a sheet to start a roll, rolling an Action from the browser, and the
+ * roll keybinding. Joining someone else's open roll, taking a Narrator's
+ * Call, reacting to a Consequence, camp actions, and Sacrifice all stay open:
+ * none of them decide that a roll happens.
+ *
+ * @param {User} [user]
+ * @returns {boolean}
+ */
+export function canUserInitiateRoll(user = game.user) {
+	return canInitiateRoll({
+		isGM: user?.isGM ?? false,
+		playerInitiatedRolls: LitmSettings.playerInitiatedRolls,
+	});
+}
+
+/**
+ * Gate an instigating entry point, warning the user when the table routes
+ * rolls through the Narrator. Returns true when the caller should stop.
+ * @returns {boolean}
+ */
+export function blockPlayerInitiatedRoll() {
+	if (canUserInitiateRoll()) return false;
+	ui.notifications?.info(t("LITM.Ui.narrator_call_player_rolls_disabled"));
+	return true;
 }

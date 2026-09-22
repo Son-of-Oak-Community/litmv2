@@ -104,6 +104,22 @@ export class LitmSettings {
 		return game.settings.get("litmv2", "improve_threshold");
 	}
 
+	/**
+	 * Whether players may open a roll dialog on their own initiative.
+	 *
+	 * Off means the table runs rolls the way the Core Book describes them
+	 * (p.269): the Narrator decides an action needs dice and what kind, and
+	 * calls for it. Players still join, contribute, react, take a Narrator's
+	 * Call, and roll camp actions — they just don't start one unprompted.
+	 */
+	static get playerInitiatedRolls() {
+		return game.settings.get("litmv2", "player_initiated_rolls");
+	}
+
+	static get requireRollApproval() {
+		return game.settings.get("litmv2", "require_roll_approval");
+	}
+
 	static get autoMarkImprove() {
 		return game.settings.get("litmv2", "auto_mark_improve");
 	}
@@ -279,6 +295,55 @@ export class LitmSettings {
 			type: Boolean,
 			default: true,
 			requiresReload: true,
+		});
+		// Defaults to ON, and it gates *players only*. GM initiation and player
+		// initiation are not two halves of one toggle: the Narrator can always
+		// call for a roll (Core Book p.269), and this decides whether players may
+		// also reach for the dice unprompted. A table that wants every roll to
+		// come from the Narrator turns it off.
+		//
+		// The stored key is deliberately unchanged. `ClientSettings#get` builds
+		// an in-memory Setting from the registered default when no document is
+		// stored and only `set()` ever writes, so the default reaches every world
+		// that never touched this toggle while preserving the choice of any table
+		// that did. Renaming the key would silently discard those stored choices.
+		game.settings.register("litmv2", "player_initiated_rolls", {
+			name: "LITM.Settings.player_initiated_rolls",
+			hint: "LITM.Settings.player_initiated_rolls_hint",
+			scope: "world",
+			config: true,
+			type: Boolean,
+			default: true,
+			// No reload: this only decides whether the hero sheet renders its
+			// Roll button, so re-rendering the open sheets is enough — a GM
+			// toggling it mid-session should see it take effect at once.
+			onChange: () => {
+				for (const actor of game.actors ?? []) {
+					if (actor.type === "hero" && actor.sheet?.rendered)
+						actor.sheet.render();
+				}
+			},
+		});
+		// Deliberately separate from `player_initiated_rolls`: that one decides
+		// whether a player may start composing a roll, this one whether the roll
+		// they composed executes. A table can want either without the other.
+		game.settings.register("litmv2", "require_roll_approval", {
+			name: "LITM.Settings.require_roll_approval",
+			hint: "LITM.Settings.require_roll_approval_hint",
+			scope: "world",
+			config: true,
+			type: Boolean,
+			default: false,
+			// No reload: it only changes where a player's Roll press goes, read
+			// at submit time. A GM toggling it mid-session should see it at once.
+			onChange: () => {
+				for (const actor of game.actors ?? []) {
+					if (actor.sheet?.hasRollDialog) {
+						const dialog = actor.sheet.rollDialogInstance;
+						if (dialog?.rendered) dialog.render();
+					}
+				}
+			},
 		});
 		game.settings.register("litmv2", "use_fellowship", {
 			name: "LITM.Settings.use_fellowship",

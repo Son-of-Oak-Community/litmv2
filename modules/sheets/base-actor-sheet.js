@@ -8,12 +8,13 @@ import {
 	resolveEffect,
 } from "../active-effects/effect-queries.js";
 import { clampTier, maxStatusTier } from "../active-effects/status-tag-data.js";
+import { resolveRollDialogOwnership } from "../apps/roll/roll-pipeline.js";
 import {
 	mapEffectForUI,
 	toTiers,
 } from "../apps/story-tags/story-tag-helpers.js";
 import { completeTrackUpdate } from "../system/chat.js";
-import { ACTOR_TAG_TYPES, THEME_TAG_TYPES } from "../system/config.js";
+import { ACTOR_TAG_TYPES, FLAGS, THEME_TAG_TYPES } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
 import {
 	availableThemebookImprovements,
@@ -820,5 +821,113 @@ export class LitmActorSheet extends LitmSheetMixin(
 
 		// Write + celebrate when a track reaches its maximum
 		await completeTrackUpdate(doc, attrib, newValue, this.document);
+	}
+
+	/* -------------------------------------------- */
+	/*  Roll dialog                                 */
+	/* -------------------------------------------- */
+
+	/**
+	 * The actor's roll dialog, lazily created.
+	 *
+	 * These live on the base sheet rather than on `HeroSheet` because a roll
+	 * dialog is no longer a hero's alone: Acting Together (Core Book p.157)
+	 * rides the Fellowship actor, so `FellowshipSheet` has to host one too. The
+	 * roll-dialog HUD strip and the roll sockets already address whatever actor
+	 * the flag names, without checking its type — before this lift, a Fellowship
+	 * entry rendered in the HUD and then threw on click.
+	 *
+	 * @type {LitmRollDialog|null}
+	 */
+	#rollDialog = null;
+
+	/**
+	 * Whether a roll dialog instance exists — without creating one.
+	 * @type {boolean}
+	 */
+	get hasRollDialog() {
+		return !!this.#rollDialog;
+	}
+
+	/**
+	 * Get or create the roll dialog instance.
+	 * @returns {LitmRollDialog}
+	 */
+	get rollDialogInstance() {
+		if (!this.#rollDialog) {
+			this.#rollDialog = game.litmv2.LitmRollDialog.create({
+				actorId: this.document.id,
+			});
+		}
+		return this.#rollDialog;
+	}
+
+	/**
+	 * Apply a peer's roll-dialog sync. Never creates a dialog: a client with no
+	 * dialog open has nothing to update.
+	 * @param {object} data
+	 */
+	updateRollDialog(data) {
+		this.#rollDialog?.receiveUpdate(data);
+	}
+
+	/**
+	 * Open the roll dialog, claiming ownership when this client is entitled to
+	 * it and falling back to viewer mode when someone else already holds it.
+	 *
+	 * A roll the Narrator called already knows who owns it — they assigned it
+	 * when they opened the shared object — so ownership is not recomputed for
+	 * one. Recomputing would hand an Acting Together roll to any player with
+	 * OWNER on the Fellowship, via the "take over a GM-parked dialog" clause in
+	 * `resolveRollDialogOwnership`.
+	 *
+	 * @param {object} [options]
+	 * @param {boolean} [options.toggle] Close it instead when already open.
+	 */
+	renderRollDialog(options = {}) {
+		const dialog = this.rollDialogInstance;
+
+		if (options.toggle && dialog.rendered) {
+			dialog.close();
+			return;
+		}
+		dialog.activateSync();
+
+		// A roll the Narrator called already knows whose it is. The flag is the
+		// durable record of that — the local dialog may be brand new, after a
+		// reload or a HUD-strip join — so ownership is read, not recomputed.
+		const assigned = this.document.getFlag("litmv2", FLAGS.rollDialogOwner);
+		if (assigned?.narrator && assigned.ownerId) {
+			dialog.activateSync(assigned.syncSession);
+			dialog.ownerId = assigned.ownerId;
+			if (!dialog.isOwner)
+				Sockets.dispatch("requestRollDialogSync", {
+					actorId: this.document.id,
+				});
+			dialog.render(true);
+			return;
+		}
+
+		const { isOwner, activeOwnerId } = resolveRollDialogOwnership(
+			this.document,
+			game.user.id,
+		);
+
+		if (isOwner) {
+			dialog.ownerId = game.user.id;
+			const shouldBroadcast = activeOwnerId !== game.user.id;
+			if (shouldBroadcast) dialog.updatePresence(true);
+		} else {
+			dialog.ownerId = activeOwnerId;
+			Sockets.dispatch("requestRollDialogSync", { actorId: this.document.id });
+		}
+
+		dialog.render(true);
+	}
+
+	/** Reset the roll dialog back to a blank roll. */
+	resetRollDialog() {
+		this.rollDialogInstance.reset();
+		this.render();
 	}
 }

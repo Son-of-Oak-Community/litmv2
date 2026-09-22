@@ -1,0 +1,35 @@
+{{!-- One roster row: portrait, name, and a line of context under it.
+      The system's single character-selection control — see modules/apps/roster.js.
+
+      Always a label wrapping a real input, in every consumer, and the input is
+      the only event path. That is deliberate: a label-wrapped input fires
+      `change` once for a mouse click and once for a keyboard Space or arrow
+      key, where a `data-action` click handler would fire for the mouse and
+      stay silent for the keyboard. It is also the whole form contract for the
+      DialogV2 pickers, which read `input[name=…]:checked`.
+
+      Radio for "pick one", checkbox for "tick several" — a radio cannot be
+      un-picked by clicking it again, and nothing should be built on a change
+      event that only fires in one direction.
+
+      Selection is styled off `:checked` alone, never a rendered class. The
+      DialogV2 pickers never re-render: a class baked in at render time stays
+      on the first row after the user picks another, and two rows read as
+      selected at once. --}}
+<label
+    class="litm--roster-row{{#if row.variant}} litm--roster-row--{{row.variant}}{{/if}}{{#if row.muted}} is-offline{{/if}}"
+    data-row-id="{{row.id}}">
+    {{!-- The id is what Foundry keys focus restoration on across a re-render.
+          Without it it falls back to the first input sharing this name, so
+          every arrow-key move would bounce focus back to row one. Keyed on
+          `value`, not `id`: the limit picker lists one actor several times and
+          only the index is unique there. --}}
+    <input class="litm--roster-input" id="{{row.inputName}}-{{row.value}}"
+        type="{{#if row.multi}}checkbox{{else}}radio{{/if}}"
+        name="{{row.inputName}}" value="{{row.value}}" {{checked row.selected}} />
+    <img class="litm--roster-portrait" src="{{row.img}}" alt="" />
+    <span class="litm--roster-text">
+        <span class="litm--roster-name">{{row.name}}</span>
+        {{#if row.meta}}<span class="litm--roster-meta">{{row.meta}}</span>{{/if}}
+    </span>
+</label>

@@ -1,0 +1,95 @@
+{
+	"title": "TOURS.NarratorsCallTitle",
+	"description": "TOURS.NarratorsCallDescription",
+	"canBeResumed": false,
+	"display": true,
+	"restricted": true,
+	"steps": [
+		{
+			"id": "intro",
+			"selector": "",
+			"title": "TOURS.NarratorsCallIntroTitle",
+			"content": "TOURS.NarratorsCallIntroContent"
+		},
+		{
+			"id": "sidebar",
+			"selector": "#litm-call-for-roll-hud",
+			"title": "TOURS.NarratorsCallSidebarTitle",
+			"content": "TOURS.NarratorsCallSidebarContent"
+		},
+		{
+			"id": "pick-who",
+			"selector": ".litm--roster",
+			"title": "TOURS.NarratorsCallPickWhoTitle",
+			"content": "TOURS.NarratorsCallPickWhoContent",
+			"action": "openRollCall"
+		},
+		{
+			"id": "acting-together",
+			"selector": ".litm--roster-row--fellowship",
+			"title": "TOURS.NarratorsCallActingTogetherTitle",
+			"content": "TOURS.NarratorsCallActingTogetherContent"
+		},
+		{
+			"id": "shared-window",
+			"selector": "#litm-roll-tour-preview .litm--roll-dialog-body",
+			"title": "TOURS.NarratorsCallSharedWindowTitle",
+			"content": "TOURS.NarratorsCallSharedWindowContent",
+			"action": "openCalledRoll"
+		},
+		{
+			"id": "narrators-half",
+			"selector": "#litm-roll-tour-preview .litm--roll-dialog-might",
+			"title": "TOURS.NarratorsCallNarratorsHalfTitle",
+			"content": "TOURS.NarratorsCallNarratorsHalfContent"
+		},
+		{
+			"id": "invocations",
+			"selector": "#litm-roll-tour-preview .litm--roll-dialog-tags-fieldset",
+			"title": "TOURS.NarratorsCallInvocationsTitle",
+			"content": "TOURS.NarratorsCallInvocationsContent"
+		},
+		{
+			"id": "rollers-half",
+			"selector": "#litm-roll-tour-preview .litm--roll-dialog-footer",
+			"title": "TOURS.NarratorsCallRollersHalfTitle",
+			"content": "TOURS.NarratorsCallRollersHalfContent"
+		},
+		{
+			"id": "pickup",
+			"selector": "#players",
+			"title": "TOURS.NarratorsCallPickupTitle",
+			"content": "TOURS.NarratorsCallPickupContent"
+		},
+		{
+			"id": "outro",
+			"selector": "",
+			"title": "TOURS.NarratorsCallOutroTitle",
+			"content": "TOURS.NarratorsCallOutroContent"
+		}
+	],
+	"localization": {
+		"TOURS.NarratorsCallTitle": "The Narrator's Call",
+		"TOURS.NarratorsCallDescription": "Learn to call for rolls, use the shared roll window, and make group rolls with Acting Together.",
+		"TOURS.NarratorsCallIntroTitle": "The Narrator's Call",
+		"TOURS.NarratorsCallIntroContent": "<p>Use the Narrator's Call to request a roll from a Hero or the whole Fellowship. Select who rolls, then set the roll type, Might, and tags in the shared roll window.</p><p>You can call for rolls whether or not players are allowed to start their own.</p>",
+		"TOURS.NarratorsCallSidebarTitle": "Call for a roll",
+		"TOURS.NarratorsCallSidebarContent": "<p>Click <strong>Call for a roll</strong> above the player list, or press <strong>R</strong>. You can also open it from the Tags sidebar's title bar.</p>",
+		"TOURS.NarratorsCallPickWhoTitle": "Select a Hero",
+		"TOURS.NarratorsCallPickWhoContent": "<p>Select a Hero from the list. Each row shows whether a player who controls that Hero is online. If none are online, you make the roll.</p><p>The Hero's Actions appear beside the list. Select an Action if needed, then click <strong>Call the roll</strong>.</p>",
+		"TOURS.NarratorsCallActingTogetherTitle": "Acting Together",
+		"TOURS.NarratorsCallActingTogetherContent": "<p>Select <strong>Acting Together</strong> to make one roll for all Heroes in the Fellowship (Core Book p.157). Each Hero may contribute one tag, and the group may burn one tag in total. Fellowship theme tags may also be invoked. The Narrator makes the roll.</p>",
+		"TOURS.NarratorsCallSharedWindowTitle": "Shared roll window",
+		"TOURS.NarratorsCallSharedWindowContent": "<p>The roll window opens for you and the selected player. Changes to tags, roll type, and Might update on both screens.</p>",
+		"TOURS.NarratorsCallNarratorsHalfTitle": "Set the roll type and Might",
+		"TOURS.NarratorsCallNarratorsHalfContent": "<p>Select Quick, Detailed, or Reaction, then set the Might modifier. Only the Narrator can change these values on a called roll.</p>",
+		"TOURS.NarratorsCallInvocationsTitle": "Invoke tags",
+		"TOURS.NarratorsCallInvocationsContent": "<p>Select relevant tags from the target, opposition, or environment (Core Book p.272). Your invocations are marked with a quill and cannot be changed by the player.</p><p>Tags from characters hidden in the sidebar appear as <em>Something unseen</em> in the player's roll window and chat tooltip. Status tiers remain visible.</p>",
+		"TOURS.NarratorsCallRollersHalfTitle": "Make the roll",
+		"TOURS.NarratorsCallRollersHalfContent": "<p>The player selects their tags, trades Power if allowed, and clicks <strong>Roll</strong>. If Narrator approval is required, they submit the roll for approval instead.</p><p>For Acting Together, participants select their tags and the Narrator clicks <strong>Roll</strong>.</p>",
+		"TOURS.NarratorsCallPickupTitle": "Join an open roll",
+		"TOURS.NarratorsCallPickupContent": "<p>Open rolls appear above the player list. Click an entry to join or reopen its roll window.</p><p>The result is posted to chat after the roll.</p>",
+		"TOURS.NarratorsCallOutroTitle": "Roll settings",
+		"TOURS.NarratorsCallOutroContent": "<p>Turn off <strong>Allow Player-Initiated Rolls</strong> in the system settings if players should request rolls from the Narrator. You can still call for rolls with either setting.</p><p>Enable <strong>Require Narrator Approval</strong> if player rolls need approval before the dice are rolled.</p>"
+	}
+}

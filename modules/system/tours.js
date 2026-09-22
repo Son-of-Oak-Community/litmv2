@@ -51,6 +51,9 @@ export class LitmTour extends Tour {
 	 */
 	#skipSetupTheme = false;
 
+	/** The tour owns only this private preview, never the actor's live roll. */
+	#demoDialog = null;
+
 	/** @override */
 	async start() {
 		// The "setup-theme" step points at the fellowship's "drop a themebook"
@@ -87,21 +90,57 @@ export class LitmTour extends Tour {
 		return super._renderStep();
 	}
 
+	/**
+	 * Take down whatever the tour put up.
+	 *
+	 * The Narrator's Call tour uses the real dialog in local-only mode.
+	 * Cleanup must never close a live shared roll on the target actor or
+	 * erase its presence flag.
+	 *
+	 * Idempotent: it runs on completion and on exit, and the two can both
+	 * happen for one tour.
+	 */
+	async #teardownDemo() {
+		const hero =
+			this.targetActor ??
+			game.actors.find(
+				(a) => a.type === "hero" && a.getFlag("litmv2", "isSampleHero"),
+			);
+		await foundry.applications.instances.get("litm-call-for-roll")?.close();
+		const dialog = this.#demoDialog;
+		this.#demoDialog = null;
+		if (dialog) await dialog.close();
+		if (hero?.sheet?.rendered) await hero.sheet.close();
+
+		const fellowship = game.litmv2?.fellowship;
+		if (fellowship?.sheet?.rendered) await fellowship.sheet.close();
+	}
+
 	/** @override */
 	async _postStep() {
 		await super._postStep();
+		// `_postStep` also runs between steps, where `hasNext` is still the
+		// *old* step's — so this is the completion path and nothing else.
+		if (!this.hasNext) await this.#teardownDemo();
+	}
 
-		if (!this.hasNext) {
-			const hero =
-				this.targetActor ??
-				game.actors.find(
-					(a) => a.type === "hero" && a.getFlag("litmv2", "isSampleHero"),
-				);
-			if (hero?.sheet?.rendered) await hero.sheet.close();
-
-			const fellowship = game.litmv2?.fellowship;
-			if (fellowship?.sheet?.rendered) await fellowship.sheet.close();
-		}
+	/**
+	 * Quitting is not completing, and the demonstration roll has to come down
+	 * either way. Every exit route lands here: Escape
+	 * (`client-keybindings.mjs` → `Tour.activeTour.exit()`), the tour card's
+	 * own close button (`_onButtonClick`, case "exit"), and `progress()`'s
+	 * catch when a step fails to render.
+	 *
+	 * `Tour#exit` is synchronous and does not await `_postStep`, so the
+	 * teardown is kicked off rather than awaited — there is no caller to hand
+	 * the promise to.
+	 *
+	 * @override
+	 */
+	exit() {
+		const result = super.exit();
+		this.#teardownDemo().catch(console.error);
+		return result;
 	}
 
 	/** @override */
@@ -114,6 +153,8 @@ export class LitmTour extends Tour {
 		else if (action === "openFellowshipSheet")
 			await this.#openFellowshipSheet();
 		else if (action === "ensureSampleTags") await this.#ensureSampleTags();
+		else if (action === "openRollCall") await this.#openRollCall();
+		else if (action === "openCalledRoll") await this.#openCalledRoll();
 		else if (action?.startsWith("activateSidebar:")) {
 			const tab = action.split(":")[1];
 			await ui[tab]?.activate();
@@ -187,6 +228,41 @@ export class LitmTour extends Tour {
 	}
 
 	/**
+	 * Open the Narrator's Call picker.
+	 */
+	async #openRollCall() {
+		const { CallForRollApp } = await import("../apps/roll/call-for-roll.js");
+		CallForRollApp.open();
+		await waitForElement("#litm-call-for-roll").catch(() => {});
+	}
+
+	/**
+	 * Show the real dialog without advertising a private sample actor or
+	 * opening windows on other clients. A separate instance also leaves any
+	 * existing roll on an explicitly supplied targetActor untouched.
+	 */
+	async #openCalledRoll() {
+		const hero = await this.#getOrCreateHero();
+		if (!hero) return;
+		const callApp = foundry.applications.instances.get("litm-call-for-roll");
+		await callApp?.close();
+		if (!this.#demoDialog) {
+			this.#demoDialog = game.litmv2.LitmRollDialog.create({
+				id: "litm-roll-tour-preview",
+				actorId: hero.id,
+				ownerId: game.user.id,
+				localOnly: true,
+			});
+			this.#demoDialog.configureSharedRoll({
+				ownerId: game.user.id,
+				narratorUserId: game.user.id,
+				narratorName: game.user.name,
+			});
+		}
+		await this.#demoDialog.render(true);
+	}
+
+	/**
 	 * Ensure the story tag sidebar has at least one tag and one status
 	 * so tour selectors have something to point at.
 	 */
@@ -217,6 +293,9 @@ async function _doRegisterTours() {
 	const tours = [
 		["heroSheetBasics", "tours/hero-sheet-basics.json"],
 		["storyTagSidebar", "tours/story-tag-sidebar.json"],
+		// GM-only (`restricted` in its JSON): calling for a roll is the
+		// Narrator's step, so the tutorial is theirs too.
+		["narratorsCall", "tours/narrators-call.json"],
 	];
 
 	if (LitmSettings.useFellowship) {

@@ -1,0 +1,80 @@
+{{!-- The Narrator picks who is rolling, and optionally what they are doing.
+      Everything else — the move, the Might, their invocations — happens inside
+      the shared roll dialog, beside the player's half.
+
+      Side by side, because Foundry is wide and short: the roster left, the
+      chosen character's Actions right. Both columns are a fixed height and
+      scroll inside it, so a Hero with twenty Actions opens exactly the same
+      window as a Hero with none. --}}
+<div class="standard-form litm--roll-call-body">
+
+	{{#if actionName}}
+	<header class="flexrow gap-sm litm--roll-action-strip">
+		{{#if actionImg}}
+		<img class="noflex litm--roll-action-strip-img" src="{{actionImg}}" alt="" />
+		{{/if}}
+		<div class="flexcol flex1 litm--roll-action-strip-meta">
+			<strong>{{actionName}}</strong>
+		</div>
+		<button type="button" class="noflex" data-action="clearAction"
+			data-tooltip="{{localize 'LITM.Actions.clear_action'}}"
+			aria-label="{{localize 'LITM.Actions.clear_action'}}">
+			<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+		</button>
+	</header>
+	{{/if}}
+
+	{{#if hasHeroes}}
+	<div class="litm--roll-call-columns">
+		<section class="litm--roll-call-col">
+			<p class="litm-render__section-header">{{localize "LITM.Ui.narrator_call_who"}}</p>
+			{{!-- Acting Together is pinned below the scrolling Heroes rather
+			      than being the last row inside them. At six or seven Heroes it
+			      would otherwise sit below the fold — which is the burial this
+			      round exists to undo. --}}
+			<div class="litm--roll-call-scroll litm--roll-call-who" role="radiogroup"
+				aria-label="{{localize 'LITM.Ui.narrator_call_who'}}">
+				<div class="litm--roster litm--roll-call-heroes" data-roster="who">
+					{{#each targets as |target|}}
+					{{> "systems/litmv2/templates/partials/roster-row.html" row=target}}
+					{{/each}}
+				</div>
+				{{#if fellowshipRow}}
+				<div class="litm--roster litm--roll-call-pinned" data-roster="who">
+					{{> "systems/litmv2/templates/partials/roster-row.html" row=fellowshipRow}}
+				</div>
+				{{/if}}
+			</div>
+		</section>
+
+		<section class="litm--roll-call-col">
+			<p class="litm-render__section-header">{{localize "LITM.Ui.narrator_call_what"}}</p>
+			{{#if showActions}}
+				{{#if actions.length}}
+				<div class="litm--roster litm--roll-call-scroll" data-roster="action" role="radiogroup"
+					aria-label="{{localize 'LITM.Ui.narrator_call_what'}}">
+					{{#each actions as |action|}}
+					{{> "systems/litmv2/templates/partials/roster-row.html" row=action}}
+					{{/each}}
+				</div>
+				{{else}}
+				<p class="hint litm--roll-call-empty">{{localize "LITM.Ui.narrator_call_no_actions"}}</p>
+				{{/if}}
+			{{else}}
+			<p class="hint litm--roll-call-empty">{{actionsHint}}</p>
+			{{/if}}
+		</section>
+	</div>
+
+	<p class="hint">{{hint}}</p>
+
+	<footer class="form-footer">
+		<button type="button" class="bright" data-action="callRoll" {{#unless hasSelection}}disabled{{/unless}}>
+			<i class="fa-solid fa-dice" aria-hidden="true"></i>
+			{{localize "LITM.Ui.call_the_roll"}}
+		</button>
+	</footer>
+	{{else}}
+	<p class="hint">{{localize "LITM.Actions.request_no_heroes"}}</p>
+	{{/if}}
+</div>

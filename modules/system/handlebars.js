@@ -56,6 +56,7 @@ export class HandlebarsPartials {
 	static partials = [
 		"systems/litmv2/templates/parts/description.html",
 		"systems/litmv2/templates/partials/play-tag.html",
+		"systems/litmv2/templates/partials/roll-tag.html",
 		"systems/litmv2/templates/partials/play-theme-tags.html",
 		"systems/litmv2/templates/partials/play-theme-tracks.html",
 		"systems/litmv2/templates/partials/theme-special-improvements.html",
@@ -65,6 +66,10 @@ export class HandlebarsPartials {
 		"systems/litmv2/templates/partials/rating-star.html",
 		"systems/litmv2/templates/partials/control-legend.html",
 		"systems/litmv2/templates/partials/weakness-chevron.html",
+		// The character-selection control. Listed here rather than on an owning
+		// sheet because the target-picker dialogs render it through a top-level
+		// renderTemplate with no ApplicationV2 lifecycle to hang it off.
+		"systems/litmv2/templates/partials/roster-row.html",
 	];
 
 	static register() {

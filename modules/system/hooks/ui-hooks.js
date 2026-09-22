@@ -204,11 +204,20 @@ function _handleTagDropInEditor() {
 }
 
 /**
- * Re-render the roll dialog HUD whenever the players list panel is re-rendered
- * (e.g. player connect/disconnect, character assignment changes).
+ * Re-attach and re-render the litm widgets above the player list whenever the
+ * panel is re-rendered (e.g. player connect/disconnect, character assignment
+ * changes).
  */
 function _renderRollDialogHudOnPlayers() {
+	// A viewer opening or closing a dialog does not update actor presence.
+	// Refresh on local lifecycle events as well so pickup returns on close.
+	for (const hook of ["litm.rollDialogRendered", "litm.rollDialogClosed"]) {
+		Hooks.on(hook, () => game.litmv2.rollDialogHud?.render?.());
+	}
 	Hooks.on("renderPlayers", () => {
+		// Both litm widgets in this region re-attach here: Foundry replaces the
+		// panel's contents on re-render and detaches them.
+		game.litmv2.callForRollHud?.render?.();
 		game.litmv2.rollDialogHud?.render?.();
 	});
 }

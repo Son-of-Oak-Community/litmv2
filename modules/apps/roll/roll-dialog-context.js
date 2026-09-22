@@ -8,6 +8,7 @@ import {
 	effectToPlain,
 	isEffectVisible,
 } from "../../active-effects/effect-queries.js";
+import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { ACTOR_TAG_TYPES, EFFECT_GROUP_LABELS } from "../../system/config.js";
 import { localize as t } from "../../utils.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
@@ -39,11 +40,18 @@ export function makeTagDecorator({
 	isOwner,
 	positiveSuggestedIds = new Set(),
 	negativeSuggestedIds = new Set(),
+	actableActorIds = null,
 }) {
 	const currentUserId = game.user.id;
 	const isGM = game.user.isGM;
 	return (tag) => {
 		const contributorId = tag.contributorId || null;
+		// A tag the Narrator invoked when they called for this roll (Core Book
+		// p.272 — "invoke tags from the target of the action, the opposition,
+		// or the environment"). It is theirs to change, not the roller's, so
+		// it stays locked for everyone but a GM even after the dialog is
+		// handed to the player who owns the hero.
+		const isNarrator = tag.narrator === true;
 		const isOpposition =
 			tag.actorType === "challenge" || tag.actorType === "journey";
 		// Already-scratched (unavailable) tags cannot be invoked or re-burned;
@@ -63,6 +71,13 @@ export function makeTagDecorator({
 				? ",negative,positive"
 				: baseStates;
 		const tagId = tag.id ?? tag._id;
+		// Acting Together: a participant may move their own Hero's tags and
+		// nobody else's. Without this an unclaimed tag on another Hero would be
+		// anyone's to cycle, because contributor-based locking only bites once
+		// someone has already claimed it.
+		const outOfReach = actableActorIds
+			? !actableActorIds.has(tag.tagActorId)
+			: false;
 		return {
 			...tag,
 			_id: tag._id ?? tag.id,
@@ -72,8 +87,11 @@ export function makeTagDecorator({
 			displayName: tag.displayName || tag.name,
 			locked:
 				isUnavailable ||
+				(isNarrator && !isGM) ||
+				outOfReach ||
 				(!isOwner && contributorId && contributorId !== currentUserId),
 			isUnavailable,
+			isNarrator,
 			states,
 			value:
 				tag.type === "status_tag"
@@ -83,6 +101,60 @@ export function makeTagDecorator({
 			isNegativeSuggestion: negativeSuggestedIds.has(tagId),
 		};
 	};
+}
+
+/**
+ * Scene statuses from the story-tag pack — the environment's own tiers, not
+ * attached to any actor. Shared by the roll dialog and the Narrator's Call so
+ * both read the scene from one place.
+ *
+ * @param {(uuid: string) => {state?: string, contributorId?: string, narrator?: boolean}} getSelection
+ * @returns {object[]}
+ */
+export function buildSceneStatusItems(getSelection) {
+	return (StoryTagsStore.tags ?? [])
+		.filter((tag) => tag.values?.some((v) => !!v))
+		.map((tag) => {
+			const sel = getSelection(tag.uuid) ?? {};
+			return {
+				...tag,
+				type: "status_tag",
+				value: StatusTagData.tierOf(tag.values),
+				actorName: null,
+				actorImg: null,
+				state: sel.state || "",
+				contributorId: sel.contributorId || null,
+				narrator: sel.narrator,
+				states: ",negative,positive",
+			};
+		});
+}
+
+/**
+ * Scene story tags from the story-tag pack — tier-less environment tags.
+ * Counterpart to {@link buildSceneStatusItems}.
+ *
+ * @param {(uuid: string) => {state?: string, contributorId?: string, narrator?: boolean}} getSelection
+ * @returns {object[]}
+ */
+export function buildSceneStoryTagItems(getSelection) {
+	return (StoryTagsStore.tags ?? [])
+		.filter((tag) => tag.values.every((v) => !v))
+		.map((tag) => {
+			const sel = getSelection(tag.uuid) ?? {};
+			return {
+				...tag,
+				type: "story_tag",
+				actorName: null,
+				actorImg: null,
+				state: sel.state || "",
+				contributorId: sel.contributorId || null,
+				narrator: sel.narrator,
+				states: tag.isSingleUse
+					? ",positive,negative"
+					: ",positive,negative,scratched",
+			};
+		});
 }
 
 /**
@@ -136,6 +208,7 @@ export function buildContributedTagGroups(
 				...rawTag,
 				state: sel.state,
 				contributorId: sel.contributorId,
+				narrator: sel.narrator,
 			});
 			const themeMap = ensureActorEntry(
 				sel.contributorActorId,
@@ -165,6 +238,7 @@ export function buildContributedTagGroups(
 					...rawTag,
 					state: sel.state,
 					contributorId: sel.contributorId,
+					narrator: sel.narrator,
 				});
 				pushThemeGroup(themeMap, rawTag, e.parent?.img ?? null, tag);
 			}
@@ -237,6 +311,7 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 			parent: effect.parent,
 			state: sel.state,
 			contributorId: sel.contributorId,
+			narrator: sel.narrator,
 		});
 	};
 
@@ -388,6 +463,7 @@ function buildSidebarActorTagGroups(
 					actorType: sidebarActor.type,
 					state: sel.state,
 					contributorId: sel.contributorId,
+					narrator: sel.narrator,
 				});
 			})
 			.filter(Boolean);
@@ -422,6 +498,103 @@ export function buildSceneActorTagGroups(dialog, shared) {
 }
 
 /**
+ * Group one actor's applied effects into the labelled sections a tab renders.
+ *
+ * Shared by the GM viewer's per-actor tabs and the Acting Together tabs — the
+ * two surfaces answer the same question ("what can be invoked off this actor")
+ * and should never drift apart in how they group or label the answer.
+ *
+ * `tagActorId` rides along on every tag so the decorator and the one-tag-per-
+ * Hero cap can tell whose tag it is.
+ *
+ * @param {LitmRollDialog} dialog
+ * @param {Actor} actor
+ * @param {object} shared
+ * @returns {object[]} groups of `{ themeName, themeImg, tags }`
+ */
+function buildActorEffectGroups(
+	dialog,
+	actor,
+	{ decorateTag, tagTypeOrder, allStoryItems = [], isOwner },
+) {
+	const themeMap = new Map();
+	// Use appliedEffects (active only). For actor-level effects (status_tag,
+	// story_tag, relationship_tag), group by type rather than parent name to
+	// avoid a catch-all actor group.
+	//
+	// This used to feed the GM viewer alone, where showing GM-hidden effects is
+	// the point. It now also feeds the Acting Together picker that players see,
+	// so non-GMs get the same visibility filter `buildOwnerContext` applies.
+	const isGM = game.user.isGM;
+	for (const e of actor.appliedEffects) {
+		if (!isGM && !isEffectVisible(e)) continue;
+		const sel = dialog.getSelection(e.uuid);
+		const rawTag = effectToPlain(e);
+		const tag = decorateTag({
+			...rawTag,
+			tagActorId: actor.id,
+			state: sel.state,
+			contributorId: sel.contributorId,
+			narrator: sel.narrator,
+		});
+		// story_tag and status_tag effects always group by type so that
+		// backpack-item tags and actor-level tags share one section.
+		// Theme tags (power_tag, etc.) group by parent item.
+		const groupByType = e.parent === actor || ACTOR_TAG_TYPES.has(e.type);
+		let groupKey;
+		let groupLabel;
+		let groupImg;
+		if (groupByType) {
+			groupKey = `__${e.type}`;
+			const labelKey = EFFECT_GROUP_LABELS[e.type];
+			groupLabel = labelKey
+				? t(labelKey)
+				: e.type === "story_tag"
+					? (actor.system.backpackItem?.name ?? t("LITM.Terms.backpack"))
+					: e.type;
+			groupImg =
+				e.type === "story_tag"
+					? (actor.system.backpackItem?.img ?? null)
+					: null;
+		} else {
+			groupKey = rawTag.themeId ?? `__${rawTag.type}`;
+			groupLabel = rawTag.themeName ?? rawTag.type;
+			groupImg = e.parent?.img ?? null;
+		}
+		if (!themeMap.has(groupKey)) {
+			themeMap.set(groupKey, {
+				themeName: groupLabel,
+				themeImg: groupImg,
+				tags: [],
+			});
+		}
+		themeMap.get(groupKey).tags.push(tag);
+	}
+	// Add actor story items to this tab
+	const actorStory = allStoryItems
+		.filter((tag) => tag.actorName === actor.name)
+		.filter((tag) => isOwner || game.user.isGM || !!tag.state);
+	if (actorStory.length) {
+		themeMap.set("__actor_story", {
+			themeName: t("LITM.Tags.story"),
+			tags: sortByTypeThenName(actorStory, tagTypeOrder),
+		});
+	}
+	return [...themeMap.values()].map((g) => ({
+		...g,
+		tags: sortByTypeThenName(g.tags, tagTypeOrder),
+	}));
+}
+
+/** Drop every unselected tag from a set of groups, then drop empty groups.
+ *  What a viewer may not touch, they only need to *read*. */
+function keepSelectedOnly(groups) {
+	return groups
+		.map((g) => ({ ...g, tags: g.tags.filter((tag) => tag.state) }))
+		.filter((g) => g.tags.length);
+}
+
+/**
  * Build per-actor tabs for GM viewers from the story tag sidebar actors.
  *
  * @param {LitmRollDialog} dialog  The roll dialog instance.
@@ -433,10 +606,8 @@ export function buildSceneActorTagGroups(dialog, shared) {
  * @param {boolean}  shared.isOwner
  * @returns {object[]} gmViewerTabs array
  */
-export function buildGmViewerContext(
-	dialog,
-	{ decorateTag, tagTypeOrder, allStoryItems, sceneStoryItems, isOwner },
-) {
+export function buildGmViewerContext(dialog, shared) {
+	const { sceneStoryItems } = shared;
 	const gmViewerTabs = [];
 	const storyGroups = [];
 	const sidebarActors = StoryTagsStore.actors ?? [];
@@ -450,63 +621,7 @@ export function buildGmViewerContext(
 		const actor = foundry.utils.fromUuidSync(actorId);
 		if (!actor) continue;
 		const actorImg = actor.prototypeToken?.texture?.src || actor.img;
-		const themeMap = new Map();
-		// Use appliedEffects (active only) for GM viewer.
-		// For actor-level effects (status_tag, story_tag, relationship_tag),
-		// group by type rather than parent name to avoid a catch-all actor group.
-		for (const e of actor.appliedEffects) {
-			const sel = dialog.getSelection(e.uuid);
-			const rawTag = effectToPlain(e);
-			const tag = decorateTag({
-				...rawTag,
-				state: sel.state,
-				contributorId: sel.contributorId,
-			});
-			// story_tag and status_tag effects always group by type so that
-			// backpack-item tags and actor-level tags share one section.
-			// Theme tags (power_tag, etc.) group by parent item.
-			const groupByType = e.parent === actor || ACTOR_TAG_TYPES.has(e.type);
-			let groupKey, groupLabel, groupImg;
-			if (groupByType) {
-				groupKey = `__${e.type}`;
-				const labelKey = EFFECT_GROUP_LABELS[e.type];
-				groupLabel = labelKey
-					? t(labelKey)
-					: e.type === "story_tag"
-						? (actor.system.backpackItem?.name ?? t("LITM.Terms.backpack"))
-						: e.type;
-				groupImg =
-					e.type === "story_tag"
-						? (actor.system.backpackItem?.img ?? null)
-						: null;
-			} else {
-				groupKey = rawTag.themeId ?? `__${rawTag.type}`;
-				groupLabel = rawTag.themeName ?? rawTag.type;
-				groupImg = e.parent?.img ?? null;
-			}
-			if (!themeMap.has(groupKey)) {
-				themeMap.set(groupKey, {
-					themeName: groupLabel,
-					themeImg: groupImg,
-					tags: [],
-				});
-			}
-			themeMap.get(groupKey).tags.push(tag);
-		}
-		// Add actor story items to this tab
-		const actorStory = allStoryItems
-			.filter((tag) => tag.actorName === actor.name)
-			.filter((tag) => isOwner || game.user.isGM || !!tag.state);
-		if (actorStory.length) {
-			themeMap.set("__actor_story", {
-				themeName: t("LITM.Tags.story"),
-				tags: sortByTypeThenName(actorStory, tagTypeOrder),
-			});
-		}
-		const groups = [...themeMap.values()].map((g) => ({
-			...g,
-			tags: sortByTypeThenName(g.tags, tagTypeOrder),
-		}));
+		const groups = buildActorEffectGroups(dialog, actor, shared);
 		if (!groups.length) continue;
 		if (STORY_ACTOR_TYPES.has(actor.type) && actor.id !== dialog.actorId) {
 			for (const group of groups) {
@@ -556,11 +671,143 @@ export function buildGmViewerContext(
 	if (mergedStoryTab) gmViewerTabs.push(mergedStoryTab);
 	if (fellowshipTab) gmViewerTabs.push(fellowshipTab);
 	gmViewerTabs.push(...otherTabs);
-	// Initialize native tab group tracking
-	const initialTab = gmViewerTabs[0]?.id;
-	dialog.tabGroups["gm-viewer"] ??= initialTab;
-	for (const tab of gmViewerTabs) {
+	seedTabGroup(dialog, gmViewerTabs);
+	return gmViewerTabs;
+}
+
+/**
+ * Point the native tab group at a tab that actually exists, and mark it active.
+ *
+ * `??=` alone is not enough: the tab set is rebuilt from the story-tag sidebar
+ * and, for a group roll, from the participant list, so a remembered id can name
+ * a tab that is gone. Nothing then gets `.active`, and
+ * `.tab[data-tab]:not(.active) { display: none }` hides every pane — a tag
+ * picker that renders empty while it has tags.
+ *
+ * @param {LitmRollDialog} dialog
+ * @param {object[]} tabs
+ */
+function seedTabGroup(dialog, tabs) {
+	const remembered = dialog.tabGroups["gm-viewer"];
+	if (!remembered || !tabs.some((tab) => tab.id === remembered))
+		dialog.tabGroups["gm-viewer"] = tabs[0]?.id;
+	for (const tab of tabs) {
 		tab.cssClass = dialog.tabGroups["gm-viewer"] === tab.id ? "active" : "";
 	}
-	return gmViewerTabs;
+}
+
+/**
+ * Build the tabs for an Acting Together roll (Core Book p.157).
+ *
+ * One tab per participating Hero, one for the Fellowship whose theme power tags
+ * "any or all" of may be invoked, and the shared Story tab. Deliberately *not*
+ * the sidebar's actor list: a group roll is about the Heroes the Narrator put
+ * in it, whether or not they are tracked in the scene.
+ *
+ * A participant who does not own the roll sees their own Hero's tags in full —
+ * that is their one contribution to make — and everyone else's as selected-only
+ * rows. `actableActorIds` in the decorator is what stops them reaching into
+ * another Hero's tab.
+ *
+ * @param {LitmRollDialog} dialog
+ * @param {object} shared
+ * @returns {object[]} tabs
+ */
+export function buildGroupRollTabs(dialog, shared) {
+	const { sceneStoryItems, isOwner } = shared;
+	const tabs = [];
+	const actable = isOwner ? null : actableActorIds(dialog);
+
+	const pushActor = (actor) => {
+		if (!actor) return;
+		let groups = buildActorEffectGroups(dialog, actor, shared);
+		if (actable && !actable.has(actor.id)) groups = keepSelectedOnly(groups);
+		if (!groups.length) return;
+		tabs.push({
+			id: actor.id,
+			label: actor.name,
+			actorImg: actor.prototypeToken?.texture?.src || actor.img,
+			groups,
+		});
+	};
+
+	// The Fellowship rolls, so it leads.
+	pushActor(dialog.actor);
+	for (const id of dialog.participantIds) {
+		if (id === dialog.actorId) continue;
+		pushActor(game.actors.get(id));
+	}
+
+	// Story tab: the scene, plus the opposition tracked in the sidebar. Read-only
+	// for players — invoking the opposition is the Narrator's move (p.272).
+	const storyGroups = [];
+	for (const sidebarActor of StoryTagsStore.actors ?? []) {
+		if (!STORY_ACTOR_TYPES.has(sidebarActor.type)) continue;
+		const actor = foundry.utils.fromUuidSync(sidebarActor.id);
+		if (!actor) continue;
+		let groups = buildActorEffectGroups(dialog, actor, shared);
+		if (actable) groups = keepSelectedOnly(groups);
+		for (const group of groups) {
+			storyGroups.push({
+				...group,
+				themeName: group.themeName
+					? `${actor.name} — ${group.themeName}`
+					: actor.name,
+				themeImg:
+					group.themeImg ?? (actor.prototypeToken?.texture?.src || actor.img),
+			});
+		}
+	}
+	const sceneItems = actable
+		? sceneStoryItems.filter((tag) => tag.state)
+		: sceneStoryItems;
+	if (sceneItems.length || storyGroups.length) {
+		tabs.push({
+			id: "__story",
+			label: t("LITM.Tags.story"),
+			icon: "fa-solid fa-tags",
+			groups: [
+				...(sceneItems.length ? [{ themeName: null, tags: sceneItems }] : []),
+				...storyGroups,
+			],
+		});
+	}
+
+	seedTabGroup(dialog, tabs);
+	return tabs;
+}
+
+/**
+ * The actors this client may act for in an Acting Together roll: its own
+ * participating Heroes, plus the Fellowship the roll rides on.
+ *
+ * The Fellowship earns its place from the rules, not from ownership — Core
+ * Book p.157: "Any or all of the Fellowship theme power tags may be invoked as
+ * well, if they are relevant." The theme belongs to the whole group, so every
+ * Hero in the roll can reach it. It is the one actor here nobody has to own.
+ *
+ * Being exempt from the one-tag-per-Hero cap and being reachable are two
+ * different things, and collapsing them is what hid the Fellowship: the cap
+ * skips it because it is not a participant (`findHeroTagConflict`), and the
+ * same participant list used to decide reach, which hid the tab outright.
+ *
+ * A client with no Hero in the roll is not in the roll, so it gets nothing —
+ * the Fellowship included.
+ *
+ * Gates three surfaces that must agree: whether a tab renders in full
+ * ({@link buildGroupRollTabs}), whether a row is locked
+ * ({@link makeTagDecorator}), and whether a change is accepted
+ * (`LitmRollDialog#canModifyTag`).
+ *
+ * @param {LitmRollDialog} dialog
+ * @returns {Set<string>}
+ */
+export function actableActorIds(dialog) {
+	const ids = new Set();
+	for (const id of dialog.participantIds) {
+		const hero = game.actors.get(id);
+		if (hero?.testUserPermission(game.user, "OWNER")) ids.add(id);
+	}
+	if (ids.size) ids.add(dialog.actorId);
+	return ids;
 }

@@ -116,6 +116,45 @@ class StoryTagsStoreImpl {
 	}
 
 	/**
+	 * Actor ids this client may not see — the sidebar's hidden columns.
+	 *
+	 * Resolved to ids rather than uuids because concealment is a property of
+	 * the actor, not of the column it was reached through: an actor tracked by
+	 * several uuids (its own and an unlinked token's) stays visible as long as
+	 * one of those columns is. Empty for a GM, who sees everything.
+	 *
+	 * The single definition of "concealed from this viewer" — the target
+	 * picker, the roll dialog and the chat card all read it here so they cannot
+	 * drift apart on what counts as hidden.
+	 *
+	 * @returns {Set<string>}
+	 */
+	get concealedActorIds() {
+		if (game.user.isGM) return new Set();
+		return this.hiddenActorIds;
+	}
+
+	/** Viewer-independent policy, also used when a GM records a roll. */
+	get hiddenActorIds() {
+		const hiddenUuids = new Set(this.config.hiddenActors ?? []);
+		if (!hiddenUuids.size) return new Set();
+		const visible = new Set();
+		const hidden = new Set();
+		// Hidden entries need not still be tracked in the sidebar.
+		for (const uuid of hiddenUuids) {
+			const doc = foundry.utils.fromUuidSync(uuid, { strict: false });
+			const actor = doc?.documentName === "Token" ? doc.actor : doc;
+			const id = actor?.id ?? /^Actor\.([^.]+)$/.exec(uuid)?.[1];
+			if (id) hidden.add(id);
+		}
+		for (const { uuid, actor } of this.resolveTrackedActors()) {
+			(hiddenUuids.has(uuid) ? hidden : visible).add(actor.id);
+		}
+		for (const id of visible) hidden.delete(id);
+		return hidden;
+	}
+
+	/**
 	 * View-model list of tracked actors with their visible tags/statuses.
 	 * Cached until {@link invalidateCache}; the invalidation hooks registered
 	 * by {@link registerInvalidationHooks} keep it fresh.

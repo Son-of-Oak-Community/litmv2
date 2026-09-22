@@ -8,22 +8,17 @@ import { classifyTagString } from "../../item/action/tag-string.js";
 /**
  * Validate and normalize a raw story-tags config object.
  * Ensures all actor IDs are valid Actor UUIDs, normalizes legacy bare IDs,
- * prunes hidden actors that no longer exist in the actors list.
+ * keeps concealment policy independently of sidebar membership. Removing a
+ * column must not reveal the source of earlier rolls.
  * @param {object} raw  The raw config from settings
  * @returns {{ config: object, changed: boolean }}
  */
 export function normalizeConfig(raw) {
 	const validated = (raw.actors || []).map(toValidUuid);
 	const validatedHidden = (raw.hiddenActors || []).map(toValidUuid);
-	const actorSet = new Set(validated.map((a) => a.id).filter(Boolean));
-	const hiddenIds = validatedHidden
-		.map((a) => a.id)
-		.filter((id) => id && actorSet.has(id));
-	const hiddenPruned =
-		hiddenIds.length !== validatedHidden.filter((a) => a.id).length;
+	const hiddenIds = validatedHidden.map((a) => a.id).filter(Boolean);
 
-	const changed =
-		[...validated, ...validatedHidden].some((a) => a.changed) || hiddenPruned;
+	const changed = [...validated, ...validatedHidden].some((a) => a.changed);
 
 	if (!changed) return { config: raw, changed: false };
 

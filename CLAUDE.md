@@ -20,9 +20,11 @@ Local runtime-verification steps (launching the test world, rules-as-written sou
 
 litmv2 is meant to be extended by modules/macros, not forked. The three extension surfaces:
 
-- **`game.litmv2`** (`litmv2.js`) — replaceable classes (`LitmRoll`, `LitmRollDialog`, `WelcomeOverlay`, `StoryTagApp`, `SpendPowerApp`, `ApplyActionMenuApp`, `ThemeAdvancementApp`), `data.*` models, `methods.calculatePower`, `fellowship` singleton getter, `ContentSources`
-- **`CONFIG.litmv2`** (`modules/system/config.js`) — `roll.{formula,resolver}`, `heroLimit`, theme tiers, asset paths, `THEME_TAG_TYPES`/`POWER_TAG_TYPES`, tag-string regex
+- **`game.litmv2`** (`litmv2.js`) — replaceable app/roll classes, `data.*` models, `methods.*`, `fellowship` singleton getter, `ContentSources`
+- **`CONFIG.litmv2`** (`modules/system/config.js`) — `roll.{formula,resolver}`, `heroLimit`, theme tiers, asset paths, tag-type constants, tag-string regex
 - **Custom hooks** `litm.*` — see "Custom System Hooks" below
+
+Read those two files for the current surface rather than trusting a list here.
 
 When refactoring, preserve these even when they look unused internally. New behaviours third parties might want to swap should be a class on `game.litmv2`, a slot on `CONFIG.litmv2`, or a `litm.*` hook — not a private helper.
 
@@ -72,23 +74,6 @@ litmv2 is a tag-based RPG. Characters are defined by short descriptors (tags) th
 
 ## Architecture
 
-```
-modules/
-  actor/           # hero, journey, challenge, fellowship, story_theme data + sheets
-    mixins/        # EffectTagsMixin, LimitsMixin, actor-limits helpers
-  item/            # theme, story_theme, backpack, themebook, vignette, trope, addon
-  active-effects/  # tag/status type data models + ScratchableMixin
-  apps/            # standalone apps (roll/, welcome/, story-tags/, spend-power, theme-advancement, etc.)
-  sheets/          # base sheet classes + mixins + landscape variants
-  system/          # config, settings, sockets, migrations, hooks/, renderers/
-  components/      # SuperCheckbox custom element
-  hud/             # custom token HUD
-  utils.js, logger.js
-templates/         # Handlebars templates (actor/, item/, chat/, apps/, effect/, hud/, partials/)
-lang/              # en, de, es, cn, fr, no
-packs/             # compendium (status-effects)
-```
-
 ### Document Types
 
 | Document | Types |
@@ -118,9 +103,11 @@ Journey --------- Nx vignette (one marked generalConsequences)
 
 ### Sheet Inheritance
 
-`HandlebarsApplicationMixin(ActorSheetV2)` → `LitmSheetMixin` → `LitmActorSheet` → typed sheets (Hero/Challenge/Journey/Fellowship/StoryThemeActor; Challenge & Journey also mix in `TagStringSyncMixin`). Each typed sheet has a `Landscape` variant. Item sheets follow the same chain via `ItemSheetV2` → `LitmItemSheet`.
+Typed sheets inherit through `LitmSheetMixin` → `LitmActorSheet` (items: `LitmItemSheet`); each has a `Landscape` variant. Challenge & Journey also mix in `TagStringSyncMixin`.
 
 All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — sheets switch templates by overriding `_getEditModeTemplate()` and `_configureRenderParts()`. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
+
+`LitmActorSheet` also owns the roll dialog (`hasRollDialog`, `rollDialogInstance`, `renderRollDialog`, `resetRollDialog`, `updateRollDialog`). They live on the base, not on `HeroSheet`, because Acting Together rides the Fellowship actor — and because the roll-dialog HUD and the roll sockets address whatever actor the `rollDialogOwner` flag names, without checking its type.
 
 ### Roll Flow
 
@@ -134,9 +121,219 @@ HeroSheet roll → LitmRollDialog (tag selection)
 
 The dialog's `#selectionMap` is the source of truth for tag selections, not form fields.
 
+**GM-initiated (Narrator's Call).** The inverse path, Core Book p.269/p.272 — and
+it is a **shared table, not a handoff**: one roll object that the Narrator and the
+roller look at live.
+
+```
+CallForRollApp (GM)  -- picks WHO is rolling, and optionally WHICH Action
+  → openSharedRoll()  ("litm.narratorCall" hook, cancellable)
+  → actor flag rollDialogOwner  (HUD strip lights up for the rest of the table)
+  → "openRollDialog" socket  →  shouldJoinSharedRoll() on every client
+  → applySharedRoll() → dialog.configureSharedRoll() on the roller's client
+                                                  and on the Narrator's
+  → Narrator sets move / Might / their invocations IN that window;
+    roller sets their own tags and Trade Power and presses Roll
+```
+
+The authority split lives in `modules/apps/roll/roll-authority.js` (pure,
+unit-tested):
+
+- **Narrator's half** — move type and Might. Locked for non-GMs whenever the roll
+  carries a narrator stamp (`canEditNarratorFields`). Enforced in the template
+  (`disabled`), in `#handleTypeChange` / `#handleMightChange`, which revert, and
+  in `setType`, which the hero sheet's Sacrifice button calls directly; the
+  markup is not the boundary. **The GM may set the move and the Might on any
+  roll, called or not** — judging Might is the Narrator's job (p.272), so the
+  settings column renders for them even as a non-owner viewer. That is a
+  deliberate widening of the pre-branch behaviour, where the column was
+  owner-only.
+- **Nothing that contributes to Power is read from the form.** `extractRollData`
+  takes it all from the dialog's own fields, because `FormDataExtended` skips
+  `:disabled` controls — reading Might off the form would drop exactly the value
+  the Narrator had just set, and `modifier`/`title` have no form control at all.
+- **Roller's half** — their own tags, modifier, Trade Power. Trade Power is
+  additionally off for a group roll (`canEditTradePower`).
+- Selection entries carrying `narrator: true` stay locked for non-GMs in both
+  `makeTagDecorator` and `LitmRollDialog#canModifyTag`.
+
+`resolveSharedRollOwner` picks the seat: an active non-GM owner of the Hero, else
+the Narrator, who rolls on the Hero's behalf in the same window.
+
+The picker lays out side by side — roster left, the chosen character's Actions
+right — and both columns carry a **fixed** block-size rather than a max, so the
+window does not grow downward as a Hero accumulates Actions. Foundry gives you
+width and withholds height; spend the width.
+
+`sendRollRequest` is the one entry the action sheet, the actions browser and
+the `@action` enricher all call. **An Action embedded on a Hero calls the roll
+for that Hero** and never opens the picker — `action.parent` is the
+discriminator rather than the surrounding app, because it is also right for the
+enricher, which has no surrounding actor. `callForRollLabel` labels the button
+to match.
+
+There is **no durable chat record** of a call. Pickup is the existing roll-dialog
+HUD strip in `#players`, driven by the same `rollDialogOwner` flag every other
+open roll uses; the roll posts its own card. `litm.narratorCallReceived` is gone
+with the receive step it named.
+
+**Closing a view is not ending the roll.** A viewer, including the Narrator,
+can close their window without retracting the owner's presence. The owner
+closing an abandoned call releases its narrator stamp and tag locks. Submission
+for moderation instead suspends the same draft, preserving its authority if
+rejected. A subsequent independent Sacrifice must not inherit a cancelled
+call's authority. Local release happens before awaiting presence persistence.
+
+**Where a Narrator calls from.** The primary control is on the main screen,
+directly above the player list (`CallForRollHud`) — the one place already
+showing who is at the table becomes the place you call on them, and it costs no
+layout Foundry was not already spending, since `#players` is anchored
+bottom-left and grows upward into canvas. It shares that region with the HUD
+strip, and **order there is CSS, not insertion**: `#players` is a `flexcol`
+whose own first child is the collapsed `#players-inactive`, so both litm widgets
+carry a negative `order` (`mountPlayersHud` only guarantees presence). The strip
+is above the control, so the control never moves when a roll goes live. The
+story-tag sidebar keeps a secondary entry in its **window header** via
+`_getFrameButtons` — v14 renders those inline before the close button, unlike
+header *controls*, which go to the overflow menu. `R` opens the picker for a GM,
+with the same toggle behaviour it has for players, and a GM with an assigned
+character still gets the picker rather than their own sheet.
+
+Pickup is only shown when the dialog is not already rendered on this client;
+the rendered/closed hooks refresh the HUD independently of actor flag updates.
+The Narrator tour uses a separate `localOnly` roll-dialog preview, with its own
+application ID: it never advertises presence, synchronizes, or executes a roll,
+and tour cleanup must not close an actor's live shared dialog.
+
+Invocations the roller can't see — a concealed Challenge's tags, say — still count
+toward Power, so the dialog renders them as **masked rows** ("Something unseen",
+tier intact, no name, no actor). Concealment is the Narrator's tool; silent
+arithmetic is not. See `LitmRollDialog#buildConcealedRows`.
+
+**The chat card masks them too.** `LitmRoll#getTooltipData` runs every tag list
+through `maskConcealedTags` (`concealment.js`, pure and unit-tested), so the
+tooltip a player opens shows the same "Something unseen" with the same tier. The
+tooltip is rendered per client, so the Narrator still reads the real names.
+Without it the dialog's mask lasted exactly as long as it took someone to hover.
+`StoryTagsStore.hiddenActorIds` holds policy independently of sidebar membership;
+`concealedActorIds` applies the viewer's GM bypass for the dialog and target
+picker. Removing an actor from the sidebar is not a reveal. Live sources follow
+an explicit reveal; roll tags record `tagActorId` and `concealedAtRoll` so a
+deleted source cannot accidentally reveal a historical secret. Missing legacy
+actor-backed sources fail closed.
+
+Moderation uses the same projection. Stored public card HTML is masked even
+when authored by a GM; `renderModerationTooltip` replaces it per viewer, using
+the unredacted execution data in message flags. Presentation masks must never
+replace the raw tags needed for approval, scratch, or improvement bookkeeping.
+
+**Acting Together (group roll).** Core Book p.157: one roll for the whole group.
+The same shared dialog, keyed to the **Fellowship actor** — that is what rolls, so
+the GM owns it and presses Roll. Where there is no Fellowship (`use_fellowship`
+off) Acting Together is simply not offered; there is no fallback.
+
+```
+CallForRollApp → the Fellowship row of the roster → openSharedRoll({
+    actorId: fellowship.id, participantIds: resolveFellowshipParticipants(...) })
+  → dialog.isGroupRoll (actorId === fellowship.id)
+  → buildGroupRollTabs(): one tab per participant + Fellowship + Story
+  → each participant's client opens it and contributes from their own tab
+```
+
+The rules live in `modules/apps/roll/group-roll.js` (pure, unit-tested):
+
+- **One tag per Hero.** `findHeroTagConflict` keys off `tagActorId`, stamped on
+  every selection by `resolveTagActorId` (effect → parent → Actor). Resolved from
+  the effect and *not* from who clicked: the GM owns the dialog, and contributor
+  metadata is only registered by non-owners. Relationship tags count against the
+  Hero's one for free — they live on the Hero. Fellowship theme tags and the
+  opposition's are exempt for free — they don't resolve to a participant.
+- **One burn for the whole group** needs no new code: `findBurnedSelection` in
+  `burn-cap.js` already caps the entire selection map at one scratched tag.
+- **Participants are the whole group** — every Hero linked to the Fellowship
+  (`resolveFellowshipParticipants`, which normalises through
+  `resolveGroupParticipants` so hero order and de-duplication have one
+  definition). "Linked" mirrors `HeroData#fellowshipActor`: this Fellowship's
+  id, or none at all, which falls back to the singleton. There is no subset to
+  tick — Helping Each Other is the mechanic for "some of us pitch in", and it
+  is already implemented as contributed tags. An offline participant stays in
+  the roll and contributes nothing. Changing participants re-runs
+  `configureSharedRoll`, which resets the dialog.
+- A participant may touch their own Hero's tags **and the Fellowship's**, and
+  nothing else. `actableActorIds` (`roll-dialog-context.js`) is the one
+  definition, gating three surfaces that must agree: whether a tab renders in
+  full (`buildGroupRollTabs`), whether a row is locked (`makeTagDecorator`),
+  and whether a change is accepted (`#canModifyTag`). The Fellowship is in that
+  set by rule, not by ownership — p.157, "any or all of the Fellowship theme
+  power tags may be invoked". Being exempt from the per-Hero cap and being
+  reachable are separate questions; conflating them once hid the Fellowship tab
+  from every player, since an unselected tab renders as nothing at all. A client
+  owning no participating Hero is not in the roll and gets neither.
+
+Post-roll bookkeeping lands per tag, not per rolling actor: `scratchTag` resolves
+through the uuid, and `gainImprovement` traces effect → theme → owner, so a burn
+or an invoked weakness marks the contributing Hero. The card records
+`participantIds`, and the GM's apply flow pre-selects them as targets. Applying
+consequences to each of them is still a decision, not an automatic fan-out.
+
+**Two world settings, deliberately separate — do not collapse them.**
+
+- `player_initiated_rolls` — **default on**, and it gates **players only**. GM
+  initiation and player initiation are not two halves of one toggle: calling for
+  a roll is an unconditional Narrator capability (p.269), and this setting
+  decides whether players may *also* reach for the dice unprompted. A table that
+  wants every roll to come from the Narrator turns it off. Every GM entry point —
+  the main-screen control, the sidebar's window-header entry, `R` — is therefore
+  gated on `isGM` alone and never on this setting, even though `canInitiateRoll`
+  would answer the same today; a test pins that. It gates *instigation* only.
+  Joining an open roll, being called into one, reacting, camp actions and
+  Sacrifice stay open regardless.
+
+  Instigation splits two ways, and the split is deliberate. The **hero-sheet
+  Roll button and `R`** — the same gesture, one with a mouse — stay available
+  and *ask* for a roll: `requestRollFromNarrator` (`roll-request.js`) whispers
+  the Narrators a card whose one button calls the roll through `openSharedRoll`.
+  Hiding the button instead left the player mute, and it was the only control in
+  that row that vanished. **Sheet tag click and rolling an Action** still take
+  `blockPlayerInitiatedRoll`'s toast: they name a specific tag or Action, and a
+  request card that silently dropped it would answer a question nobody asked.
+
+  A call needs no chat record because the shared dialog is its own notice; an
+  ask opens nothing and must survive a Narrator who is mid-sentence, which is
+  why this direction gets a durable card. A live `rollDialogOwner` flag on that
+  Hero suppresses a second one. The stored key is deliberately unchanged: `ClientSettings#get`
+  builds a Setting from the registered default when nothing is stored and only
+  `set()` writes, so the default reaches every world that never touched the
+  toggle while preserving the choice of any table that did.
+- `require_roll_approval` gates *execution*: a player pressing Roll posts the
+  existing moderation card instead of rolling, and the GM's approval executes it
+  on the player's own client, so the resulting chat card is authored by the
+  player. Same hardened path as the opt-in "Send to Narrator" button —
+  `resolveApprovedRoll` reads the roll back off the ChatMessage the roller
+  authored rather than trusting the socket payload. Group rolls skip it: the GM
+  already owns that dialog. Predicate: `requiresRollApproval` in
+  `roll-authority.js`.
+
+A table can want either without the other, which is why they are two booleans
+and not one three-state setting.
+
 ### Sockets
 
-Namespace `system.litmv2`. Events: roll dialog sync (`updateRollDialog`, `requestRollDialogSync`, `resetRollDialog`, `closeRollDialog`), GM moderation (`rollDice`, `rejectRoll`), GM-applied ally-tag scratch (`scratchEffect`), GM-proxied success application to unowned targets (`applySuccessAsGM`), GM-proxied Spend Power status add/reduce on unowned targets (`applyStatusAsGM`), story tags (`storyTagsUpdate`, `storyTagsRender`), camping (`campingOpen`, `campingSaveOp`, `campingEnd`), GM-proxied hero creation for players without `ACTOR_CREATE` (`createHeroAsGM`). Definitions in `modules/system/sockets.js`.
+Namespace `system.litmv2`. Events cover roll-dialog open/sync/close, GM moderation, GM-proxied mutation of unowned documents (scratch, apply success/status, hero creation), story tags, and camping. Canonical list and payload shapes: `modules/system/sockets.js` — read it rather than guessing an event name.
+
+`openRollDialog` starts a shared roll: the payload names the actor, the resolved
+`ownerId`, the participants (Acting Together only) and the Narrator's stamp.
+`shouldJoinSharedRoll` decides who opens it — the owner, plus any player owning a
+participating Hero. Everyone else sees the HUD strip.
+
+`updateRollDialog` is owner-authoritative (`roll-sync.js`). Contributors send
+only the fields/tag IDs they changed; the owner merges them, rechecks the group
+tag and burn caps, and broadcasts a versioned canonical snapshot. Pending local
+edits replay until their sequence is acknowledged, so crossing Narrator/player
+updates and simultaneous group contributions do not erase each other. Session
+IDs keep delayed snapshots and close/reset events from mutating a newer roll.
+The canonical state includes the narrator stamp, participants, title and Action,
+so a late HUD join reconstructs the same draft.
 
 ## Active Effects: the canonical tag store
 
@@ -158,7 +355,7 @@ Each effect has a `type` mapping to a TypeDataModel in `modules/active-effects/`
 
 **Addon items**: `syncAddonEffects` parses addon `system.tags`, creates effects flagged with `flags.litmv2.addonId`. `resyncAddonEffects` deletes and recreates on update.
 
-**Effect factories** in `effect-factories.js` (`powerTagEffect`, `weaknessTagEffect`, `fellowshipTagEffect`, `relationshipTagEffect`, `storyTagEffect`, `statusTagEffect`) produce properly-shaped creation data. `parseTagStringMatch()` in `modules/item/action/tag-string.js` converts a `CONFIG.litmv2.tagStringRe` match into AE creation data.
+**Never hand-build effect creation data.** `effect-factories.js` has a factory per tag type; `parseTagStringMatch()` (`modules/item/action/tag-string.js`) converts a `CONFIG.litmv2.tagStringRe` match into AE creation data.
 
 ## Key Conventions
 
@@ -170,6 +367,31 @@ Each effect has a `type` mapping to a TypeDataModel in `modules/active-effects/`
 - **CSS:** Foundry utility classes (`.flexrow`, `.flexcol`, `.scrollable`, `.standard-form`, `.form-group`, `.hint`, `.gap-*`) and Foundry CSS vars before custom styles
 
 **Gotcha:** `<button>` in a `<form>` defaults to `type="submit"`. Always use `type="button"` for non-submit buttons in `tag: "form"` ApplicationV2 apps.
+
+### Choosing a character
+
+There is one character-selection control and new surfaces use it rather than
+inventing a row: `modules/apps/roster.js` builds the entry,
+`templates/partials/roster-row.html` renders it, `.litm--roster*` styles it
+(`litmv2.css` §21). A row is portrait, name, and one line of context under the
+name — a cast list, not a row of tiles.
+
+- **The input is the only event path.** Each row is a `<label>` wrapping a real
+  radio (or a checkbox, for surfaces that tick several). A `change` listener
+  fires for both a mouse click and a keyboard Space or arrow key; a
+  `data-action` click handler would fire for the mouse and stay silent for the
+  keyboard. It is also the whole form contract for the DialogV2 pickers, which
+  read `input[name=…]:checked`.
+- **Presence is opt-in** (`presence: true`). The "who is playing them" line and
+  the dimmed portrait belong to player-ownable characters. Challenges and
+  Limits go through the same control without them — a Challenge reading
+  "no player assigned" would read as a broken Hero. There is deliberately no
+  presence *dot*: the rows already contain a visually hidden radio, and a
+  second small circle on the right read as an unchecked one.
+- **Names are masked** (`system.maskedName ?? name`) and **portraits always
+  resolve** (prototype token → actor image → `CONFIG.litmv2.assets.icons.defaultActor`).
+  Both were inconsistent across the surfaces this replaced, and the masked name
+  is load-bearing: the target picker lists concealed Challenges.
 
 ### Template paths
 
@@ -217,6 +439,7 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.trackCompleted` — `{ actor, trackInfo: { text, type, actorId?, themeId? } }`
 - `litm.limitReached` — `{ actor, limit }` where `limit.max` is the effective max
 - `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits); no payload. Roll dialogs listen to refresh contributed-tag groups.
+- `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.
 
@@ -226,85 +449,11 @@ New `.webp` assets must be added to the `preloads` array in `LitmConfig`. All im
 
 ## Design System
 
-The system has a fully-implemented visual identity — **not aspirational**. New UI must match. When you find yourself writing inline `style="..."` or `border-radius: 999px`, stop — there's likely a litm token or class for it.
+The system has a fully-implemented visual identity — **not aspirational**. New UI
+must match it. Full detail (tokens, patterns, composition recipes, anti-references)
+lives in `.claude/rules/design-system.md`, which auto-loads for `templates/**`,
+`*.css`, and the `sheets`/`apps`/`components`/`renderers` modules.
 
-**Use Foundry tokens where they exist** (spacing `--spacer-2/4/8/12/16`, text colors `--color-text-*`, font sizes `--font-size-*`). litm tokens fill the rest (game colors, fonts, custom radii).
-
-### Design context
-
-**Users.** Tabletop RPG players and GMs running the Mist Engine inside Foundry. Mix of seasoned Foundry users and tabletop players new to digital tooling. They are storytellers first, system operators second — the UI's job is to stay out of the fiction while keeping mechanics legible.
-
-**Personality.** *Rustic, ceremonial, literary.* Reads like an illuminated manuscript — warm parchment, hand-lettered titles, gold flourishes — not a spreadsheet. Voice is in-fiction where possible (statuses, tags, blockquoted theme flavor), chrome (form labels, hints) is plain.
-
-**Aesthetic direction.** Two distinct surfaces, both first-class — not one metaphor with a night-mode skin.
-- **Light mode** is the parchment surface: cream paper texture, ink-on-paper feel, gold tag chrome with a slight skew, italic serif flavor. This is where the "illuminated manuscript" voice lives.
-- **Dark mode** is *not* parchment-at-night. The substrate is deep navy/charcoal; the gold/sage/rose tag accents and serif italic carry over, but the parchment texture, paper warmth, and ink-stained feel are gone. Treat it as its own surface — a dim, atmospheric UI that shares typography and accents with the light mode but not its material.
-
-**Anti-references.** Flat Material/admin-tool greys (`--color-header-background`), pill spans, neon-on-black gamer UI, generic Foundry default rendering. And: do not describe or design dark mode as "parchment by candlelight" — it isn't one.
-
-### What the system looks like
-
-- **Light mode** sheets and chat sit on a **parchment texture** wired into `--background`, `--sidebar-background`, `--chat-message-background`. Card surfaces should let it show through; don't paint with `--color-header-background` (flat-grey "admin tool" look). **Dark mode** swaps the substrate for a deep navy/charcoal — there is no parchment in dark mode; don't try to fake one. Both modes share the gold/sage/rose tag chrome and serif italic; the *material* changes between modes, the *accents* don't.
-- **Tag chrome**: serif italic with `text-stroke` outline in the tag color + skewed background bar (`transform: skewX(-3deg)`). Reuse the `.litm-tag`/`.litm-power_tag`/etc. classes via the `:where(...)` rule in `litmv2.css` section 4 — don't reinvent with plain inputs or pill spans.
-- **Status tier pips** render inline beside the status name (`○●●●○○`), color-coded by polarity (sage green = helpful, rose = hindering). Filled count = current tier.
-- **Section headers** extend horizontal lines (`::before`/`::after` `flex: 1 border-top`) in small-caps, letter-spaced. See `.litm-render__section-header`. Used inside cards, in the roll dialog group fieldsets, and as column headers in the story-tag sidebar.
-- **Blackletter Ysgarth** is reserved for ceremonial slots: actor sheet titles (proper names like *Gerrin Deerstalker*, *Fellowship*), trope category headers in the welcome overlay (*VILLAGE FOLK*, *MONSTERS & GODS*), and in-fiction banners. Never on form labels, buttons, or repeated UI chrome.
-- **Decorative bullet** ` ✦ ` (U+2726) separates tags in play-mode display.
-- **Italic blockquote flavor text** inside theme/vignette cards between header and body.
-- **Tracks** use `○ ○ ○` empty-circle progress with custom checkbox SVGs for filled state.
-- **Welcome overlay** is intentionally self-contained: forest-mountain backdrop, gold blackletter, fixed dark composition. It does not adapt to light/dark theme — it's an immersion piece, the entry rite to a hero. Don't refactor it to track `theme-light`.
-
-### Design tokens
-
-```
-Spacing       (Foundry) --spacer-2/4/8/12/16   (0.125 / 0.25 / 0.5 / 0.75 / 1 rem)
-Radius        --border-radius (4px), --radius-sm/md/lg/xl (3/6/8/10 px),
-              --radius-pill (100px), --radius-circle (50%)
-Shadows       --shadow-sm/md, --shadow-glow/glow-strong
-Transitions   --transition-fast/normal/slow/slower (0.12/0.15/0.2/0.25 s)
-Game colors   --color-litm-tag (gold), --color-litm-status (sage),
-              --color-litm-limit (rose), --color-litm-weakness (apricot),
-              --color-litm-banner (beige), --color-litm-track-*, --color-litm-might-*
-Alpha tints   --color-warm-1-10/25/50, --color-text-primary-10/15/40, --color-overlay-white-3/5/7/8/10
-Fonts         --font-blackletter (Ysgarth — ceremonial: actor titles, welcome overlay
-                                   trope categories, in-fiction banners only),
-              --font-h2 (Grenze, section/card titles),
-              --font-h4 (PowellAntique, overlays),
-              --font-serif (Labrada → Fraunces, body),
-              --font-blockquote (Labrada italic, flavor text)
-```
-
-**No local spacing tokens.** Snap to Foundry `--spacer-*` at or below 1rem. Above 1rem (1.25/1.5/2rem card padding) — keep as raw rem; those are literal surface-scale layout values, not redefined tokens.
-
-### Established UI patterns — reuse, don't reinvent
-
-| Pattern | Class | Use For |
-|---------|-------|---------|
-| **Tag chrome** | `.litm-tag` / `.litm-power_tag` / etc. (`:where(...)` in CSS §4) | Any in-game tag display |
-| **Section header with extending lines** | `.litm-render__section-header` | Section dividers in cards/sheets/dialogs |
-| **Manuscript title** (centered Ysgarth) | `.litm-render__title` | Embed cards, large titles |
-| **Embed card base** | `.litm-render--card` | Card-shaped containers |
-| **Banner plaque** | `.litm-banner` | Small status/category labels with weight |
-| **Ingress paragraph** | `.litm--ingress` | Lead paragraph in long descriptions |
-
-### App composition patterns
-
-How the established primitives compose into the system's signature surfaces. When building a new app/dialog/card, reach for the closest existing composition first.
-
-- **Theme card** (in hero/fellowship sheets): `[avatar] [title row with ✦ bullet] → italic blockquote flavor → gold tag pills row → progress tracks row`. The `✦` separates the theme's name from its tagline; tracks (Quest/Improve/Milestone) sit at the bottom as `○ ○ ○` rows. See hero sheet `.litm-theme-card` family.
-- **Roll dialog grouping**: tag selections grouped into sections — Status, Story, then one section per theme (Hardened Warrior, Devoted to Family, …) — each section gets a `.litm-render__section-header` (extending lines, small-caps). Tags within use the standard chrome with super-checkbox cycling. Pattern is canonical for any tag-picker UI.
-- **Story-tag sidebar** (`StoryTagSidebar`, popout via `T`): horizontal grid of actor columns — Fellowship, Story Tags, each Hero, each Challenge. Each column has a header (small avatar + actor name in small-caps), then its tag list with inline `+ Add` input, and status tier pips. A shared "Add Actor" CTA at the bottom. This is the manage-everything-at-once surface; mirror its column structure when building scene-wide management UI.
-- **Chat outcome card**: colored outcome badge top-left (`success` = sage, `success_and_consequences` = amber, `consequences` = rose) + outcome label + total power top-right. Body lists the contributing tags inline. Standout primary CTA (e.g. "Push your luck") sits at the bottom of the card in warm amber. Mirror this for any post-action result card.
-- **Spend Power menu** (and other action menus): each option is a row of `[icon] [title + one-line description] [cost pill]`. Big primary "Spend" button at the bottom. Use for any "pick one of N costly actions" dialog.
-
-### Design principles
-
-1. **Atmosphere through restraint** — the parchment + gold tags + serif italic carry it. Don't pile on.
-2. **Newcomer-friendly** — discoverable, tooltipped, consistent.
-3. **Reuse before reinvention** — if a new feature doesn't look like the rest, the new feature is wrong.
-4. **Both themes matter** — test light & dark; most game tokens are theme-aware via `body.theme-light`/`body.theme-dark`.
-5. **Two failed fixes = wrong layer.** If a visual fix hasn't landed after two attempts,
-   stop patching the symptom: find the canonical template/partial/class that owns the
-   element (tables above) and re-derive from it. Stacked overrides — filters,
-   `!important`, magic offsets — are the signal you're fighting a hand-rolled element
-   that should be using the design system.
+**Read that rule before writing any UI, template, or CSS.** If you catch yourself
+writing inline `style="..."` or `border-radius: 999px`, stop — there is a litm
+token or class for it.

@@ -51,8 +51,7 @@
 					<div class="flexrow gap-xs noflex litm--action-card-admin">
 						{{#if @root.isGM}}
 						<button type="button" data-action="sendActionRequest"
-							data-tooltip="{{localize 'LITM.Actions.request_dialog_title'}}"
-							aria-label="{{localize 'LITM.Actions.request_dialog_title'}}">
+							data-tooltip="{{@root.callLabel}}" aria-label="{{@root.callLabel}}">
 							<i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
 						</button>
 						{{/if}}

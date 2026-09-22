@@ -1,23 +1,3 @@
-{{#*inline 'tag' tag }}
-<li>
-	<label
-		class="litm--roll-dialog-tag litm--{{tag.type}} {{#if tag.locked}}is-locked{{/if}} {{#if tag.state}}is-selected{{/if}} {{#if tag.isPositiveSuggestion}}is-suggested-positive{{/if}} {{#if tag.isNegativeSuggestion}}is-suggested-negative{{/if}}"
-		for="rd-{{tag.key}}" data-action="toggleRollTag" data-tag-type="{{tag.type}}"
-		{{#if tag.isPositiveSuggestion}}data-tooltip="{{localize 'LITM.Actions.suggestion_helpful'}}"{{else if tag.isNegativeSuggestion}}data-tooltip="{{localize 'LITM.Actions.suggestion_hindering'}}"{{/if}}>
-		<span class="litm--sro">{{localize "LITM.Ui.select"}}</span>
-		<litm-super-checkbox name="{{tag.key}}" id="rd-{{tag.key}}" value="{{tag.state}}" data-type="{{tag.type}}"
-			states="{{tag.states}}" aria-label="{{tag.displayName}}" {{#if tag.locked}}disabled aria-disabled="true" data-locked="true"
-			{{/if}}></litm-super-checkbox>
-		<span class="litm--roll-dialog-badge litm-{{tag.type}}"
-			data-text="{{tag.displayName}}{{ifThen (eq tag.type 'status_tag') (ifThen tag.value (concat '-' tag.value) '') ''}}">{{tag.displayName}}{{ifThen
-			(eq tag.type "status_tag") (ifThen tag.value (concat "-" tag.value) "") ""}}{{#if (eq tag.type "weakness_tag")}}
-			{{> "systems/litmv2/templates/partials/weakness-chevron.html"}}
-			{{/if}}</span>
-		{{#if tag.targetName}}<span class="litm--roll-dialog-tag-target">({{tag.targetName}})</span>{{/if}}
-	</label>
-</li>
-{{/inline}}
-
 <div class="standard-form litm--roll-dialog-body">
 	<input type="hidden" name="actorId" value="{{actorId}}">
 
@@ -48,15 +28,33 @@
 	{{/if}}
 
 	<div class="litm--roll-dialog-content">
-		<!-- Roll Type (primary selection) -->
-		{{#if isOwner}}
-		<div class="litm--roll-type-bar">
+		{{!-- Roll Type (primary selection). Shown to the roller and to the
+		     Narrator alike: on a called roll the move is the Narrator's to set
+		     even though the player owns the dialog, so this can't be gated on
+		     ownership. `canSetNarratorFields` is the actual authority. --}}
+		{{#if showSettings}}
+		<div class="litm--roll-type-bar {{#unless canSetNarratorFields}}is-locked{{/unless}}">
 			{{#each rollTypes as |label key|}}
 			<label class="litm--segmented-option litm--roll-type-option {{#if (eq key ../type)}}is-active{{/if}}">
-				<input type="radio" name="type" value="{{key}}" {{checked (eq key ../type)}} />
+				<input type="radio" name="type" value="{{key}}" {{checked (eq key ../type)}}
+					{{#unless ../canSetNarratorFields}}disabled aria-disabled="true"{{/unless}} />
 				<span>{{localize label}}</span>
 			</label>
 			{{/each}}
+		</div>
+		{{/if}}
+
+		{{#if narratorCall}}
+		<div class="litm-banner litm--narrator-call-banner">
+			<i class="fa-solid fa-feather" aria-hidden="true"></i>
+			<span>{{localize "LITM.Ui.narrator_call_banner" name=narratorCall.narratorName type=narratorCall.typeLabel}}</span>
+		</div>
+		{{/if}}
+
+		{{#if isGroupRoll}}
+		<div class="litm-banner litm--acting-together-banner">
+			<i class="fa-solid fa-people-group" aria-hidden="true"></i>
+			<span>{{localize "LITM.Ui.acting_together_banner"}}</span>
 		</div>
 		{{/if}}
 
@@ -67,8 +65,9 @@
 		</div>
 		{{/if}}
 
-		{{#if isGMViewer}}
-		<!-- GM Viewer: tabbed view per actor -->
+		{{!-- Per-actor tabs: the Narrator watching a player's roll, and everyone
+		     in an Acting Together roll. --}}
+		{{#if gmViewerTabs.length}}
 		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">
 			{{#each gmViewerTabs as |tab|}}
 			<a class="item {{tab.cssClass}}" data-action="tab" data-group="gm-viewer" data-tab="{{tab.id}}">
@@ -83,9 +82,14 @@
 		<!-- Settings + Tags grid -->
 		<div class="litm--roll-dialog-grid">
 
-		<!-- Settings column -->
-		{{#if isOwner}}
+		{{!-- Settings column. Renders for the roller and for the Narrator: the
+		     Might is the Narrator's judgement on a called roll, so a GM
+		     watching a player's roll still needs the column. The sacrifice
+		     fieldsets below stay owner-only — a sacrifice is the player's
+		     price to elect (p.150) and is never called for. --}}
+		{{#if showSettings}}
 		<div class="litm--roll-dialog-settings">
+		{{#if isOwner}}
 		<!-- Sacrifice Level & Theme -->
 		<fieldset class="litm--sacrifice-level-fieldset hidden">
 			<legend>{{localize "LITM.Ui.sacrifice_level"}}</legend>
@@ -167,6 +171,7 @@
 				{{/each}}
 			</div>
 		</fieldset>
+		{{/if}}
 
 		<!-- Modifiers: Might, Modifier stepper, and Trade Power -->
 		<fieldset>
@@ -178,7 +183,7 @@
 						<i class="fa-solid fa-circle-info" aria-hidden="true"></i>
 					</span>
 				</div>
-				<div class="litm--might-radio-row">
+				<div class="litm--might-radio-row {{#unless canSetNarratorFields}}is-locked{{/unless}}">
 					{{#each mightRange}}
 					<label class="litm--segmented-option litm--might-option {{#if (eq ../might this)}}is-active{{/if}}"
 						{{#if (eq this -6)}}data-tooltip="{{localize 'LITM.Ui.might_extremely_imperiled_short'}}"
@@ -187,7 +192,8 @@
 						{{else if (eq this 3)}}data-tooltip="{{localize 'LITM.Ui.might_favored_short'}}"
 						{{else if (eq this 6)}}data-tooltip="{{localize 'LITM.Ui.might_extremely_favored_short'}}"
 						{{/if}}>
-						<input type="radio" name="might" value="{{this}}" {{checked (eq ../might this)}} />
+						<input type="radio" name="might" value="{{this}}" {{checked (eq ../might this)}}
+							{{#unless ../canSetNarratorFields}}disabled aria-disabled="true"{{/unless}} />
 						{{#if (eq this -6)}}<span class="litm--might-scale-greatness">-6</span>
 						{{else if (eq this -3)}}<span class="litm--might-scale-adventure">-3</span>
 						{{else if (eq this 0)}}<span class="litm--might-scale-origin">0</span>
@@ -272,6 +278,7 @@
 					</table>
 				</div>
 			</template>
+			{{#if canTradePower}}
 			<div class="litm--trade-power-fieldset hidden">
 				<div class="litm--roll-type-bar litm--trade-power-bar">
 					<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower -1)}}is-active{{/if}} {{#unless canCaution}}is-disabled{{/unless}}" data-tooltip="{{localize 'LITM.Ui.trade_caution_hint'}}">
@@ -288,6 +295,7 @@
 					</label>
 				</div>
 			</div>
+			{{/if}}
 		</fieldset>
 		</div>
 		{{/if}}
@@ -299,7 +307,7 @@
 		     sections by data-group, so they don't need to be siblings. --}}
 		<div class="litm--roll-dialog-tags-column">
 		{{#if isOwner}}
-		{{#unless isGMViewer}}
+		{{#unless useTabbedPicker}}
 		<nav class="tabs litm--roll-dialog-tabs" data-group="roll-tags">
 			{{#each ownerTabs as |tab|}}
 			<a class="item {{tab.cssClass}}" data-action="tab" data-group="roll-tags" data-tab="{{tab.id}}">
@@ -314,7 +322,7 @@
 		<fieldset class="litm--roll-dialog-tags-fieldset">
 			<legend>{{localize "LITM.Terms.tags"}}</legend>
 
-			{{#if isGMViewer}}
+			{{#if useTabbedPicker}}
 			{{#each gmViewerTabs as |tab|}}
 			<section class="tab {{tab.cssClass}}" data-group="gm-viewer" data-tab="{{tab.id}}">
 				{{#each tab.groups as |group|}}
@@ -324,13 +332,16 @@
 					{{/if}}
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> tag tag=tag}}
+						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 						{{/each}}
 					</ul>
 				</div>
 				{{/each}}
 			</section>
 			{{/each}}
+			{{#if groupRollSpectator}}
+			<p class="hint">{{localize "LITM.Ui.group_roll_no_character"}}</p>
+			{{/if}}
 
 			{{else if isOwner}}
 			{{!-- Owner view: three tabs mirror the GM sidebar's column
@@ -353,7 +364,7 @@
 					</p>
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> tag tag=tag}}
+						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 						{{/each}}
 					</ul>
 				</div>
@@ -377,7 +388,7 @@
 						<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{else if group.icon}}<i class="{{group.icon}}" aria-hidden="true"></i>{{/if}}{{group.themeName}}</p>
 						<ul class="plain litm--roll-dialog-tags-summary">
 							{{#each group.tags as |tag|}}
-							{{> tag tag=tag}}
+							{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 							{{/each}}
 						</ul>
 					</div>
@@ -395,7 +406,7 @@
 					</p>
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> tag tag=tag}}
+						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 						{{/each}}
 					</ul>
 				</div>
@@ -413,7 +424,7 @@
 						<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{/if}}{{group.themeName}}</p>
 						<ul class="plain litm--roll-dialog-tags-summary">
 							{{#each group.tags as |tag|}}
-							{{> tag tag=tag}}
+							{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 							{{/each}}
 						</ul>
 					</div>
@@ -443,7 +454,7 @@
 					{{/if}}
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> tag tag=tag}}
+						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 						{{/each}}
 					</ul>
 				</div>
@@ -459,7 +470,7 @@
 					</p>
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> tag tag=tag}}
+						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 						{{/each}}
 					</ul>
 				</div>
@@ -474,7 +485,7 @@
 					</p>
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> tag tag=tag}}
+						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 						{{/each}}
 					</ul>
 				</div>
@@ -500,7 +511,7 @@
 					<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{else if group.icon}}<i class="{{group.icon}}" aria-hidden="true"></i>{{/if}}{{group.themeName}}</p>
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> tag tag=tag}}
+						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 						{{/each}}
 					</ul>
 				</div>
@@ -522,7 +533,7 @@
 				</p>
 				<ul class="plain litm--roll-dialog-tags-summary">
 					{{#each group.tags as |tag|}}
-					{{> tag tag=tag}}
+					{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 					{{/each}}
 				</ul>
 			</div>
@@ -542,7 +553,7 @@
 					<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{/if}}{{group.themeName}}</p>
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> tag tag=tag}}
+						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 						{{/each}}
 					</ul>
 				</div>
@@ -560,7 +571,7 @@
 				</p>
 				<ul class="plain litm--roll-dialog-tags-summary">
 					{{#each group.tags as |tag|}}
-					{{> tag tag=tag}}
+					{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 					{{/each}}
 				</ul>
 			</div>
@@ -581,7 +592,7 @@
 				{{/if}}
 				<ul class="plain litm--roll-dialog-tags-summary">
 					{{#each group.tags as |tag|}}
-					{{> tag tag=tag}}
+					{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 					{{/each}}
 				</ul>
 			</div>
@@ -596,7 +607,7 @@
 				</p>
 				<ul class="plain litm--roll-dialog-tags-summary">
 					{{#each group.tags as |tag|}}
-					{{> tag tag=tag}}
+					{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 					{{/each}}
 				</ul>
 			</div>
@@ -611,12 +622,31 @@
 				</p>
 				<ul class="plain litm--roll-dialog-tags-summary">
 					{{#each group.tags as |tag|}}
-					{{> tag tag=tag}}
+					{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
 					{{/each}}
 				</ul>
 			</div>
 			{{/each}}
 			{{/if}}
+			{{/if}}
+
+			{{!-- Invocations that move this roll's Power but belong to something
+			     the table can't see — a concealed Challenge, say. Masked rather
+			     than revealed: concealment is the Narrator's tool, but silent
+			     arithmetic isn't. The tier still shows, because that is the part
+			     that moves the number. --}}
+			{{#if concealedTags.length}}
+			<div class="litm--roll-dialog-section-break litm--roll-dialog-concealed">
+				<p class="litm--roll-dialog-actor-label">
+					<i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
+					<span>{{localize "LITM.Ui.roll_concealed_group"}}</span>
+				</p>
+				<ul class="plain litm--roll-dialog-tags-summary">
+					{{#each concealedTags as |tag|}}
+					{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
+					{{/each}}
+				</ul>
+			</div>
 			{{/if}}
 		</fieldset>
 		</div><!-- /litm--roll-dialog-tags-column -->
@@ -635,13 +665,23 @@
 		<!-- Footer Buttons -->
 		<div class="form-footer flexrow gap-md">
 			{{#if isOwner}}
+			{{!-- With mandatory approval on, Roll *is* "send to the Narrator",
+			      so the opt-in button beside it would be the same button twice.
+			      The label says where the press goes. --}}
+			{{#unless requiresApproval}}
 			<button type="button" class="flex1" data-action="sendToNarrator">
 				<i class="fa-solid fa-envelope" aria-hidden="true"></i>
 				{{localize "LITM.Ui.send_to_narrator"}}
 			</button>
+			{{/unless}}
 			<button type="submit" class="flex1 bright">
+				{{#if requiresApproval}}
+				<i class="fa-solid fa-envelope" aria-hidden="true"></i>
+				{{localize "LITM.Ui.roll_ask_narrator"}}
+				{{else}}
 				<i class="fa-solid fa-dice" aria-hidden="true"></i>
 				{{localize "LITM.Ui.roll"}}
+				{{/if}}
 			</button>
 			{{#if isCampAction}}
 			<button type="button" class="flex1 bright" data-action="spend-half">

@@ -24,6 +24,7 @@
    18.  Party Overview .......... Hero cards with quests, weaknesses, statuses
    19.  Dark Mode ............... Theme overrides for dark interface
    20.  Active Effect Sheet ..... Simplified tag/status editing
+   24.  Narrator's Call ......... GM-initiated roll: move, target, invocations
    (Welcome Overlay styles are in litmv2-welcome.css)
 ======================================== */
 
@@ -3541,7 +3542,15 @@ section.standard-form.litm-actions-app {
    Overlay for tracking open roll dialogs.
 ======================================== */
 
+/* Order, not insertion point. `#players` is a flexcol whose own first child
+   is `#players-inactive` — the collapsed list that expands to 300px when a
+   user opens it. A widget merely prepended sits above that list and is shoved
+   off the active roster the moment it expands. Negative order pins both litm
+   widgets above everything Foundry draws here, in either state, and the
+   transient strip sits above the control that is always there, so the control
+   never moves when a roll goes live. */
 .litm-roll-dialog-hud {
+	order: -2;
 	width: 200px;
 	display: flex;
 	flex-direction: column;
@@ -3550,6 +3559,60 @@ section.standard-form.litm-actions-app {
 
 .litm-roll-dialog-hud.is-hidden {
 	display: none;
+}
+
+/* The Narrator's call-for-roll control: the one thing on the main screen that
+   starts a roll. Costs no layout Foundry was not already spending — #players
+   is anchored bottom-left and grows upward into canvas, which is exactly what
+   the strip above it already does. */
+.litm-call-for-roll-hud {
+	order: -1;
+	width: 200px;
+	display: flex;
+}
+
+.litm-call-for-roll-hud__button {
+	pointer-events: all;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacer-8);
+	width: 100%;
+	min-height: unset;
+	height: auto;
+	/* Sized against the roll-dialog strip item directly above it, which is
+	   ~80px tall because it stacks avatar, title, meta and an action row. The
+	   strip's own 8px/10px padding gets a one-line button nowhere near that,
+	   so match its *presence* instead: this is the control you reach for most,
+	   and beside a live notification it was reading as a footnote. */
+	padding: 14px 12px;
+	font: inherit;
+	font-family: var(--font-h2);
+	font-size: var(--font-size-16);
+	font-weight: 600;
+	appearance: none;
+	cursor: pointer;
+	color: var(--color-litm-tag-text);
+	background: var(--background-color);
+	border: 1px solid var(--color-litm-tag);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-md);
+	transition: box-shadow var(--transition-normal);
+}
+
+.litm-call-for-roll-hud__button > i {
+	font-size: var(--font-size-18);
+}
+
+/* Warm the surface on hover without taking it away. #players hands us a
+   translucent --background-color, so *replacing* it with a 10% tint let the
+   scene flood through: over a bright map the button went brighter on hover
+   than at rest. An inset shadow lays the wash over the panel colour instead —
+   backdrop-independent, radius-aware, and it still animates. */
+.litm-call-for-roll-hud__button:hover {
+	box-shadow:
+		var(--shadow-md),
+		inset 0 0 0 100vmax var(--color-warm-1-10);
 }
 
 @keyframes rollHudPulse {
@@ -4446,15 +4509,24 @@ section.standard-form.litm-actions-app {
 	}
 }
 
+/* Setup is one row of tooltipped icons, not three stacked full-width rows.
+   Three rows of height recovered on the axis this panel has least of; the
+   call that used to head the stack rides the window header instead. */
 .litm--story-tags .litm--load-scene-btns {
-	margin: 0 4px var(--spacer-4);
+	margin: 0 var(--spacer-8) var(--spacer-4);
 	gap: var(--spacer-4);
 	flex: none;
+	align-items: center;
+	justify-content: flex-end;
 }
 
 .litm--story-tags :is(.litm--load-scene-btn, .litm--add-actor-btn) {
-	flex: 1;
-	font-size: var(--font-size-11);
+	flex: 0 0 auto;
+	width: 2rem;
+	min-height: unset;
+	height: 1.75rem;
+	padding: 0;
+	font-size: var(--font-size-12);
 	opacity: 0.75;
 }
 
@@ -4462,19 +4534,30 @@ section.standard-form.litm-actions-app {
 	opacity: 1;
 }
 
-@container (min-width: 480px) {
-	.litm--story-tags .litm--load-scene-btns {
-		flex-direction: row;
-		align-items: center;
-		margin: 0 var(--spacer-12) var(--spacer-4);
-	}
+/* The window-header entry. Foundry's frame-button template is icon-only and
+   puts the icon classes on the button itself, so `#labelFrameCallButton` in
+   the sidebar moves the glyph into its own <i> and appends the label —
+   otherwise everything inside inherits Font Awesome at weight 900. This gives
+   the result room, its own typeface, and the gold that marks it as the one
+   action here rather than a window control. */
+.litm--frame-button--call {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	width: auto;
+	padding: 0 var(--spacer-8);
+	font-family: var(--font-h2);
+	font-size: var(--font-size-12);
+	font-weight: normal;
+	/* The *text* gold, not the fill gold. The window header is transparent over
+	   the window's own chrome, so in light mode --color-litm-tag (pale #efd693)
+	   lands on cream and all but disappears; --color-litm-tag-text is the token
+	   that darkens for light surfaces and pales for dark ones. */
+	color: var(--color-litm-tag-text);
 }
 
-@container (min-width: 720px) {
-	.litm--story-tags .litm--load-scene-btns {
-		width: calc(100% / 3);
-		margin: 0 auto var(--spacer-4);
-	}
+.litm--frame-button-label {
+	white-space: nowrap;
 }
 
 /* Individual tag/status row — inherits litm-tag/litm-status badge styling */
@@ -6596,23 +6679,139 @@ body.litm--colorblind .themed.theme-dark,
 }
 
 /* ========================================
-   21. Target Picker
-   Picker dialog rows for selecting actors/tokens.
+   21. Roster
+   The system's one character-selection control — a cast list rather than a
+   row of tiles: portrait, name, and a line of context under the name. Used
+   by the Narrator's Call and by the target-picker dialogs, and it is where
+   any future "which character?" surface belongs.
+
+   The context line is text, not a tooltip, because a Narrator deciding who
+   to call on has to read who is at the table at a glance.
 ======================================== */
 
-.litm--picker .litm--picker-row {
-	align-items: center;
-	padding: var(--spacer-4) 0;
-	cursor: pointer;
+.litm--roster {
+	display: flex;
+	flex-direction: column;
 }
 
-.litm--picker .litm--picker-img {
-	flex: 0 0 32px;
-	width: 32px;
-	height: 32px;
+.litm--roster-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	width: 100%;
+	/* Containing block for the visually hidden input below. Without it the
+	   input positions against the viewport, escapes the scrolling list, and
+	   focusing it never brings its own row into view. */
+	position: relative;
+	padding: var(--spacer-4) var(--spacer-8);
+	background: transparent;
+	/* A rule under every row, gold under the selected one, the same width in
+	   both states so picking never shifts the list. Deliberately not a left
+	   border and never dashed — both are house rules. */
+	border-block-end: 2px solid var(--color-text-primary-10);
+	line-height: 1.15;
+	text-align: start;
+	cursor: pointer;
+	transition:
+		background var(--transition-normal),
+		border-color var(--transition-normal);
+}
+
+.litm--roster-row:hover {
+	background: var(--color-text-primary-10);
+}
+
+/* `:checked` is the only source of the selected look. A class rendered into
+   the markup goes stale in the DialogV2 pickers, which never re-render — the
+   row the server marked stays lit after the user picks another, and two rows
+   read as selected at once. */
+.litm--roster-row:has(.litm--roster-input:checked) {
+	background: var(--color-warm-1-10);
+	border-block-end-color: var(--color-litm-tag);
+}
+
+/* The radio carries the keyboard path and, in the DialogV2 pickers, the whole
+   form contract — so it is hidden visually rather than with `display: none`,
+   which would take it out of the tab order with it. */
+.litm--roster-input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.litm--roster-row:has(.litm--roster-input:focus-visible) {
+	outline: 2px solid var(--color-litm-tag);
+	outline-offset: -2px;
+}
+
+.litm--roster-portrait {
+	flex: 0 0 auto;
+	width: 2.375rem;
+	height: 2.375rem;
+	object-fit: cover;
 	border: none;
 	border-radius: var(--radius-sm);
-	object-fit: cover;
+}
+
+.litm--roster-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-2);
+}
+
+.litm--roster-name {
+	font-family: var(--font-h2);
+	font-size: var(--font-size-14);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Inherited colour at reduced opacity rather than --color-text-secondary:
+   this control renders on the parchment surface and inside chat-scoped
+   chrome, and that token is unreliable on both. */
+.litm--roster-meta {
+	font-size: var(--font-size-11);
+	opacity: 0.75;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Nobody holding this seat. Said in words on the context line, because a row
+   has to be readable at a glance without hovering anything; the dim portrait
+   is the reinforcement, not the message. Deliberately no presence dot — the
+   rows already contain a (visually hidden) radio, and a second small circle
+   on the right read as an unchecked one. */
+.litm--roster-row.is-offline .litm--roster-portrait {
+	opacity: 0.55;
+}
+
+.litm--roster-row.is-offline .litm--roster-name {
+	opacity: 0.8;
+}
+
+/* The Fellowship sits at the foot of the roster as "Acting Together" — one of
+   the things you can call on rather than a mode you switch into. Set apart
+   from the Heroes above it, because it is not one of them. */
+.litm--roster-row--fellowship {
+	margin-block-start: var(--spacer-8);
+	border-block-start: 1px solid var(--color-text-primary-15);
+	padding-block-start: var(--spacer-8);
+	border-block-end-color: transparent;
+}
+
+.litm--roster-row--fellowship .litm--roster-name {
+	font-family: var(--font-h2);
+	letter-spacing: 0.04em;
 }
 
 /* ========================================
@@ -7582,4 +7781,174 @@ body.litm--colorblind .themed.theme-dark,
 
 #content-sources-config .litm--pack-hidden i {
 	opacity: 0.6;
+}
+
+/* ========================================
+   24. Narrator's Call
+   The Narrator picks who is rolling — a short column of plaques and
+   nothing else. The move, the Might and the Narrator's invocations all
+   happen inside the shared roll dialog (§9), beside the player's half.
+======================================== */
+
+.litm--roll-call-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-8);
+}
+
+.litm--roll-call-body > .hint {
+	margin: 0;
+}
+
+/* Who rolls is a roster (§21) under a standard section header — this
+   surface adds no row chrome of its own, which was the whole complaint
+   about what it used to draw here.
+
+   Side by side, and the columns carry a fixed block-size rather than a
+   max: Foundry is wide and short, so the window must not grow downward as
+   a Hero accumulates Actions. A Hero with twenty opens the same window as
+   a Hero with none; the list scrolls inside the column instead. */
+.litm--roll-call-columns {
+	display: flex;
+	gap: var(--spacer-16);
+	align-items: stretch;
+}
+
+.litm--roll-call-col {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacer-4);
+}
+
+.litm--roll-call-scroll {
+	block-size: 17rem;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
+}
+
+/* The Heroes scroll; Acting Together is pinned under them and does not. The
+   fixed height belongs to the box, so the window still cannot grow. */
+.litm--roll-call-who {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.litm--roll-call-heroes {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
+}
+
+.litm--roll-call-pinned {
+	flex: none;
+}
+
+/* A row clipped mid-height is the signal that the list scrolls, so the hint
+   below needs air or the two read as one broken block. */
+.litm--roll-call-body > .hint {
+	margin: var(--spacer-8) 0 0;
+}
+
+.litm--roll-call-empty {
+	block-size: 17rem;
+	margin: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	padding: 0 var(--spacer-8);
+}
+
+/* An Action is not a character, so its row takes the portrait down to the
+   icon scale. */
+.litm--roster-row--action .litm--roster-portrait {
+	width: 1.75rem;
+	height: 1.75rem;
+}
+
+/* Banners in the roll dialog: who called the roll, and whether the whole
+   group is acting together. */
+.litm--narrator-call-banner,
+.litm--acting-together-banner {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	margin-block-end: var(--spacer-4);
+}
+
+/* A control whose half of the roll belongs to someone else — the move and
+   the Might on a called roll. Reads as settled rather than broken: the
+   current value stays legible, the rest recedes. */
+.litm--roll-type-bar.is-locked,
+.litm--might-radio-row.is-locked {
+	opacity: 0.75;
+}
+
+.litm--roll-type-bar.is-locked .litm--segmented-option,
+.litm--might-radio-row.is-locked .litm--segmented-option {
+	cursor: default;
+}
+
+.litm--roll-type-bar.is-locked .litm--segmented-option:not(.is-active),
+.litm--might-radio-row.is-locked .litm--segmented-option:not(.is-active) {
+	opacity: 0.5;
+}
+
+/* Invocations that move this roll's Power but belong to something this
+   client can't see. Masked, not hidden: the tier still reads, the source
+   doesn't. */
+.litm--roll-dialog-concealed .litm--roll-dialog-tag {
+	font-style: italic;
+}
+
+/* A tag the Narrator invoked: quill mark, and locked for the roller. */
+.litm--roll-dialog-tag-narrator {
+	font-size: var(--font-size-11);
+	color: var(--color-litm-tag-text);
+	opacity: 0.8;
+}
+
+.litm--roll-dialog-tag.is-narrator.is-locked {
+	cursor: default;
+}
+
+/* Chat card additions — the Narrator's Call record. Chat content is not
+   `.litm`-scoped, so these hang off the card's own classes. */
+.litm--roll-request-target {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	margin: 0;
+	font-family: var(--font-h2);
+}
+
+.litm--roll-request-target-img {
+	width: 1.75rem;
+	height: 1.75rem;
+	object-fit: cover;
+	border: none;
+	border-radius: var(--radius-sm);
+}
+
+.litm--roll-request-invoked {
+	display: flex;
+	flex-flow: row wrap;
+	align-items: baseline;
+	gap: var(--spacer-4) var(--spacer-8);
+	margin: 0;
+}
+
+.litm--roll-request-invoked-label {
+	font-size: var(--font-size-11);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	opacity: 0.7;
+}
+
+.litm--roll-request-might {
+	font-weight: 600;
 }

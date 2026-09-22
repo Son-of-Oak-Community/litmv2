@@ -7,10 +7,14 @@ import {
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ActionsApp } from "../../apps/actions-app.js";
 import { findBurnedSelection } from "../../apps/roll/burn-cap.js";
-import { resolveRollDialogOwnership } from "../../apps/roll/roll-dialog.js";
+import {
+	blockPlayerInitiatedRoll,
+	canUserInitiateRoll,
+} from "../../apps/roll/roll-pipeline.js";
+import { requestRollFromNarrator } from "../../apps/roll/roll-request.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
+import { FLAGS } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
-import { Sockets } from "../../system/sockets.js";
 import { enrichHTML, transferBackpackTags } from "../../utils.js";
 
 /**
@@ -137,13 +141,6 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	/**
-	 * Roll dialog instance
-	 * @type {LitmRollDialog}
-	 * @private
-	 */
-	#rollDialog = null;
-
-	/**
 	 * Actions browser app instance
 	 * @type {ActionsApp}
 	 * @private
@@ -169,28 +166,6 @@ export class HeroSheet extends LitmActorSheet {
 
 	static #onOpenCamping() {
 		game.litmv2?.LitmCampingScene?.open();
-	}
-
-	/**
-	 * Whether a roll dialog instance exists (without creating one)
-	 * @type {boolean}
-	 */
-	get hasRollDialog() {
-		return !!this.#rollDialog;
-	}
-
-	/**
-	 * Get or create the roll dialog instance
-	 * @returns {LitmRollDialog}
-	 * @private
-	 */
-	get rollDialogInstance() {
-		if (!this.#rollDialog) {
-			this.#rollDialog = game.litmv2.LitmRollDialog.create({
-				actorId: this.document.id,
-			});
-		}
-		return this.#rollDialog;
 	}
 
 	/** @override */
@@ -261,6 +236,12 @@ export class HeroSheet extends LitmActorSheet {
 			...mofContext,
 			limit: this.system.limit,
 			showCamping: game.user.isGM && !LitmSettings.useFellowship,
+			// The Roll button is always there. Where the table routes every roll
+			// through the Narrator it asks for one instead of opening the dialog
+			// — hiding it left the player with no way to say "I'd like to roll",
+			// and it was the only button in this row that vanished. One value,
+			// not two that can disagree: the template swaps its own label off it.
+			rollButtonAsksNarrator: !canUserInitiateRoll(),
 		};
 	}
 
@@ -409,6 +390,9 @@ export class HeroSheet extends LitmActorSheet {
 	}
 
 	static #onOpenRollDialog(_event, _target) {
+		// Where the player may not start a roll, the button raises a hand
+		// instead. `R` does the same — it is the same gesture on a keyboard.
+		if (!canUserInitiateRoll()) return requestRollFromNarrator(this.actor);
 		// If the dialog was previously opened in sacrifice mode and then
 		// cancelled, the instance still has type="sacrifice". Clicking the
 		// regular Roll button should bring the user back to a standard roll —
@@ -532,6 +516,16 @@ export class HeroSheet extends LitmActorSheet {
 			await scratchTag(this.document, effect);
 			return;
 		}
+
+		// The play sheet has its own click route, separate from
+		// selectTagForRoll. Gate instigation here too, but leave an existing
+		// roll and alt-click scratch bookkeeping available.
+		if (
+			!this.rollDialogInstance.rendered &&
+			!this.document.getFlag("litmv2", FLAGS.rollDialogOwner) &&
+			blockPlayerInitiatedRoll()
+		)
+			return;
 
 		// Can't select scratched tags, except weakness tags
 		if (!selected && isScratched && !isWeaknessTag) return;
@@ -791,14 +785,6 @@ export class HeroSheet extends LitmActorSheet {
 	/* -------------------------------------------- */
 
 	/**
-	 * Update the roll dialog with new data
-	 * @param {object} data Data to update
-	 */
-	updateRollDialog(data) {
-		this.#rollDialog?.receiveUpdate(data);
-	}
-
-	/**
 	 * Select a tag for the roll dialog from an external source (e.g., fellowship sheet).
 	 * @param {string} tagType - The tag type (e.g., "power_tag", "weakness_tag")
 	 * @param {string} tagId - The tag effect ID
@@ -806,6 +792,14 @@ export class HeroSheet extends LitmActorSheet {
 	 * @param {{ shiftKey?: boolean }} [options] - Modifier key state
 	 */
 	selectTagForRoll(_tagType, tagId, tagName, { shiftKey = false } = {}) {
+		// Only starting a roll is gated; contributing to one already open is
+		// still allowed, just as it is through the play sheet's click handler.
+		if (
+			!(this.hasRollDialog && this.rollDialogInstance.rendered) &&
+			!this.document.getFlag("litmv2", FLAGS.rollDialogOwner) &&
+			blockPlayerInitiatedRoll()
+		)
+			return;
 		const allTags = this._buildAllRollTags();
 		const tagRef =
 			(tagId && allTags.find((t) => t.id === tagId)) ||
@@ -836,43 +830,6 @@ export class HeroSheet extends LitmActorSheet {
 		} else {
 			this.rollDialogInstance.render();
 		}
-		this.render();
-	}
-
-	/**
-	 * Render the roll dialog
-	 * @param {object} options Render options
-	 */
-	renderRollDialog(options = {}) {
-		const { isOwner, activeOwnerId } = resolveRollDialogOwnership(
-			this.document,
-			game.user.id,
-		);
-
-		if (options.toggle && this.rollDialogInstance.rendered) {
-			this.rollDialogInstance.close();
-			return;
-		}
-
-		if (isOwner) {
-			this.rollDialogInstance.ownerId = game.user.id;
-			const shouldBroadcast = activeOwnerId !== game.user.id;
-			if (shouldBroadcast) this.rollDialogInstance.updatePresence(true);
-		} else {
-			this.rollDialogInstance.ownerId = activeOwnerId;
-			Sockets.dispatch("requestRollDialogSync", {
-				actorId: this.document.id,
-			});
-		}
-
-		this.rollDialogInstance.render(true);
-	}
-
-	/**
-	 * Reset the roll dialog
-	 */
-	resetRollDialog() {
-		this.rollDialogInstance.reset();
 		this.render();
 	}
 }

@@ -1,4 +1,5 @@
 import { localize as t } from "../utils.js";
+import { buildRosterEntry } from "./roster.js";
 import { StoryTagsStore } from "./story-tags/story-tags-store.js";
 
 const { DialogV2 } = foundry.applications.api;
@@ -29,7 +30,7 @@ export function getTargetCandidates({
 } = {}) {
 	const allowedTypes = types ? new Set(types) : null;
 	const tracked = StoryTagsStore.resolveTrackedActors();
-	const hiddenActorIds = _hiddenActorIds(tracked);
+	const hiddenActorIds = StoryTagsStore.concealedActorIds;
 	const seen = new Set();
 	const candidates = [];
 
@@ -59,26 +60,6 @@ export function getTargetCandidates({
 	for (const { actor } of tracked) add(actor, actor.img);
 
 	return candidates;
-}
-
-/**
- * Actor ids a non-GM may not see, from the story-tag sidebar's hidden columns.
- * Resolved to ids because the picker is keyed by actor, not by column: an actor
- * reached by several tracked uuids (its own and an unlinked token's) stays
- * visible as long as one of those columns is.
- * @param {{uuid: string, actor: Actor}[]} tracked
- * @returns {Set<string>}
- */
-function _hiddenActorIds(tracked) {
-	if (game.user.isGM) return new Set();
-	const hiddenUuids = new Set(StoryTagsStore.config.hiddenActors ?? []);
-	const visible = new Set();
-	const hidden = new Set();
-	for (const { uuid, actor } of tracked) {
-		(hiddenUuids.has(uuid) ? hidden : visible).add(actor.id);
-	}
-	for (const id of visible) hidden.delete(id);
-	return hidden;
 }
 
 /**
@@ -153,7 +134,11 @@ export async function pickLimit() {
 				: "flag";
 			candidates.push({
 				id: `${actor.id}::${l.id}`,
-				label: `${actor.system.maskedName ?? actor.name} — ${l.label || t("LITM.Terms.limit")} (${l.value ?? 0}/${l.max ?? "—"})`,
+				label: actor.system.maskedName ?? actor.name,
+				// The limit is the row's context line. It used to be crammed into
+				// the label behind an em-dash; a roster row has a second line for
+				// exactly this.
+				meta: `${l.label || t("LITM.Terms.limit")} (${l.value ?? 0}/${l.max ?? "—"})`,
 				img: actor.img,
 				actor,
 				limit: l,
@@ -187,9 +172,23 @@ async function _chooseFrom(entries, titleKey) {
 		return _resolveEntryShape(entries[0]);
 	}
 
+	// Presence is deliberately off here: this picker lists Challenges, Story
+	// Themes and Limits as well as Heroes, and a Challenge wearing a hollow
+	// "no player assigned" dot would read as a broken character.
+	const rows = entries.map((entry, index) =>
+		buildRosterEntry(entry.actor, {
+			value: index,
+			inputName: "picked",
+			selected: index === 0,
+			img: entry.img,
+			name: entry.label,
+			meta: entry.meta ?? "",
+		}),
+	);
+
 	const content = await foundry.applications.handlebars.renderTemplate(
 		"systems/litmv2/templates/apps/target-picker-form.html",
-		{ entries },
+		{ entries: rows },
 	);
 
 	try {

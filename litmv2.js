@@ -16,6 +16,7 @@ import { StoryThemeActorData } from "./modules/actor/story-theme/story-theme-act
 import { ApplyActionMenuApp } from "./modules/apps/apply-action-menu.js";
 import { LitmCampingScene } from "./modules/apps/camping/camping-scene.js";
 import { DoubleSix } from "./modules/apps/dice.js";
+import { CallForRollApp } from "./modules/apps/roll/call-for-roll.js";
 import { LitmRoll } from "./modules/apps/roll/roll.js";
 import { LitmRollDialog } from "./modules/apps/roll/roll-dialog.js";
 import { SpendPowerApp } from "./modules/apps/spend-power.js";
@@ -70,12 +71,17 @@ Hooks.once("init", () => {
 	 * - `fellowship` — the singleton fellowship actor (or null when disabled)
 	 * - `LitmRoll`, `LitmRollDialog` — replaceable roll classes; combine with
 	 *   `CONFIG.litmv2.roll.{formula,resolver}` for third-party roll customisation
+	 * - `CallForRollApp` — the Narrator's Call: `CallForRollApp.open()` picks who
+	 *   is rolling, then the shared `LitmRollDialog` opens on both screens.
+	 *   `litm.narratorCall` fires (cancellable) before the call goes out
 	 * - `StoryTagApp`, `SpendPowerApp`, `ApplyActionMenuApp`,
 	 *   `ThemeAdvancementApp`, `ThemeEvolutionWizard`, `WelcomeOverlay` —
 	 *   replaceable app classes
 	 * - `ContentSources` — compendium loading and status seeding entry point
 	 * - `storyTags` — set at ready time to the sidebar tab instance
 	 * - `rollDialogHud` — mutable reference to the active roll-dialog HUD
+	 * - `callForRollHud` — mutable reference to the Narrator's main-screen
+	 *   call-for-roll control, which shares the players-panel region with it
 	 * - `showSacrificeBanner` — flash the sacrifice rite on peer clients;
 	 *   reassign to replace the default visual treatment
 	 */
@@ -98,6 +104,7 @@ Hooks.once("init", () => {
 		},
 		LitmRollDialog,
 		LitmRoll,
+		CallForRollApp,
 		WelcomeOverlay,
 		StoryTagApp: StoryTagSidebar,
 		SpendPowerApp,
@@ -107,6 +114,7 @@ Hooks.once("init", () => {
 		LitmCampingScene,
 		ContentSources,
 		rollDialogHud: null,
+		callForRollHud: null,
 		showSacrificeBanner,
 	};
 

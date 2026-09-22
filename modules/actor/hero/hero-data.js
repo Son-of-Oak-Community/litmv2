@@ -61,7 +61,13 @@ export async function createLegacyRelationshipEffects(actor) {
 export async function gainImprovement(actor, tag) {
 	// Relationship tags always improve the fellowship theme
 	if (tag.type === EFFECT_TYPES.relationship_tag) {
-		const fellowship = actor.system.fellowshipActor;
+		// On an Acting Together roll the rolling actor *is* the Fellowship, and
+		// `fellowshipActor` is a HeroData getter it does not have — so without
+		// this the Improve was silently dropped.
+		const fellowship =
+			actor.type === ACTOR_TYPES.fellowship
+				? actor
+				: actor.system.fellowshipActor;
 		if (!fellowship) return null;
 		const theme = findFellowshipTheme(fellowship);
 		if (!theme) return null;

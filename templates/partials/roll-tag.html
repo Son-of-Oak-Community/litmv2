@@ -1,0 +1,26 @@
+{{!-- A single selectable tag row in a roll-tag picker. Shared by the roll
+      dialog and the Narrator's Call, so both surfaces get identical chrome:
+      the super-checkbox state cycle, the skewed tag badge, weakness chevron,
+      action suggestion sparkles, and the Narrator's-invocation lock. --}}
+<li>
+	<label
+		class="litm--roll-dialog-tag litm--{{tag.type}} {{#if tag.locked}}is-locked{{/if}} {{#if tag.isNarrator}}is-narrator{{/if}} {{#if tag.state}}is-selected{{/if}} {{#if tag.isPositiveSuggestion}}is-suggested-positive{{/if}} {{#if tag.isNegativeSuggestion}}is-suggested-negative{{/if}}"
+		for="rd-{{tag.key}}" data-action="toggleRollTag" data-tag-type="{{tag.type}}"
+		{{#if tag.isNarrator}}data-tooltip="{{localize 'LITM.Ui.narrator_call_invoked_by_narrator'}}"
+		{{else if tag.isPositiveSuggestion}}data-tooltip="{{localize 'LITM.Actions.suggestion_helpful'}}"
+		{{else if tag.isNegativeSuggestion}}data-tooltip="{{localize 'LITM.Actions.suggestion_hindering'}}"{{/if}}>
+		<span class="litm--sro">{{localize "LITM.Ui.select"}}</span>
+		<litm-super-checkbox name="{{tag.key}}" id="rd-{{tag.key}}" value="{{tag.state}}" data-type="{{tag.type}}"
+			states="{{tag.states}}" aria-label="{{tag.displayName}}" {{#if tag.locked}}disabled aria-disabled="true" data-locked="true"
+			{{/if}}></litm-super-checkbox>
+		<span class="litm--roll-dialog-badge litm-{{tag.type}}"
+			data-text="{{tag.displayName}}{{ifThen (eq tag.type 'status_tag') (ifThen tag.value (concat '-' tag.value) '') ''}}">{{tag.displayName}}{{ifThen
+			(eq tag.type "status_tag") (ifThen tag.value (concat "-" tag.value) "") ""}}{{#if (eq tag.type "weakness_tag")}}
+			{{> "systems/litmv2/templates/partials/weakness-chevron.html"}}
+			{{/if}}</span>
+		{{#if tag.isNarrator}}
+		<i class="fa-solid fa-feather litm--roll-dialog-tag-narrator" aria-hidden="true"></i>
+		{{/if}}
+		{{#if tag.targetName}}<span class="litm--roll-dialog-tag-target">({{tag.targetName}})</span>{{/if}}
+	</label>
+</li>

@@ -9,8 +9,7 @@
 			placeholder="{{localize 'LITM.Actions.name_placeholder'}}" />
 		{{#if @root.isGM}}
 		<button class="noflex" type="button" data-action="sendRollRequest"
-			data-tooltip="{{localize 'LITM.Actions.request_dialog_title'}}"
-			aria-label="{{localize 'LITM.Actions.request_dialog_title'}}">
+			data-tooltip="{{callLabel}}" aria-label="{{callLabel}}">
 			<i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
 		</button>
 		{{/if}}

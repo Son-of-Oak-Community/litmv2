@@ -53,20 +53,20 @@
 	"suggestedNextTours": ["litmv2.fellowship"],
 	"localization": {
 		"TOURS.HeroSheetBasicsTitle": "Hero Sheet Basics",
-		"TOURS.HeroSheetBasicsDescription": "Learn the key features of your hero sheet.",
+		"TOURS.HeroSheetBasicsDescription": "Learn how to edit a Hero and make a roll.",
 		"TOURS.HeroSheetBasicsWelcomeTitle": "Hero Sheet Basics",
-		"TOURS.HeroSheetBasicsWelcomeContent": "This tour walks you through the hero sheet. We'll open a sample hero to demonstrate the key features.",
-		"TOURS.HeroSheetBasicsEditModeTitle": "Edit Mode Toggle",
-		"TOURS.HeroSheetBasicsEditModeContent": "This button switches between <strong>Play</strong> and <strong>Edit</strong> modes. Edit mode lets you change themes, tags, and character details.<br/><br/>Keyboard shortcut: <strong>E</strong>",
+		"TOURS.HeroSheetBasicsWelcomeContent": "This tour opens a sample Hero and explains the main sheet controls.",
+		"TOURS.HeroSheetBasicsEditModeTitle": "Play and Edit Modes",
+		"TOURS.HeroSheetBasicsEditModeContent": "Use this button to switch between <strong>Play</strong> and <strong>Edit</strong>. Edit Mode lets you change themes, tags, and Hero details.<br/><br/>Keyboard shortcut: <strong>E</strong>",
 		"TOURS.HeroSheetBasicsRollTitle": "Dice Roller",
-		"TOURS.HeroSheetBasicsRollContent": "Click this button to open the roll dialog. Select tags on your sheet first by clicking them, then roll.<br/><br/>Keyboard shortcut: <strong>R</strong>",
+		"TOURS.HeroSheetBasicsRollContent": "Click tags to add them to the roll, then click this button to open the roll window.<br/><br/>Keyboard shortcut: <strong>R</strong>",
 		"TOURS.HeroSheetBasicsPromiseTitle": "Promise Track",
-		"TOURS.HeroSheetBasicsPromiseContent": "The <strong>promise track</strong> measures your hero's progress toward their moment of fulfillment. Click boxes to advance. When you reach 5, you unlock the <strong>Moment of Fulfillment</strong> — a pivotal narrative event in your hero's story.",
+		"TOURS.HeroSheetBasicsPromiseContent": "The <strong>Promise track</strong> records progress toward a Moment of Fulfillment. Click a box to mark Promise. At 5 Promise, record a <strong>Moment of Fulfillment</strong>.",
 		"TOURS.HeroSheetBasicsThemeTagsTitle": "Themes & Tags",
-		"TOURS.HeroSheetBasicsThemeTagsContent": "Each theme has <strong>power tags</strong> and <strong>weakness tags</strong>. Click power tags to add them to your roll. Weakness tags can be invoked by opponents or the GM.<br/><br/>Themes also have a <strong>quest</strong> and advancement tracks — check these boxes as your theme evolves through play.",
+		"TOURS.HeroSheetBasicsThemeTagsContent": "Each theme has <strong>power tags</strong> and <strong>weakness tags</strong>. Click a power tag to add it to a roll. The Narrator or an opponent can invoke a weakness tag.<br/><br/>A theme also has a <strong>Quest</strong> and advancement tracks. Mark their boxes during play.",
 		"TOURS.HeroSheetBasicsLayoutTitle": "Sheet Layout",
-		"TOURS.HeroSheetBasicsLayoutContent": "Click the <i class=\"fa-solid fa-ellipsis-vertical\"></i> menu to open the header controls. From there, select <strong>Sheet Configuration</strong> to switch between <strong>Portrait</strong> (narrow) and <strong>Landscape</strong> (wide) layouts to suit your screen and preference.",
-		"TOURS.HeroSheetBasicsSummaryTitle": "You're Ready!",
-		"TOURS.HeroSheetBasicsSummaryContent": "<strong>E</strong> = toggle edit mode<br/><strong>R</strong> = open dice roller<br/><br/>In play mode, click tags to select them for a roll, then hit the dice button. Explore edit mode to customize your hero's themes, tags, and details."
+		"TOURS.HeroSheetBasicsLayoutContent": "Open the <i class=\"fa-solid fa-ellipsis-vertical\"></i> menu and select <strong>Sheet Configuration</strong> to choose the narrow <strong>Portrait</strong> layout or wide <strong>Landscape</strong> layout.",
+		"TOURS.HeroSheetBasicsSummaryTitle": "Shortcuts",
+		"TOURS.HeroSheetBasicsSummaryContent": "<strong>E</strong> = toggle Edit Mode<br/><strong>R</strong> = open the dice roller<br/><br/>In Play Mode, click tags to add them to a roll. Use Edit Mode to change themes, tags, and Hero details."
 	}
 }
