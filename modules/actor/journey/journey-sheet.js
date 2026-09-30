@@ -61,7 +61,7 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 		// Prepare vignette items
 		const generalConsequenceId = this.system.generalConsequences;
 		const { vignettesByType, excluded: generalConsequence } =
-			await this._prepareVignettes({ excludeId: generalConsequenceId, limitedView });
+			await this._prepareVignettes({ excludeId: generalConsequenceId });
 
 		return {
 			...context,
