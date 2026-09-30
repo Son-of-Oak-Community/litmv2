@@ -4,6 +4,8 @@ import { LitmSettings } from "../system/settings.js";
 const LABEL_CLASS = "litm-token-tooltip";
 /** Marks the single transient hover tooltip, so unhover can't wipe the rest. */
 const HOVER_CLASS = "litm-token-tooltip--hover";
+/** Marks temporary HighlightObject tooltips, so hover behavior is ignored */
+const HIGHLIGHT_CLASS = "litm-token-tooltip--highlight";
 
 /**
  * Chip markup for one effect. Names are escaped — they are free text a player
@@ -79,13 +81,13 @@ export function tokenTooltipHTML(token) {
  * @param {{hover?: boolean}} [options]
  * @returns {HTMLElement|null}
  */
-function _createLabel(token, html, { hover = false } = {}) {
+function _createLabel(token, html, { tooltipClass } = {}) {
 	const hud = document.getElementById("hud");
 	if (!hud) return null;
 
 	const label = document.createElement("div");
 	label.classList.add(LABEL_CLASS, "placeable-hud");
-	if (hover) label.classList.add(HOVER_CLASS);
+	if (tooltipClass) label.classList.add(tooltipClass);
 	else label.dataset.tokenId = token.id;
 	label.innerHTML = html;
 	hud.append(label);
@@ -97,14 +99,15 @@ function _createLabel(token, html, { hover = false } = {}) {
 /**
  * Position and show the hover tooltip above a token.
  * @param {Token} token
+ * @param {{ removeExisting: boolean }} params
  */
-function _showTooltip(token) {
-	_removeTooltip();
+function _showTooltip(token, { removeExisting, tooltipClass } = { removeExisting: true, tooltipClass: HOVER_CLASS }) {
+	if (removeExisting) _removeTooltip();
 
 	const html = tokenTooltipHTML(token);
 	if (!html) return;
 
-	_createLabel(token, html, { hover: true });
+	_createLabel(token, html, { tooltipClass });
 }
 
 /**
@@ -128,6 +131,20 @@ function _positionTooltip(token, tooltip) {
  */
 function _removeTooltip() {
 	document.querySelector(`.${HOVER_CLASS}`)?.remove();
+}
+
+function _removeHighlightTooltips() {
+	for (const tooltip of document.querySelectorAll(`.${HIGHLIGHT_CLASS}`))
+		tooltip.remove();
+}
+
+
+/**
+ * Check if there are active tooltips from HighlightObject functionality
+ * @returns {bool}
+ */
+function _hasActiveHighlight() {
+	return Boolean(document.querySelector(`.${HIGHLIGHT_CLASS}`));
 }
 
 /**
@@ -243,9 +260,23 @@ const _lastVisible = new WeakMap();
  * @param {boolean} hovered
  */
 export function onHoverToken(token, hovered) {
+	if (_hasActiveHighlight) return;
+
 	if (!hovered) return _removeTooltip();
 	if (LitmSettings.persistentTokenLabels) return;
 	_showTooltip(token);
+}
+
+/**
+ * Shows tooltip for the selected token without removing existing tooltips when display=true.
+ * Removes tooltip for the selected token when display=false.
+ * @param {Token} token
+ * @param {boolean} display
+ */
+export function onDisplayTooltip(token, display) {
+	if (!display) return _removeHighlightTooltips();
+	if (LitmSettings.persistentTokenLabels) return;
+	_showTooltip(token, { removeExisting: false, tooltipClass: HIGHLIGHT_CLASS });
 }
 
 /**

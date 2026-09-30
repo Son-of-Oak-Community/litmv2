@@ -1,10 +1,12 @@
 import {
 	onCanvasPan,
 	onCanvasTearDown,
+	onDisplayTooltip,
 	onHoverToken,
 	onRefreshToken,
 	scheduleLabelRefresh,
 } from "../../hud/token-tooltip.js";
+import { LitmSettings } from "../settings.js";
 
 /**
  * Signals that can change *what* a persistent token label says, or which
@@ -50,6 +52,7 @@ export function registerTokenHooks() {
 	Hooks.on("refreshToken", onRefreshToken);
 	for (const hook of LABEL_REFRESH_HOOKS) Hooks.on(hook, scheduleLabelRefresh);
 	Hooks.on("canvasTearDown", onCanvasTearDown);
+	Hooks.on("highlightObjects", _onHighlightObjects);
 }
 
 /**
@@ -76,5 +79,19 @@ function _refreshNameplatesOnConcealChange(actor, changes) {
 	if (!("concealName" in sys) && !("alias" in sys)) return;
 	for (const token of actor.getActiveTokens()) {
 		token.renderFlags.set({ refreshNameplate: true });
+	}
+}
+
+/**
+ * Show all token tooltips when foundry's highlightObjects function activates.
+ * @param {boolean} isHighlighting
+ */
+function _onHighlightObjects(isHighlighting) {
+	if (LitmSettings.persistentTokenLabels) return;
+
+	const sceneTokens = game.scenes.find((x) => x.active)?.tokens ?? [];
+	const tokenPlaceables = sceneTokens.map((x) => x.object).filter(Boolean);
+	for (const token of tokenPlaceables) {
+		onDisplayTooltip(token, isHighlighting);
 	}
 }
