@@ -699,6 +699,21 @@ export class LitmActorSheet extends LitmSheetMixin(
 	}
 
 	/**
+	 * Toggle the limitedPermissionHidden to hide/reveal vignette to players.
+	 * @param {event} _event
+	 * @param {HTMLElement} target
+	 * @protected
+	 */
+	static async _onToggleVignetteHidden(_event, target) {
+		const actionTarget = target.closest?.("[data-item-id]") ?? target;
+		const itemId = actionTarget?.dataset?.itemId;
+		const item = this.document.items.get(itemId);
+		if (!item) return;
+		
+		item.update({ 'system.limitedPermissionHidden': !item.system.limitedPermissionHidden });
+	}
+
+	/**
 	 * Create a new embedded vignette item and open its sheet.
 	 * @param {Event} _event
 	 * @param {HTMLElement} _target

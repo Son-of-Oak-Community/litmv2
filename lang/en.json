@@ -923,6 +923,7 @@
 			"toggle_edit_mode_hint": "Turn Edit Mode on or off for the topmost character sheet.",
 			"toggle_tags_sidebar": "Toggle Tags Sidebar",
 			"toggle_tags_sidebar_hint": "Open or close the Tags sidebar window.",
+			"toggle_vignette_hidden": "Toggle visibility to players",
 			"total_power": "Total Power",
 			"track_complete_abandon": "Theme Abandoned",
 			"track_complete_improve": "Theme Improvement",

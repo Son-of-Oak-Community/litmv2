@@ -14,6 +14,7 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 			addVignette: LitmActorSheet._onAddVignette,
 			editVignette: LitmActorSheet._onEditItem,
 			removeVignette: LitmActorSheet._onRemoveItem,
+			toggleVignetteHidden: LitmActorSheet._onToggleVignetteHidden,
 			clearGeneralConsequence: JourneySheet.#onClearGeneralConsequence,
 		},
 		form: {
@@ -55,11 +56,12 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 		const context = await super._prepareContext(options);
 
 		const enriched = await this._enrichFields("description", "tags");
+		const limitedView = this.document.testUserPermission(game.user, 'LIMITED', { exact: true });
 
 		// Prepare vignette items
 		const generalConsequenceId = this.system.generalConsequences;
 		const { vignettesByType, excluded: generalConsequence } =
-			await this._prepareVignettes({ excludeId: generalConsequenceId });
+			await this._prepareVignettes({ excludeId: generalConsequenceId, limitedView });
 
 		return {
 			...context,
@@ -74,6 +76,8 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 				},
 			],
 			enriched,
+			limitedView,
+			isGM: game.user.isGM,
 			tagsString: this.system.tags || "",
 			generalConsequenceId,
 			generalConsequence,

@@ -10,6 +10,13 @@ export class HandlebarsHelpers {
 			(text) => new Handlebars.SafeString(proseChipsHtml(text ?? "")),
 		);
 
+		Handlebars.registerHelper(
+			"test",
+			(a) => {
+				return a;
+			},
+		);
+
 		Handlebars.registerHelper("add", (...args) => {
 			args.pop();
 			return args.reduce((acc, val) => acc + val, 0);

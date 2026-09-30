@@ -1,6 +1,6 @@
 <section class="flexcol gap-lg">
 	<!-- General Consequences -->
-	{{#if generalConsequence}}
+	{{#if (and generalConsequence (not limitedView))}}
 	<fieldset>
 		<legend class="litm-banner vignette-card-label">
 			{{localize "LITM.Terms.general_consequences"}}
@@ -17,7 +17,9 @@
 	{{#if displayVignettes.length}}
 	<div class="grid-2col">
 		{{#each displayVignettes as |vignette|}}
-		{{> systems/litmv2/templates/partials/vignette-card-play.html vignette=vignette}}
+			{{#unless (and @root.limitedView vignette.system.limitedPermissionHidden)}}
+			{{> systems/litmv2/templates/partials/vignette-card-play.html vignette=vignette isGM=@root.isGM controlsVisibility=true}}
+			{{/unless}}
 		{{/each}}
 	</div>
 	{{/if}}
