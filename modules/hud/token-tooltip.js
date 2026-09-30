@@ -260,7 +260,7 @@ const _lastVisible = new WeakMap();
  * @param {boolean} hovered
  */
 export function onHoverToken(token, hovered) {
-	if (_hasActiveHighlight) return;
+	if (_hasActiveHighlight()) return;
 
 	if (!hovered) return _removeTooltip();
 	if (LitmSettings.persistentTokenLabels) return;
