@@ -6,7 +6,6 @@ import {
 	onRefreshToken,
 	scheduleLabelRefresh,
 } from "../../hud/token-tooltip.js";
-import { LitmSettings } from "../settings.js";
 
 /**
  * Signals that can change *what* a persistent token label says, or which
@@ -87,11 +86,11 @@ function _refreshNameplatesOnConcealChange(actor, changes) {
  * @param {boolean} isHighlighting
  */
 function _onHighlightObjects(isHighlighting) {
-	if (LitmSettings.persistentTokenLabels) return;
-
-	const sceneTokens = game.scenes.find((x) => x.active)?.tokens ?? [];
-	const tokenPlaceables = sceneTokens.map((x) => x.object).filter(Boolean);
-	for (const token of tokenPlaceables) {
+	// The scene on screen, not the active one: a GM may be viewing another.
+	// Hidden tokens are skipped, as for persistent labels, or holding the key
+	// would reveal their tags to players.
+	for (const token of canvas.tokens?.placeables ?? []) {
+		if (isHighlighting && !token.visible) continue;
 		onDisplayTooltip(token, isHighlighting);
 	}
 }

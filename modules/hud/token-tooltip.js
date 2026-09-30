@@ -6,6 +6,8 @@ const LABEL_CLASS = "litm-token-tooltip";
 const HOVER_CLASS = "litm-token-tooltip--hover";
 /** Marks temporary HighlightObject tooltips, so hover behavior is ignored */
 const HIGHLIGHT_CLASS = "litm-token-tooltip--highlight";
+/** True while the HighlightObjects key is held; hover stays out of the way. */
+let _highlighting = false;
 
 /**
  * Chip markup for one effect. Names are escaped — they are free text a player
@@ -138,15 +140,6 @@ function _removeHighlightTooltips() {
 		tooltip.remove();
 }
 
-
-/**
- * Check if there are active tooltips from HighlightObject functionality
- * @returns {bool}
- */
-function _hasActiveHighlight() {
-	return Boolean(document.querySelector(`.${HIGHLIGHT_CLASS}`));
-}
-
 /**
  * Selector for persistent labels: one token's, or all of them. Built in one
  * place so the two callers can never drift — a lookup that still matched while
@@ -260,7 +253,7 @@ const _lastVisible = new WeakMap();
  * @param {boolean} hovered
  */
 export function onHoverToken(token, hovered) {
-	if (_hasActiveHighlight()) return;
+	if (_highlighting) return;
 
 	if (!hovered) return _removeTooltip();
 	if (LitmSettings.persistentTokenLabels) return;
@@ -274,8 +267,12 @@ export function onHoverToken(token, hovered) {
  * @param {boolean} display
  */
 export function onDisplayTooltip(token, display) {
-	if (!display) return _removeHighlightTooltips();
+	if (!display) {
+		_highlighting = false;
+		return _removeHighlightTooltips();
+	}
 	if (LitmSettings.persistentTokenLabels) return;
+	_highlighting = true;
 	_showTooltip(token, { removeExisting: false, tooltipClass: HIGHLIGHT_CLASS });
 }
 
@@ -332,5 +329,6 @@ export function onCanvasPan() {
  */
 export function onCanvasTearDown() {
 	_cancelLabelRefresh();
+	_highlighting = false;
 	clearPersistentLabels();
 }
