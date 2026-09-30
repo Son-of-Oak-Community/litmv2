@@ -2,6 +2,7 @@ export class VignetteData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
 		return {
+			limitedPermissionHidden: new fields.BooleanField({ initial: true }),
 			threat: new fields.StringField({
 				initial: "",
 			}),

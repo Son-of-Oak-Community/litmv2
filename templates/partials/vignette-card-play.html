@@ -1,5 +1,13 @@
 <fieldset class="vignette-card item" data-item-id="{{vignette._id}}">
-	<legend class="litm-banner vignette-card-label">{{vignette.name}}</legend>
+	<legend class="control flexrow gap-xs">
+		<span class="litm-banner vignette-card-label">{{vignette.name}}</span>
+		{{#if (and isGM controlsVisibility)}}
+		<button type="button" data-action="toggleVignetteHidden"
+			data-tooltip="{{localize 'LITM.Ui.toggle_vignette_hidden'}}" aria-label="{{@root.callLabel}}">
+			<i class="fa-solid {{ifThen vignette.system.limitedPermissionHidden 'fa-eye-slash' 'fa-eye'}}" aria-hidden="true"></i>
+		</button>
+		{{/if}}
+	</legend>
 	{{#if vignette.system.isConsequenceOnly}}
 	{{#if vignette.system.consequences.length}}
 	<ul class="consequences-list">
@@ -14,11 +22,13 @@
 	<div class="threat-text">{{{vignette.system.threat}}}</div>
 	{{/if}}
 	{{#if vignette.system.consequences.length}}
+	{{#if isGM}}
 	<ul class="consequences-list">
 		{{#each vignette.system.consequences as |consequence|}}
 		<li class="consequence-item">{{{consequence}}}</li>
 		{{/each}}
 	</ul>
+	{{/if}}
 	{{/if}}
 	{{/if}}
 	{{/if}}
