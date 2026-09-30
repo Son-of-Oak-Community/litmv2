@@ -1,6 +1,7 @@
 import {
 	onCanvasPan,
 	onCanvasTearDown,
+	onDisplayTooltip,
 	onHoverToken,
 	onRefreshToken,
 	scheduleLabelRefresh,
@@ -50,6 +51,7 @@ export function registerTokenHooks() {
 	Hooks.on("refreshToken", onRefreshToken);
 	for (const hook of LABEL_REFRESH_HOOKS) Hooks.on(hook, scheduleLabelRefresh);
 	Hooks.on("canvasTearDown", onCanvasTearDown);
+	Hooks.on("highlightObjects", _onHighlightObjects);
 }
 
 /**
@@ -76,5 +78,19 @@ function _refreshNameplatesOnConcealChange(actor, changes) {
 	if (!("concealName" in sys) && !("alias" in sys)) return;
 	for (const token of actor.getActiveTokens()) {
 		token.renderFlags.set({ refreshNameplate: true });
+	}
+}
+
+/**
+ * Show all token tooltips when foundry's highlightObjects function activates.
+ * @param {boolean} isHighlighting
+ */
+function _onHighlightObjects(isHighlighting) {
+	// The scene on screen, not the active one: a GM may be viewing another.
+	// Hidden tokens are skipped, as for persistent labels, or holding the key
+	// would reveal their tags to players.
+	for (const token of canvas.tokens?.placeables ?? []) {
+		if (isHighlighting && !token.visible) continue;
+		onDisplayTooltip(token, isHighlighting);
 	}
 }

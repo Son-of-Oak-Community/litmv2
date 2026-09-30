@@ -14,6 +14,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	buildTooltipHTML,
+	onDisplayTooltip,
 	onHoverToken,
 	tokenTooltipHTML,
 } from "../modules/hud/token-tooltip.js";
@@ -183,5 +184,16 @@ describe("hover is suppressed while persistent labels are on", () => {
 		settings({ persistent: true });
 		onHoverToken(hoverToken(), false);
 		expect(removed).toBe(1);
+	});
+
+	it("leaves hover alone while the highlight key is held, and resumes after", () => {
+		settings({ persistent: false });
+		onDisplayTooltip(hoverToken(), true);
+		expect(hud.appended).toHaveLength(1);
+		onHoverToken(hoverToken(), true);
+		expect(hud.appended).toHaveLength(1);
+		onDisplayTooltip(hoverToken(), false);
+		onHoverToken(hoverToken(), true);
+		expect(hud.appended).toHaveLength(2);
 	});
 });
