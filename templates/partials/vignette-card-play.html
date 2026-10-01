@@ -22,7 +22,7 @@
 	<div class="threat-text">{{{vignette.system.threat}}}</div>
 	{{/if}}
 	{{#if vignette.system.consequences.length}}
-	{{#if isGM}}
+	{{#if @root.isGM}}
 	<ul class="consequences-list">
 		{{#each vignette.system.consequences as |consequence|}}
 		<li class="consequence-item">{{{consequence}}}</li>
