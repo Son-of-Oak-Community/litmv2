@@ -3,8 +3,14 @@
 		<span class="litm-banner vignette-card-label">{{vignette.name}}</span>
 		{{#if (and isGM controlsVisibility)}}
 		<button type="button" data-action="toggleVignetteHidden"
-			data-tooltip="{{localize 'LITM.Ui.toggle_vignette_hidden'}}" aria-label="{{@root.callLabel}}">
+			data-tooltip="{{localize 'LITM.Ui.toggle_vignette_hidden'}}" aria-label="{{localize 'LITM.Ui.toggle_vignette_hidden'}}">
 			<i class="fa-solid {{ifThen vignette.system.limitedPermissionHidden 'fa-eye-slash' 'fa-eye'}}" aria-hidden="true"></i>
+		</button>
+		{{/if}}
+		{{#if isGM}}
+		<button type="button" data-action="sendVignetteToChat" {{#unless vignette.system.threat}}data-tooltip="{{localize 'LITM.Ui.vignette_missing_threat'}}" disabled{{else}}data-tooltip="{{localize 'LITM.Ui.vignette_to_chat'}}"{{/unless}}
+			 aria-label="{{localize 'LITM.Ui.vignette_to_chat'}}">
+			<i class="fa-solid fa-message" aria-hidden="true"></i>
 		</button>
 		{{/if}}
 	</legend>

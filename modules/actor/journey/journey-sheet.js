@@ -15,6 +15,7 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 			editVignette: LitmActorSheet._onEditItem,
 			removeVignette: LitmActorSheet._onRemoveItem,
 			toggleVignetteHidden: LitmActorSheet._onToggleVignetteHidden,
+			sendVignetteToChat: LitmActorSheet._onSendVignetteToChat,
 			clearGeneralConsequence: JourneySheet.#onClearGeneralConsequence,
 		},
 		form: {

@@ -712,6 +712,24 @@ export class LitmActorSheet extends LitmSheetMixin(
 		
 		item.update({ 'system.limitedPermissionHidden': !item.system.limitedPermissionHidden });
 	}
+	
+	static async _onSendVignetteToChat(_event, target) {
+		const actionTarget = target.closest?.("[data-item-id]") ?? target;
+		const itemId = actionTarget?.dataset?.itemId;
+		const vignette = this.document.items.get(itemId);
+		if (!vignette) return;
+
+		const content = await foundry.applications.handlebars.renderTemplate(
+			"systems/litmv2/templates/chat/vignette-display.html",
+			vignette,
+		);
+		const speaker = foundry.documents.ChatMessage.getSpeaker({ actor: this.document });
+
+		await foundry.documents.ChatMessage.create({
+			content,
+			speaker,
+		});
+	}
 
 	/**
 	 * Create a new embedded vignette item and open its sheet.
