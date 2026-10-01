@@ -87,7 +87,7 @@
 	{{#if displayVignettes.length}}
 	<div class="grid-2col">
 		{{#each displayVignettes as |vignette|}}
-		{{> systems/litmv2/templates/partials/vignette-card-play.html vignette=vignette}}
+		{{> systems/litmv2/templates/partials/vignette-card-play.html vignette=vignette hasObserverPermission=@root.hasObserverPermission }}
 		{{/each}}
 	</div>
 	{{/if}}

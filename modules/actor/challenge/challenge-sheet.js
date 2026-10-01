@@ -81,6 +81,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 
 		const sys = this.system;
 		const isPlay = !this._isEditMode;
+		const hasObserverPermission = this.document.testUserPermission(game.user, 'OBSERVER');
 
 		const enriched = await this._enrichFields("description", "specialFeatures");
 		const enrichedTags = await enrichHTML(
@@ -149,6 +150,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 						}
 					: null,
 			enriched,
+			hasObserverPermission,
 			tagsString: sys.tags || "",
 			vignettes,
 			vignettesByType,
