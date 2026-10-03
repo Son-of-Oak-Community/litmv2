@@ -1,3 +1,5 @@
+import { ITEM_DEFAULT_ICONS } from "../../system/config.js";
+
 export class VignetteData extends foundry.abstract.TypeDataModel {
 	static defineSchema() {
 		const fields = foundry.data.fields;
@@ -16,5 +18,9 @@ export class VignetteData extends foundry.abstract.TypeDataModel {
 				initial: false,
 			}),
 		};
+	}
+
+	get hasCustomImage() {
+		return this.parent.img !== ITEM_DEFAULT_ICONS.vignette;
 	}
 }

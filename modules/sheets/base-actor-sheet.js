@@ -405,6 +405,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 							enrichHTML(c, this.document),
 						),
 					);
+					itemData.system.hasCustomImage = i.system.hasCustomImage;
 					return itemData;
 				}),
 		);

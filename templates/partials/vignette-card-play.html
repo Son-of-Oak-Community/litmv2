@@ -19,7 +19,12 @@
 	{{else}}
 	{{#if (or vignette.system.threat vignette.system.consequences.length)}}
 	{{#if vignette.system.threat}}
-	<div class="threat-text">{{{vignette.system.threat}}}</div>
+	<div class="vignette-card-threat">
+		{{#if vignette.system.hasCustomImage}}
+		<img src="{{vignette.img}}" class="threat-image" />
+		{{/if}}
+		<div class="threat-text">{{{vignette.system.threat}}}</div>
+	</div>
 	{{/if}}
 	{{#if vignette.system.consequences.length}}
 	{{#if hasObserverPermission}}
