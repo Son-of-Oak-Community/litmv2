@@ -1,13 +1,13 @@
 <fieldset class="vignette-card item" data-item-id="{{vignette._id}}">
 	<legend class="control flexrow gap-xs">
 		<span class="litm-banner vignette-card-label">{{vignette.name}}</span>
-		{{#if (and isGM controlsVisibility)}}
+		{{#if (and hasObserverPermission controlsVisibility)}}
 		<button type="button" data-action="toggleVignetteHidden"
 			data-tooltip="{{localize 'LITM.Ui.toggle_vignette_hidden'}}" aria-label="{{localize 'LITM.Ui.toggle_vignette_hidden'}}">
 			<i class="fa-solid {{ifThen vignette.system.limitedPermissionHidden 'fa-eye-slash' 'fa-eye'}}" aria-hidden="true"></i>
 		</button>
 		{{/if}}
-		{{#if isGM}}
+		{{#if hasObserverPermission}}
 		<button type="button" data-action="sendVignetteToChat" {{#unless vignette.system.threat}}data-tooltip="{{localize 'LITM.Ui.vignette_missing_threat'}}" disabled{{else}}data-tooltip="{{localize 'LITM.Ui.vignette_to_chat'}}"{{/unless}}
 			 aria-label="{{localize 'LITM.Ui.vignette_to_chat'}}">
 			<i class="fa-solid fa-message" aria-hidden="true"></i>
@@ -28,7 +28,7 @@
 	<div class="threat-text">{{{vignette.system.threat}}}</div>
 	{{/if}}
 	{{#if vignette.system.consequences.length}}
-	{{#if isGM}}
+	{{#if hasObserverPermission}}
 	<ul class="consequences-list">
 		{{#each vignette.system.consequences as |consequence|}}
 		<li class="consequence-item">{{{consequence}}}</li>
