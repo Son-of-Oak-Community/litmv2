@@ -57,6 +57,7 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 
 		const enriched = await this._enrichFields("description", "tags");
 		const limitedView = this.document.testUserPermission(game.user, 'LIMITED', { exact: true });
+		const hasObserverPermission = this.document.testUserPermission(game.user, 'OBSERVER');
 
 		// Prepare vignette items
 		const generalConsequenceId = this.system.generalConsequences;
@@ -77,7 +78,7 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 			],
 			enriched,
 			limitedView,
-			isGM: game.user.isGM,
+			hasObserverPermission,
 			tagsString: this.system.tags || "",
 			generalConsequenceId,
 			generalConsequence,
