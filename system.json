@@ -97,6 +97,16 @@
 			"lang": "no",
 			"name": "Norsk",
 			"path": "lang/no.json"
+		},
+		{
+			"lang": "ru",
+			"name": "Русский",
+			"path": "lang/ru.json"
+		},
+		{
+			"lang": "uk",
+			"name": "Українська",
+			"path": "lang/uk.json"
 		}
 	],
 	"socket": true,
