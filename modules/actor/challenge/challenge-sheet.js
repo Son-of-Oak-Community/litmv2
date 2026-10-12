@@ -24,6 +24,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 			addVignette: LitmActorSheet._onAddVignette,
 			removeVignette: LitmActorSheet._onRemoveItem,
 			editVignette: LitmActorSheet._onEditItem,
+			sendVignetteToChat: LitmActorSheet._onSendVignetteToChat,
 			adjustRating: ChallengeSheet.#onAdjustRating,
 			addMight: ChallengeSheet.#onAddMight,
 			removeMight: ChallengeSheet.#onRemoveMight,

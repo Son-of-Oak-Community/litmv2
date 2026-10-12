@@ -3705,7 +3705,8 @@ section.standard-form.litm-actions-app {
 			.litm.dice-roll,
 			.litm-track-complete,
 			.litm-spend-chat,
-			.litm-camping-recap
+			.litm-camping-recap,
+			.litm-vignette-display
 		)
 ) {
 	padding: 0;
@@ -3717,7 +3718,8 @@ section.standard-form.litm-actions-app {
 				.litm.dice-roll,
 				.litm-track-complete,
 				.litm-spend-chat,
-				.litm-camping-recap
+				.litm-camping-recap,
+				.litm-vignette-display
 			)
 	)
 	.message-header {
@@ -3941,6 +3943,39 @@ section.standard-form.litm-actions-app {
 
 .litm.dice-roll .dice-outcome-header.snc .outcome-label {
 	color: var(--color-level-warning);
+}
+
+/* --- Vignette Display Chat Cards ---*/
+
+.litm.litm-vignette-display {
+	.vignette-display-header {
+		display: flex;
+		gap: var(--spacer-8);
+		padding: var(--spacer-8) 8px;
+		border-radius: 0;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: nowrap;
+		border-bottom: 1px solid var(--color-litm-chat-border);
+		
+		.vignette-label {
+			font-weight: 700;
+    		font-size: var(--font-size-20);
+		}
+
+		.vignette-image {
+			width: 32px;
+			height: 32px;
+			object-fit: contain;
+			flex: none;
+		}
+	}
+
+	.vignette-display-content {
+		margin: var(--spacer-4) 0;
+		padding: 0px 16px;
+		color: var(--color-light-3);
+	}
 }
 
 /* --- Track Completion Chat Cards --- */
@@ -6281,7 +6316,8 @@ body.theme-dark .application:not(.theme-light),
 					.litm.dice-roll,
 					.litm-track-complete,
 					.litm-spend-chat,
-					.litm-camping-recap
+					.litm-camping-recap,
+					.litm-vignette-display
 				)
 		) {
 		--color-scheme: dark;
@@ -6302,7 +6338,8 @@ body.theme-dark .application:not(.theme-light),
 					.litm.dice-roll,
 					.litm-track-complete,
 					.litm-spend-chat,
-					.litm-camping-recap
+					.litm-camping-recap,
+					.litm-vignette-display
 				)
 		)
 		.message-header {
