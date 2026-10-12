@@ -2951,8 +2951,19 @@ section.standard-form.litm-actions-app {
 	white-space: nowrap;
 }
 
-.litm .threat-text {
+.litm .vignette-card-threat {
+	display: flex;
+	gap: 8px;
 	margin-bottom: var(--spacer-8);
+}
+
+.litm .threat-image {
+	width: 60px;
+	height: 60px;
+	border-radius: var(--radius-circle);
+}
+
+.litm .threat-text {
 	color: var(--color-text-primary);
 	font-size: var(--font-size-18);
 	font-family: var(--font-grenze);
