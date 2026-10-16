@@ -121,7 +121,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 			themeContext.system.specialImprovements.map(async (imp) => ({
 				...imp,
 				enrichedDescription: await enrichHTML(
-					imp.description || "",
+					foundry.utils.escapeHTML(imp.description || ""),
 					this.document,
 				),
 			})),
@@ -157,7 +157,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 			locked.map(async (imp) => ({
 				...imp,
 				enrichedDescription: await enrichHTML(
-					imp.description || "",
+					foundry.utils.escapeHTML(imp.description || ""),
 					this.document,
 				),
 			})),
