@@ -1,4 +1,4 @@
-import { maxStatusTier } from "../active-effects/status-tag-data.js";
+import { statusTagEffect } from "../active-effects/effect-factories.js";
 import { descriptorToEffectData } from "../item/action/tag-string.js";
 import { error, info } from "../logger.js";
 import { LitmSettings } from "./settings.js";
@@ -256,15 +256,9 @@ export class ContentSources {
 	 */
 	static async #populateStatusPack(pack) {
 		const statusData = DEFAULT_STATUSES.map((name) => ({
-			name,
-			type: "status_tag",
+			...statusTagEffect({ name }),
 			img: STATUS_ICONS[name] ?? "icons/svg/circle.svg",
 			disabled: false,
-			system: {
-				isHidden: false,
-				tiers: Array(maxStatusTier()).fill(false),
-				limitId: null,
-			},
 		}));
 		await foundry.documents.ActiveEffect.createDocuments(statusData, {
 			pack: pack.collection,
