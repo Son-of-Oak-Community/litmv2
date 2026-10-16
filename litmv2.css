@@ -1519,19 +1519,19 @@ section.standard-form.litm-actions-app {
 	font-family: var(--font-serif);
 	line-height: var(--line-height-relaxed);
 }
+/* Hang the arrow with absolute positioning, not text-indent: text-indent
+   inherits into inline-flex tag chips and drags their text over the prose. */
 .litm-render--action__consequences > li {
+	position: relative;
 	padding-left: 1.4em;
-	text-indent: -1.4em;
 	margin-bottom: var(--spacer-4);
 }
 .litm-render--action__consequences > li::before {
 	content: "»";
-	display: inline-block;
-	width: 1em;
-	margin-right: 0.4em;
+	position: absolute;
+	left: 0;
 	color: var(--color-litm-tag-text);
 	font-weight: 700;
-	text-indent: 0;
 }
 
 /* Read popout — minimal window that hosts a renderer's card. The card
