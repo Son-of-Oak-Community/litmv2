@@ -127,6 +127,11 @@ class StubDialogV2 extends StubAppV2 {
 	static prompt = () => Promise.resolve(null);
 	static input = () => Promise.resolve(null);
 }
+class StubDocumentSheetV2 extends StubAppV2 {
+	async _prepareContext() {
+		return {};
+	}
+}
 const HandlebarsApplicationMixin = (Base) =>
 	class extends Base {
 		static PARTS = {};
@@ -183,6 +188,7 @@ globalThis.foundry = {
 		api: {
 			ApplicationV2: StubAppV2,
 			DialogV2: StubDialogV2,
+			DocumentSheetV2: StubDocumentSheetV2,
 			HandlebarsApplicationMixin,
 		},
 		sheets: {

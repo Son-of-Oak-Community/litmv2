@@ -350,16 +350,22 @@ function _syncStoryThemeActorToItem() {
 function _migrateLegacyActorOnCreate() {
 	Hooks.on("createActor", async (actor, _options, userId) => {
 		if (userId !== game.userId) return;
-		for (const item of actor.items) {
-			if (
-				item.flags?.litmv2?.legacyTags ||
-				item.flags?.litmv2?.legacyContents
-			) {
-				await LitmItem.createLegacyEffects(item);
+		// Foundry doesn't await hook callbacks; log a failure instead of
+		// leaving it as an unhandled rejection.
+		try {
+			for (const item of actor.items) {
+				if (
+					item.flags?.litmv2?.legacyTags ||
+					item.flags?.litmv2?.legacyContents
+				) {
+					await LitmItem.createLegacyEffects(item);
+				}
+				await LitmItem.ensureTitleTag(item);
 			}
-			await LitmItem.ensureTitleTag(item);
+			await createLegacyRelationshipEffects(actor);
+		} catch (err) {
+			error(`Setting up actor ${actor.name} failed`, err);
 		}
-		await createLegacyRelationshipEffects(actor);
 	});
 }
 

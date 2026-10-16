@@ -1,6 +1,16 @@
 import { THEME_TAG_TYPES } from "../system/config.js";
 
 /**
+ * Whether any of these effects (source data or an embedded collection) is a
+ * theme tag. The legacy stash and its creator both bail on this: an unrelated
+ * effect must not stop the conversion.
+ * @param {{some: Function}} effects
+ * @returns {boolean}
+ */
+const hasThemeTagEffect = (effects) =>
+	effects.some((e) => THEME_TAG_TYPES.has(e.type));
+
+/**
  * Build ActiveEffect creation data from legacy theme tag arrays.
  * Shared by document-level createLegacyEffects and the world migration.
  * @param {object} legacy - { powerTags, weaknessTags, isFellowship }
@@ -113,8 +123,7 @@ export class LitmItem extends foundry.documents.Item {
 
 		if (!powerTags.length && !weaknessTags.length) return;
 
-		const effects = source.effects ?? [];
-		if (effects.some((e) => THEME_TAG_TYPES.has(e.type))) return;
+		if (hasThemeTagEffect(source.effects ?? [])) return;
 
 		source.flags ??= {};
 		source.flags.litmv2 ??= {};
@@ -152,7 +161,11 @@ export class LitmItem extends foundry.documents.Item {
 		if (existing) return existing;
 		const promise = LitmItem.#doEnsureTitleTag(item);
 		LitmItem.#titleTagInFlight.set(item, promise);
-		promise.finally(() => LitmItem.#titleTagInFlight.delete(item));
+		// finally() derives a new promise that rejects with the same reason; the
+		// caller handles `promise`, so swallow the derived one.
+		promise
+			.finally(() => LitmItem.#titleTagInFlight.delete(item))
+			.catch(() => {});
 		return promise;
 	}
 
@@ -192,7 +205,7 @@ export class LitmItem extends foundry.documents.Item {
 
 	static async #createLegacyThemeEffects(item) {
 		const legacy = item.getFlag("litmv2", "legacyTags");
-		if (!legacy || item.effects.size) return;
+		if (!legacy || hasThemeTagEffect(item.effects)) return;
 
 		const effectData = buildThemeTagEffects(legacy, {
 			name: item.name,
