@@ -16,14 +16,15 @@ export function registerFellowshipHooks() {
 
 /**
  * On ready, ensure exactly one fellowship actor exists and its ID is stored.
- * Then auto-link all heroes to it. GM-only.
+ * Then auto-link all heroes to it. Active GM only: with two GMs connected,
+ * `isGM` is true on both and each would create a Fellowship.
  *
  * NOTE: Foundry does NOT await async hook callbacks, so the hero-linking
  * logic lives here (after the awaits) rather than in a separate ready hook.
  */
 function _ensureFellowshipSingleton() {
 	Hooks.once("ready", async () => {
-		if (!game.user.isGM) return;
+		if (game.user !== game.users.activeGM) return;
 
 		const storedId = LitmSettings.fellowshipId;
 		const storedActor = storedId ? game.actors.get(storedId) : null;
@@ -189,10 +190,11 @@ function _rerenderHeroSheetsOnFellowshipChange() {
 
 /**
  * Auto-link newly created heroes to the singleton fellowship.
+ * createActor fires on every client, so only the active GM writes.
  */
 function _autoLinkNewHeroes() {
 	Hooks.on("createActor", async (actor) => {
-		if (!game.user.isGM) return;
+		if (game.user !== game.users.activeGM) return;
 
 		const fellowshipId = LitmSettings.fellowshipId;
 		if (!shouldAutoLinkHero(actor, fellowshipId)) return;
