@@ -40,3 +40,52 @@ describe("ChallengeData.limits (regression)", () => {
 		expect(model.limits).toEqual([]);
 	});
 });
+
+// Legacy limits stored without an id used to get a fresh randomID() on every
+// load until something persisted the array, so a limitId link made in between
+// pointed at an id the next load no longer produced.
+describe("ChallengeData.migrateData — id-less legacy limits", () => {
+	const legacy = () => ({
+		limits: [
+			{ label: "Wounded", outcome: "Overcome", max: 3, value: 0 },
+			{ label: "Wounded", outcome: "Fled", max: 2, value: 1 },
+			{ label: "Shaken", outcome: "Overcome", max: 4, value: 0 },
+		],
+	});
+
+	it("derives the same ids from the same source on every load", () => {
+		const first = ChallengeData.migrateData(legacy()).limits.map((l) => l.id);
+		const second = ChallengeData.migrateData(legacy()).limits.map((l) => l.id);
+
+		expect(second).toEqual(first);
+	});
+
+	it("gives limits with the same label different ids by position", () => {
+		const ids = ChallengeData.migrateData(legacy()).limits.map((l) => l.id);
+
+		expect(new Set(ids).size).toBe(3);
+	});
+
+	it("keeps the Foundry id shape: 16 alphanumeric characters", () => {
+		for (const { id } of ChallengeData.migrateData(legacy()).limits) {
+			expect(id).toMatch(/^[a-zA-Z0-9]{16}$/);
+		}
+	});
+
+	// Foundry runs migrateData on update diffs too (partial cleaning). A limit
+	// added there without an id must stay unique, not reuse the id a deleted
+	// limit at the same position and label had.
+	it("keeps random ids for limits arriving in an update diff", () => {
+		const first = ChallengeData.migrateData(legacy(), { partial: true });
+		const second = ChallengeData.migrateData(legacy(), { partial: true });
+
+		expect(second.limits[0].id).not.toBe(first.limits[0].id);
+	});
+
+	it("leaves an existing id untouched", () => {
+		const source = legacy();
+		source.limits[0].id = "persisted-id";
+
+		expect(ChallengeData.migrateData(source).limits[0].id).toBe("persisted-id");
+	});
+});
