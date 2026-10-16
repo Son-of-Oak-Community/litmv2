@@ -126,6 +126,68 @@ describe("applyDroppedTheme", () => {
 		expect(theme.deleteEmbeddedDocuments).not.toHaveBeenCalled();
 		expect(Hooks.callAll).not.toHaveBeenCalled();
 	});
+
+	it("fires litm.themeAdvanced with the replace payload shape the form path uses", async () => {
+		const actor = fakeActor({ name: "Gerrin", system: { promise: 0 } });
+		const theme = fakeTheme({ name: "Target" });
+		const dropped = fakeTheme({ name: "Source", power: 4, weakness: 2 });
+
+		await applyDroppedTheme({ actor, theme, dropped });
+
+		expect(Hooks.callAll).toHaveBeenCalledTimes(1);
+		const [hook, hookActor, hookTheme, payload] = Hooks.callAll.mock.calls[0];
+		expect(hook).toBe("litm.themeAdvanced");
+		expect(hookActor).toBe(actor);
+		expect(hookTheme).toBe(theme);
+		// Same keys the form path spreads in from buildThemeUpdate...
+		expect(payload).toMatchObject({
+			name: "Source",
+			"system.themebook": "Source book",
+			"system.level": "origin",
+			"system.nascentImprovements": 2,
+		});
+		// ...plus the evolution summary it always carries.
+		expect(payload.litmEvolution).toEqual({
+			mode: "replace",
+			promiseGained: 3,
+			tradedCount: 2,
+			dropped: true,
+		});
+	});
+
+	it("posts the replaced notification", async () => {
+		const actor = fakeActor({ name: "Gerrin", system: { promise: 0 } });
+		const theme = fakeTheme({ name: "Target" });
+		const dropped = fakeTheme({ name: "Source" });
+		const format = vi.spyOn(game.i18n, "format");
+
+		await applyDroppedTheme({ actor, theme, dropped });
+
+		expect(format).toHaveBeenCalledWith(
+			"LITM.Ui.evolution_replaced_notification",
+			{ theme: "Source", actor: "Gerrin" },
+		);
+		expect(ui.notifications.info).toHaveBeenCalledTimes(1);
+		format.mockRestore();
+	});
+
+	it("gains no Promise for a Fellowship theme, but still fires the hook", async () => {
+		const actor = fakeActor({ system: { promise: 0 } });
+		const theme = fakeTheme({ name: "Fellowship A", isFellowship: true });
+		const dropped = fakeTheme({
+			name: "Fellowship B",
+			isFellowship: true,
+			power: 4,
+			weakness: 2,
+		});
+
+		await applyDroppedTheme({ actor, theme, dropped });
+
+		expect(actor.update).not.toHaveBeenCalled();
+		const payload = Hooks.callAll.mock.calls[0][3];
+		expect(payload.litmEvolution.promiseGained).toBe(0);
+		expect(payload.litmEvolution.mode).toBe("replace");
+	});
 });
 
 describe("ThemeEvolutionWizard drop handler", () => {
@@ -198,6 +260,15 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		expect(ui.notifications.warn).not.toHaveBeenCalled();
 		const [, created] = theme.createEmbeddedDocuments.mock.calls[0];
 		expect(created).toHaveLength(6);
+		expect(Hooks.callAll).toHaveBeenCalledWith(
+			"litm.themeAdvanced",
+			actor,
+			theme,
+			expect.objectContaining({
+				litmEvolution: expect.objectContaining({ mode: "replace" }),
+			}),
+		);
+		expect(ui.notifications.info).toHaveBeenCalledTimes(1);
 		expect(wizard.close).toHaveBeenCalled();
 	});
 });

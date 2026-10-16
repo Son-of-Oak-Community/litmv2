@@ -715,10 +715,9 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 	}
 	const sourceCaps = getTradeCaps(getRevisableParts(dropped));
 
-	await wipeNonTitleTagEffects(theme);
-
-	await theme.update({
-		name: dropped.name,
+	const newName = dropped.name;
+	const update = {
+		name: newName,
 		"system.themebook": dropped.system?.themebook ?? "",
 		"system.level": dropped.system?.level || getDefaultThemeLevel(),
 		"system.description": dropped.system?.description ?? "",
@@ -730,16 +729,38 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 		"system.specialImprovements": foundry.utils.deepClone(
 			dropped.system?.specialImprovements ?? [],
 		),
-	});
+	};
+	// Fellowship themes never mark Promise (Core Book p.193).
+	const promiseGained = isFellowship ? 0 : 1 + totalTradeCap(sourceCaps);
+
+	await wipeNonTitleTagEffects(theme);
+	await theme.update(update);
 
 	if (toCreate.length) {
 		await theme.createEmbeddedDocuments("ActiveEffect", toCreate);
 	}
 
 	if (!isFellowship) {
-		const promiseGained = 1 + totalTradeCap(sourceCaps);
 		await applyPromiseToActor(actor, promiseGained);
 	}
+
+	// Same hook and notification as a Replace from the form
+	// (applyTransformation); `dropped` marks the drop-to-replace route.
+	Hooks.callAll("litm.themeAdvanced", actor, theme, {
+		...update,
+		litmEvolution: {
+			mode: "replace",
+			promiseGained,
+			tradedCount: totalTradeCap(sourceCaps),
+			dropped: true,
+		},
+	});
+	ui.notifications?.info(
+		game.i18n.format("LITM.Ui.evolution_replaced_notification", {
+			theme: newName,
+			actor: actor.name,
+		}),
+	);
 }
 
 export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApplicationMixin(
