@@ -40,6 +40,9 @@ export class ChallengeData extends LimitsMixin(
 					outcome: new fields.StringField({ initial: "" }),
 					max: new fields.NumberField({ initial: 3, min: 0, integer: true }),
 					value: new fields.NumberField({ initial: 0, min: 0, integer: true }),
+					// What Advance and Set Back added on top of the linked statuses; the
+					// recalc keeps it. Negative for a Set Back, so no `min`.
+					advanced: new fields.NumberField({ initial: 0, integer: true }),
 				}),
 			),
 			tags: new fields.StringField({

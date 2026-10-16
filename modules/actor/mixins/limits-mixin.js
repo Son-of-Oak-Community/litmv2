@@ -3,6 +3,7 @@ import {
 	announceLimitReached,
 	crossedLimitMax,
 	getActorLimits,
+	resolveLimitValue,
 	setActorLimits,
 } from "./actor-limits.js";
 
@@ -30,8 +31,13 @@ async function recalculate(model) {
 	const newLimits = oldLimits.map((limit) => {
 		const grouped = effects.filter((e) => e.system.limitId === limit.id);
 		const tierArrays = grouped.map((e) => e.system.tiers);
-		const computedValue = StatusTagData.stackedTier(tierArrays);
-		return { ...limit, value: computedValue };
+		const statusValue = StatusTagData.stackedTier(tierArrays);
+		const { value, advanced } = resolveLimitValue(limit, statusValue);
+		// `advanced` is written once something has used it, so a limit that
+		// predates it is saved back exactly as it was.
+		return advanced === (Number(limit.advanced) || 0)
+			? { ...limit, value }
+			: { ...limit, value, advanced };
 	});
 
 	// Detect limits that crossed their threshold during this call
@@ -43,7 +49,13 @@ async function recalculate(model) {
 		}
 	}
 
-	if (newLimits.some((limit, i) => limit.value !== oldLimits[i].value)) {
+	if (
+		newLimits.some(
+			(limit, i) =>
+				limit.value !== oldLimits[i].value ||
+				limit.advanced !== oldLimits[i].advanced,
+		)
+	) {
 		await model.setLimits(newLimits);
 	}
 	for (const limit of reached) announceLimitReached(actor, limit);
@@ -96,10 +108,11 @@ export function LimitsMixin(Base) {
 		}
 
 		/**
-		 * Recompute each limit's `value` from the actor's current status_tag tiers,
-		 * persist the results, and announce each limit that just crossed its
-		 * threshold through `litm.limitReached` (`{ actor, limit }`, `limit.max`
-		 * the effective max). This is the one place the hook fires from.
+		 * Recompute each limit's `value` from the actor's current status_tag tiers
+		 * plus the offset Advance and Set Back left on it (`advanced`, see
+		 * `resolveLimitValue`), persist the results, and announce each limit that
+		 * just crossed its threshold through `litm.limitReached` (`{ actor, limit }`,
+		 * `limit.max` the effective max). This is the one place the hook fires from.
 		 *
 		 * Only runs when the actor has limits and is the owner, and calls queue
 		 * per actor. Whichever client runs it announces, so callers run it where
