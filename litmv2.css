@@ -501,6 +501,9 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	font-family: var(--font-serif);
 	color: var(--color-text-primary);
 	gap: 0.2em;
+	/* The chip owns its height. Inherited from relaxed prose (Action card
+	   sections, journals), the skewed bar below grew a band of extra padding. */
+	line-height: 1.25;
 
 	&::before {
 		content: attr(data-text);
