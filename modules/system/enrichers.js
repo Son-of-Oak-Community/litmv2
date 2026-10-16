@@ -29,7 +29,7 @@ function htmlToNode(string) {
 
 function _actionAnchor(uuid, display, esc) {
 	return htmlToNode(
-		`<a class="content-link litm--action-link" draggable="true" data-uuid="${uuid}" data-type="Item" data-tooltip="LITM.Actions.open_action"><i class="fa-solid fa-scroll"></i> ${esc(display)}</a>`,
+		`<a class="content-link litm--action-link" draggable="true" data-link data-uuid="${uuid}" data-type="Item" data-tooltip="LITM.Actions.open_action"><i class="fa-solid fa-scroll"></i> ${esc(display)}</a>`,
 	);
 }
 
