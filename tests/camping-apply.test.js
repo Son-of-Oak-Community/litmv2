@@ -1,5 +1,6 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	applyOperations,
 	buildOperations,
 	parseCampsiteEntries,
 } from "../modules/apps/camping/camping-apply.js";
@@ -17,6 +18,7 @@ import {
 	setRestRecoverTag,
 	setType,
 } from "../modules/apps/camping/camping-state.js";
+import { Sockets } from "../modules/system/sockets.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
 // Provide the tag-string regex the apply module reaches for at parse time.
@@ -627,10 +629,11 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 			type: "fellowship_tag",
 			system: { isScratched: true },
 		});
+		// Fellowship tags live on the Fellowship actor's theme, never on a hero.
 		const fwTheme = fakeItem({ type: "theme", effects: [fsTag] });
 		fwTheme.system = { isFellowship: true };
 		const fellowshipActor = fakeActor({ type: "fellowship", items: [fwTheme] });
-		const hero = fakeActor({ items: [fwTheme] });
+		const hero = fakeActor();
 		hero.system = { fellowshipActor };
 
 		const state = defaultCampingState();
@@ -645,6 +648,66 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 		expect(stageLines(recap, "qualityTime")).toContainEqual(
 			expect.objectContaining({ kind: "fellowship-tag-recovered" }),
 		);
+	});
+
+	it("recoverFellowship: finds the tag through the hero's own Fellowship link", () => {
+		const fsTag = fakeEffect({
+			name: "we never give up",
+			type: "fellowship_tag",
+			system: { isScratched: true },
+		});
+		const fwTheme = fakeItem({ type: "theme", effects: [fsTag] });
+		const fellowshipActor = fakeActor({ type: "fellowship", items: [fwTheme] });
+		const hero = fakeActor();
+		hero.system = { fellowshipActor };
+
+		const state = defaultCampingState();
+		setQualityTime(state, hero.id, "action", "recoverFellowship");
+		setQualityTime(state, hero.id, "fellowshipTagId", fsTag.id);
+
+		// No `fellowshipActor` on the world shim: the hero's link is enough.
+		const { operations } = buildOperations(state, world({ heroes: [hero] }));
+		expect(operations.unscratches).toContainEqual({ effect: fsTag });
+	});
+
+	it("recoverFellowship: falls back to the world's Fellowship when the hero has no link", () => {
+		const fsTag = fakeEffect({
+			name: "we never give up",
+			type: "fellowship_tag",
+			system: { isScratched: true },
+		});
+		const fwTheme = fakeItem({ type: "theme", effects: [fsTag] });
+		const fellowshipActor = fakeActor({ type: "fellowship", items: [fwTheme] });
+		const hero = fakeActor();
+		hero.system = {};
+
+		const state = defaultCampingState();
+		setQualityTime(state, hero.id, "action", "recoverFellowship");
+		setQualityTime(state, hero.id, "fellowshipTagId", fsTag.id);
+
+		const { operations } = buildOperations(
+			state,
+			world({ heroes: [hero], fellowshipActor }),
+		);
+		expect(operations.unscratches).toContainEqual({ effect: fsTag });
+	});
+
+	it("recoverFellowship: ignores a fellowship_tag that is not on the Fellowship", () => {
+		const stray = fakeEffect({
+			name: "stray",
+			type: "fellowship_tag",
+			system: { isScratched: true },
+		});
+		const theme = fakeItem({ type: "theme", effects: [stray] });
+		const hero = fakeActor({ items: [theme] });
+		hero.system = { fellowshipActor: fakeActor({ type: "fellowship" }) };
+
+		const state = defaultCampingState();
+		setQualityTime(state, hero.id, "action", "recoverFellowship");
+		setQualityTime(state, hero.id, "fellowshipTagId", stray.id);
+
+		const { operations } = buildOperations(state, world({ heroes: [hero] }));
+		expect(operations.unscratches).toEqual([]);
 	});
 
 	it("recoverFellowship: silently drops a stale fellowshipTagId that doesn't match anything", () => {
@@ -664,7 +727,9 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 		});
 		const fwTheme = fakeItem({ type: "theme", effects: [fsTag] });
 		fwTheme.system = { isFellowship: true };
-		const hero = fakeActor({ items: [fwTheme] });
+		const fellowshipActor = fakeActor({ type: "fellowship", items: [fwTheme] });
+		const hero = fakeActor();
+		hero.system = { fellowshipActor };
 
 		const state = defaultCampingState();
 		setQualityTime(state, hero.id, "action", "recoverFellowship");
@@ -858,6 +923,75 @@ describe("buildOperations — fellowship_tag is NOT recoverable via Rest", () =>
 		setRestRecoverTag(state, hero.id, 0, tag.id, true);
 		const { operations } = buildOperations(state, world({ heroes: [hero] }));
 		expect(operations.unscratches).toContainEqual({ effect: tag });
+	});
+});
+
+describe("applyOperations — recovering a fellowship tag", () => {
+	// Pack Up applies on the GM's client (camping-scene's #onPackUp is
+	// GM-only), who may update any embedded document; the write still goes
+	// through the effect's own parent so it lands on the Fellowship's theme.
+	function fellowshipWithScratchedTag() {
+		const fsTag = fakeEffect({
+			name: "we never give up",
+			type: "fellowship_tag",
+			system: { isScratched: true },
+		});
+		const fwTheme = fakeItem({ type: "theme", effects: [fsTag] });
+		const fellowshipActor = fakeActor({ type: "fellowship", items: [fwTheme] });
+		return { fsTag, fwTheme, fellowshipActor };
+	}
+
+	function pickFellowshipTag(state, hero, fsTag) {
+		setQualityTime(state, hero.id, "action", "recoverFellowship");
+		setQualityTime(state, hero.id, "fellowshipTagId", fsTag.id);
+	}
+
+	beforeEach(() => {
+		vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
+	});
+
+	it("unscratches the tag through its parent theme, not the hero", async () => {
+		const { fsTag, fwTheme, fellowshipActor } = fellowshipWithScratchedTag();
+		const hero = fakeActor();
+		hero.system = { fellowshipActor };
+		const state = defaultCampingState();
+		pickFellowshipTag(state, hero, fsTag);
+
+		const { operations } = buildOperations(
+			state,
+			world({ heroes: [hero], fellowshipActor }),
+		);
+		await applyOperations(operations);
+
+		expect(fwTheme.updateEmbeddedDocuments).toHaveBeenCalledTimes(1);
+		expect(fwTheme.updateEmbeddedDocuments).toHaveBeenCalledWith(
+			"ActiveEffect",
+			[{ _id: fsTag.id, "system.isScratched": false }],
+		);
+		expect(hero.updateEmbeddedDocuments).not.toHaveBeenCalled();
+	});
+
+	it("writes once when two heroes pick the same tag", async () => {
+		const { fsTag, fwTheme, fellowshipActor } = fellowshipWithScratchedTag();
+		const heroA = fakeActor();
+		const heroB = fakeActor();
+		heroA.system = { fellowshipActor };
+		heroB.system = { fellowshipActor };
+		const state = defaultCampingState();
+		pickFellowshipTag(state, heroA, fsTag);
+		pickFellowshipTag(state, heroB, fsTag);
+
+		const { operations } = buildOperations(
+			state,
+			world({ heroes: [heroA, heroB], fellowshipActor }),
+		);
+		await applyOperations(operations);
+
+		expect(fwTheme.updateEmbeddedDocuments).toHaveBeenCalledTimes(1);
+		expect(fwTheme.updateEmbeddedDocuments).toHaveBeenCalledWith(
+			"ActiveEffect",
+			[{ _id: fsTag.id, "system.isScratched": false }],
+		);
 	});
 });
 
