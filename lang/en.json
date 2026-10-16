@@ -549,6 +549,7 @@
 			"evolution_drop_theme_hint": "Drop an existing <strong>theme</strong> here to replace this one.",
 			"evolution_drop_theme_invalid": "Only theme items can be dropped here.",
 			"evolution_drop_theme_kind_mismatch": "Fellowship themes can only be replaced by other fellowship themes (and vice versa).",
+			"evolution_drop_theme_same": "That's the theme you're changing. Drop a different one.",
 			"evolution_evolved_notification": "{actor}'s theme has evolved into {theme}.",
 			"evolution_expand_hint": "Pick another theme to replace with one that expands on this one. This theme's Milestone resets and you rewrite its Quest (Core Book p.190).",
 			"evolution_expand_legend": "Expansion",

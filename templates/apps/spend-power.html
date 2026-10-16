@@ -226,7 +226,7 @@
 	<template id="entry-row-tier-template">
 		<li class="litm-spend-power__entry">
 			<input type="text" class="litm-spend-power__entry-name" placeholder="{{localize 'LITM.Ui.status_name'}}" />
-			<input type="number" class="litm-spend-power__entry-tier" value="1" min="1" max="6" />
+			<input type="number" class="litm-spend-power__entry-tier" value="1" min="1" max="{{maxTier}}" />
 			<button type="button" class="litm-spend-power__remove-entry" data-action="remove-entry" aria-label="{{localize 'LITM.Ui.remove_tag'}}">
 				<i class="fas fa-times" aria-hidden="true"></i>
 			</button>
