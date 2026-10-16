@@ -95,6 +95,18 @@ async function _onRenderCardActivate(event) {
 	await handler(target);
 }
 
+// Delegated for the same reason as the click handlers above. Chips inside a
+// card are draggable on their own; only a drag that starts on the card itself
+// carries the document.
+function _onRenderCardDragStart(event) {
+	const card = event.target;
+	if (!card?.dataset?.dragUuid) return;
+	event.dataTransfer.setData(
+		"text/plain",
+		JSON.stringify({ type: card.dataset.dragType, uuid: card.dataset.dragUuid }),
+	);
+}
+
 function _onRenderCardKeydown(event) {
 	if (event.key !== "Enter" && event.key !== " ") return;
 	if (!event.target.closest?.("[data-render-action]")) return;
@@ -115,6 +127,7 @@ export class Enrichers {
 
 		document.body.addEventListener("click", _onRenderCardActivate);
 		document.body.addEventListener("keydown", _onRenderCardKeydown);
+		document.body.addEventListener("dragstart", _onRenderCardDragStart);
 
 		// Invalidate the @action[] lookup cache when world or pack contents
 		// change. Compendium edits to existing packs fire createItem/deleteItem/
@@ -146,7 +159,13 @@ export class Enrichers {
 					const renderer = RENDERERS[type];
 					if (!renderer) return doc.toAnchor();
 
-					return await renderer(doc);
+					const card = await renderer(doc);
+					// Make the whole card draggable as its document, so a theme kit
+					// or an Action drops onto a sheet like a sidebar entry would.
+					card.draggable = true;
+					card.dataset.dragUuid = doc.uuid;
+					card.dataset.dragType = doc.documentName;
+					return card;
 				} catch (err) {
 					Hooks.onError(
 						"litmv2.enrichRender",

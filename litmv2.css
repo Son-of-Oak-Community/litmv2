@@ -1207,6 +1207,15 @@ section.standard-form.litm-actions-app {
 	gap: var(--spacer-12);
 }
 
+/* Every @render card drags as its document (enrichers.js). */
+.litm-render[draggable="true"] {
+	cursor: grab;
+}
+
+.litm-render[draggable="true"]:active {
+	cursor: grabbing;
+}
+
 /* Cards wired with [data-render-action] are activated via a body-level
    delegated handler. Surface that with a clear hover and focus affordance. */
 .litm-render--card[data-render-action] {
