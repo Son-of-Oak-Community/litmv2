@@ -90,6 +90,9 @@ class StubActor {
 	constructor(source = {}) {
 		Object.assign(this, { effects: [], items: [], ...source });
 	}
+	static migrateData(source) {
+		return source;
+	}
 	*allApplicableEffects() {
 		for (const effect of this.effects) yield effect;
 		for (const item of this.items) {
