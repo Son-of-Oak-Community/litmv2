@@ -17,10 +17,10 @@
 	</div>
 	{{/if}}
 
-	{{#if hasTitleTag}}
+	{{#if isTitleTag}}
 	<div class="form-group">
 		<label for="ae-title-tag">{{localize "LITM.Terms.title_tag"}}</label>
-		<input id="ae-title-tag" type="checkbox" name="system.isTitleTag" {{checked system.isTitleTag}} />
+		<input id="ae-title-tag" type="checkbox" checked disabled />
 	</div>
 	{{/if}}
 
