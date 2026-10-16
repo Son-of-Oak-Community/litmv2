@@ -90,6 +90,9 @@ class StubActor {
 	constructor(source = {}) {
 		Object.assign(this, { effects: [], items: [], ...source });
 	}
+	static migrateData(source) {
+		return source;
+	}
 	*allApplicableEffects() {
 		for (const effect of this.effects) yield effect;
 		for (const item of this.items) {
@@ -99,6 +102,11 @@ class StubActor {
 		}
 	}
 }
+
+// --- foundry.documents.Item ---
+// LitmItem extends this; the legacy-effects world migration imports LitmItem
+// for its tag builders. Never instantiated in unit tests.
+class StubItem {}
 
 // --- foundry.documents.ChatMessage ---
 // spend-power-service posts "action applied" cards and GM-relay whispers
@@ -173,7 +181,7 @@ globalThis.foundry = {
 		},
 	},
 	dice: { Roll: StubRoll },
-	documents: { Actor: StubActor, ChatMessage: StubChatMessage },
+	documents: { Actor: StubActor, Item: StubItem, ChatMessage: StubChatMessage },
 	applications: {
 		api: {
 			ApplicationV2: StubAppV2,

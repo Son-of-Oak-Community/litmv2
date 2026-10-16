@@ -15,7 +15,8 @@ import { LimitsMixin } from "../mixins/limits-mixin.js";
 
 /**
  * Build ActiveEffect creation data from legacy relationship arrays.
- * Shared by createLegacyRelationshipEffects and the world migration.
+ * Shared by createLegacyRelationshipEffects and the world migration. The
+ * array comes from the flag `LitmActor.migrateData` stashes it in.
  * @param {object[]} relationships - Array of { tag, actorId, isScratched }
  * @returns {object[]}
  */
@@ -148,13 +149,9 @@ export class HeroData extends LimitsMixin(
 		};
 	}
 
+	// Legacy `relationships` are stashed to flags by `LitmActor.migrateData`,
+	// which sees the actor's own flags. This model is only handed `system`.
 	static migrateData(source) {
-		const relationships = source.relationships;
-		if (Array.isArray(relationships) && relationships.length) {
-			source.flags ??= {};
-			source.flags.litmv2 ??= {};
-			source.flags.litmv2.legacyRelationships = relationships;
-		}
 		delete source.relationships;
 		return super.migrateData(source);
 	}

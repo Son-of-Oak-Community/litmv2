@@ -32,18 +32,22 @@ async function collectActorChanges(actor, changes) {
 	}
 
 	// Create relationship_tag effects from legacy relationships stashed
-	// as a flag by HeroData.migrateData, then clean up the DB.
+	// as a flag by LitmActor.migrateData, then clean up the DB. The stash is
+	// the only surviving copy of `system.relationships` once the schema has
+	// pruned it from the loaded actor, so that field is only unset when its
+	// contents are migrated (or already were).
 	if (actor.type === "hero") {
 		const rels = actor.getFlag("litmv2", "legacyRelationships");
-		if (
-			Array.isArray(rels) &&
-			rels.length &&
-			!actor.effects.some((e) => e.type === "relationship_tag")
-		) {
+		const hasRelationshipEffects = actor.effects.some(
+			(e) => e.type === "relationship_tag",
+		);
+		if (Array.isArray(rels) && rels.length && !hasRelationshipEffects) {
 			entry.toCreate.push(...buildRelationshipEffects(rels));
 			entry.flagsToUnset.push("legacyRelationships");
+			entry.systemFieldsToUnset.push("relationships");
+		} else if (hasRelationshipEffects) {
+			entry.systemFieldsToUnset.push("relationships");
 		}
-		entry.systemFieldsToUnset.push("relationships");
 	}
 
 	for (const item of actor.items) {
