@@ -682,13 +682,14 @@ async function submitExpand({
  * Replace the current theme with a full copy of a dropped theme item.
  * Wipes the current theme's non-title power/weakness tags, then copies
  * shape (name, themebook, level, quest, description, specials) and tags
- * from the source. Promise math follows the Core Book Replace rule:
- * +1 base plus +1 per extra power/weakness/special on the source.
+ * from the source. Promise math follows the Core Book Replace rule (p.192):
+ * +1 base plus +1 per extra power/weakness/special on the theme being
+ * replaced, as the form's Replace does.
  *
- * The source's tags and caps are read before the target is touched: when
- * `dropped` is `theme` itself, wiping the target empties the source's
- * effect collection too. The wizard rejects that drop, but this function
- * does not depend on it.
+ * The source's tags and the replaced theme's caps are read before the
+ * target is touched: when `dropped` is `theme` itself, wiping the target
+ * empties the source's effect collection too. The wizard rejects that
+ * drop, but this function does not depend on it.
  */
 export async function applyDroppedTheme({ actor, theme, dropped }) {
 	const isFellowship = !!theme.system?.isFellowship;
@@ -713,7 +714,7 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 		delete obj._id;
 		toCreate.push(obj);
 	}
-	const sourceCaps = getTradeCaps(getRevisableParts(dropped));
+	const replacedCaps = getTradeCaps(getRevisableParts(theme));
 
 	const newName = dropped.name;
 	const update = {
@@ -731,7 +732,7 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 		),
 	};
 	// Fellowship themes never mark Promise (Core Book p.193).
-	const promiseGained = isFellowship ? 0 : 1 + totalTradeCap(sourceCaps);
+	const promiseGained = isFellowship ? 0 : 1 + totalTradeCap(replacedCaps);
 
 	await wipeNonTitleTagEffects(theme);
 	await theme.update(update);
@@ -751,7 +752,7 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 		litmEvolution: {
 			mode: "replace",
 			promiseGained,
-			tradedCount: totalTradeCap(sourceCaps),
+			tradedCount: totalTradeCap(replacedCaps),
 			dropped: true,
 		},
 	});

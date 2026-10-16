@@ -101,7 +101,7 @@ describe("applyDroppedTheme", () => {
 	});
 
 	it("copies the source's tags onto a different target", async () => {
-		const actor = fakeActor({ system: { promise: 1, pendingPromise: 0 } });
+		const actor = fakeActor({ system: { promise: 0, pendingPromise: 0 } });
 		const target = fakeTheme({ name: "Target", power: 2, weakness: 1 });
 		const source = fakeTheme({ name: "Source", power: 4, weakness: 2 });
 		actor.items = [target];
@@ -110,7 +110,36 @@ describe("applyDroppedTheme", () => {
 
 		const [, created] = target.createEmbeddedDocuments.mock.calls[0];
 		expect(created).toHaveLength(6);
-		expect(actor.update).toHaveBeenCalledWith({ "system.promise": 4 });
+	});
+
+	// Core Book p.192: Promise for "each power tag beyond the third, each
+	// weakness tag beyond the first, and each Special Improvement you have in
+	// the theme you are replacing" — the replaced theme, not the dropped one.
+	it("counts Promise from the theme being replaced, not the dropped one", async () => {
+		const actor = fakeActor({ system: { promise: 0, pendingPromise: 0 } });
+		// 4 power (1 over) + 1 weakness (0 over) + 1 active special = 2 extras.
+		const target = fakeTheme({
+			name: "Target",
+			power: 4,
+			weakness: 1,
+			specials: [{ name: "Quick", isActive: true }],
+		});
+		// 5 power (2 over) + 2 weakness (1 over) = 3 extras, which must not count.
+		const source = fakeTheme({ name: "Source", power: 5, weakness: 2 });
+
+		await applyDroppedTheme({ actor, theme: target, dropped: source });
+
+		expect(actor.update).toHaveBeenCalledWith({ "system.promise": 3 });
+	});
+
+	it("gains just the base Promise when the replaced theme has no extras", async () => {
+		const actor = fakeActor({ system: { promise: 0, pendingPromise: 0 } });
+		const target = fakeTheme({ name: "Target", power: 3, weakness: 1 });
+		const source = fakeTheme({ name: "Source", power: 5, weakness: 2 });
+
+		await applyDroppedTheme({ actor, theme: target, dropped: source });
+
+		expect(actor.update).toHaveBeenCalledWith({ "system.promise": 1 });
 	});
 
 	it("refuses a Fellowship theme dropped on a Hero theme without touching anything", async () => {
@@ -129,8 +158,9 @@ describe("applyDroppedTheme", () => {
 
 	it("fires litm.themeAdvanced with the replace payload shape the form path uses", async () => {
 		const actor = fakeActor({ name: "Gerrin", system: { promise: 0 } });
-		const theme = fakeTheme({ name: "Target" });
-		const dropped = fakeTheme({ name: "Source", power: 4, weakness: 2 });
+		// Replaced theme: 4 power (1 over) + 2 weakness (1 over) = 2 extras.
+		const theme = fakeTheme({ name: "Target", power: 4, weakness: 2 });
+		const dropped = fakeTheme({ name: "Source", power: 2, weakness: 1 });
 
 		await applyDroppedTheme({ actor, theme, dropped });
 
@@ -173,12 +203,17 @@ describe("applyDroppedTheme", () => {
 
 	it("gains no Promise for a Fellowship theme, but still fires the hook", async () => {
 		const actor = fakeActor({ system: { promise: 0 } });
-		const theme = fakeTheme({ name: "Fellowship A", isFellowship: true });
-		const dropped = fakeTheme({
-			name: "Fellowship B",
+		const theme = fakeTheme({
+			name: "Fellowship A",
 			isFellowship: true,
 			power: 4,
 			weakness: 2,
+		});
+		const dropped = fakeTheme({
+			name: "Fellowship B",
+			isFellowship: true,
+			power: 2,
+			weakness: 1,
 		});
 
 		await applyDroppedTheme({ actor, theme, dropped });
