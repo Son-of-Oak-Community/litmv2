@@ -32,6 +32,12 @@ export async function applySpendIntent(actor, intent) {
 	const results = [];
 	let actionSpent = 0;
 	let genericSpent = 0;
+	// Bills Power the moment a write lands, not when its option returns: an
+	// option with several entries that rejects midway still owes for the
+	// entries that went through (see the `finally` below).
+	const charge = (power) => {
+		genericSpent += power;
+	};
 
 	try {
 		// Apply action-success rows first
@@ -57,8 +63,8 @@ export async function applySpendIntent(actor, intent) {
 						actor,
 						opt,
 						messageId,
+						charge,
 					);
-					genericSpent += power;
 					results.push({
 						kind: "statusPicker",
 						optionId: opt.optionId,
@@ -69,7 +75,7 @@ export async function applySpendIntent(actor, intent) {
 				}
 				case "counter": {
 					const { power } = _applyCounter(opt);
-					genericSpent += power;
+					charge(power);
 					results.push({
 						kind: "counter",
 						optionId: opt.optionId,
@@ -79,14 +85,12 @@ export async function applySpendIntent(actor, intent) {
 					break;
 				}
 				case "picker": {
-					const { power, tags } = await _applyPicker(actor, opt);
-					genericSpent += power;
+					const { power, tags } = await _applyPicker(actor, opt, charge);
 					results.push({ kind: "picker", optionId: opt.optionId, power, tags });
 					break;
 				}
 				case "scratchPicker": {
-					const { power, tags } = await _applyScratchPicker(opt);
-					genericSpent += power;
+					const { power, tags } = await _applyScratchPicker(opt, charge);
 					results.push({
 						kind: "scratchPicker",
 						optionId: opt.optionId,
@@ -99,13 +103,17 @@ export async function applySpendIntent(actor, intent) {
 					// Inflict with a picked target applies the statuses directly
 					// (or via the GM relay); without one it stays the legacy
 					// draggable-chat-chip flow handled by _applyDefault.
-					const applied =
+					let applied;
+					if (
 						opt.optionId === "inflict_status" &&
 						opt.targetActorId &&
 						opt.entries?.length
-							? await _applyInflict(opt, messageId)
-							: _applyDefault(opt);
-					genericSpent += applied.power;
+					) {
+						applied = await _applyInflict(opt, messageId, charge);
+					} else {
+						applied = _applyDefault(opt);
+						charge(applied.power);
+					}
 					results.push({
 						kind: "default",
 						optionId: opt.optionId,
@@ -118,12 +126,13 @@ export async function applySpendIntent(actor, intent) {
 		}
 	} finally {
 		// Persist generic spends on the originating roll message — in `finally`
-		// so a later option rejecting still records the Power of those that
-		// already landed (genericSpent only grows after an option applies);
-		// otherwise a resubmit would apply their writes again for free. Action-success
-		// costs are deliberately not added: they are already tracked per-success
-		// in the appliedSuccessCosts flag, and the Spend Power budget subtracts
-		// both flags — folding them into spentPower too would double-count.
+		// so a later write rejecting still records the Power of those that
+		// already landed (genericSpent only grows after a write applies, one
+		// entry at a time); otherwise a resubmit would apply them again for
+		// free. Action-success costs are deliberately not added: they are
+		// already tracked per-success in the appliedSuccessCosts flag, and the
+		// Spend Power budget subtracts both flags — folding them into
+		// spentPower too would double-count.
 		if (messageId && genericSpent > 0) {
 			const message = game.messages.get(messageId);
 			await message?.setFlag(
@@ -394,7 +403,7 @@ async function _handleApplySuccessAsGM({
  * the player can't write route through the applyStatusAsGM relay; like the
  * scene-tag scratch fork, a drop with no active GM is skipped and not billed.
  */
-async function _applyStatusPicker(actor, opt, messageId) {
+async function _applyStatusPicker(actor, opt, messageId, charge) {
 	const { reductions, cost } = opt;
 	const bodyLines = [];
 	let paidTiers = 0;
@@ -426,6 +435,7 @@ async function _applyStatusPicker(actor, opt, messageId) {
 			warn(`Status reduction dropped — no active GM to apply "${name}".`);
 			continue;
 		}
+		charge(cost * tiers);
 		paidTiers += tiers;
 		// Status and actor names are player-set and this body is rendered raw
 		// ({{{body}}} in chat/spend-power.html) to every client — escape both,
@@ -450,7 +460,7 @@ async function _applyStatusPicker(actor, opt, messageId) {
  * no-target case never reaches here — it posts a draggable chat chip via
  * _applyDefault). Unowned targets route through the applyStatusAsGM relay.
  */
-async function _applyInflict(opt, messageId) {
+async function _applyInflict(opt, messageId, charge) {
 	const { entries, cost, targetActorId } = opt;
 	const target = game.actors.get(targetActorId);
 	if (!target) {
@@ -481,6 +491,7 @@ async function _applyInflict(opt, messageId) {
 				tier: tierN,
 			});
 		}
+		charge(cost * tierN);
 		chips.push(`[${foundry.utils.escapeHTML(name)}-${tierN}]`);
 		power += cost * tierN;
 	}
@@ -494,13 +505,14 @@ function _applyCounter(opt) {
 	return { power: opt.cost * opt.count };
 }
 
-async function _applyPicker(actor, opt) {
+async function _applyPicker(actor, opt, charge) {
 	const { chips, cost } = opt;
 	const power = cost * chips.length;
 	const tags = [];
 	for (const { tagId, tagName } of chips) {
 		const effect = resolveEffect(tagId, actor);
 		if (effect) await effect.update({ "system.isScratched": false });
+		charge(cost);
 		// Recovered tags render as live (un-scratched) chips of their real type.
 		tags.push({
 			name: tagName,
@@ -518,7 +530,7 @@ async function _applyPicker(actor, opt) {
  * (world-pack) story tags carry no actor owner (`isScene`) and route through
  * the story-tag write fork instead.
  */
-async function _applyScratchPicker(opt) {
+async function _applyScratchPicker(opt, charge) {
 	const { chips, cost } = opt;
 	const tags = [];
 	// Charge only for scratches that actually land. A chip whose owner/effect
@@ -549,6 +561,7 @@ async function _applyScratchPicker(opt) {
 		}
 		tags.push({ name: tagName, type: effect.type, isScratched: true });
 		scratched++;
+		charge(cost);
 	}
 
 	// Scene story tags live in the world pack, which players can't write
@@ -588,6 +601,7 @@ async function _applyScratchPicker(opt) {
 				tags.push({ name: c.tagName, type: "story_tag", isScratched: true });
 			}
 			scratched += sceneChips.length;
+			charge(cost * sceneChips.length);
 		}
 	}
 
