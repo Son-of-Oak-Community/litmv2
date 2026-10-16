@@ -56,3 +56,24 @@ describe("post-roll scratch relay", () => {
 		expect(ui.notifications.warn).toHaveBeenCalled();
 	});
 });
+
+describe("post-roll scratch is idempotent", () => {
+	it("sets scratched absolutely, so a repeated run never un-burns", async () => {
+		const effect = fakeEffect({ type: "power_tag", name: "sword" });
+		effect.isOwner = true;
+		effect.system = {
+			isScratched: false,
+			setScratched: vi.fn(async (v) => {
+				effect.system.isScratched = v;
+			}),
+			toggleScratch: vi.fn(),
+		};
+		foundry.utils.fromUuidSync.mockReturnValue(effect);
+		const tag = { id: "elsewhere", uuid: effect.uuid, name: "sword", type: "power_tag" };
+		await run(tag);
+		await run(tag);
+		expect(effect.system.isScratched).toBe(true);
+		expect(effect.system.setScratched).toHaveBeenCalledTimes(1);
+		expect(effect.system.toggleScratch).not.toHaveBeenCalled();
+	});
+});

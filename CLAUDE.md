@@ -443,6 +443,8 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.trackCompleted` — `{ actor, trackInfo: { text, type, actorId?, themeId? } }`
 - `litm.limitReached` — `{ actor, limit }` where `limit.max` is the effective max
 - `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits, column hide/reveal), on every client; no payload. Roll dialogs listen to refresh contributed-tag groups.
+- `litm.sacrificePrepared` — `({ actor })` on clients other than the roller's when a Hero's roll turns into a Sacrifice; return `false` to suppress the default banner
+- `litm.campingStepChanged` — `({ from, to })` after camping navigates between steps
 - `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.

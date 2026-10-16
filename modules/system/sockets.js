@@ -85,8 +85,12 @@ export class Sockets {
 	}
 
 	static #registerRollModerationListeners() {
+		// Two GMs approving the same card each send this; roll it once.
+		const approvedRolls = new Set();
 		Sockets.on("rollDice", ({ senderId, data: { userId, messageId } }) => {
+			if (approvedRolls.has(messageId)) return;
 			const data = resolveApprovedRoll({ senderId, userId, messageId });
+			if (data) approvedRolls.add(messageId);
 			if (!data) return;
 			LitmRollDialog.roll(data)?.catch(console.error);
 		});
@@ -143,14 +147,20 @@ export class Sockets {
 
 		// Same relay for Improve: a contributed weakness marks the theme of a
 		// Hero the roller doesn't own.
-		Sockets.on("gainImprovement", async ({ data: { actorId, tag } }) => {
+		// Marks are applied one at a time: two weaknesses on the same theme
+		// arrive as two packets, and concurrent handlers would both read the
+		// same Improve value and write the same +1.
+		let improveQueue = Promise.resolve();
+		Sockets.on("gainImprovement", ({ data: { actorId, tag } }) => {
 			if (game.user !== game.users.activeGM) return;
-			try {
-				const actor = game.actors.get(actorId);
-				if (actor) await gainImprovement(actor, tag);
-			} catch (err) {
-				error("gainImprovement relay failed", err);
-			}
+			improveQueue = improveQueue.then(async () => {
+				try {
+					const actor = game.actors.get(actorId);
+					if (actor) await gainImprovement(actor, tag);
+				} catch (err) {
+					error("gainImprovement relay failed", err);
+				}
+			});
 		});
 	}
 

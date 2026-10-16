@@ -49,6 +49,9 @@ import { hasPainfulSacrificeTarget, isThemeSpent } from "./sacrifice-rules.js";
 
 export { resolveRollDialogOwnership };
 
+/** Dialogs with a submit in flight; see `LitmRollDialog._onSubmit`. */
+const submitting = new WeakSet();
+
 export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
 ) {
@@ -103,18 +106,26 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	static async _onSubmit(_event, _form, formData) {
 		if (!this.isOwner || this.localOnly) return;
 		if (this.painfulSacrificeHasNoTarget()) return;
-		const rollData = this.extractRollData(formData);
-		// Tables that want the Narrator to have the last word on a total route
-		// every player roll through the moderation card they already had as an
-		// opt-in button. Same hardened path: approval reads the roll back off
-		// the ChatMessage the roller authored rather than trusting a socket.
-		if (this.requiresApproval) {
-			await this._createModerationRequest(rollData);
-			this.suspendForModeration();
-			ui.notifications?.info(t("LITM.Ui.roll_sent_for_approval"));
-			return;
+		// A double press would post two cards and run post-roll bookkeeping
+		// twice: two Improve marks for one invoked weakness.
+		if (submitting.has(this)) return;
+		submitting.add(this);
+		try {
+			const rollData = this.extractRollData(formData);
+			// Tables that want the Narrator to have the last word on a total route
+			// every player roll through the moderation card they already had as an
+			// opt-in button. Same hardened path: approval reads the roll back off
+			// the ChatMessage the roller authored rather than trusting a socket.
+			if (this.requiresApproval) {
+				await this._createModerationRequest(rollData);
+				this.suspendForModeration();
+				ui.notifications?.info(t("LITM.Ui.roll_sent_for_approval"));
+				return;
+			}
+			return await executeRoll(rollData);
+		} finally {
+			submitting.delete(this);
 		}
-		return executeRoll(rollData);
 	}
 
 	static async #onSendToNarrator(_event, _target) {
