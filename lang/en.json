@@ -965,6 +965,7 @@
 			"warn_user_character": "This actor is auto-added because a user is assigned to it. Unassign the user to remove it.",
 			"weakness_tag_questions": "Weakness Tag Questions",
 			"welcome": "Welcome!",
+			"welcome_action_failed": "Something went wrong. Check the console for details.",
 			"welcome_create_hero": "Create Your Hero",
 			"welcome_custom_dice": "Themed Dice",
 			"welcome_custom_dice_hint": "Use the custom Legend in the Mist dice visuals instead of standard d6s. Requires the Dice So Nice module.",

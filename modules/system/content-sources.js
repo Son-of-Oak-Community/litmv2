@@ -232,7 +232,7 @@ export class ContentSources {
 				await foundry.documents.collections.CompendiumCollection.createCompendium(
 					{
 						name: "litmv2-statuses",
-						label: "Statuses",
+						label: game.i18n.localize("LITM.Terms.statuses"),
 						type: "ActiveEffect",
 						system: "litmv2",
 					},
@@ -282,7 +282,7 @@ export class ContentSources {
 				await foundry.documents.collections.CompendiumCollection.createCompendium(
 					{
 						name: "litmv2-story-tags",
-						label: "Story Tags",
+						label: game.i18n.localize("LITM.Terms.story_tags"),
 						type: "ActiveEffect",
 						system: "litmv2",
 					},

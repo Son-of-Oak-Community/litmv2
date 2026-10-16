@@ -25,7 +25,7 @@ export class LitmRoll extends foundry.dice.Roll {
 
 	get speaker() {
 		const actor = this.actor;
-		return { alias: actor?.name || "Unknown" };
+		return { alias: actor?.name || t("LITM.Ui.unknown_hero") };
 	}
 
 	get flavor() {

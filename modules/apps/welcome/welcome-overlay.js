@@ -680,9 +680,7 @@ export class WelcomeOverlay {
 					await this.#handleAction(event, target);
 				} catch (err) {
 					error("Welcome overlay action failed:", err);
-					ui.notifications.error(
-						"Something went wrong. Check the console for details.",
-					);
+					ui.notifications.error(t("LITM.Ui.welcome_action_failed"));
 				}
 			}
 		});
