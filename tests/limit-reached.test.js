@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ChallengeData } from "../modules/actor/challenge/challenge-data.js";
 import {
 	advanceFlagLimit,
 	advanceSystemLimit,
@@ -218,6 +219,160 @@ describe("advancing a limit directly (Spend Power process verbs)", () => {
 	it("does not fire for an immune limit", async () => {
 		await advanceFlagLimit(flagActor(0, 0), "lim-1", 1);
 		expect(reachedCalls()).toHaveLength(0);
+	});
+});
+
+// A limit's value is what its linked statuses stack to plus the offset Advance
+// and Set Back left on it (`advanced`). Recalc used to rebuild `value` from the
+// statuses alone, so the next status change on the actor wiped the Advance and,
+// having dropped below the max, announced the limit a second time when it was
+// reached again.
+describe("Advance and Set Back survive a status recalc", () => {
+	const stack = (actor, n, limitId = "lim-1") => {
+		const effect = status(n, limitId);
+		effect.parent = actor;
+		actor.effects.push(effect);
+		return effect;
+	};
+	const clear = (actor) => {
+		actor.effects.length = 0;
+	};
+
+	it("keeps the Advance when a status on the same limit changes", async () => {
+		const { actor, model } = buildActor({
+			limits: [limit({ max: 5 })],
+			effects: [status(1)],
+		});
+		await model.recalculateLimitValues();
+		await advanceFlagLimit(actor, "lim-1", 2);
+		expect(actor.stored[0]).toMatchObject({ value: 3, advanced: 2 });
+
+		clear(actor);
+		stack(actor, 2);
+		await model.recalculateLimitValues();
+
+		expect(actor.stored[0]).toMatchObject({ value: 4, advanced: 2 });
+	});
+
+	it("keeps the Advance on a limit when a status lands on another limit", async () => {
+		const { actor, model } = buildActor({
+			limits: [limit({ id: "lim-1" }), limit({ id: "lim-2" })],
+		});
+		await advanceFlagLimit(actor, "lim-1", 2);
+
+		stack(actor, 1, "lim-2");
+		await model.recalculateLimitValues();
+
+		expect(actor.stored[0].value).toBe(2);
+		expect(actor.stored[1].value).toBe(1);
+	});
+
+	it("announces a limit once across an Advance and the recalcs after it", async () => {
+		const { actor, model } = buildActor({
+			limits: [limit({ max: 3 })],
+			effects: [status(1)],
+		});
+		await model.recalculateLimitValues();
+		await advanceFlagLimit(actor, "lim-1", 2);
+		expect(reachedCalls()).toHaveLength(1);
+
+		stack(actor, 1);
+		await model.recalculateLimitValues();
+		clear(actor);
+		stack(actor, 3);
+		await model.recalculateLimitValues();
+
+		expect(reachedCalls()).toHaveLength(1);
+		expect(actor.stored[0].value).toBeGreaterThanOrEqual(3);
+	});
+
+	it("keeps an Advance after the statuses beneath it are gone", async () => {
+		const { actor, model } = buildActor({
+			limits: [limit({ max: 5 })],
+			effects: [status(1)],
+		});
+		await model.recalculateLimitValues();
+		await advanceFlagLimit(actor, "lim-1", 1);
+
+		clear(actor);
+		await model.recalculateLimitValues();
+
+		expect(actor.stored[0]).toMatchObject({ value: 1, advanced: 1 });
+	});
+
+	it("keeps a Set Back while the statuses move", async () => {
+		const { actor, model } = buildActor({
+			limits: [limit({ max: 5 })],
+			effects: [status(2)],
+		});
+		await model.recalculateLimitValues();
+		await advanceFlagLimit(actor, "lim-1", -1);
+		expect(actor.stored[0]).toMatchObject({ value: 1, advanced: -1 });
+
+		clear(actor);
+		stack(actor, 3);
+		await model.recalculateLimitValues();
+
+		expect(actor.stored[0]).toMatchObject({ value: 2, advanced: -1 });
+	});
+
+	it("drops a Set Back once there is nothing left for it to set back", async () => {
+		const { actor, model } = buildActor({
+			limits: [limit({ max: 5 })],
+			effects: [status(2)],
+		});
+		await model.recalculateLimitValues();
+		await advanceFlagLimit(actor, "lim-1", -2);
+		expect(actor.stored[0]).toMatchObject({ value: 0, advanced: -2 });
+
+		clear(actor);
+		await model.recalculateLimitValues();
+		expect(actor.stored[0]).toMatchObject({ value: 0, advanced: 0 });
+
+		// A later status counts in full, not minus a stale Set Back.
+		stack(actor, 2);
+		await model.recalculateLimitValues();
+		expect(actor.stored[0].value).toBe(2);
+	});
+
+	it("never lowers a value that is already past the max when Advancing", async () => {
+		const { actor } = buildActor({
+			limits: [limit({ max: 3, value: 6 })],
+		});
+		const result = await advanceFlagLimit(actor, "lim-1", 1);
+		expect(result.value).toBe(6);
+		expect(actor.stored[0].advanced ?? 0).toBe(0);
+	});
+
+	it("leaves a limit with no advanced field exactly as it was", async () => {
+		const { actor, model } = buildActor({
+			limits: [limit({ value: 2 })],
+			effects: [status(3)],
+		});
+		await model.recalculateLimitValues();
+		expect(actor.stored[0]).toEqual(limit({ value: 3 }));
+		expect("advanced" in actor.stored[0]).toBe(false);
+	});
+
+	it("keeps a challenge's Advance across a recalc (system limits)", async () => {
+		const model = new ChallengeData({
+			_source: { limits: [limit({ max: 5, advanced: 0 })] },
+		});
+		const actor = fakeActor({ type: "challenge" });
+		actor.documentName = "Actor";
+		actor.system = model;
+		model.parent = actor;
+		actor.update = vi.fn(async (data) => {
+			model._source.limits = data["system.limits"];
+		});
+
+		await advanceSystemLimit(actor, "lim-1", 2);
+		expect(model._source.limits[0]).toMatchObject({ value: 2, advanced: 2 });
+
+		stack(actor, 1);
+		await model.recalculateLimitValues();
+
+		expect(model._source.limits[0]).toMatchObject({ value: 3, advanced: 2 });
 	});
 });
 

@@ -232,9 +232,9 @@ function _syncUiOnEffectChange() {
  *
  * Runs on the client of the user who made the change: it announces once, and
  * that user owns the actor. A status with no limit moves no limit, so only
- * linked statuses (or a change to the link itself) recalc: a recalc rewrites
- * every limit's value from its statuses, which would otherwise wipe progress
- * added directly with Advance.
+ * linked statuses (or a change to the link itself) recalc. A recalc rewrites
+ * every limit's value as its statuses plus the offset Advance and Set Back left
+ * on it (`advanced`), so progress added directly survives it.
  */
 function _recalcLimitsOnStatusChange() {
 	const recalc = (effect) => {

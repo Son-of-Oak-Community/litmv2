@@ -30,6 +30,27 @@ export function crossedLimitMax(previousValue, nextValue, max) {
 }
 
 /**
+ * A limit's value: what its linked statuses stack to, plus the offset Advance
+ * and Set Back left on it (`limit.advanced`, 0 when the limit has none). The
+ * Core Book builds a Limit from statuses alone (p.169); Advance and Set Back
+ * are the shortcut for a progress Limit nobody is giving a status. Keeping the
+ * shortcut as an offset is what lets a later status change recompute the value
+ * without erasing it.
+ *
+ * A Set Back can only take back what is there, so the offset is floored at the
+ * negative of the statuses' value. Once the statuses are gone, the surplus Set
+ * Back goes with them instead of discounting a status that lands later.
+ *
+ * @param {{ advanced?: number }} limit  The stored limit entry.
+ * @param {number} statusValue           What the linked statuses stack to.
+ * @returns {{ value: number, advanced: number }}
+ */
+export function resolveLimitValue(limit, statusValue) {
+	const advanced = Math.max(Number(limit.advanced) || 0, -statusValue) || 0;
+	return { value: statusValue + advanced, advanced };
+}
+
+/**
  * Announce a limit reached to this client's `litm.limitReached` listeners (the
  * GM whisper in chat-hooks among them). Callers fire only from the client that
  * made the write, so the announcement happens once per crossing.
@@ -130,9 +151,18 @@ function _shiftLimit(limits, limitId, delta, maxOverride) {
 		};
 	}
 	const previous = Number(limit.value) || 0;
-	const newValue = Math.max(0, Math.min(max, previous + delta));
+	// Advance stops at the max and Set Back at zero. A value already past the
+	// max (a status stacked beyond it) is left where it is by an Advance, not
+	// pulled back down to the max.
+	const newValue =
+		delta >= 0
+			? Math.max(previous, Math.min(max, previous + delta))
+			: Math.max(0, previous + delta);
+	// The offset moves by what actually changed, after the clamps, so it never
+	// records progress the limit did not make. The next recalc keeps it.
+	const advanced = (Number(limit.advanced) || 0) + (newValue - previous);
 	const updated = [...limits];
-	updated[idx] = { ...limit, value: newValue };
+	updated[idx] = { ...limit, value: newValue, advanced };
 	return {
 		updated,
 		change: {

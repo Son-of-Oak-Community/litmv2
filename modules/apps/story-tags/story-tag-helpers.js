@@ -3,6 +3,7 @@ import {
 	padTiers,
 	StatusTagData,
 } from "../../active-effects/status-tag-data.js";
+import { resolveLimitValue } from "../../actor/mixins/actor-limits.js";
 import { classifyTagString } from "../../item/action/tag-string.js";
 
 /**
@@ -204,7 +205,11 @@ export function partitionTagsByLimit(tags, limits) {
 		const statusTierArrays = groupedTags
 			.filter((t) => t.type === "status_tag")
 			.map((t) => t.values);
-		const computedValue = StatusTagData.stackedTier(statusTierArrays);
+		// The same value the recalc stores: statuses plus any Advance offset.
+		const { value: computedValue } = resolveLimitValue(
+			limit,
+			StatusTagData.stackedTier(statusTierArrays),
+		);
 		return { ...limit, tags: groupedTags, computedValue };
 	});
 	const groupedIds = new Set(

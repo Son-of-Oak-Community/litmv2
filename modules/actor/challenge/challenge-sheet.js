@@ -276,27 +276,19 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 		);
 	}
 
+	// The +/- are Advance and Set Back by one. They go through `advanceLimit` so
+	// the shift lands as an offset the status recalc keeps, and a limit reached
+	// this way is announced like any other.
 	static async #onIncreaseLimit(_event, target) {
-		const index = Number(target.dataset.index);
-		const limit = this.system.limits[index];
+		const limit = this.system.limits[Number(target.dataset.index)];
 		if (!limit || limit.max === 0) return;
-
-		const limits = [...this.system.limits];
-		limits[index] = {
-			...limit,
-			value: Math.min(limit.value + 1, limit.max),
-		};
-		await this.document.update({ "system.limits": limits });
+		await this.system.advanceLimit(limit.id, 1);
 	}
 
 	static async #onDecreaseLimit(_event, target) {
-		const index = Number(target.dataset.index);
-		const limit = this.system.limits[index];
+		const limit = this.system.limits[Number(target.dataset.index)];
 		if (!limit || limit.max === 0) return;
-
-		const limits = [...this.system.limits];
-		limits[index] = { ...limit, value: Math.max(limit.value - 1, 0) };
-		await this.document.update({ "system.limits": limits });
+		await this.system.advanceLimit(limit.id, -1);
 	}
 
 	static async #onAdjustRating(event, target) {
