@@ -1,5 +1,5 @@
 import { resolveEffect } from "../active-effects/effect-queries.js";
-import { StatusTagData } from "../active-effects/status-tag-data.js";
+import { clampTier, StatusTagData } from "../active-effects/status-tag-data.js";
 import {
 	computeSuccessSpend,
 	getSuccessCost,
@@ -10,6 +10,15 @@ import { error, warn } from "../logger.js";
 import { FLAGS } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
+
+/**
+ * An inflicted status tier, held to 1..the world's track depth. The Spend
+ * Power dialog caps it client-side, but the service writes (and bills) it, and
+ * the GM relay receives it off the socket, so neither can trust that.
+ */
+function _inflictTier(tier) {
+	return clampTier(tier, { min: 1 });
+}
 
 /**
  * Apply a parsed spend intent to an actor, executing all document mutations.
@@ -330,7 +339,10 @@ async function _handleApplyStatusAsGM({
 	if (!actor) return _whisperRelayNothing(userId, null);
 
 	if (op === "add") {
-		await actor.system.addStatus(name, { tier, isHidden: false });
+		await actor.system.addStatus(name, {
+			tier: _inflictTier(tier),
+			isHidden: false,
+		});
 		return;
 	}
 	if (op === "reduce") {
@@ -478,7 +490,7 @@ async function _applyInflict(opt, messageId, charge) {
 	const chips = [];
 	let power = 0;
 	for (const { name, tier } of entries) {
-		const tierN = Math.max(tier ?? 1, 1);
+		const tierN = _inflictTier(tier);
 		if (canApply) {
 			await target.system.addStatus(name, { tier: tierN, isHidden: false });
 		} else {
@@ -615,7 +627,7 @@ function _applyDefault(opt) {
 	if (entries.length > 0) {
 		const tags = entries.map(({ name, tier, isSingleUse }) => {
 			const escaped = foundry.utils.escapeHTML(name);
-			if (hasTier) return `[${escaped}-${Math.max(tier, 1)}]`;
+			if (hasTier) return `[${escaped}-${_inflictTier(tier)}]`;
 			if (draggable) {
 				return isSingleUse ? `[${escaped}!]` : `[${escaped}]`;
 			}
@@ -629,7 +641,7 @@ function _applyDefault(opt) {
 		power = cost;
 	} else if (hasTier) {
 		power = entries.reduce(
-			(sum, { tier }) => sum + cost * Math.max(tier, 1),
+			(sum, { tier }) => sum + cost * _inflictTier(tier),
 			0,
 		);
 	} else {
