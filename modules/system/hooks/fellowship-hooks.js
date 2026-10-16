@@ -1,3 +1,4 @@
+import { warn } from "../../logger.js";
 import { localize as t } from "../../utils.js";
 import { ACTOR_TYPES } from "../config.js";
 import { LitmSettings } from "../settings.js";
@@ -55,6 +56,13 @@ function _ensureFellowshipSingleton() {
 					},
 					{ litm: { skipSingletonCheck: true } },
 				);
+				// create() resolves undefined when a preCreateActor hook cancels it
+				if (!actor) {
+					warn(
+						"Fellowship actor creation was cancelled; heroes were not linked.",
+					);
+					return;
+				}
 				fellowshipId = actor.id;
 				await LitmSettings.setFellowshipId(fellowshipId);
 			}

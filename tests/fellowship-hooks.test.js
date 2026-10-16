@@ -55,6 +55,18 @@ describe("fellowship singleton on ready", () => {
 		expect(game.settings.set).not.toHaveBeenCalled();
 	});
 
+	it("warns and stops when a module cancels the Fellowship creation", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		foundry.documents.Actor.create = vi.fn(async () => undefined);
+
+		await expect(runReady()).resolves.toBeUndefined();
+
+		expect(warn).toHaveBeenCalledTimes(1);
+		expect(game.settings.set).not.toHaveBeenCalled();
+		expect(foundry.documents.Actor.updateDocuments).not.toHaveBeenCalled();
+		warn.mockRestore();
+	});
+
 	it("does nothing for a player", async () => {
 		game.user = { id: "player-1", isGM: false };
 		game.users.activeGM = otherGM;
