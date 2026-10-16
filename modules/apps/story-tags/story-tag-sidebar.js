@@ -66,6 +66,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/** @type {Token[]} Currently highlighted tokens from sidebar hover */
 	_highlighted = [];
 
+	/**
+	 * The last form `onSubmit` handled and what it held, so the next submit
+	 * from the same render can diff against it.
+	 * @type {{ form: HTMLFormElement, data: object }|null}
+	 */
+	#lastSubmit = null;
+
 	/** @type {Set<string>} Actor IDs whose sections are collapsed */
 	_collapsedActors = new Set();
 
@@ -1039,38 +1046,84 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/*  Form Handling                               */
 	/* -------------------------------------------- */
 
-	async onSubmit(_event, _form, formData) {
+	async onSubmit(_event, form, formData) {
 		this.invalidateCache();
 		const data = foundry.utils.expandObject(formData.object);
 		if (foundry.utils.isEmpty(data)) return;
 
+		// Any change submits the whole form, and rows the user never touched
+		// still hold whatever this form was rendered with. If somebody else
+		// changed one since, writing it back would undo their change, so the
+		// processors send only what differs from a baseline. The first submit
+		// from a render diffs against the inputs' own defaults (the template
+		// renders `value` and `checked` as attributes): a reset clone read
+		// through the same FormDataExtended gives them in the same shape. Later
+		// submits from that same form diff against the previous one instead,
+		// because a user can change a field back before the re-render lands and
+		// the defaults would call that "unchanged". A render swaps in a new
+		// <form>, which starts over from its defaults. Taken before any await,
+		// so overlapping submits chain in order.
+		const last = this.#lastSubmit;
+		this.#lastSubmit = { form, data };
+		let baseline = last?.form === form ? last.data : null;
+		if (!baseline) {
+			const clone = form.cloneNode(true);
+			clone.reset();
+			baseline = foundry.utils.expandObject(
+				new foundry.applications.ux.FormDataExtended(clone).object,
+			);
+		}
+		const {
+			story: renderedStory,
+			limits: renderedLimits,
+			...renderedActors
+		} = baseline;
+
 		const { story, limits: _limits, ...actors } = data;
 		const resolveActor = (id) => this.#resolveActor(id);
 
-		await applyActorTagUpdates(actors, resolveActor);
-		for (const id of Object.keys(actors)) await this.#triggerLimitRecalc(id);
+		const touched = await applyActorTagUpdates(
+			actors,
+			resolveActor,
+			renderedActors,
+		);
+		for (const id of touched) await this.#triggerLimitRecalc(id);
 
 		// The scene column renders disabled for players, and FormDataExtended
 		// skips disabled fields: a player's form carries each scene tag's name
 		// but none of its checkboxes, which would read as "unscratch every
 		// scene tag and clear every tier". Only the GM edits scene tags here;
 		// players reach them through the tag actions instead.
-		const storyTagUpdates = game.user.isGM ? buildStoryTagUpdates(story) : [];
-		const updatedLimits = await applyLimitUpdates(
+		const storyTagUpdates = game.user.isGM
+			? buildStoryTagUpdates(story, renderedStory)
+			: [];
+		const { storyLimits, flagLimitsWritten } = await applyLimitUpdates(
 			data.limits,
 			this.config.limits,
 			resolveActor,
+			renderedLimits,
 		);
 
 		if (game.user.isGM) {
 			if (storyTagUpdates.length) {
 				await ContentSources.updateStoryTags(storyTagUpdates);
 			}
-			await LitmSettings.setStoryTags({
-				...this.config,
-				limits: updatedLimits,
-			});
-			this.#broadcastRender();
+			if (storyLimits) {
+				await LitmSettings.setStoryTags({
+					...this.config,
+					limits: storyLimits,
+				});
+			}
+			// Also announces actor tag edits (`litm.sceneTagsChanged`), which the
+			// effect hooks alone do not. A submit that wrote nothing stays quiet.
+			if (
+				touched.length ||
+				storyTagUpdates.length ||
+				storyLimits ||
+				flagLimitsWritten
+			) {
+				this.#broadcastRender();
+			}
 		}
 	}
 
