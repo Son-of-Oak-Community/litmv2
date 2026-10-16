@@ -1,9 +1,10 @@
 <section class="standard-form scrollable">
 	<!-- Theme Title and Status -->
-	<header class="img-name">
+	<header class="img-name" {{#if themeTag}}data-linked-ref-target data-effect-id="{{themeTag._id}}"{{/if}}>
 		<img src="{{document.img}}" alt="{{localize (concat 'LITM.Terms.' system.level)}}" data-tooltip="{{localize (concat 'LITM.Terms.' system.level)}}" />
 		<input class="datalist" type="text" name="name" id="name" value="{{document.name}}" required
 			placeholder="{{#if themeTagQuestion}}{{themeTagQuestion}}{{else}}{{localize 'LITM.Ui.theme_title'}}{{/if}}" />
+		{{#if themeTag}}{{> systems/litmv2/templates/partials/edit-linked-ref-controls.html tag=themeTag}}{{/if}}
 	</header>
 
 	<fieldset>
