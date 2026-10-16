@@ -101,7 +101,8 @@ class StubActor {
 }
 
 // --- foundry.documents.Item ---
-// LitmItem extends this. Only its static helpers are exercised in unit tests.
+// LitmItem extends this; the legacy-effects world migration imports LitmItem
+// for its tag builders. Never instantiated in unit tests.
 class StubItem {}
 
 // --- foundry.documents.ChatMessage ---
@@ -182,11 +183,7 @@ globalThis.foundry = {
 		},
 	},
 	dice: { Roll: StubRoll },
-	documents: {
-		Actor: StubActor,
-		Item: StubItem,
-		ChatMessage: StubChatMessage,
-	},
+	documents: { Actor: StubActor, Item: StubItem, ChatMessage: StubChatMessage },
 	applications: {
 		api: {
 			ApplicationV2: StubAppV2,
