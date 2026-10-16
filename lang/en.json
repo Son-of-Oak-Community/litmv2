@@ -388,6 +388,7 @@
 			"camping_backpack_will_deactivate": "Will be deactivated",
 			"camping_backpack_will_reactivate": "Will be re-enabled",
 			"camping_begin": "Begin Camp",
+			"camping_begin_already": "This camp has already begun.",
 			"camping_camp": "Camp",
 			"camping_camp_action": "Camp Action",
 			"camping_camp_action_placeholder": "What are you doing…",

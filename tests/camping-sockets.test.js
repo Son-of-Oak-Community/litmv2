@@ -44,6 +44,26 @@ describe("camping socket events", () => {
 		});
 	});
 
+	it("campingLifecycle forwards the action and the scene it applies to", () => {
+		handler("campingLifecycle")({
+			data: { action: "pack-up", sceneId: "scene-a" },
+		});
+
+		expect(Hooks.callAll).toHaveBeenCalledWith("litm.camping.lifecycle", {
+			action: "pack-up",
+			sceneId: "scene-a",
+		});
+	});
+
+	it("campingLifecycle tolerates an empty payload", () => {
+		handler("campingLifecycle")({ data: undefined });
+
+		expect(Hooks.callAll).toHaveBeenCalledWith("litm.camping.lifecycle", {
+			action: undefined,
+			sceneId: undefined,
+		});
+	});
+
 	it("campingOpen forwards the scene id so peers bind to the camp's scene", () => {
 		handler("campingOpen")({ data: { sceneId: "scene-a" } });
 

@@ -21,6 +21,7 @@ import {
 	liveIds,
 } from "../modules/apps/camping/camping-scene.js";
 import { defaultCampingState } from "../modules/apps/camping/camping-state.js";
+import { error, warn } from "../modules/logger.js";
 import { ContentSources } from "../modules/system/content-sources.js";
 import { Sockets } from "../modules/system/sockets.js";
 
@@ -202,6 +203,73 @@ describe("Begin Camp", () => {
 
 		expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
 		expect(sessionOf(scene).phase).toBe("active");
+	});
+
+	describe("when it may only begin once", () => {
+		function setupWithCampsiteTag() {
+			const state = defaultCampingState();
+			state.placeOfStay.campsiteTags = "[Warm fire]";
+			return state;
+		}
+
+		beforeEach(() => {
+			ContentSources.createStoryTags.mockResolvedValue([{ id: "new-1" }]);
+		});
+
+		it("creates the campsite tags once when clicked twice in a row", async () => {
+			const scene = fakeScene({ camping: setupWithCampsiteTag() });
+			canvas.scene = scene;
+
+			await Promise.all([actions["begin-camp"](), actions["begin-camp"]()]);
+
+			expect(ContentSources.createStoryTags).toHaveBeenCalledTimes(1);
+			expect(sessionOf(scene).phase).toBe("active");
+			expect(sessionOf(scene).placeOfStay.createdCampsiteEffectIds).toEqual([
+				"new-1",
+			]);
+		});
+
+		it("leaves a camp that has already begun alone and tells the GM", async () => {
+			const state = setupWithCampsiteTag();
+			state.phase = "active";
+			state.campId = "camp-1";
+			state.placeOfStay.createdCampsiteEffectIds = ["live-1"];
+			const scene = fakeScene({ camping: state });
+			canvas.scene = scene;
+
+			await actions["begin-camp"]();
+
+			expect(ContentSources.createStoryTags).not.toHaveBeenCalled();
+			expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
+			expect(scene.setFlag).not.toHaveBeenCalled();
+			expect(sessionOf(scene).campId).toBe("camp-1");
+			expect(Sockets.dispatch).not.toHaveBeenCalledWith(
+				"campingOpen",
+				expect.anything(),
+			);
+			expect(ui.notifications.warn).toHaveBeenCalledWith(
+				"LITM.Ui.camping_begin_already",
+			);
+		});
+
+		it("only logs when the action was relayed from a second GM", async () => {
+			const state = setupWithCampsiteTag();
+			state.phase = "active";
+			const scene = fakeScene({ camping: state });
+			game.scenes.get.mockImplementation((id) =>
+				id === "scene-a" ? scene : undefined,
+			);
+			LitmCampingScene.registerSocketHooks();
+			const onLifecycle = Hooks.on.mock.calls.find(
+				([n]) => n === "litm.camping.lifecycle",
+			)[1];
+
+			await onLifecycle({ action: "begin-camp", sceneId: "scene-a" });
+
+			expect(ContentSources.createStoryTags).not.toHaveBeenCalled();
+			expect(ui.notifications.warn).not.toHaveBeenCalled();
+			expect(warn).toHaveBeenCalledTimes(1);
+		});
 	});
 });
 
@@ -518,5 +586,284 @@ describe("scene binding", () => {
 			"campingSaveOp",
 			expect.objectContaining({ sceneId: "scene-b" }),
 		);
+	});
+});
+
+// Begin Camp, Pack Up and Cancel write the scene flag and story tags. Only the
+// active GM holds the apply queue, so a second GM relays them rather than
+// racing the active GM's queued edits.
+describe("camp lifecycle with a second GM", () => {
+	let sceneA;
+	let sceneB;
+
+	const hook = (name) => {
+		LitmCampingScene.registerSocketHooks();
+		return Hooks.on.mock.calls.find(([n]) => n === name)[1];
+	};
+
+	const activeSession = () => {
+		const state = defaultCampingState();
+		state.phase = "active";
+		state.campId = "camp-1";
+		state.placeOfStay.createdCampsiteEffectIds = ["live-1"];
+		return state;
+	};
+
+	const asSecondGM = () => {
+		game.user = { id: "gm-2", isGM: true };
+		game.users.activeGM = { id: "gm-1", isGM: true };
+	};
+
+	beforeEach(() => {
+		sceneA = fakeScene({ id: "scene-a", camping: defaultCampingState() });
+		sceneB = fakeScene({ id: "scene-b", camping: activeSession() });
+		game.scenes.get.mockImplementation(
+			(id) => ({ "scene-a": sceneA, "scene-b": sceneB })[id],
+		);
+		canvas.scene = sceneA;
+		seedPack("live-1");
+		vi.spyOn(foundry.applications.api.DialogV2, "confirm").mockResolvedValue(
+			true,
+		);
+		buildOperations.mockReturnValue({ operations: {}, recap: {} });
+		applyOperations.mockResolvedValue(undefined);
+	});
+
+	describe("a second GM", () => {
+		beforeEach(() => {
+			asSecondGM();
+			const state = defaultCampingState();
+			state.placeOfStay.sceneTagsToExpire = ["live-1"];
+			state.placeOfStay.campsiteTags = "[Warm fire]";
+			sceneA.flags = { litmv2: { camping: state } };
+		});
+
+		it("asks the active GM to Begin Camp instead of writing the scene", async () => {
+			await actions["begin-camp"]();
+
+			expect(Sockets.dispatch).toHaveBeenCalledTimes(1);
+			expect(Sockets.dispatch).toHaveBeenCalledWith("campingLifecycle", {
+				action: "begin-camp",
+				sceneId: "scene-a",
+			});
+			expect(sceneA.setFlag).not.toHaveBeenCalled();
+			expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
+			expect(ContentSources.createStoryTags).not.toHaveBeenCalled();
+		});
+
+		it("confirms Pack Up on its own client, then asks the active GM to run it", async () => {
+			sceneA.flags = { litmv2: { camping: activeSession() } };
+
+			await actions["pack-up"]();
+
+			expect(foundry.applications.api.DialogV2.confirm).toHaveBeenCalledTimes(
+				1,
+			);
+			expect(Sockets.dispatch).toHaveBeenCalledTimes(1);
+			expect(Sockets.dispatch).toHaveBeenCalledWith("campingLifecycle", {
+				action: "pack-up",
+				sceneId: "scene-a",
+			});
+			expect(sceneA.setFlag).not.toHaveBeenCalled();
+			expect(applyOperations).not.toHaveBeenCalled();
+		});
+
+		it("sends nothing when Pack Up is not confirmed", async () => {
+			foundry.applications.api.DialogV2.confirm.mockResolvedValue(false);
+
+			await actions["pack-up"]();
+
+			expect(Sockets.dispatch).not.toHaveBeenCalled();
+		});
+
+		it("asks the active GM to Cancel instead of discarding the session", async () => {
+			sceneA.flags = { litmv2: { camping: activeSession() } };
+
+			await actions.cancel();
+
+			expect(Sockets.dispatch).toHaveBeenCalledTimes(1);
+			expect(Sockets.dispatch).toHaveBeenCalledWith("campingLifecycle", {
+				action: "cancel",
+				sceneId: "scene-a",
+			});
+			expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
+			expect(sceneA.unsetFlag).not.toHaveBeenCalled();
+		});
+
+		it("names the camp's scene, not the one it is viewing", async () => {
+			sceneA.flags = { litmv2: { camping: activeSession() } };
+			LitmCampingScene.open();
+			canvas.scene = sceneB;
+			Sockets.dispatch.mockClear();
+
+			await actions.cancel();
+
+			expect(Sockets.dispatch).toHaveBeenCalledWith("campingLifecycle", {
+				action: "cancel",
+				sceneId: "scene-a",
+			});
+		});
+	});
+
+	describe("the active GM", () => {
+		it("runs Begin Camp locally without relaying", async () => {
+			await actions["begin-camp"]();
+
+			expect(sessionOf(sceneA).phase).toBe("active");
+			expect(Sockets.dispatch).not.toHaveBeenCalledWith(
+				"campingLifecycle",
+				expect.anything(),
+			);
+		});
+
+		it("runs Pack Up locally without relaying", async () => {
+			sceneA.flags = { litmv2: { camping: activeSession() } };
+
+			await actions["pack-up"]();
+
+			expect(applyOperations).toHaveBeenCalledTimes(1);
+			expect(sessionOf(sceneA)).toBeUndefined();
+			expect(Sockets.dispatch).not.toHaveBeenCalledWith(
+				"campingLifecycle",
+				expect.anything(),
+			);
+		});
+
+		it("runs Cancel locally without relaying", async () => {
+			sceneA.flags = { litmv2: { camping: activeSession() } };
+
+			await actions.cancel();
+
+			expect(sessionOf(sceneA)).toBeUndefined();
+			expect(Sockets.dispatch).not.toHaveBeenCalledWith(
+				"campingLifecycle",
+				expect.anything(),
+			);
+		});
+
+		it("runs locally when Foundry reports no active GM", async () => {
+			game.users.activeGM = null;
+			sceneA.flags = { litmv2: { camping: activeSession() } };
+
+			await actions.cancel();
+
+			expect(sessionOf(sceneA)).toBeUndefined();
+			expect(Sockets.dispatch).not.toHaveBeenCalledWith(
+				"campingLifecycle",
+				expect.anything(),
+			);
+		});
+	});
+
+	it("a player's Cancel only closes their own window", async () => {
+		game.user = { id: "player", isGM: false };
+		sceneA.flags = { litmv2: { camping: activeSession() } };
+
+		await actions.cancel();
+
+		expect(Sockets.dispatch).not.toHaveBeenCalled();
+		expect(sceneA.unsetFlag).not.toHaveBeenCalled();
+	});
+
+	describe("the active GM receiving a relayed action", () => {
+		// This client is looking at scene A with no camp window open: the
+		// relayed action has to name its scene, not lean on this client's view.
+		it("Begin Camp runs on the scene it names", async () => {
+			sceneB.flags = { litmv2: { camping: defaultCampingState() } };
+
+			await hook("litm.camping.lifecycle")({
+				action: "begin-camp",
+				sceneId: "scene-b",
+			});
+
+			expect(sessionOf(sceneB).phase).toBe("active");
+			expect(sceneA.setFlag).not.toHaveBeenCalled();
+			expect(Sockets.dispatch).toHaveBeenCalledWith("campingOpen", {
+				sceneId: "scene-b",
+			});
+		});
+
+		it("Pack Up runs on the scene it names, without asking again", async () => {
+			await hook("litm.camping.lifecycle")({
+				action: "pack-up",
+				sceneId: "scene-b",
+			});
+
+			expect(foundry.applications.api.DialogV2.confirm).not.toHaveBeenCalled();
+			expect(applyOperations).toHaveBeenCalledTimes(1);
+			expect(sessionOf(sceneB)).toBeUndefined();
+			expect(sceneA.unsetFlag).not.toHaveBeenCalled();
+			expect(Sockets.dispatch).toHaveBeenCalledWith("campingEnd", {});
+		});
+
+		it("Cancel runs on the scene it names", async () => {
+			await hook("litm.camping.lifecycle")({
+				action: "cancel",
+				sceneId: "scene-b",
+			});
+
+			expect(ContentSources.deleteStoryTags).toHaveBeenCalledWith(["live-1"]);
+			expect(sessionOf(sceneB)).toBeUndefined();
+			expect(sceneA.unsetFlag).not.toHaveBeenCalled();
+		});
+
+		it("is ignored by a GM that is not the active one", async () => {
+			asSecondGM();
+
+			await hook("litm.camping.lifecycle")({
+				action: "cancel",
+				sceneId: "scene-b",
+			});
+
+			expect(sceneB.unsetFlag).not.toHaveBeenCalled();
+			expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
+		});
+
+		it("is ignored by a player", async () => {
+			game.user = { id: "player", isGM: false };
+
+			await hook("litm.camping.lifecycle")({
+				action: "cancel",
+				sceneId: "scene-b",
+			});
+
+			expect(sceneB.unsetFlag).not.toHaveBeenCalled();
+		});
+
+		it("drops an unknown action", async () => {
+			await hook("litm.camping.lifecycle")({
+				action: "set-type",
+				sceneId: "scene-b",
+			});
+
+			expect(sceneB.setFlag).not.toHaveBeenCalled();
+			expect(sceneB.unsetFlag).not.toHaveBeenCalled();
+		});
+
+		it("drops an action that names no scene or one that is gone", async () => {
+			await hook("litm.camping.lifecycle")({ action: "cancel" });
+			await hook("litm.camping.lifecycle")({
+				action: "cancel",
+				sceneId: "scene-gone",
+			});
+
+			expect(sceneA.unsetFlag).not.toHaveBeenCalled();
+			expect(sceneB.unsetFlag).not.toHaveBeenCalled();
+		});
+
+		it("logs a failure instead of throwing into the socket", async () => {
+			ContentSources.deleteStoryTags.mockRejectedValueOnce(new Error("socket"));
+
+			await expect(
+				hook("litm.camping.lifecycle")({
+					action: "cancel",
+					sceneId: "scene-b",
+				}),
+			).resolves.toBeUndefined();
+
+			expect(error).toHaveBeenCalledTimes(1);
+			// Cancel still clears the session whatever happens to the rollback.
+			expect(sessionOf(sceneB)).toBeUndefined();
+		});
 	});
 });
