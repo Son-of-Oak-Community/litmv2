@@ -1,5 +1,6 @@
 import { parseTagString } from "../../item/action/tag-string.js";
 import { LitmItem } from "../../item/litm-item.js";
+import { error } from "../../logger.js";
 import { getDefaultItemIcon, levelIcon } from "../../utils.js";
 
 export function registerItemHooks() {
@@ -25,8 +26,14 @@ export function registerItemHooks() {
 function _migrateLegacyItemOnCreate() {
 	Hooks.on("createItem", async (item, _options, userId) => {
 		if (userId !== game.userId) return;
-		await LitmItem.createLegacyEffects(item);
-		await LitmItem.ensureTitleTag(item);
+		// Foundry doesn't await hook callbacks; a failure here would otherwise
+		// surface only as an unhandled rejection.
+		try {
+			await LitmItem.createLegacyEffects(item);
+			await LitmItem.ensureTitleTag(item);
+		} catch (err) {
+			error(`Setting up item ${item.name} failed`, err);
+		}
 	});
 }
 
