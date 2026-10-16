@@ -30,6 +30,10 @@ export function defaultCampingState() {
 		// setup → active via "Begin Camp", at which point the open socket
 		// fires and players' clients render.
 		phase: "setup",
+		// Set by Pack Up (never by a setter, so a player cannot send it) once
+		// it starts applying results. A second Pack Up is refused while it is
+		// set, and queued edits are dropped.
+		packingUp: false,
 		type: "camp",
 		sojournDuration: "days",
 		// Per-session id stamped on every scene effect created during the

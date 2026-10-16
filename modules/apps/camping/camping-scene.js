@@ -2,6 +2,7 @@ import {
 	statusTagEffect,
 	storyTagEffect,
 } from "../../active-effects/effect-factories.js";
+import { error } from "../../logger.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { Sockets } from "../../system/sockets.js";
 import { getStoryTagSidebar, localize as t } from "../../utils.js";
@@ -96,14 +97,15 @@ function enqueueApply(work) {
  * Drops the op if no camping session is active (i.e. `readState()` is
  * null) — this happens after Pack Up calls `unsetFlag`, and we don't want
  * a stale in-flight op to recreate the flag and resurrect a closed
- * camping session.
+ * camping session. Also dropped once Pack Up has started: the results are
+ * being applied from a snapshot, so later edits could only be lost.
  */
 async function applyOpOnGM(key, payload) {
 	const setter = SETTERS[key];
 	if (!setter) return;
 	return enqueueApply(async () => {
 		const state = readState();
-		if (!state) return;
+		if (!state || state.packingUp) return;
 		setter(state, payload);
 		await canvas.scene?.setFlag(FLAG_SCOPE, FLAG_PATH, state);
 	});
@@ -445,60 +447,106 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		});
 		if (!confirmed) return;
 
-		// Drain pending ops (local + remote) so the snapshot we read below
-		// reflects every edit the players queued before clicking Pack Up.
-		await _applyQueue;
-
-		const state = readState();
-		if (!state) {
+		// Claim the session. Running inside the apply queue means every edit
+		// the players queued before clicking Pack Up has landed, so the state
+		// we build from below is complete. Check-and-set is one step, so a
+		// double click (or a second GM) cannot both get past it.
+		//
+		// Why the guard: applying is not idempotent. A retry after a partial
+		// apply would rebuild operations from already-changed documents and
+		// mark every Improve track and reduce every status a second time.
+		const claim = await enqueueApply(async () => {
+			const current = readState();
+			if (!current) return { status: "missing" };
+			if (current.packingUp) return { status: "busy" };
+			current.packingUp = true;
+			await canvas.scene?.setFlag(FLAG_SCOPE, FLAG_PATH, current);
+			return { status: "claimed", state: current };
+		});
+		if (claim.status === "missing") {
 			LitmCampingScene.close();
 			return;
 		}
+		if (claim.status === "busy") {
+			ui.notifications?.warn(t("LITM.Ui.camping_pack_up_in_progress"));
+			return;
+		}
+		const { state } = claim;
 
-		// Sweep every scene effect this camp session introduced. Includes
-		// both Begin Camp-time campsite tags and any tags/statuses added via
-		// the sidebar during the active phase, all stamped with state.campId.
-		if (state.campId) {
-			const stale = (await ContentSources.getStoryTags()).filter(
-				(e) => e.getFlag?.(FLAG_SCOPE, "campId") === state.campId,
+		// Once `applyOperations` starts, the session can never be re-run: it is
+		// closed and cleared whether the apply succeeds or not. A failure before
+		// that point changed no hero or theme, so there the guard is released
+		// and the GM can simply try again.
+		let applying = false;
+		try {
+			// Sweep every scene effect this camp session introduced. Includes
+			// both Begin Camp-time campsite tags and any tags/statuses added via
+			// the sidebar during the active phase, all stamped with state.campId.
+			if (state.campId) {
+				const stale = (await ContentSources.getStoryTags()).filter(
+					(e) => e.getFlag?.(FLAG_SCOPE, "campId") === state.campId,
+				);
+				if (stale.length) {
+					await ContentSources.deleteStoryTags(stale.map((e) => e.id));
+				}
+			}
+
+			const heroes = getCampingHeroes();
+			const fellowshipActor = heroes
+				.map((h) => h.system?.fellowshipActor)
+				.find(Boolean);
+			const threatItems = buildThreatsContext(state);
+
+			const { operations, recap } = buildOperations(state, {
+				heroes,
+				fellowshipActor,
+				threatItems,
+			});
+
+			applying = true;
+			await applyOperations(operations);
+
+			const content = await foundry.applications.handlebars.renderTemplate(
+				"systems/litmv2/templates/apps/camping/camping-recap.html",
+				recap,
 			);
-			if (stale.length) {
-				await ContentSources.deleteStoryTags(stale.map((e) => e.id));
+			const speakerAlias = fellowshipActor
+				? game.i18n.format("LITM.Ui.camping_speaker_fellowship", {
+						name: fellowshipActor.name,
+					})
+				: t("LITM.Ui.camping_speaker_default");
+			await foundry.documents.ChatMessage.create({
+				content,
+				speaker: { alias: speakerAlias },
+			});
+		} catch (err) {
+			error(`Camp Pack Up failed: ${err?.stack ?? err}`);
+			ui.notifications?.error(
+				t(
+					applying
+						? "LITM.Ui.camping_pack_up_failed_partial"
+						: "LITM.Ui.camping_pack_up_failed",
+				),
+			);
+		} finally {
+			if (applying) {
+				// Close before unsetFlag — the latter fires updateScene, whose
+				// handler re-renders #instance if still set. Closing first nulls
+				// #instance. The unset goes through the queue so an in-flight
+				// edit cannot recreate the flag behind it.
+				await LitmCampingScene.close();
+				await enqueueApply(() =>
+					canvas.scene?.unsetFlag(FLAG_SCOPE, FLAG_PATH),
+				);
+			} else {
+				await enqueueApply(async () => {
+					const current = readState();
+					if (!current) return;
+					current.packingUp = false;
+					await canvas.scene?.setFlag(FLAG_SCOPE, FLAG_PATH, current);
+				});
 			}
 		}
-
-		const heroes = getCampingHeroes();
-		const fellowshipActor = heroes
-			.map((h) => h.system?.fellowshipActor)
-			.find(Boolean);
-		const threatItems = buildThreatsContext(state);
-
-		const { operations, recap } = buildOperations(state, {
-			heroes,
-			fellowshipActor,
-			threatItems,
-		});
-
-		await applyOperations(operations);
-
-		const content = await foundry.applications.handlebars.renderTemplate(
-			"systems/litmv2/templates/apps/camping/camping-recap.html",
-			recap,
-		);
-		const speakerAlias = fellowshipActor
-			? game.i18n.format("LITM.Ui.camping_speaker_fellowship", {
-					name: fellowshipActor.name,
-				})
-			: t("LITM.Ui.camping_speaker_default");
-		await foundry.documents.ChatMessage.create({
-			content,
-			speaker: { alias: speakerAlias },
-		});
-
-		// Close before unsetFlag — the latter fires updateScene, whose handler
-		// re-renders #instance if still set. Closing first nulls #instance.
-		await LitmCampingScene.close();
-		await canvas.scene?.unsetFlag(FLAG_SCOPE, FLAG_PATH);
 	}
 
 	/**
