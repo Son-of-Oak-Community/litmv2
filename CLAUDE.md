@@ -45,7 +45,7 @@ litmv2 is a tag-based RPG. Characters are defined by short descriptors (tags) th
 
 - "Burn" is a roll-time action; "scratched" is the resulting persistent state. There is no "burned" state on a tag.
 - Statuses stack when reapplied (mark new tier; shift right if occupied). Only the highest positive and highest negative status count toward a roll.
-- Statuses can link to **Limits**: when value reaches the limit's effective max, the target is overcome.
+- Statuses can link to **Limits**: when value reaches the limit's effective max, the target is overcome. `litm.limitReached` fires once, on the client that made the change, when a limit's value crosses from below its max to at-or-above it (`recalculateLimitValues`, or `advanceLimit`). An ActiveEffect hook recalcs after any linked-status create, tier change, unlink or delete, so every status write path reaches it.
 
 ### Enricher Tag Syntax (prose chips)
 
@@ -437,7 +437,7 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.preTagScratched` / `litm.tagScratched` — tag scratch lifecycle
 - `litm.themeAdvanced` — after theme advancement
 - `litm.trackCompleted` — `{ actor, trackInfo: { text, type, actorId?, themeId? } }`
-- `litm.limitReached` — `{ actor, limit }` where `limit.max` is the effective max. Fires once, on the client that made the change, when a limit's value crosses from below its max to at-or-above it (`recalculateLimitValues`, or `advanceLimit`), not on every later write. An ActiveEffect hook recalcs after any linked-status create, tier change, unlink or delete, so `addStatus`, chat actions and the token HUD reach it too.
+- `litm.limitReached` — `{ actor, limit }` where `limit.max` is the effective max
 - `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits); no payload. Roll dialogs listen to refresh contributed-tag groups.
 - `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
 
