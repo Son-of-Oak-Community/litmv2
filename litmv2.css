@@ -1828,7 +1828,7 @@ section.standard-form.litm-actions-app {
 .litm .theme-card-tags {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 12px;
+	gap: var(--spacer-4) var(--spacer-12);
 }
 
 :is(
