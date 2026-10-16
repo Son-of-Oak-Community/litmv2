@@ -121,7 +121,9 @@ function _prepareCharacterOnCreate() {
 
 	Hooks.on("createActor", (actor, options) => {
 		(async () => {
-			if (!game.user.isGM) return;
+			// createActor fires on every client; with two GMs online, scaffolding
+			// on each would create every default item twice.
+			if (game.user !== game.users.activeGM) return;
 			// Compendium documents are templates, not playable copies — never
 			// auto-scaffold them (the write also fails on locked packs). A world
 			// copy made from the pack re-fires this hook and gets scaffolded then.
