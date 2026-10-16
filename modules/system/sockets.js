@@ -221,6 +221,13 @@ export class Sockets {
 		Sockets.on("campingSaveOp", ({ data: { key, payload, sceneId } }) => {
 			Hooks.callAll("litm.camping.saveOp", { key, payload, sceneId });
 		});
+		// A second GM's Begin Camp / Pack Up / Cancel, run by the active GM.
+		Sockets.on("campingLifecycle", ({ data }) => {
+			Hooks.callAll("litm.camping.lifecycle", {
+				action: data?.action,
+				sceneId: data?.sceneId,
+			});
+		});
 		Sockets.on("campingEnd", () => {
 			Hooks.callAll("litm.camping.end");
 		});

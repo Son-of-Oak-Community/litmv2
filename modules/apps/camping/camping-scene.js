@@ -134,6 +134,16 @@ async function applyOpOnGM(key, payload, scene = campScene()) {
 }
 
 /**
+ * True on the one client that owns the apply queue: the active GM, or any GM
+ * when Foundry reports none. A second GM does not, so what it writes would
+ * race the queue.
+ */
+function ownsApplyQueue() {
+	const activeGM = game.users.activeGM;
+	return game.user.isGM && (!activeGM || activeGM === game.user);
+}
+
+/**
  * Dispatch an op. The active GM applies locally (serialized through
  * `_applyQueue`). Everyone else, a second GM included, sends a
  * `campingSaveOp` socket naming the camp's scene; the active GM applies on
@@ -141,8 +151,7 @@ async function applyOpOnGM(key, payload, scene = campScene()) {
  */
 export function enqueueOp(key, payload) {
 	const scene = campScene();
-	const activeGM = game.users.activeGM;
-	if (game.user.isGM && (!activeGM || activeGM === game.user)) {
+	if (ownsApplyQueue()) {
 		return applyOpOnGM(key, payload, scene);
 	}
 	Sockets.dispatch("campingSaveOp", { key, payload, sceneId: scene?.id });
@@ -457,11 +466,41 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			await LitmCampingScene.#instance?.close();
 			return;
 		}
-		// GM cancel = discard this session for the whole table. Resolve the
-		// scene and read the state first (closing releases the scene binding),
-		// then close (nulls the singleton so the updateScene re-render hook
-		// short-circuits), then clear the flag.
+		await LitmCampingScene.#runLifecycle("cancel");
+	}
+
+	/**
+	 * Run a camp lifecycle action (Begin Camp, Pack Up, Cancel). These write
+	 * the scene flag and story tags, so they must go through the same queue as
+	 * every other edit: the active GM runs them. A second GM relays the action
+	 * over the socket naming the camp's scene, and the active GM runs it on
+	 * receipt. Confirmation stays with whoever clicked.
+	 */
+	static async #runLifecycle(action) {
 		const scene = campScene();
+		if (!ownsApplyQueue()) {
+			Sockets.dispatch("campingLifecycle", { action, sceneId: scene?.id });
+			return;
+		}
+		await LitmCampingScene.#performLifecycle(action, scene);
+	}
+
+	static #performLifecycle(action, scene) {
+		switch (action) {
+			case "begin-camp":
+				return LitmCampingScene.#beginCamp(scene);
+			case "pack-up":
+				return LitmCampingScene.#packUp(scene);
+			case "cancel":
+				return LitmCampingScene.#cancelCamp(scene);
+		}
+	}
+
+	static async #cancelCamp(scene) {
+		// GM cancel = discard this session for the whole table. Read the state
+		// first (closing releases the scene binding), then close (nulls the
+		// singleton so the updateScene re-render hook short-circuits), then
+		// clear the flag.
 		const state = readState(scene);
 		await LitmCampingScene.close();
 		try {
@@ -491,7 +530,10 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			modal: true,
 		});
 		if (!confirmed) return;
+		await LitmCampingScene.#runLifecycle("pack-up");
+	}
 
+	static async #packUp(scene) {
 		// Claim the session. Running inside the apply queue means every edit
 		// the players queued before clicking Pack Up has landed, so the state
 		// we build from below is complete. Check-and-set is one step, so a
@@ -500,7 +542,6 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		// Why the guard: applying is not idempotent. A retry after a partial
 		// apply would rebuild operations from already-changed documents and
 		// mark every Improve track and reduce every status a second time.
-		const scene = campScene();
 		const claim = await enqueueApply(async () => {
 			const current = readState(scene);
 			if (!current) return { status: "missing" };
@@ -593,6 +634,11 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		}
 	}
 
+	static async #onBeginCamp() {
+		if (!game.user.isGM) return;
+		await LitmCampingScene.#runLifecycle("begin-camp");
+	}
+
 	/**
 	 * Flip the camping session from "setup" to "active":
 	 *   1. Expire any scene tags the GM flagged in setup (Core Book p.179:
@@ -606,11 +652,9 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 	 *   4. Clear sceneTagsToExpire (the work is done) and flip phase.
 	 *   5. Broadcast open so peers render the active phase.
 	 */
-	static async #onBeginCamp() {
-		if (!game.user.isGM) return;
+	static async #beginCamp(scene) {
 		// Drain queue so we see every setup-phase edit before parsing.
 		await _applyQueue;
-		const scene = campScene();
 		const state = readState(scene);
 		if (!state) return;
 
@@ -823,6 +867,20 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			// the viewed scene.)
 			const scene = sceneId ? (game.scenes?.get(sceneId) ?? null) : campScene();
 			await applyOpOnGM(key, payload, scene);
+		});
+		Hooks.on("litm.camping.lifecycle", async ({ action, sceneId } = {}) => {
+			// A second GM relays Begin Camp / Pack Up / Cancel here so they run
+			// in the active GM's queue, never beside it. Same single-applier
+			// rule as saveOp; the action names the camp's scene because this
+			// client may be looking at another, or have no camp window open.
+			if (game.user !== game.users.activeGM) return;
+			const scene = sceneId ? game.scenes?.get(sceneId) : null;
+			if (!scene) return;
+			try {
+				await LitmCampingScene.#performLifecycle(action, scene);
+			} catch (err) {
+				error(`Camp ${action} failed: ${err?.stack ?? err}`);
+			}
 		});
 		Hooks.on("litm.camping.end", () => {
 			LitmCampingScene.close({ fromSocket: true });
