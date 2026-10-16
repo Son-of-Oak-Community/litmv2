@@ -222,6 +222,20 @@ export function executeRoll({
 }
 
 /**
+ * Ask the active GM to scratch a tag this client can't write. With no GM
+ * online the request would reach nobody, so say so instead of dropping it.
+ * @param {object} tag
+ * @param {string} event  The GM relay socket event
+ * @param {object} data
+ */
+function relayScratch(tag, event, data) {
+	if (game.users.activeGM) return Sockets.dispatch(event, data);
+	ui.notifications.warn(
+		game.i18n.format("LITM.Ui.scratch_needs_narrator", { tag: tag.name }),
+	);
+}
+
+/**
  * Apply post-roll side effects: scratch used tags, gain improvements,
  * update roll JSON. Pure of UI concerns.
  */
@@ -247,7 +261,7 @@ export async function processPostRollEffects({
 			const update = [{ _id: tag._id, "system.isScratched": true }];
 			if (game.user.isGM) await ContentSources.updateStoryTags(update);
 			else
-				Sockets.dispatch("storyTagsUpdate", {
+				relayScratch(tag, "storyTagsUpdate", {
 					operation: "updateTags",
 					data: update,
 				});
@@ -263,7 +277,7 @@ export async function processPostRollEffects({
 					? effect.parent.parent
 					: effect.parent;
 			if (effect.isOwner) await applyScratch(targetActor, effect);
-			else Sockets.dispatch("scratchEffect", { uuid: tag.uuid });
+			else relayScratch(tag, "scratchEffect", { uuid: tag.uuid });
 			return;
 		}
 		// Diagnostic: a tag came back from the dialog but neither the rolling

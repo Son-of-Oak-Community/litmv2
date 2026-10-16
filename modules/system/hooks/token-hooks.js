@@ -1,3 +1,4 @@
+import { StoryTagsStore } from "../../apps/story-tags/story-tags-store.js";
 import {
 	onCanvasPan,
 	onCanvasTearDown,
@@ -52,6 +53,20 @@ export function registerTokenHooks() {
 	for (const hook of LABEL_REFRESH_HOOKS) Hooks.on(hook, scheduleLabelRefresh);
 	Hooks.on("canvasTearDown", onCanvasTearDown);
 	Hooks.on("highlightObjects", _onHighlightObjects);
+	Hooks.on("preCreateToken", _hideTokenOfHiddenActor);
+}
+
+/**
+ * A token placed for an actor whose story-tag column is hidden arrives hidden.
+ * The sidebar's visibility toggle hides tokens already on the scene; this
+ * covers the ones dragged out afterwards.
+ * @param {TokenDocument} token
+ * @param {object} data
+ */
+function _hideTokenOfHiddenActor(token, data) {
+	if (data.hidden || !token.actorId) return;
+	if (StoryTagsStore.hiddenActorIds.has(token.actorId))
+		token.updateSource({ hidden: true });
 }
 
 /**

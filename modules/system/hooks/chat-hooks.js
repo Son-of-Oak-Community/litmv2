@@ -201,7 +201,7 @@ async function _handleApproveModeration(_target, app) {
 				warn(`Moderation card ${app.id} was already resolved elsewhere.`);
 				return;
 			}
-			LitmRollDialog.roll(data);
+			LitmRollDialog.roll(data)?.catch(console.error);
 			// Reset own roll dialog locally (sockets don't echo to sender)
 			const actor = game.actors.get(data.actorId);
 			if (actor?.sheet?.rendered) actor.sheet.resetRollDialog();
@@ -232,6 +232,10 @@ async function _handleCompleteSacrifice(target) {
 	const { message, roll } = _getMessageAndRoll(target);
 	const { sacrificeLevel, sacrificeThemeId, sacrificeStatusName, actorId } =
 		roll.litm;
+	// Whoever rolled the Sacrifice completes it. A GM-authored card means the
+	// Narrator rolled it for a player who couldn't, so the Narrator finishes it
+	// too; only the author or a GM can latch the card anyway.
+	if (!message.isAuthor && !game.user.isGM) return;
 	const actor = game.actors.get(actorId);
 	if (!actor?.isOwner) return;
 
@@ -672,23 +676,35 @@ function onRenderChatMessage(app, html, _data) {
 		console.error("LITM spend-power exhaustion check failed:", e),
 	);
 
-	// Hide complete-sacrifice button if already completed
+	// Hide complete-sacrifice once completed, and from anyone but the roller
+	// (or a GM) — see `_handleCompleteSacrifice`.
 	const sacrificeBtn = element.querySelector(
 		"[data-click='complete-sacrifice']",
 	);
 	if (sacrificeBtn) {
 		const roll = app.rolls?.[0];
-		if (roll?.litm?.sacrificeCompleted) {
+		if (
+			roll?.litm?.sacrificeCompleted ||
+			(!app.isAuthor && !game.user.isGM)
+		) {
 			sacrificeBtn.remove();
 		}
 	}
 
-	// Hide theme advancement / evolution buttons for non-owners
-	for (const click of ["open-theme-advancement", "open-theme-evolution"]) {
-		const btn = element.querySelector(`[data-click='${click}']`);
-		if (btn && !app.isAuthor)
-			btn.closest(".litm-track-complete__footer")?.remove();
-	}
+	// Hide theme advancement / evolution buttons for non-owners. Advancement
+	// follows the Hero, not the card: an Improve relayed through the GM posts
+	// a GM-authored card for a player's theme. Evolution stays author-gated
+	// because it latches `evolutionResolved` on the message.
+	const advanceBtn = element.querySelector(
+		"[data-click='open-theme-advancement']",
+	);
+	if (advanceBtn && !game.actors.get(advanceBtn.dataset.actorId)?.isOwner)
+		advanceBtn.closest(".litm-track-complete__footer")?.remove();
+	const evolutionBtn = element.querySelector(
+		"[data-click='open-theme-evolution']",
+	);
+	if (evolutionBtn && !app.isAuthor)
+		evolutionBtn.closest(".litm-track-complete__footer")?.remove();
 
 	// Hide the evolution button once the wizard has resolved this card so
 	// the same chat message can't open the wizard a second time.

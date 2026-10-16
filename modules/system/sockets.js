@@ -1,4 +1,5 @@
 import { scratchTag } from "../active-effects/scratchable-mixin.js";
+import { gainImprovement } from "../actor/hero/hero-data.js";
 import { resolveApprovedRoll } from "../apps/roll/moderation.js";
 import { LitmRollDialog } from "../apps/roll/roll-dialog.js";
 import {
@@ -87,7 +88,7 @@ export class Sockets {
 		Sockets.on("rollDice", ({ senderId, data: { userId, messageId } }) => {
 			const data = resolveApprovedRoll({ senderId, userId, messageId });
 			if (!data) return;
-			LitmRollDialog.roll(data);
+			LitmRollDialog.roll(data)?.catch(console.error);
 		});
 
 		Sockets.on("rejectRoll", ({ data: { actorId, name } }) => {
@@ -122,15 +123,33 @@ export class Sockets {
 		// Post-roll bookkeeping for ally tags: the rolling client can't
 		// update an effect on an actor it doesn't own, so it asks the
 		// active GM to apply the scratch (burn / single-use consumption).
+		// Hooks.callAll drops a relay's promise, so each relay logs its own
+		// failure rather than leave an unhandled rejection on the GM client.
 		Sockets.on("scratchEffect", async ({ data: { uuid } }) => {
 			if (game.user !== game.users.activeGM) return;
-			const effect = await foundry.utils.fromUuid(uuid);
-			if (!effect || effect.system?.isScratched) return;
-			const targetActor =
-				effect.parent?.documentName === "Item"
-					? effect.parent.parent
-					: effect.parent;
-			await scratchTag(targetActor, effect);
+			try {
+				const effect = await foundry.utils.fromUuid(uuid);
+				if (!effect || effect.system?.isScratched) return;
+				const targetActor =
+					effect.parent?.documentName === "Item"
+						? effect.parent.parent
+						: effect.parent;
+				await scratchTag(targetActor, effect);
+			} catch (err) {
+				error("scratchEffect relay failed", err);
+			}
+		});
+
+		// Same relay for Improve: a contributed weakness marks the theme of a
+		// Hero the roller doesn't own.
+		Sockets.on("gainImprovement", async ({ data: { actorId, tag } }) => {
+			if (game.user !== game.users.activeGM) return;
+			try {
+				const actor = game.actors.get(actorId);
+				if (actor) await gainImprovement(actor, tag);
+			} catch (err) {
+				error("gainImprovement relay failed", err);
+			}
 		});
 	}
 
@@ -144,22 +163,23 @@ export class Sockets {
 			// dropped player edits when the GM's sidebar was closed and
 			// double-applied when multiple GMs had it open.
 			if (game.user !== game.users.activeGM) return;
-			await getStoryTagSidebar()?.doUpdate(operation, data);
+			try {
+				await getStoryTagSidebar()?.doUpdate(operation, data);
+			} catch (err) {
+				error("storyTagsUpdate relay failed", err);
+			}
 		});
 
+		// The sender fires `litm.sceneTagsChanged` locally; this is the same
+		// signal for everyone else. Its listeners re-render roll dialogs and
+		// token labels, so third-party listeners see remote changes too.
 		Sockets.on("storyTagsRender", () => {
 			const sidebar = getStoryTagSidebar();
 			if (sidebar?.rendered) {
 				sidebar.invalidateCache();
 				sidebar.render();
-				sidebar.refreshRollDialogs();
-			} else {
-				game.actors.forEach((actor) => {
-					if (!actor.sheet?.hasRollDialog) return;
-					const dialog = actor.sheet.rollDialogInstance;
-					if (dialog?.rendered) dialog.render();
-				});
 			}
+			Hooks.callAll("litm.sceneTagsChanged");
 		});
 	}
 
@@ -175,20 +195,25 @@ export class Sockets {
 			"createHeroAsGM",
 			async ({ data: { actorData, userId, assignToUser } }) => {
 				if (game.user !== game.users.activeGM) return;
-				const data = foundry.utils.deepClone(actorData);
-				foundry.utils.setProperty(
-					data,
-					`ownership.${userId}`,
-					foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
-				);
-				const actor = await foundry.documents.Actor.create(data, {
-					renderSheet: false,
-					fromSidebar: false,
-					litm: { skipHeroWizard: true, skipAutoSetup: true },
-				});
-				if (!actor) return;
-				const user = game.users.get(assignToUser || userId);
-				if (user && !user.character) await user.update({ character: actor.id });
+				try {
+					const data = foundry.utils.deepClone(actorData);
+					foundry.utils.setProperty(
+						data,
+						`ownership.${userId}`,
+						foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+					);
+					const actor = await foundry.documents.Actor.create(data, {
+						renderSheet: false,
+						fromSidebar: false,
+						litm: { skipHeroWizard: true, skipAutoSetup: true },
+					});
+					if (!actor) return;
+					const user = game.users.get(assignToUser || userId);
+					if (user && !user.character)
+						await user.update({ character: actor.id });
+				} catch (err) {
+					error("createHeroAsGM relay failed", err);
+				}
 			},
 		);
 	}

@@ -8,6 +8,7 @@ import {
 	THEME_TAG_TYPES,
 } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
+import { Sockets } from "../../system/sockets.js";
 import { findFellowshipTheme } from "../../utils.js";
 import { advanceFlagLimit } from "../mixins/actor-limits.js";
 import { EffectTagsMixin } from "../mixins/effect-tags-mixin.js";
@@ -71,13 +72,7 @@ export async function gainImprovement(actor, tag) {
 		if (!fellowship) return null;
 		const theme = findFellowshipTheme(fellowship);
 		if (!theme) return null;
-		return completeTrackUpdate(
-			theme,
-			"system.improve.value",
-			theme.system.improve.value + 1,
-			fellowship,
-			actor,
-		);
+		return markThemeImprove(theme, fellowship, actor, tag);
 	}
 
 	// Trace effect → parent theme → owner actor via UUID
@@ -88,10 +83,41 @@ export async function gainImprovement(actor, tag) {
 	if (!parentTheme || parentTheme.type !== ITEM_TYPES.theme) return null;
 	const owner = parentTheme.parent;
 	if (!owner) return null;
+	return markThemeImprove(parentTheme, owner, actor, tag);
+}
+
+/**
+ * Write the Improve mark, or hand it to the active GM when this client can't.
+ * A contributed weakness lives on another player's Hero, so the roller often
+ * doesn't own the theme it marks. The relay re-runs {@link gainImprovement}
+ * on the GM's client from ids, mirroring the `scratchEffect` relay. Returns
+ * null when relayed: the track completion fires on the GM's client.
+ * @param {Item} theme
+ * @param {Actor} owner
+ * @param {Actor} actor - The rolling actor
+ * @param {object} tag
+ * @returns {Promise<object|null>}
+ */
+async function markThemeImprove(theme, owner, actor, tag) {
+	if (!theme.isOwner) {
+		if (game.users.activeGM) {
+			Sockets.dispatch("gainImprovement", {
+				actorId: actor.id,
+				tag: { type: tag.type, uuid: tag.uuid },
+			});
+		} else {
+			ui.notifications.warn(
+				game.i18n.format("LITM.Ui.improve_needs_narrator", {
+					theme: theme.name,
+				}),
+			);
+		}
+		return null;
+	}
 	return completeTrackUpdate(
-		parentTheme,
+		theme,
 		"system.improve.value",
-		parentTheme.system.improve.value + 1,
+		theme.system.improve.value + 1,
 		owner,
 		actor,
 	);
