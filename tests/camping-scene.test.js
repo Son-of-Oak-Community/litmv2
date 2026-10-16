@@ -21,7 +21,7 @@ import {
 	liveIds,
 } from "../modules/apps/camping/camping-scene.js";
 import { defaultCampingState } from "../modules/apps/camping/camping-state.js";
-import { error } from "../modules/logger.js";
+import { error, warn } from "../modules/logger.js";
 import { ContentSources } from "../modules/system/content-sources.js";
 import { Sockets } from "../modules/system/sockets.js";
 
@@ -203,6 +203,73 @@ describe("Begin Camp", () => {
 
 		expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
 		expect(sessionOf(scene).phase).toBe("active");
+	});
+
+	describe("when it may only begin once", () => {
+		function setupWithCampsiteTag() {
+			const state = defaultCampingState();
+			state.placeOfStay.campsiteTags = "[Warm fire]";
+			return state;
+		}
+
+		beforeEach(() => {
+			ContentSources.createStoryTags.mockResolvedValue([{ id: "new-1" }]);
+		});
+
+		it("creates the campsite tags once when clicked twice in a row", async () => {
+			const scene = fakeScene({ camping: setupWithCampsiteTag() });
+			canvas.scene = scene;
+
+			await Promise.all([actions["begin-camp"](), actions["begin-camp"]()]);
+
+			expect(ContentSources.createStoryTags).toHaveBeenCalledTimes(1);
+			expect(sessionOf(scene).phase).toBe("active");
+			expect(sessionOf(scene).placeOfStay.createdCampsiteEffectIds).toEqual([
+				"new-1",
+			]);
+		});
+
+		it("leaves a camp that has already begun alone and tells the GM", async () => {
+			const state = setupWithCampsiteTag();
+			state.phase = "active";
+			state.campId = "camp-1";
+			state.placeOfStay.createdCampsiteEffectIds = ["live-1"];
+			const scene = fakeScene({ camping: state });
+			canvas.scene = scene;
+
+			await actions["begin-camp"]();
+
+			expect(ContentSources.createStoryTags).not.toHaveBeenCalled();
+			expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
+			expect(scene.setFlag).not.toHaveBeenCalled();
+			expect(sessionOf(scene).campId).toBe("camp-1");
+			expect(Sockets.dispatch).not.toHaveBeenCalledWith(
+				"campingOpen",
+				expect.anything(),
+			);
+			expect(ui.notifications.warn).toHaveBeenCalledWith(
+				"LITM.Ui.camping_begin_already",
+			);
+		});
+
+		it("only logs when the action was relayed from a second GM", async () => {
+			const state = setupWithCampsiteTag();
+			state.phase = "active";
+			const scene = fakeScene({ camping: state });
+			game.scenes.get.mockImplementation((id) =>
+				id === "scene-a" ? scene : undefined,
+			);
+			LitmCampingScene.registerSocketHooks();
+			const onLifecycle = Hooks.on.mock.calls.find(
+				([n]) => n === "litm.camping.lifecycle",
+			)[1];
+
+			await onLifecycle({ action: "begin-camp", sceneId: "scene-a" });
+
+			expect(ContentSources.createStoryTags).not.toHaveBeenCalled();
+			expect(ui.notifications.warn).not.toHaveBeenCalled();
+			expect(warn).toHaveBeenCalledTimes(1);
+		});
 	});
 });
 
