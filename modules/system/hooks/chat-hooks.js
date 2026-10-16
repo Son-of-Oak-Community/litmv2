@@ -202,9 +202,14 @@ async function _handleApproveModeration(_target, app) {
 				return;
 			}
 			LitmRollDialog.roll(data)?.catch(console.error);
-			// Reset own roll dialog locally (sockets don't echo to sender)
-			const actor = game.actors.get(data.actorId);
-			if (actor?.sheet?.rendered) actor.sheet.resetRollDialog();
+			// Reset own roll dialog locally (sockets don't echo to sender) —
+			// unless a newer roll has opened on it since this one was sent.
+			const sheet = game.actors.get(data.actorId)?.sheet;
+			if (
+				sheet?.hasRollDialog &&
+				sheet.rollDialogInstance.matchesSyncSession(data.syncSession)
+			)
+				sheet.resetRollDialog();
 		} else {
 			// Name the request; don't carry it. The requester's client reads the
 			// roll back off the card it authored (see resolveApprovedRoll), so a
@@ -219,9 +224,11 @@ async function _handleApproveModeration(_target, app) {
 			await app.delete().catch(console.error);
 		}
 
-		// Dispatch order to reset Roll Dialog on other clients
+		// Reset the approved roll on other clients. The session keeps the reset
+		// off a newer draft the roller opened while the Narrator deliberated.
 		Sockets.dispatch("resetRollDialog", {
 			actorId: data.actorId,
+			syncSession: data.syncSession,
 		});
 	} finally {
 		_moderationInFlight.delete(app.id);
@@ -327,6 +334,7 @@ async function _handleRejectModeration(_target, app) {
 	_moderationInFlight.add(app.id);
 	try {
 		const data = await app.getFlag("litmv2", "data");
+		const userId = await app.getFlag("litmv2", "userId");
 		// Deleting the card claims the request, as in _handleApproveModeration:
 		// whoever fails to delete it is not the one who rejected it, and must not
 		// send the requester a second rejection.
@@ -336,10 +344,12 @@ async function _handleRejectModeration(_target, app) {
 			return;
 		}
 		if (!data?.actorId) return;
-		// Dispatch order to reopen
+		// Reopen the roll for the requester only; anyone else holding a dialog
+		// for this actor would reopen it with no owner.
 		Sockets.dispatch("rejectRoll", {
 			name: game.user.name,
 			actorId: data.actorId,
+			userId,
 		});
 	} finally {
 		_moderationInFlight.delete(app.id);

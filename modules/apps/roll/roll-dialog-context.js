@@ -747,12 +747,14 @@ export function buildGroupRollTabs(dialog, shared) {
 		if (!actor) continue;
 		let groups = buildActorEffectGroups(dialog, actor, shared);
 		if (actable) groups = keepSelectedOnly(groups);
+		// Masked like the sidebar's own groups: a concealed Challenge keeps its alias.
+		const label = actor.system?.maskedName ?? actor.name;
 		for (const group of groups) {
 			storyGroups.push({
 				...group,
 				themeName: group.themeName
-					? `${actor.name} — ${group.themeName}`
-					: actor.name,
+					? `${label} — ${group.themeName}`
+					: label,
 				themeImg:
 					group.themeImg ?? (actor.prototypeToken?.texture?.src || actor.img),
 			});
