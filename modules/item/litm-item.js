@@ -152,7 +152,11 @@ export class LitmItem extends foundry.documents.Item {
 		if (existing) return existing;
 		const promise = LitmItem.#doEnsureTitleTag(item);
 		LitmItem.#titleTagInFlight.set(item, promise);
-		promise.finally(() => LitmItem.#titleTagInFlight.delete(item));
+		// finally() derives a new promise that rejects with the same reason; the
+		// caller handles `promise`, so swallow the derived one.
+		promise
+			.finally(() => LitmItem.#titleTagInFlight.delete(item))
+			.catch(() => {});
 		return promise;
 	}
 
