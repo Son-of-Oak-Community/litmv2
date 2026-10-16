@@ -390,4 +390,47 @@ describe("status writes recalc through one ActiveEffect choke point", () => {
 		expect(reachedCalls()).toHaveLength(1);
 		expect(actor.stored[0].value).toBe(3);
 	});
+
+	it("addStatus onto a same-named unlinked status links it, moves the limit and whispers once", async () => {
+		// The target already carries "Wounded" with no limit. Inflicting it again
+		// through a limit group stacks the existing status; the link must land
+		// with the stack, or the limit never moves.
+		const existing = fakeEffect({
+			id: "fx-wounded",
+			type: "status_tag",
+			name: "Wounded",
+			system: {
+				limitId: null,
+				tiers: tiers(2),
+				calculateMark: () => tiers(3),
+			},
+		});
+		const { actor, model } = buildActor({
+			limits: [limit({ max: 3 })],
+			effects: [existing],
+		});
+		// Stand in for Foundry: apply the dotted keys, then dispatch
+		// updateActiveEffect with the expanded diff to the changer's own client.
+		actor.updateEmbeddedDocuments = vi.fn(async (_type, updates) => {
+			for (const { _id, ...changes } of updates) {
+				const effect = actor.effects.find((e) => e.id === _id);
+				const diff = {};
+				for (const [key, value] of Object.entries(changes)) {
+					const field = key.replace(/^system\./, "");
+					effect.system[field] = value;
+					diff[field] = value;
+				}
+				dispatch("updateActiveEffect", effect, { system: diff }, {}, ME);
+			}
+			return [];
+		});
+
+		await model.addStatus("Wounded", { tier: 3, limitId: "lim-1" });
+		// The sidebar's own recalc for the same write; it queues behind the hook's.
+		await model.recalculateLimitValues();
+
+		expect(existing.system.limitId).toBe("lim-1");
+		expect(actor.stored[0].value).toBe(3);
+		expect(reachedCalls()).toHaveLength(1);
+	});
 });
