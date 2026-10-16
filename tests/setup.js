@@ -51,6 +51,19 @@ const getProperty = (obj, path) => {
 	return path.split(".").reduce((acc, k) => (acc == null ? acc : acc[k]), obj);
 };
 
+const hasProperty = (obj, path) => {
+	if (!obj) return false;
+	if (path in obj) return true;
+	let cursor = obj;
+	for (const key of path.split(".")) {
+		if (cursor == null || typeof cursor !== "object" || !(key in cursor)) {
+			return false;
+		}
+		cursor = cursor[key];
+	}
+	return true;
+};
+
 const fromUuidSync = vi.fn(() => null);
 const fromUuid = vi.fn(async () => null);
 
@@ -156,6 +169,7 @@ globalThis.foundry = {
 	utils: {
 		setProperty,
 		getProperty,
+		hasProperty,
 		fromUuid,
 		fromUuidSync,
 		randomID,
