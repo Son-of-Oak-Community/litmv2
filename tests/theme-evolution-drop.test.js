@@ -147,13 +147,36 @@ describe("applyDroppedTheme", () => {
 		const theme = fakeTheme({ name: "Hero theme" });
 		const dropped = fakeTheme({ name: "Fellowship", isFellowship: true });
 
-		await applyDroppedTheme({ actor, theme, dropped });
+		const applied = await applyDroppedTheme({ actor, theme, dropped });
 
+		expect(applied).toBe(false);
 		expect(ui.notifications.warn).toHaveBeenCalledWith(
 			"LITM.Ui.evolution_drop_theme_kind_mismatch",
 		);
 		expect(theme.deleteEmbeddedDocuments).not.toHaveBeenCalled();
 		expect(Hooks.callAll).not.toHaveBeenCalled();
+	});
+
+	it("refuses a Hero theme dropped on a Fellowship theme", async () => {
+		const actor = fakeActor({ system: { promise: 0, pendingPromise: 0 } });
+		const theme = fakeTheme({ name: "Fellowship", isFellowship: true });
+		const dropped = fakeTheme({ name: "Hero theme" });
+
+		const applied = await applyDroppedTheme({ actor, theme, dropped });
+
+		expect(applied).toBe(false);
+		expect(theme.deleteEmbeddedDocuments).not.toHaveBeenCalled();
+		expect(Hooks.callAll).not.toHaveBeenCalled();
+	});
+
+	it("reports true once the theme has been replaced", async () => {
+		const actor = fakeActor({ system: { promise: 0, pendingPromise: 0 } });
+		const theme = fakeTheme({ name: "Target" });
+		const dropped = fakeTheme({ name: "Source" });
+
+		const applied = await applyDroppedTheme({ actor, theme, dropped });
+
+		expect(applied).toBe(true);
 	});
 
 	it("fires litm.themeAdvanced with the replace payload shape the form path uses", async () => {
@@ -243,14 +266,18 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		};
 		game.actors.get = vi.fn(() => actor);
 		actor.items = { get: vi.fn(() => theme) };
+		// The chat card that opened the wizard; resolving it hides its button.
+		const message = { isAuthor: true, setFlag: vi.fn(async () => {}) };
+		game.messages.get = vi.fn(() => message);
 		const wizard = new ThemeEvolutionWizard({
 			actorId: actor.id,
 			themeId: theme.id,
+			messageId: "message-1",
 		});
 		wizard.close = vi.fn();
 		// Reading the getter is what registers the callbacks.
 		void wizard._dragDrop;
-		return { wizard, drop: dropCallback };
+		return { wizard, message, drop: dropCallback };
 	}
 
 	it("rejects dropping the theme being evolved onto its own wizard", async () => {
@@ -258,7 +285,7 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		const theme = fakeTheme({ name: "Hardened Warrior" });
 		const confirm = vi.fn(async () => true);
 		foundry.applications.api.DialogV2.confirm = confirm;
-		const { wizard, drop } = wizardFor({
+		const { wizard, message, drop } = wizardFor({
 			actor,
 			theme,
 			dragged: { type: "Item", uuid: theme.uuid },
@@ -274,8 +301,32 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		expect(theme.deleteEmbeddedDocuments).not.toHaveBeenCalled();
 		expect(theme.update).not.toHaveBeenCalled();
 		expect(Hooks.callAll).not.toHaveBeenCalled();
+		expect(message.setFlag).not.toHaveBeenCalled();
 		expect(wizard.close).not.toHaveBeenCalled();
 		expect(theme.effects).toHaveLength(7);
+	});
+
+	it("keeps the wizard open and the chat card unresolved when the drop is refused as the wrong kind", async () => {
+		const actor = fakeActor({ system: { promise: 0 } });
+		const theme = fakeTheme({ name: "Hero theme" });
+		const source = fakeTheme({ name: "Fellowship", isFellowship: true });
+		foundry.applications.api.DialogV2.confirm = vi.fn(async () => true);
+		const { wizard, message, drop } = wizardFor({
+			actor,
+			theme,
+			dragged: { type: "Item", uuid: source.uuid },
+		});
+		foundry.utils.fromUuid.mockResolvedValueOnce(source);
+
+		await drop({});
+
+		expect(ui.notifications.warn).toHaveBeenCalledWith(
+			"LITM.Ui.evolution_drop_theme_kind_mismatch",
+		);
+		expect(message.setFlag).not.toHaveBeenCalled();
+		expect(wizard.close).not.toHaveBeenCalled();
+		// A refused drop must not leave the wizard stuck mid-submit.
+		expect(wizard._submitting).toBe(false);
 	});
 
 	it("replaces the theme with a different dropped theme, fires the hook and closes", async () => {
@@ -283,7 +334,7 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		const theme = fakeTheme({ name: "Target", power: 2, weakness: 1 });
 		const source = fakeTheme({ name: "Source", power: 4, weakness: 2 });
 		foundry.applications.api.DialogV2.confirm = vi.fn(async () => true);
-		const { wizard, drop } = wizardFor({
+		const { wizard, message, drop } = wizardFor({
 			actor,
 			theme,
 			dragged: { type: "Item", uuid: source.uuid },
@@ -293,6 +344,11 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		await drop({});
 
 		expect(ui.notifications.warn).not.toHaveBeenCalled();
+		expect(message.setFlag).toHaveBeenCalledWith(
+			"litmv2",
+			"evolutionResolved",
+			true,
+		);
 		const [, created] = theme.createEmbeddedDocuments.mock.calls[0];
 		expect(created).toHaveLength(6);
 		expect(Hooks.callAll).toHaveBeenCalledWith(

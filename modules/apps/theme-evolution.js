@@ -690,16 +690,19 @@ async function submitExpand({
  * target is touched: when `dropped` is `theme` itself, wiping the target
  * empties the source's effect collection too. The wizard rejects that
  * drop, but this function does not depend on it.
+ *
+ * @returns {Promise<boolean>} True once the theme was replaced; false when
+ *   the drop was refused and nothing changed.
  */
 export async function applyDroppedTheme({ actor, theme, dropped }) {
 	const isFellowship = !!theme.system?.isFellowship;
 	if (!isFellowship && dropped.system?.isFellowship) {
 		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
-		return;
+		return false;
 	}
 	if (isFellowship && !dropped.system?.isFellowship) {
 		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
-		return;
+		return false;
 	}
 
 	// Power/weakness tag effects to copy from the source. Title tag stays
@@ -762,6 +765,7 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 			actor: actor.name,
 		}),
 	);
+	return true;
 }
 
 export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -1003,7 +1007,9 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 
 		this._submitting = true;
 		try {
-			await applyDroppedTheme({ actor, theme, dropped: item });
+			const applied = await applyDroppedTheme({ actor, theme, dropped: item });
+			// A refused drop changed nothing: leave the wizard and its chat card be.
+			if (!applied) return;
 			await markSourceMessageResolved(this.messageId);
 			this.close();
 			theme.sheet?.render(true, { focus: true });
