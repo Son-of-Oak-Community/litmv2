@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
 	buildSteps,
+	partitionCampingEffects,
 	stepIsComplete,
 } from "../modules/apps/camping/camping-context.js";
+import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
 // Minimal hero shape — just the fields buildSteps / stepIsComplete read.
 function hero({
@@ -20,6 +22,87 @@ function hero({
 function act(activity = null) {
 	return { activity };
 }
+
+describe("partitionCampingEffects — Quality Time fellowship tags", () => {
+	// Fellowship tags sit on the Fellowship actor's theme item. A hero reaches
+	// them only through `system.fellowshipActor`.
+	function fellowshipWith(...tags) {
+		return fakeActor({
+			type: "fellowship",
+			items: [fakeItem({ type: "theme", effects: tags })],
+		});
+	}
+	const scratchedTag = (name) =>
+		fakeEffect({
+			name,
+			type: "fellowship_tag",
+			system: { isScratched: true },
+		});
+
+	it("lists the scratched tags of the hero's Fellowship", () => {
+		const spent = scratchedTag("we never give up");
+		const fresh = fakeEffect({
+			type: "fellowship_tag",
+			system: { isScratched: false },
+		});
+		const hero = fakeActor();
+		hero.system = { fellowshipActor: fellowshipWith(spent, fresh) };
+
+		const { scratchedFellowshipTags } = partitionCampingEffects(hero);
+
+		expect(scratchedFellowshipTags).toEqual([spent]);
+	});
+
+	it("does not list a fellowship_tag that sits on the hero rather than the Fellowship", () => {
+		const stray = scratchedTag("stray");
+		const hero = fakeActor({
+			items: [fakeItem({ type: "theme", effects: [stray] })],
+		});
+		hero.system = { fellowshipActor: fellowshipWith() };
+
+		expect(partitionCampingEffects(hero).scratchedFellowshipTags).toEqual([]);
+	});
+
+	it("lists an older Fellowship theme's scratched power_tag too", () => {
+		const legacy = fakeEffect({
+			name: "the cooking fire",
+			type: "power_tag",
+			system: { isScratched: true },
+		});
+		const theme = fakeItem({ type: "theme", effects: [legacy] });
+		theme.documentName = "Item";
+		legacy.parent = theme;
+		const fellowship = fakeActor({ type: "fellowship", items: [theme] });
+		const hero = fakeActor();
+		hero.system = { fellowshipActor: fellowship };
+
+		expect(partitionCampingEffects(hero).scratchedFellowshipTags).toEqual([
+			legacy,
+		]);
+	});
+
+	it("is empty when the hero has no Fellowship", () => {
+		const hero = fakeActor();
+		hero.system = { fellowshipActor: null };
+
+		expect(partitionCampingEffects(hero).scratchedFellowshipTags).toEqual([]);
+	});
+
+	it("leaves the hero's own buckets alone", () => {
+		const power = fakeEffect({
+			type: "power_tag",
+			system: { isScratched: true },
+		});
+		const rel = fakeEffect({ type: "relationship_tag" });
+		const hero = fakeActor({ effects: [power, rel] });
+		hero.system = { fellowshipActor: fellowshipWith(scratchedTag("x")) };
+
+		const buckets = partitionCampingEffects(hero);
+
+		expect(buckets.scratchedRecoverable).toEqual([power]);
+		expect(buckets.relationshipEffects).toEqual([rel]);
+	});
+});
 
 describe("buildSteps", () => {
 	it("emits the 4-step timeline when no hero has opted into period 3", () => {

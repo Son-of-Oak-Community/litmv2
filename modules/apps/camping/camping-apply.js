@@ -1,4 +1,5 @@
 import { relationshipTagEffect } from "../../active-effects/effect-factories.js";
+import { fellowshipTagEffects } from "../../active-effects/effect-queries.js";
 import {
 	maxStatusTier,
 	StatusTagData,
@@ -416,11 +417,9 @@ function buildQualityTimeOps(hero, heroState, world, ops, qtStage) {
 	const lines = [];
 
 	if (quality.action === "recoverFellowship") {
-		const effect = allFx.find(
-			(e) =>
-				e.id === quality.fellowshipTagId &&
-				e.type === "fellowship_tag" &&
-				e.system?.isScratched,
+		// Fellowship tags live on the Fellowship actor, not the hero.
+		const effect = fellowshipTagEffects(hero, world.fellowshipActor).find(
+			(e) => e.id === quality.fellowshipTagId && e.system?.isScratched,
 		);
 		if (effect) {
 			ops.unscratches.push({ effect });
@@ -631,7 +630,11 @@ function groupByParent(map, parent, payload) {
 
 async function applyScratchBatch(entries, target) {
 	const byParent = new Map();
+	// Two heroes can pick the same shared (fellowship) tag; write it once.
+	const seen = new Set();
 	for (const { effect } of entries ?? []) {
+		if (seen.has(effect.id)) continue;
+		seen.add(effect.id);
 		const current = !!effect.system?.isScratched;
 		if (current === target) continue;
 		groupByParent(byParent, effect.parent, {
