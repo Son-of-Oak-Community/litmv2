@@ -21,6 +21,7 @@ export function registerActorHooks() {
 	_enforceHeroItemLimits();
 	_validateEffectType();
 	_syncUiOnEffectChange();
+	_recalcLimitsOnStatusChange();
 	_syncRollDialogHudOnUpdate();
 	_flashSacrificeBannerOnUpdate();
 	_demoteRollDialogOnSeatTaken();
@@ -223,6 +224,49 @@ function _syncUiOnEffectChange() {
 	Hooks.on("deleteActiveEffect", sync);
 }
 
+/**
+ * Keep each limit's stored `value` in step with the statuses linked to it, and
+ * through `recalculateLimitValues` announce `litm.limitReached` when one crosses
+ * its max. Every status write goes through an ActiveEffect create, update or
+ * delete — `addStatus`, Spend Power Inflict, chat actions, the token HUD,
+ * sheets — so this one choke point covers them all, where only the story-tag
+ * sidebar used to recalc.
+ *
+ * Runs on the client of the user who made the change: it announces once, and
+ * that user owns the actor. A status with no limit moves no limit, so only
+ * linked statuses (or a change to the link itself) recalc: a recalc rewrites
+ * every limit's value from its statuses, which would otherwise wipe progress
+ * added directly with Advance.
+ */
+function _recalcLimitsOnStatusChange() {
+	const recalc = (effect) => {
+		const actor =
+			effect.parent?.documentName === "Actor"
+				? effect.parent
+				: effect.parent?.parent;
+		if (!actor || actor.pack) return;
+		actor.system?.recalculateLimitValues?.()?.catch(console.error);
+	};
+
+	Hooks.on("createActiveEffect", (effect, _options, userId) => {
+		if (userId !== game.userId) return;
+		if (effect.type === "status_tag" && effect.system?.limitId) recalc(effect);
+	});
+	Hooks.on("updateActiveEffect", (effect, changes, _options, userId) => {
+		if (userId !== game.userId) return;
+		if (effect.type !== "status_tag") return;
+		const system = changes?.system;
+		if (!system) return;
+		const relinked = "limitId" in system;
+		if (!relinked && !("tiers" in system)) return;
+		if (relinked || effect.system?.limitId) recalc(effect);
+	});
+	Hooks.on("deleteActiveEffect", (effect, _options, userId) => {
+		if (userId !== game.userId) return;
+		if (effect.type === "status_tag" && effect.system?.limitId) recalc(effect);
+	});
+}
+
 const HERO_ITEM_LIMITS = {
 	theme: {
 		max: () => CONFIG.litmv2?.themeLimit ?? 4,
@@ -275,9 +319,12 @@ function _enforceStoryThemeActorLimits() {
 
 /**
  * Sync story_theme actor name/image to its embedded item when the actor changes.
+ * Gated to the user who made the change, who owns the embedded item through the
+ * actor — see `_syncTitleTagOnRename` in item-hooks.
  */
 function _syncStoryThemeActorToItem() {
-	Hooks.on("updateActor", (actor, data) => {
+	Hooks.on("updateActor", (actor, data, _options, userId) => {
+		if (userId !== game.userId) return;
 		if (actor.type !== "story_theme") return;
 		const theme = actor.system.storyTheme;
 		if (!theme) return;

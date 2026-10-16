@@ -45,7 +45,7 @@ litmv2 is a tag-based RPG. Characters are defined by short descriptors (tags) th
 
 - "Burn" is a roll-time action; "scratched" is the resulting persistent state. There is no "burned" state on a tag.
 - Statuses stack when reapplied (mark new tier; shift right if occupied). Only the highest positive and highest negative status count toward a roll.
-- Statuses can link to **Limits**: when value reaches the limit's effective max, the target is overcome.
+- Statuses can link to **Limits**: when value reaches the limit's effective max, the target is overcome. `litm.limitReached` fires once, on the client that made the change, when a limit's value crosses from below its max to at-or-above it (`recalculateLimitValues`, or `advanceLimit`). An ActiveEffect hook recalcs after any linked-status create, tier change, unlink or delete, so every status write path reaches it.
 
 ### Enricher Tag Syntax (prose chips)
 

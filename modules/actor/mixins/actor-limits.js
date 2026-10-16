@@ -10,7 +10,35 @@
  * @property {number} max      The limit's max (defaults to 6 if unset).
  * @property {boolean} immune  True when the limit's max is 0 — an immunity, so
  *                             nothing was written and `value` stays 0.
+ * @property {boolean} reached True when this change carried the value from
+ *                             below the max up to it (see {@link crossedLimitMax}).
  */
+
+/**
+ * The transition rule behind `litm.limitReached`: a limit is "reached" at the
+ * moment its value crosses from below the max to at-or-above it — not while it
+ * merely sits there, or every later write would announce it again. A max of 0
+ * is an immunity (Core Book p.169) and is never reached.
+ * @param {number} previousValue  The value before the change.
+ * @param {number} nextValue      The value after it.
+ * @param {number} max            The effective max.
+ * @returns {boolean}
+ */
+export function crossedLimitMax(previousValue, nextValue, max) {
+	if (!Number.isFinite(max) || max <= 0) return false;
+	return (Number(previousValue) || 0) < max && (Number(nextValue) || 0) >= max;
+}
+
+/**
+ * Announce a limit reached to this client's `litm.limitReached` listeners (the
+ * GM whisper in chat-hooks among them). Callers fire only from the client that
+ * made the write, so the announcement happens once per crossing.
+ * @param {Actor} actor
+ * @param {object} limit  The limit entry, with `max` set to the effective max.
+ */
+export function announceLimitReached(actor, limit) {
+	Hooks.callAll("litm.limitReached", { actor, limit });
+}
 
 /**
  * Read the flag-backed limits array for the given actor.
@@ -45,6 +73,7 @@ export async function advanceFlagLimit(actor, limitId, delta, { max } = {}) {
 	if (!result) return null;
 	if (!result.change.immune)
 		await actor.setFlag("litmv2", "limits", result.updated);
+	_announceIfReached(actor, result.change);
 	return result.change;
 }
 
@@ -64,7 +93,13 @@ export async function advanceSystemLimit(actor, limitId, delta) {
 	if (!result) return null;
 	if (!result.change.immune)
 		await actor.update({ "system.limits": result.updated });
+	_announceIfReached(actor, result.change);
 	return result.change;
+}
+
+function _announceIfReached(actor, change) {
+	if (!change.reached) return;
+	announceLimitReached(actor, { ...change.limit, max: change.max });
 }
 
 function _firstFinite(...candidates) {
@@ -89,16 +124,23 @@ function _shiftLimit(limits, limitId, delta, maxOverride) {
 	// finiteness rather than truthiness, and report rather than write.
 	const max = _firstFinite(maxOverride, limit.max);
 	if (max === 0) {
-		return { updated: limits, change: { limit, value: 0, max, immune: true } };
+		return {
+			updated: limits,
+			change: { limit, value: 0, max, immune: true, reached: false },
+		};
 	}
-	const newValue = Math.max(
-		0,
-		Math.min(max, (Number(limit.value) || 0) + delta),
-	);
+	const previous = Number(limit.value) || 0;
+	const newValue = Math.max(0, Math.min(max, previous + delta));
 	const updated = [...limits];
 	updated[idx] = { ...limit, value: newValue };
 	return {
 		updated,
-		change: { limit: updated[idx], value: newValue, max, immune: false },
+		change: {
+			limit: updated[idx],
+			value: newValue,
+			max,
+			immune: false,
+			reached: crossedLimitMax(previous, newValue, max),
+		},
 	};
 }

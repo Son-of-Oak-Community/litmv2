@@ -1574,8 +1574,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	}
 
 	/**
-	 * Thin wrapper: resolves the actor from an id, delegates limit recalculation
-	 * to the data model, and emits `litm.limitReached` for each newly-crossed limit.
+	 * Thin wrapper: resolves the actor from an id and awaits limit recalculation
+	 * on the data model, which also announces `litm.limitReached` for each
+	 * newly-crossed limit. The sidebar never fires the hook itself.
 	 * @param {string} actorId
 	 * @returns {Promise<void>}
 	 */
@@ -1583,10 +1584,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const actor = this.#resolveActor(actorId);
 		if (!actor?.isOwner) return;
 		if (typeof actor.system?.recalculateLimitValues !== "function") return;
-		const result = await actor.system.recalculateLimitValues();
-		for (const limit of result.reached) {
-			Hooks.callAll("litm.limitReached", { actor, limit });
-		}
+		await actor.system.recalculateLimitValues();
 	}
 
 	async #removeFromSource(data) {

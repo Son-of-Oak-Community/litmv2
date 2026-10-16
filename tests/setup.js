@@ -100,6 +100,11 @@ class StubActor {
 	}
 }
 
+// --- foundry.documents.Item ---
+// LitmItem extends this; the legacy-effects world migration imports LitmItem
+// for its tag builders. Never instantiated in unit tests.
+class StubItem {}
+
 // --- foundry.documents.ChatMessage ---
 // spend-power-service posts "action applied" cards and GM-relay whispers
 // through ChatMessage.create; tests assert on the calls.
@@ -173,7 +178,7 @@ globalThis.foundry = {
 		},
 	},
 	dice: { Roll: StubRoll },
-	documents: { Actor: StubActor, ChatMessage: StubChatMessage },
+	documents: { Actor: StubActor, Item: StubItem, ChatMessage: StubChatMessage },
 	applications: {
 		api: {
 			ApplicationV2: StubAppV2,
