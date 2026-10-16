@@ -1438,16 +1438,15 @@ section.standard-form.litm-actions-app {
 	position: relative;
 }
 
-/* GM send-roll-request button — absolute-positioned in the top-right
-   corner of the card so the centered title isn't pulled off-axis. */
-
+/* GM call-for-roll button — the card's one primary action, at the foot. */
 .litm-render--action__send {
-	position: absolute;
-	top: var(--spacer-8);
-	right: var(--spacer-8);
-	width: 2rem;
-	height: 2rem;
-	padding: 0;
+	align-self: center;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	width: auto;
+	margin-top: var(--spacer-8);
+	padding: var(--spacer-4) var(--spacer-16);
 	background: transparent;
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-sm);

@@ -1,3 +1,4 @@
+import { callForRollLabel } from "../../apps/roll/roll-request.js";
 import { enrichHTML, localize as t } from "../../utils.js";
 import { proseChipsHtml, sectionHeader, tagSpan } from "./renderer-utils.js";
 
@@ -26,19 +27,6 @@ export async function renderAction(item) {
 	title.classList.add("litm-render__title");
 	title.textContent = item.name;
 	container.appendChild(title);
-
-	if (game.user.isGM) {
-		const sendBtn = document.createElement("button");
-		sendBtn.type = "button";
-		sendBtn.classList.add("litm-render--action__send");
-		sendBtn.dataset.renderAction = "send-roll-request";
-		sendBtn.dataset.uuid = item.uuid;
-		sendBtn.dataset.tooltip = t("LITM.Actions.request_dialog_title");
-		sendBtn.setAttribute("aria-label", t("LITM.Actions.request_dialog_title"));
-		sendBtn.innerHTML =
-			'<i class="fa-solid fa-paper-plane" aria-hidden="true"></i>';
-		container.appendChild(sendBtn);
-	}
 
 	// Practitioners hint for rotes
 	if (sys.isRote && sys.practitioners) {
@@ -128,6 +116,21 @@ export async function renderAction(item) {
 			ul.appendChild(li);
 		}
 		container.appendChild(ul);
+	}
+
+	// GM call-for-roll, labelled and last, like the primary button on a chat card
+	if (game.user.isGM) {
+		const label = callForRollLabel(item.parent);
+		const sendBtn = document.createElement("button");
+		sendBtn.type = "button";
+		sendBtn.classList.add("litm-render--action__send");
+		sendBtn.dataset.renderAction = "send-roll-request";
+		sendBtn.dataset.uuid = item.uuid;
+		const icon = document.createElement("i");
+		icon.classList.add("fa-solid", "fa-paper-plane");
+		icon.setAttribute("aria-hidden", "true");
+		sendBtn.append(icon, ` ${label}`);
+		container.appendChild(sendBtn);
 	}
 
 	return container;
