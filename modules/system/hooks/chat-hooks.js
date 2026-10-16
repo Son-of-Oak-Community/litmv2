@@ -867,14 +867,16 @@ function _attachContextMenuToRollMessage() {
 				roll._total = (Number(roll._total) || 0) + delta;
 				roll.options.modifier = newModifier;
 				roll.options.totalPower = newTotalPower;
-				// Foundry's #renderRollContent skips re-render when message
-				// content already has child elements (which LitmRoll always
-				// produces). Re-render the roll ourselves and overwrite
-				// content so the displayed outcome reflects the new total —
-				// for sacrifice this is what gates the Complete Sacrifice
-				// flow on the re-resolved Miracle/Fate/In-Vain bracket.
-				const content = await roll.render();
-				await message.update({ content, rolls: [roll.toJSON()] });
+				// Plain-text content, like the card `toMessage` posted, so
+				// Foundry re-renders the roll on each client from `rolls`. That
+				// shows the re-resolved outcome (which gates Complete Sacrifice)
+				// and keeps each viewer's concealment mask: storing this
+				// client's render would hand every player the GM's unmasked
+				// tooltip.
+				await message.update({
+					content: String(roll.total),
+					rolls: [roll.toJSON()],
+				});
 				ui.notifications?.info(t("LITM.Ui.change_roll_values_done"));
 			},
 		};
