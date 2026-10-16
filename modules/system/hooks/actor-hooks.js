@@ -273,9 +273,12 @@ function _enforceStoryThemeActorLimits() {
 
 /**
  * Sync story_theme actor name/image to its embedded item when the actor changes.
+ * Gated to the user who made the change, who owns the embedded item through the
+ * actor — see `_syncTitleTagOnRename` in item-hooks.
  */
 function _syncStoryThemeActorToItem() {
-	Hooks.on("updateActor", (actor, data) => {
+	Hooks.on("updateActor", (actor, data, _options, userId) => {
+		if (userId !== game.userId) return;
 		if (actor.type !== "story_theme") return;
 		const theme = actor.system.storyTheme;
 		if (!theme) return;

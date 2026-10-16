@@ -100,6 +100,10 @@ class StubActor {
 	}
 }
 
+// --- foundry.documents.Item ---
+// LitmItem extends this; hook modules import LitmItem at load time.
+class StubItem {}
+
 // --- foundry.documents.ChatMessage ---
 // spend-power-service posts "action applied" cards and GM-relay whispers
 // through ChatMessage.create; tests assert on the calls.
@@ -173,7 +177,11 @@ globalThis.foundry = {
 		},
 	},
 	dice: { Roll: StubRoll },
-	documents: { Actor: StubActor, ChatMessage: StubChatMessage },
+	documents: {
+		Actor: StubActor,
+		Item: StubItem,
+		ChatMessage: StubChatMessage,
+	},
 	applications: {
 		api: {
 			ApplicationV2: StubAppV2,
