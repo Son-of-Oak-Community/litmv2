@@ -1,4 +1,12 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import {
 	applyOperations,
 	buildOperations,
@@ -76,10 +84,23 @@ function seedPack(...ids) {
 beforeAll(() => {
 	globalThis.CONFIG.litmv2.tagStringRe =
 		/\[([^[\]!:-]+)(!)?(?:([-:])(\d+)?)?\]/g;
+	foundry.utils.hasProperty ??= (obj, path) =>
+		foundry.utils.getProperty(obj, path) !== undefined;
+	// The window itself is out of scope; keep render/close observable.
+	LitmCampingScene.prototype.render = vi.fn();
+	foundry.applications.api.ApplicationV2.prototype.close = vi.fn(
+		async () => {},
+	);
+});
+
+afterEach(async () => {
+	// Releases the scene this client's camp window is bound to.
+	await LitmCampingScene.close({ fromSocket: true });
 });
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	game.scenes = { get: vi.fn(() => undefined) };
 	seedPack();
 	ContentSources.getStoryTags.mockImplementation(async () => [
 		...pack.values(),
@@ -166,7 +187,9 @@ describe("Begin Camp", () => {
 		]);
 		expect(sessionOf(scene).phase).toBe("active");
 		expect(sessionOf(scene).placeOfStay.sceneTagsToExpire).toEqual([]);
-		expect(Sockets.dispatch).toHaveBeenCalledWith("campingOpen", {});
+		expect(Sockets.dispatch).toHaveBeenCalledWith("campingOpen", {
+			sceneId: "scene-a",
+		});
 	});
 
 	it("does not call delete when every flagged scene tag is already gone", async () => {
@@ -288,5 +311,174 @@ describe("Pack Up", () => {
 
 		expect(scene.setFlag).not.toHaveBeenCalled();
 		expect(sessionOf(scene).type).toBe("camp");
+	});
+});
+
+describe("scene binding", () => {
+	let sceneA;
+	let sceneB;
+
+	// The session on A is the camp; B is whatever the GM wandered off to.
+	beforeEach(() => {
+		sceneA = fakeScene({ id: "scene-a" });
+		sceneB = fakeScene({ id: "scene-b" });
+		game.scenes.get.mockImplementation(
+			(id) => ({ "scene-a": sceneA, "scene-b": sceneB })[id],
+		);
+	});
+
+	const hook = (name) => {
+		LitmCampingScene.registerSocketHooks();
+		return Hooks.on.mock.calls.find(([n]) => n === name)[1];
+	};
+
+	it("records the scene id in the session it opens", () => {
+		canvas.scene = sceneA;
+
+		LitmCampingScene.open();
+
+		expect(sessionOf(sceneA)).toMatchObject({
+			phase: "setup",
+			sceneId: "scene-a",
+		});
+	});
+
+	it("keeps a GM editing the camp's own scene after navigating to another", async () => {
+		canvas.scene = sceneA;
+		LitmCampingScene.open();
+		sceneB.flags = { litmv2: { camping: defaultCampingState() } };
+		canvas.scene = sceneB;
+
+		await enqueueOp("set-type", { value: "sojourn" });
+
+		expect(sessionOf(sceneA).type).toBe("sojourn");
+		expect(sessionOf(sceneB).type).toBe("camp");
+		expect(sceneB.setFlag).not.toHaveBeenCalled();
+	});
+
+	it("reopening from another scene resumes the live session instead of starting a second", () => {
+		canvas.scene = sceneA;
+		LitmCampingScene.open();
+		canvas.scene = sceneB;
+
+		LitmCampingScene.open();
+
+		expect(sceneB.setFlag).not.toHaveBeenCalled();
+		expect(sessionOf(sceneB)).toBeUndefined();
+	});
+
+	it("a player's edit names the scene the camp is bound to", async () => {
+		game.user = { id: "player", isGM: false };
+		canvas.scene = sceneA;
+		LitmCampingScene.open();
+
+		await enqueueOp("set-type", { value: "sojourn" });
+
+		expect(Sockets.dispatch).toHaveBeenCalledWith("campingSaveOp", {
+			key: "set-type",
+			payload: { value: "sojourn" },
+			sceneId: "scene-a",
+		});
+	});
+
+	it("a peer opened by the GM binds to the scene the GM names", async () => {
+		game.user = { id: "player", isGM: false };
+		canvas.scene = sceneA;
+
+		hook("litm.camping.open")({ sceneId: "scene-b" });
+		await enqueueOp("set-type", { value: "sojourn" });
+
+		expect(Sockets.dispatch).toHaveBeenCalledWith(
+			"campingSaveOp",
+			expect.objectContaining({ sceneId: "scene-b" }),
+		);
+	});
+
+	it("a peer falls back to the scene it is viewing when the named scene is not available to it", async () => {
+		game.user = { id: "player", isGM: false };
+		canvas.scene = sceneA;
+
+		hook("litm.camping.open")({ sceneId: "scene-unknown" });
+		await enqueueOp("set-type", { value: "sojourn" });
+
+		expect(Sockets.dispatch).toHaveBeenCalledWith(
+			"campingSaveOp",
+			expect.objectContaining({ sceneId: "scene-a" }),
+		);
+	});
+
+	it("opens without arguments, as the hero sheet calls it", () => {
+		canvas.scene = sceneA;
+		expect(() => hook("litm.camping.open")()).not.toThrow();
+	});
+
+	describe("the active GM applying a player's edit", () => {
+		beforeEach(() => {
+			sceneA.flags = { litmv2: { camping: defaultCampingState() } };
+			sceneB.flags = { litmv2: { camping: defaultCampingState() } };
+			canvas.scene = sceneB; // the GM is looking at the other scene
+		});
+
+		const edit = { key: "set-type", payload: { value: "sojourn" } };
+
+		it("applies it to the scene the op names, not the one being viewed", async () => {
+			await hook("litm.camping.saveOp")({ ...edit, sceneId: "scene-a" });
+
+			expect(sessionOf(sceneA).type).toBe("sojourn");
+			expect(sessionOf(sceneB).type).toBe("camp");
+			expect(sceneB.setFlag).not.toHaveBeenCalled();
+		});
+
+		it("falls back to the viewed scene for an op that carries no scene id", async () => {
+			await hook("litm.camping.saveOp")(edit);
+
+			expect(sessionOf(sceneB).type).toBe("sojourn");
+			expect(sessionOf(sceneA).type).toBe("camp");
+		});
+
+		it("drops an op that names a scene that no longer exists", async () => {
+			await hook("litm.camping.saveOp")({ ...edit, sceneId: "scene-gone" });
+
+			expect(sceneA.setFlag).not.toHaveBeenCalled();
+			expect(sceneB.setFlag).not.toHaveBeenCalled();
+		});
+
+		it("is ignored by a GM that is not the active one", async () => {
+			game.users.activeGM = { id: "other-gm" };
+
+			await hook("litm.camping.saveOp")({ ...edit, sceneId: "scene-a" });
+
+			expect(sceneA.setFlag).not.toHaveBeenCalled();
+		});
+	});
+
+	it("re-renders when the bound scene's session changes, even while viewing another", () => {
+		canvas.scene = sceneA;
+		LitmCampingScene.open();
+		canvas.scene = sceneB;
+		const onUpdateScene = hook("updateScene");
+		const change = { flags: { litmv2: { camping: { type: "sojourn" } } } };
+		LitmCampingScene.prototype.render.mockClear();
+
+		onUpdateScene(sceneB, change);
+		expect(LitmCampingScene.prototype.render).not.toHaveBeenCalled();
+
+		onUpdateScene(sceneA, change);
+		expect(LitmCampingScene.prototype.render).toHaveBeenCalledTimes(1);
+	});
+
+	it("releases the binding when the session ends", async () => {
+		canvas.scene = sceneA;
+		LitmCampingScene.open();
+		canvas.scene = sceneB;
+
+		await LitmCampingScene.close({ fromSocket: true });
+		game.user = { id: "player", isGM: false };
+		await enqueueOp("set-type", { value: "sojourn" });
+
+		expect(Sockets.dispatch).toHaveBeenCalledWith(
+			"campingSaveOp",
+			expect.objectContaining({ sceneId: "scene-b" }),
+		);
 	});
 });

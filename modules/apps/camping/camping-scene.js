@@ -69,11 +69,33 @@ async function liveStoryTagIds(ids) {
 }
 
 /**
- * Read the current camping state from the active scene's flags, returning
- * a deep clone so callers cannot accidentally mutate the live flag object.
+ * Id of the scene this client's camp session lives on. The session is a flag
+ * on that scene, and a flag cannot say where it is, so each client remembers
+ * the scene it opened the camp on. Without it everything would follow
+ * `canvas.scene`, and a GM who looks at another scene mid-camp would drop
+ * players' edits (or write into that other scene's own session).
+ *
+ * Set by `open()`, kept across closing the window (so reopening from another
+ * scene resumes the same session), cleared when the session ends.
  */
-function readState() {
-	const raw = canvas.scene?.flags?.[FLAG_SCOPE]?.[FLAG_PATH];
+let campSceneId = null;
+
+/**
+ * The scene holding this client's camp session. Falls back to the scene being
+ * viewed when nothing is bound (no window opened yet) or the bound scene is
+ * not available to this client.
+ */
+function campScene() {
+	return (campSceneId && game.scenes?.get(campSceneId)) || canvas.scene || null;
+}
+
+/**
+ * Read the current camping state from a scene's flags (the camp scene by
+ * default), returning a deep clone so callers cannot accidentally mutate the
+ * live flag object.
+ */
+function readState(scene = campScene()) {
+	const raw = scene?.flags?.[FLAG_SCOPE]?.[FLAG_PATH];
 	if (!raw) return null;
 	return foundry.utils.deepClone(raw);
 }
@@ -100,25 +122,27 @@ function enqueueApply(work) {
  * camping session. Also dropped once Pack Up has started: the results are
  * being applied from a snapshot, so later edits could only be lost.
  */
-async function applyOpOnGM(key, payload) {
+async function applyOpOnGM(key, payload, scene = campScene()) {
 	const setter = SETTERS[key];
-	if (!setter) return;
+	if (!setter || !scene) return;
 	return enqueueApply(async () => {
-		const state = readState();
+		const state = readState(scene);
 		if (!state || state.packingUp) return;
 		setter(state, payload);
-		await canvas.scene?.setFlag(FLAG_SCOPE, FLAG_PATH, state);
+		await scene.setFlag(FLAG_SCOPE, FLAG_PATH, state);
 	});
 }
 
 /**
  * Dispatch an op. GMs apply locally (serialized through `_applyQueue`).
- * Non-GMs send a `campingSaveOp` socket; the GM applies on receipt,
- * sharing the same queue so remote and local edits compose cleanly.
+ * Non-GMs send a `campingSaveOp` socket naming the camp's scene; the GM
+ * applies on receipt, sharing the same queue so remote and local edits
+ * compose cleanly.
  */
 export function enqueueOp(key, payload) {
-	if (game.user.isGM) return applyOpOnGM(key, payload);
-	Sockets.dispatch("campingSaveOp", { key, payload });
+	const scene = campScene();
+	if (game.user.isGM) return applyOpOnGM(key, payload, scene);
+	Sockets.dispatch("campingSaveOp", { key, payload, sceneId: scene?.id });
 	return Promise.resolve();
 }
 
@@ -217,9 +241,19 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 	 *    transitions to `active`) → opens to render the active phase.
 	 *    Both paths converge on a plain local render — neither
 	 *    re-broadcasts.
+	 *
+	 * The window binds to one scene (see `campSceneId`): the scene the GM
+	 * named in the `campingOpen` payload, else the scene of a session this
+	 * client already holds, else the scene being viewed.
 	 */
-	static open() {
-		if (!canvas.scene) {
+	static open({ sceneId } = {}) {
+		const named = sceneId ? game.scenes?.get(sceneId) : null;
+		if (named) campSceneId = named.id;
+		else if (!(campSceneId && readState())) {
+			campSceneId = canvas.scene?.id ?? null;
+		}
+		const scene = campScene();
+		if (!scene) {
 			ui.notifications?.warn(t("LITM.Ui.camping_no_scene"));
 			return null;
 		}
@@ -230,15 +264,20 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		// `applyOpOnGM` can safely drop ops after pack-up clears it.
 		// Non-GMs render against the fallback default until the flag
 		// arrives via `updateScene`.
-		if (game.user.isGM && !readState()) {
-			canvas.scene?.setFlag(FLAG_SCOPE, FLAG_PATH, defaultCampingState());
+		if (game.user.isGM && !readState(scene)) {
+			scene.setFlag(FLAG_SCOPE, FLAG_PATH, {
+				...defaultCampingState(),
+				sceneId: scene.id,
+			});
 		}
 		LitmCampingScene.#instance.render(true);
 		return LitmCampingScene.#instance;
 	}
 
+	/** End the session on this client (and, unless it came from a socket, on every other). */
 	static async close({ fromSocket = false } = {}) {
 		if (!fromSocket) Sockets.dispatch("campingEnd", {});
+		campSceneId = null;
 		await LitmCampingScene.#instance?.close();
 	}
 
@@ -415,10 +454,12 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			await LitmCampingScene.#instance?.close();
 			return;
 		}
-		// GM cancel = discard this session for the whole table. Read the state
-		// first, then close (nulls the singleton so the updateScene re-render
-		// hook short-circuits), then clear the flag.
-		const state = readState();
+		// GM cancel = discard this session for the whole table. Resolve the
+		// scene and read the state first (closing releases the scene binding),
+		// then close (nulls the singleton so the updateScene re-render hook
+		// short-circuits), then clear the flag.
+		const scene = campScene();
+		const state = readState(scene);
 		await LitmCampingScene.close();
 		try {
 			// Roll back any campsite effects created at Begin Camp. Some may
@@ -433,8 +474,9 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			}
 		} finally {
 			// Whatever happens to the rollback, the session must not outlive
-			// Cancel: a stuck flag reopens the same camp on every client.
-			await canvas.scene?.unsetFlag(FLAG_SCOPE, FLAG_PATH);
+			// Cancel: a stuck flag reopens the same camp on every client. Via
+			// the queue so an in-flight edit cannot recreate the flag after it.
+			await enqueueApply(() => scene?.unsetFlag(FLAG_SCOPE, FLAG_PATH));
 		}
 	}
 
@@ -455,12 +497,13 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		// Why the guard: applying is not idempotent. A retry after a partial
 		// apply would rebuild operations from already-changed documents and
 		// mark every Improve track and reduce every status a second time.
+		const scene = campScene();
 		const claim = await enqueueApply(async () => {
-			const current = readState();
+			const current = readState(scene);
 			if (!current) return { status: "missing" };
 			if (current.packingUp) return { status: "busy" };
 			current.packingUp = true;
-			await canvas.scene?.setFlag(FLAG_SCOPE, FLAG_PATH, current);
+			await scene.setFlag(FLAG_SCOPE, FLAG_PATH, current);
 			return { status: "claimed", state: current };
 		});
 		if (claim.status === "missing") {
@@ -535,15 +578,13 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 				// #instance. The unset goes through the queue so an in-flight
 				// edit cannot recreate the flag behind it.
 				await LitmCampingScene.close();
-				await enqueueApply(() =>
-					canvas.scene?.unsetFlag(FLAG_SCOPE, FLAG_PATH),
-				);
+				await enqueueApply(() => scene.unsetFlag(FLAG_SCOPE, FLAG_PATH));
 			} else {
 				await enqueueApply(async () => {
-					const current = readState();
+					const current = readState(scene);
 					if (!current) return;
 					current.packingUp = false;
-					await canvas.scene?.setFlag(FLAG_SCOPE, FLAG_PATH, current);
+					await scene.setFlag(FLAG_SCOPE, FLAG_PATH, current);
 				});
 			}
 		}
@@ -566,7 +607,8 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		if (!game.user.isGM) return;
 		// Drain queue so we see every setup-phase edit before parsing.
 		await _applyQueue;
-		const state = readState();
+		const scene = campScene();
+		const state = readState(scene);
 		if (!state) return;
 
 		// A tag the GM ticked may have been deleted since; only live ids can
@@ -602,15 +644,16 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		const createdIds = created.map((e) => e.id).filter(Boolean);
 
 		await enqueueApply(async () => {
-			const s = readState();
+			const s = readState(scene);
 			if (!s) return;
 			s.phase = "active";
 			s.campId = campId;
 			s.placeOfStay.createdCampsiteEffectIds = createdIds;
 			s.placeOfStay.sceneTagsToExpire = [];
-			await canvas.scene?.setFlag(FLAG_SCOPE, FLAG_PATH, s);
+			await scene.setFlag(FLAG_SCOPE, FLAG_PATH, s);
 		});
-		Sockets.dispatch("campingOpen", {});
+		// Peers bind to this scene, wherever they happen to be looking.
+		Sockets.dispatch("campingOpen", { sceneId: scene.id });
 		// Sidebar refresh so the new campsite tags appear immediately on
 		// every client (Pack Up does the same; do it on Begin Camp too).
 		getStoryTagSidebar()?.render?.();
@@ -762,22 +805,28 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			});
 		});
 
-		Hooks.on("litm.camping.open", () => {
-			LitmCampingScene.open();
+		Hooks.on("litm.camping.open", ({ sceneId } = {}) => {
+			LitmCampingScene.open({ sceneId });
 		});
-		Hooks.on("litm.camping.saveOp", async ({ key, payload }) => {
+		Hooks.on("litm.camping.saveOp", async ({ key, payload, sceneId }) => {
 			// Exactly one GM applies the op, matching scratchEffect /
 			// storyTagsUpdate. With every GM applying it, `rest-tier-delta`
 			// (which computes from the persisted value) double-applies.
 			if (game.user !== game.users.activeGM) return;
-			await applyOpOnGM(key, payload);
+			// The op names the scene its sender's camp lives on, which need not
+			// be the one this GM is viewing. A sender that predates the scene id
+			// gets the old behaviour; a scene that is gone drops the op.
+			// (`null`, not `undefined`: a default parameter would swap it for
+			// the viewed scene.)
+			const scene = sceneId ? (game.scenes?.get(sceneId) ?? null) : campScene();
+			await applyOpOnGM(key, payload, scene);
 		});
 		Hooks.on("litm.camping.end", () => {
 			LitmCampingScene.close({ fromSocket: true });
 		});
 		// Re-render when our scene flag changes, regardless of who wrote it.
 		Hooks.on("updateScene", (scene, changes) => {
-			if (scene.id !== canvas.scene?.id) return;
+			if (scene.id !== campScene()?.id) return;
 			if (
 				!foundry.utils.hasProperty(changes, `flags.${FLAG_SCOPE}.${FLAG_PATH}`)
 			)

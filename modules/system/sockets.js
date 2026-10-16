@@ -213,11 +213,13 @@ export class Sockets {
 	}
 
 	static #registerCampingListeners() {
-		Sockets.on("campingOpen", () => {
-			Hooks.callAll("litm.camping.open");
+		// Both carry the scene the camp's session lives on: it need not be the
+		// scene a given client is looking at.
+		Sockets.on("campingOpen", ({ data }) => {
+			Hooks.callAll("litm.camping.open", { sceneId: data?.sceneId });
 		});
-		Sockets.on("campingSaveOp", ({ data: { key, payload } }) => {
-			Hooks.callAll("litm.camping.saveOp", { key, payload });
+		Sockets.on("campingSaveOp", ({ data: { key, payload, sceneId } }) => {
+			Hooks.callAll("litm.camping.saveOp", { key, payload, sceneId });
 		});
 		Sockets.on("campingEnd", () => {
 			Hooks.callAll("litm.camping.end");
