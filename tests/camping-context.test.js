@@ -63,6 +63,24 @@ describe("partitionCampingEffects — Quality Time fellowship tags", () => {
 		expect(partitionCampingEffects(hero).scratchedFellowshipTags).toEqual([]);
 	});
 
+	it("lists an older Fellowship theme's scratched power_tag too", () => {
+		const legacy = fakeEffect({
+			name: "the cooking fire",
+			type: "power_tag",
+			system: { isScratched: true },
+		});
+		const theme = fakeItem({ type: "theme", effects: [legacy] });
+		theme.documentName = "Item";
+		legacy.parent = theme;
+		const fellowship = fakeActor({ type: "fellowship", items: [theme] });
+		const hero = fakeActor();
+		hero.system = { fellowshipActor: fellowship };
+
+		expect(partitionCampingEffects(hero).scratchedFellowshipTags).toEqual([
+			legacy,
+		]);
+	});
+
 	it("is empty when the hero has no Fellowship", () => {
 		const hero = fakeActor();
 		hero.system = { fellowshipActor: null };

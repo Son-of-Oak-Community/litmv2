@@ -50,10 +50,11 @@ export function partitionEffects(actor, ...types) {
 }
 
 /**
- * The fellowship_tag effects of the Fellowship a hero is linked to. They sit
+ * The Fellowship theme's tags for the Fellowship a hero is linked to. They sit
  * on the Fellowship actor's theme (`HeroData#fellowshipActor`), never on the
  * hero, so `hero.allApplicableEffects()` does not contain them. To change
- * one, write through `effect.parent`.
+ * one, write through `effect.parent`. Current Fellowship themes hold
+ * `fellowship_tag`; older and imported ones hold `power_tag`, so both count.
  * @param {Actor} hero - Anything with `system.fellowshipActor`
  * @param {Actor|null} [fallback] - Fellowship to use when the hero has none
  * @returns {ActiveEffect[]}
@@ -61,7 +62,13 @@ export function partitionEffects(actor, ...types) {
 export function fellowshipTagEffects(hero, fallback = null) {
 	const fellowship = hero?.system?.fellowshipActor ?? fallback;
 	if (!fellowship) return [];
-	return partitionEffects(fellowship, "fellowship_tag").fellowship_tag;
+	const { fellowship_tag, power_tag } = partitionEffects(
+		fellowship,
+		"fellowship_tag",
+		"power_tag",
+	);
+	const onTheme = (e) => e.parent?.documentName === "Item";
+	return [...fellowship_tag, ...power_tag.filter(onTheme)];
 }
 
 /**
