@@ -1,6 +1,7 @@
 import { createLegacyRelationshipEffects } from "../../actor/hero/hero-data.js";
 import { LitmItem } from "../../item/litm-item.js";
 import { error } from "../../logger.js";
+import { Sockets } from "../sockets.js";
 import {
 	findFellowshipTheme,
 	getStoryTagSidebar,
@@ -22,6 +23,7 @@ export function registerActorHooks() {
 	_syncUiOnEffectChange();
 	_syncRollDialogHudOnUpdate();
 	_flashSacrificeBannerOnUpdate();
+	_demoteRollDialogOnSeatTaken();
 	_syncStoryThemeActorToItem();
 	_enforceStoryThemeActorLimits();
 }
@@ -332,6 +334,27 @@ function _syncRollDialogHudOnUpdate() {
 	Hooks.on("updateActor", (actor) => {
 		if (!ROLL_DIALOG_HOST_TYPES.has(actor.type)) return;
 		game.litmv2.rollDialogHud?.render?.();
+	});
+}
+
+/**
+ * A player may take the seat of a roll the GM opened from their Hero's sheet
+ * (`resolveRollDialogOwnership`). The presence flag then names the player,
+ * but the GM's dialog still believed it owned the roll, so both could press
+ * Roll. Step down to viewer and follow the new owner's draft.
+ */
+function _demoteRollDialogOnSeatTaken() {
+	Hooks.on("updateActor", (actor, changes) => {
+		const flagPath = `flags.litmv2.${FLAGS.rollDialogOwner}`;
+		if (!foundry.utils.hasProperty(changes, flagPath)) return;
+		const flag = actor.getFlag("litmv2", FLAGS.rollDialogOwner);
+		const sheet = actor.sheet;
+		if (!flag?.ownerId || !sheet?.hasRollDialog) return;
+		const dialog = sheet.rollDialogInstance;
+		if (!dialog.isOwner || flag.ownerId === game.user.id) return;
+		dialog.ownerId = flag.ownerId;
+		Sockets.dispatch("requestRollDialogSync", { actorId: actor.id });
+		if (dialog.rendered) dialog.render();
 	});
 }
 
