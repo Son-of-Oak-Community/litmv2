@@ -51,6 +51,19 @@ const getProperty = (obj, path) => {
 	return path.split(".").reduce((acc, k) => (acc == null ? acc : acc[k]), obj);
 };
 
+const hasProperty = (obj, path) => {
+	if (!obj) return false;
+	if (path in obj) return true;
+	let cursor = obj;
+	for (const key of path.split(".")) {
+		if (cursor == null || typeof cursor !== "object" || !(key in cursor)) {
+			return false;
+		}
+		cursor = cursor[key];
+	}
+	return true;
+};
+
 const fromUuidSync = vi.fn(() => null);
 const fromUuid = vi.fn(async () => null);
 
@@ -90,6 +103,9 @@ class StubActor {
 	constructor(source = {}) {
 		Object.assign(this, { effects: [], items: [], ...source });
 	}
+	static migrateData(source) {
+		return source;
+	}
 	*allApplicableEffects() {
 		for (const effect of this.effects) yield effect;
 		for (const item of this.items) {
@@ -99,6 +115,11 @@ class StubActor {
 		}
 	}
 }
+
+// --- foundry.documents.Item ---
+// LitmItem extends this; the legacy-effects world migration imports LitmItem
+// for its tag builders. Never instantiated in unit tests.
+class StubItem {}
 
 // --- foundry.documents.ChatMessage ---
 // spend-power-service posts "action applied" cards and GM-relay whispers
@@ -122,6 +143,11 @@ class StubDialogV2 extends StubAppV2 {
 	static prompt = () => Promise.resolve(null);
 	static input = () => Promise.resolve(null);
 }
+class StubDocumentSheetV2 extends StubAppV2 {
+	async _prepareContext() {
+		return {};
+	}
+}
 const HandlebarsApplicationMixin = (Base) =>
 	class extends Base {
 		static PARTS = {};
@@ -143,6 +169,7 @@ globalThis.foundry = {
 	utils: {
 		setProperty,
 		getProperty,
+		hasProperty,
 		fromUuid,
 		fromUuidSync,
 		randomID,
@@ -173,11 +200,12 @@ globalThis.foundry = {
 		},
 	},
 	dice: { Roll: StubRoll },
-	documents: { Actor: StubActor, ChatMessage: StubChatMessage },
+	documents: { Actor: StubActor, Item: StubItem, ChatMessage: StubChatMessage },
 	applications: {
 		api: {
 			ApplicationV2: StubAppV2,
 			DialogV2: StubDialogV2,
+			DocumentSheetV2: StubDocumentSheetV2,
 			HandlebarsApplicationMixin,
 		},
 		sheets: {

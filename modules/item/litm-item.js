@@ -1,6 +1,16 @@
 import { THEME_TAG_TYPES } from "../system/config.js";
 
 /**
+ * Whether any of these effects (source data or an embedded collection) is a
+ * theme tag. The legacy stash and its creator both bail on this: an unrelated
+ * effect must not stop the conversion.
+ * @param {{some: Function}} effects
+ * @returns {boolean}
+ */
+const hasThemeTagEffect = (effects) =>
+	effects.some((e) => THEME_TAG_TYPES.has(e.type));
+
+/**
  * Build ActiveEffect creation data from legacy theme tag arrays.
  * Shared by document-level createLegacyEffects and the world migration.
  * @param {object} legacy - { powerTags, weaknessTags, isFellowship }
@@ -64,8 +74,9 @@ export function buildBackpackTagEffects(contents) {
  * Custom Item document class for Legend in the Mist.
  *
  * migrateData stashes legacy tag arrays in flags before schema validation
- * prunes them. The world migration and the createItem hook read the flags
- * and create proper ActiveEffect documents.
+ * prunes them. The world migration, the createItem hook and the
+ * importFromJSON override read the flags and create proper ActiveEffect
+ * documents.
  */
 export class LitmItem extends foundry.documents.Item {
 	static async createDialog(data = {}, createOptions = {}, dialogOptions = {}) {
@@ -78,6 +89,20 @@ export class LitmItem extends foundry.documents.Item {
 		story_theme: LitmItem.#stashLegacyThemeTags,
 		backpack: LitmItem.#stashLegacyBackpackContents,
 	};
+
+	/**
+	 * @override
+	 * Sidebar "Import Data" is an `update` with `noHook: true`, so createItem
+	 * never fires and the stash `migrateData` wrote into the imported flags
+	 * would never be consumed. Run the createItem consumer once the import
+	 * landed. Foundry only calls this on the importing client.
+	 */
+	async importFromJSON(json) {
+		await super.importFromJSON(json);
+		await LitmItem.createLegacyEffects(this);
+		await LitmItem.ensureTitleTag(this);
+		return this;
+	}
 
 	static migrateData(source) {
 		LitmItem.#LEGACY_STASHERS[source.type]?.(source);
@@ -113,8 +138,7 @@ export class LitmItem extends foundry.documents.Item {
 
 		if (!powerTags.length && !weaknessTags.length) return;
 
-		const effects = source.effects ?? [];
-		if (effects.some((e) => THEME_TAG_TYPES.has(e.type))) return;
+		if (hasThemeTagEffect(source.effects ?? [])) return;
 
 		source.flags ??= {};
 		source.flags.litmv2 ??= {};
@@ -152,7 +176,11 @@ export class LitmItem extends foundry.documents.Item {
 		if (existing) return existing;
 		const promise = LitmItem.#doEnsureTitleTag(item);
 		LitmItem.#titleTagInFlight.set(item, promise);
-		promise.finally(() => LitmItem.#titleTagInFlight.delete(item));
+		// finally() derives a new promise that rejects with the same reason; the
+		// caller handles `promise`, so swallow the derived one.
+		promise
+			.finally(() => LitmItem.#titleTagInFlight.delete(item))
+			.catch(() => {});
 		return promise;
 	}
 
@@ -192,7 +220,7 @@ export class LitmItem extends foundry.documents.Item {
 
 	static async #createLegacyThemeEffects(item) {
 		const legacy = item.getFlag("litmv2", "legacyTags");
-		if (!legacy || item.effects.size) return;
+		if (!legacy || hasThemeTagEffect(item.effects)) return;
 
 		const effectData = buildThemeTagEffects(legacy, {
 			name: item.name,

@@ -209,7 +209,11 @@ export class KeyBindings {
 				// only gate the case where this would start a new roll. Where
 				// the player may not start one, `R` asks for one, the same as
 				// the sheet's Roll button: one gesture, one behaviour.
-				if (!sheet.rollDialogInstance?.rendered && !canUserInitiateRoll())
+				// `rollDialogInstance` creates a dialog; ask `hasRollDialog` first
+				// so a mere check doesn't enrol this client in every roll socket.
+				const isOpen =
+					sheet.hasRollDialog && sheet.rollDialogInstance.rendered;
+				if (!isOpen && !canUserInitiateRoll())
 					return requestRollFromNarrator(sheet.actor);
 				return sheet.renderRollDialog({ toggle: true });
 			},

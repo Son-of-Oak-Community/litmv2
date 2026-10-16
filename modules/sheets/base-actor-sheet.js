@@ -121,7 +121,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 			themeContext.system.specialImprovements.map(async (imp) => ({
 				...imp,
 				enrichedDescription: await enrichHTML(
-					imp.description || "",
+					foundry.utils.escapeHTML(imp.description || ""),
 					this.document,
 				),
 			})),
@@ -157,7 +157,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 			locked.map(async (imp) => ({
 				...imp,
 				enrichedDescription: await enrichHTML(
-					imp.description || "",
+					foundry.utils.escapeHTML(imp.description || ""),
 					this.document,
 				),
 			})),
@@ -725,6 +725,8 @@ export class LitmActorSheet extends LitmSheetMixin(
 			vignette,
 		);
 		const speaker = foundry.documents.ChatMessage.getSpeaker({ actor: this.document });
+		// The card is stored once for everyone: never bake in a concealed name.
+		speaker.alias = this.document.system?.publicName ?? speaker.alias;
 
 		await foundry.documents.ChatMessage.create({
 			content,
@@ -934,7 +936,10 @@ export class LitmActorSheet extends LitmSheetMixin(
 		if (assigned?.narrator && assigned.ownerId) {
 			dialog.activateSync(assigned.syncSession);
 			dialog.ownerId = assigned.ownerId;
-			if (!dialog.isOwner)
+			// The owner landing here is a reload mid-call: take the draft back
+			// from the table instead of starting it over.
+			if (dialog.isOwner) dialog.requestReseat();
+			else
 				Sockets.dispatch("requestRollDialogSync", {
 					actorId: this.document.id,
 				});

@@ -49,6 +49,9 @@ import { hasPainfulSacrificeTarget, isThemeSpent } from "./sacrifice-rules.js";
 
 export { resolveRollDialogOwnership };
 
+/** Dialogs with a submit in flight; see `LitmRollDialog._onSubmit`. */
+const submitting = new WeakSet();
+
 export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
 ) {
@@ -66,7 +69,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		},
 		form: {
 			handler: LitmRollDialog._onSubmit,
-			closeOnSubmit: true,
+			// Closed by `_onSubmit` itself: a submit refused by a guard (e.g. a
+			// Painful sacrifice with no theme left) must keep the window, and
+			// with it the shared roll, open.
+			closeOnSubmit: false,
 		},
 		actions: {
 			sendToNarrator: LitmRollDialog.#onSendToNarrator,
@@ -103,18 +109,29 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	static async _onSubmit(_event, _form, formData) {
 		if (!this.isOwner || this.localOnly) return;
 		if (this.painfulSacrificeHasNoTarget()) return;
-		const rollData = this.extractRollData(formData);
-		// Tables that want the Narrator to have the last word on a total route
-		// every player roll through the moderation card they already had as an
-		// opt-in button. Same hardened path: approval reads the roll back off
-		// the ChatMessage the roller authored rather than trusting a socket.
-		if (this.requiresApproval) {
-			await this._createModerationRequest(rollData);
-			this.suspendForModeration();
-			ui.notifications?.info(t("LITM.Ui.roll_sent_for_approval"));
-			return;
+		// A double press would post two cards and run post-roll bookkeeping
+		// twice: two Improve marks for one invoked weakness.
+		if (submitting.has(this)) return;
+		submitting.add(this);
+		try {
+			const rollData = this.extractRollData(formData);
+			// Tables that want the Narrator to have the last word on a total route
+			// every player roll through the moderation card they already had as an
+			// opt-in button. Same hardened path: approval reads the roll back off
+			// the ChatMessage the roller authored rather than trusting a socket.
+			if (this.requiresApproval) {
+				await this._createModerationRequest(rollData);
+				this.suspendForModeration();
+				ui.notifications?.info(t("LITM.Ui.roll_sent_for_approval"));
+				await this.close?.({ submitted: true });
+				return;
+			}
+			const result = await executeRoll(rollData);
+			await this.close?.({ submitted: true });
+			return result;
+		} finally {
+			submitting.delete(this);
 		}
-		return executeRoll(rollData);
 	}
 
 	static async #onSendToNarrator(_event, _target) {
@@ -222,6 +239,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const half = Math.ceil(power / 2);
 		const actor = this.actor;
 		if (!actor) return;
+		// The camp action is spent; the next ordinary roll must not reopen in
+		// camp mode or keep the sojourn bonus.
+		this.reset();
 		await this.close();
 		const { SpendPowerApp } = await import("../spend-power.js");
 		new SpendPowerApp({ actorId: actor.id, power: half }).render(true);
@@ -448,7 +468,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// sacrifice, mirroring the Roll button's behaviour in hero-sheet.
 		if (this.#actionUuid && this.type === "sacrifice") {
 			this.type = "quick";
-			this.updatePresence(true);
+			this.updatePresence(true).catch(console.error);
 		}
 		this.rollName = "";
 		this.#dispatchUpdate();
@@ -598,6 +618,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// Mitigation context only makes sense for a reaction; drop it when the
 		// player switches away so no stale "Reacting to…" banner survives.
 		if (type !== "mitigate") this.#mitigation = null;
+		// Likewise the sojourn bonus belongs to a camp action only.
+		if (type !== "campAction") this.#sojournBonus = 0;
 		// Sacrifice is its own ritual — clear any pending action so the
 		// dialog never shows the action strip alongside the sacrifice grid.
 		if (type === "sacrifice") {
@@ -613,7 +635,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (this.rendered) this.render();
 		// Refresh presence so peers can react to the new type — e.g. the
 		// sacrifice banner fires off the flag transition to "sacrifice".
-		this.updatePresence(true);
+		this.updatePresence(true).catch(console.error);
 		// And tell the table. A shared roll is one object several people are
 		// looking at; a move only this client knows about is how the Narrator
 		// ends up calling for one roll while the roller reads another.
@@ -631,6 +653,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#cachedTotalPower = null;
 		this.type = "campAction";
 		if (this.rendered) this.render();
+		// Viewers' Power totals include the bonus too.
+		this.#dispatchUpdate();
 	}
 
 	get ownerId() {
@@ -639,12 +663,27 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	set ownerId(value) {
 		const becomingOwner = value === game.user.id && value !== this.#ownerId;
+		const losingSeat =
+			this.#ownerId === game.user.id && value !== game.user.id;
 		this.#ownerId = value;
+		// A viewer only follows snapshots from its own session. Stepping down
+		// from a seat keeps the session this client published as owner, which
+		// would reject every snapshot from the new owner; start unbound so the
+		// first one names the session.
+		if (losingSeat && this.#sync)
+			this.#sync = new RollSync(this.#syncState(), foundry.utils.randomID());
 		// Sheet tag clicks can precede the ownership claim in renderRollDialog.
 		// Promote that local draft, including its first selection, rather than
 		// publishing the empty canonical state from before the click.
+		// Keep the session: a seat assigned by the Narrator arrives with the
+		// call's session already activated, and dropping it here made every
+		// Narrator edit to that roll look like it belonged to another one.
 		if (becomingOwner && this.#sync)
-			this.#sync = new RollSync(this.#syncState(), foundry.utils.randomID());
+			this.#sync = new RollSync(
+				this.#syncState(),
+				foundry.utils.randomID(),
+				this.#sync.session,
+			);
 	}
 
 	get isOwner() {
@@ -817,6 +856,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				name: effect.name,
 				type: effect.type,
 				system: effect.system,
+				// Getters on the data model (fellowship and relationship tags are
+				// always single-use) don't survive the moderation card's flags;
+				// plain fields do, so approved rolls still consume them.
+				isSingleUse: !!effect.system?.isSingleUse,
+				canBurn: effect.system?.canBurn,
 				state: sel.state,
 				value:
 					effect.type === "status_tag"
@@ -954,6 +998,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	async _prepareContext(_options) {
+		// A re-render can follow a change made elsewhere (a status tier in the
+		// sidebar): rows read live effects, so the total must too.
+		this.#cachedTotalPower = null;
 		await StoryTagsStore.loadStoryTags();
 		await this.#resolveAction();
 
@@ -1299,10 +1346,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const { name: id, value } = target;
 		const { type } = target.dataset;
 		const isCharacterTag = ALL_TAG_TYPES.has(type);
-		// For non-owners, register contributor metadata on first interaction
-		if (isCharacterTag && !this.isOwner && !this.#selectionMap.has(id)) {
-			this.#registerContributorMeta(id);
-		}
+		// For non-owners, attribute the tag on first interaction. The metadata
+		// rides on the selection itself: written on its own with an empty
+		// state, `setSelection` would delete it again at once.
+		const contributorMeta =
+			isCharacterTag && !this.isOwner && !this.#selectionMap.has(id)
+				? this.#contributorMetaFor(id)
+				: {};
 
 		// Check permission: non-owners can only modify tags they contributed or unclaimed tags
 		const existingSel = this.getSelection(id);
@@ -1330,19 +1380,20 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			const states = (target.getAttribute("states") ?? "").split(",");
 			const next = nextStateAfterScratched(states);
 			this.#revertTagChange(target, next);
-			this.setSelection(
-				id,
-				next,
-				next ? game.user.id : null,
-				this.#selectionStamp(),
-			);
+			this.setSelection(id, next, next ? game.user.id : null, {
+				...contributorMeta,
+				...this.#selectionStamp(),
+			});
 			this.#updateTotalPower();
 			this.#dispatchUpdate();
 			return;
 		}
 
 		const contributorId = value ? game.user.id : null;
-		this.setSelection(id, value, contributorId, this.#selectionStamp());
+		this.setSelection(id, value, contributorId, {
+			...contributorMeta,
+			...this.#selectionStamp(),
+		});
 
 		this.#updateTotalPower();
 		this.#dispatchUpdate();
@@ -1369,12 +1420,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	/**
-	 * Register contributor metadata for an effect a non-owner is claiming.
+	 * Contributor metadata for an effect a non-owner is claiming.
 	 * GM viewers scan every sidebar actor; non-owner players check their own
 	 * character. First owner of the effect wins.
 	 * @param {string} id  Effect UUID
+	 * @returns {object} metadata for `setSelection`, or `{}` when unowned
 	 */
-	#registerContributorMeta(id) {
+	#contributorMetaFor(id) {
 		const candidates = [];
 		if (game.user.isGM) {
 			for (const sidebarActor of this.#storyTagSidebar.actors ?? []) {
@@ -1388,14 +1440,14 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			const allTags = (actor.system.allRollTags ?? []).map(effectToPlain);
 			const found = allTags.find((t) => t.uuid === id);
 			if (!found) continue;
-			this.setSelection(id, "", null, {
+			return {
 				effectUuid: found.uuid,
 				contributorActorId: actor.id,
 				contributorActorName: actor.name,
 				contributorActorImg: actor.prototypeToken?.texture?.src || actor.img,
-			});
-			return;
+			};
 		}
+		return {};
 	}
 
 	addTag(tag, toScratch) {
@@ -1450,10 +1502,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.rollName = "";
 		this.type = "quick";
 		// reset() is state-only — it must NOT close the dialog. Closing is
-		// owned by `closeOnSubmit` on the owner's client and by the
+		// owned by `_onSubmit` on the owner's client and by the
 		// `closeRollDialog` socket on viewers (broadcast from the owner's
 		// close()). This reset runs inside the awaited submit handler (via the
-		// roll pipeline), i.e. *before* closeOnSubmit — so a close here fired a
+		// roll pipeline), i.e. *before* that close — so a close here fired a
 		// SECOND close per submit. Render and close share one Semaphore, so a
 		// "Roll this action" click landing between the two closes had its
 		// reopen render torn down by the trailing close: the dialog silently
@@ -1901,6 +1953,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sacrificeLevel: this.#sacrificeLevel,
 			sacrificeThemeId: this.#sacrificeThemeId,
 			sacrificeStatusName: this.#sacrificeStatusName,
+			sojournBonus: this.#sojournBonus,
 			ownerId: this.ownerId,
 			actionUuid: this.#actionUuid,
 			title: this.rollName,
@@ -1931,6 +1984,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			"sacrificeLevel",
 			"sacrificeThemeId",
 			"sacrificeStatusName",
+			"sojournBonus",
 			"ownerId",
 			"narratorCall",
 			"participantIds",
@@ -1958,6 +2012,30 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (this.localOnly || !this.#syncActive) return;
 		this.#dispatchUpdate();
 		if (this.isOwner) this.#sendSync(this.#sync.snapshot());
+	}
+
+	/**
+	 * The owner's client reloaded during a called roll and rejoined with an
+	 * empty draft. Viewers still hold the roll; ask them for it rather than
+	 * publish the empty one over the Narrator's move, Might and invocations.
+	 */
+	requestReseat() {
+		if (this.localOnly || !this.isOwner) return;
+		Sockets.dispatch("requestRollDialogSync", {
+			actorId: this.actorId,
+			reseat: true,
+		});
+	}
+
+	/** A viewer's answer to {@link requestReseat}: its last canonical view. */
+	dispatchReseat() {
+		if (this.localOnly || this.isOwner || !this.#syncActive) return;
+		this.#sendSync({
+			kind: "reseat",
+			revision: this.#sync.revision,
+			state: this.#sync.state,
+			session: this.#sync.session,
+		});
 	}
 
 	/** Generation token for lifecycle sockets; null before a viewer's first sync. */
@@ -1997,6 +2075,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			if (this.#endedSyncSessions.has(data.sync.session)) return;
 			// Only the owner serializes edits; all other peers ignore proposals.
 			if (data.sync.kind === "edit" && !this.isOwner) return;
+			if (data.sync.kind === "reseat") {
+				if (!this.isOwner) return;
+				const { ownerId: _stale, ...state } = data.sync.state ?? {};
+				if (!this.#sync.adopt({ ...data.sync, state })) return;
+				this.#applySyncState(this.#sync.view);
+				this.#sendSync(this.#sync.snapshot());
+				if (this.rendered) this.render();
+				return;
+			}
 			if (
 				data.sync.kind === "snapshot" &&
 				data.senderId &&
@@ -2028,6 +2115,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		sacrificeLevel,
 		sacrificeThemeId,
 		sacrificeStatusName,
+		sojournBonus,
 		ownerId,
 		narratorCall,
 		participantIds,
@@ -2047,6 +2135,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			this.#sacrificeThemeId = sacrificeThemeId;
 		if (sacrificeStatusName !== undefined)
 			this.#sacrificeStatusName = sacrificeStatusName;
+		if (sojournBonus !== undefined) this.#sojournBonus = sojournBonus;
 		if (ownerId !== undefined) this.ownerId = ownerId;
 		if (actionUuid !== undefined && actionUuid !== this.#actionUuid) {
 			this.#actionUuid = actionUuid;

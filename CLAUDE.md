@@ -45,7 +45,7 @@ litmv2 is a tag-based RPG. Characters are defined by short descriptors (tags) th
 
 - "Burn" is a roll-time action; "scratched" is the resulting persistent state. There is no "burned" state on a tag.
 - Statuses stack when reapplied (mark new tier; shift right if occupied). Only the highest positive and highest negative status count toward a roll.
-- Statuses can link to **Limits**: when value reaches the limit's effective max, the target is overcome.
+- Statuses can link to **Limits**: when value reaches the limit's effective max, the target is overcome. `litm.limitReached` fires once, on the client that made the change, when a limit's value crosses from below its max to at-or-above it (`recalculateLimitValues`, or `advanceLimit`). An ActiveEffect hook recalcs after any linked-status create, tier change, unlink or delete, so every status write path reaches it. A limit's stored `value` is its linked statuses' stacked tier plus an `advanced` offset (default 0, may be negative) that Advance, Set Back and the challenge sheet's +/- adjust through `advanceLimit`; the recalc keeps the offset (`resolveLimitValue` in `actor-limits.js`), so never write `value` directly. `addStatus` links a same-named existing status to a passed `limitId` when it has none.
 
 ### Enricher Tag Syntax (prose chips)
 
@@ -217,7 +217,11 @@ tooltip is rendered per client, so the Narrator still reads the real names.
 Without it the dialog's mask lasted exactly as long as it took someone to hover.
 `StoryTagsStore.hiddenActorIds` holds policy independently of sidebar membership;
 `concealedActorIds` applies the viewer's GM bypass for the dialog and target
-picker. Removing an actor from the sidebar is not a reveal. Live sources follow
+picker. Removing an actor from the sidebar is not a reveal. Hiding a column also hides the actor on the canvas: its
+tokens on the scene are hidden, tokens placed later arrive hidden
+(`preCreateToken`), and the token hover tooltip and persistent labels show
+players nothing for it. A newly tracked actor's column starts from its tokens'
+state, so adding a column never makes a placed token vanish. Live sources follow
 an explicit reveal; roll tags record `tagActorId` and `concealedAtRoll` so a
 deleted source cannot accidentally reveal a historical secret. Missing legacy
 actor-backed sources fail closed.
@@ -319,7 +323,7 @@ and not one three-state setting.
 
 ### Sockets
 
-Namespace `system.litmv2`. Events cover roll-dialog open/sync/close, GM moderation, GM-proxied mutation of unowned documents (scratch, apply success/status, hero creation), story tags, and camping. Canonical list and payload shapes: `modules/system/sockets.js` — read it rather than guessing an event name.
+Namespace `system.litmv2`. Events cover roll-dialog open/sync/close, GM moderation, GM-proxied mutation of unowned documents (scratch, Improve marks, apply success/status, hero creation), story tags, and camping. Canonical list and payload shapes: `modules/system/sockets.js` — read it rather than guessing an event name.
 
 `openRollDialog` starts a shared roll: the payload names the actor, the resolved
 `ownerId`, the participants (Acting Together only) and the Narrator's stamp.
@@ -334,6 +338,13 @@ updates and simultaneous group contributions do not erase each other. Session
 IDs keep delayed snapshots and close/reset events from mutating a newer roll.
 The canonical state includes the narrator stamp, participants, title and Action,
 so a late HUD join reconstructs the same draft.
+
+A called roll survives its owner's reload. `ready` keeps the user's own
+narrator-stamped `rollDialogOwner` flag, and on rejoining the owner sends
+`requestRollDialogSync` with `reseat: true`; a viewer answers with its
+canonical view and the fresh owner adopts it (`RollSync#adopt`) rather than
+publishing an empty draft. When a player takes the seat of a roll the GM was
+holding, the GM's dialog steps down to viewer on the flag change.
 
 ## Active Effects: the canonical tag store
 
@@ -438,7 +449,9 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.themeAdvanced` — after theme advancement
 - `litm.trackCompleted` — `{ actor, trackInfo: { text, type, actorId?, themeId? } }`
 - `litm.limitReached` — `{ actor, limit }` where `limit.max` is the effective max
-- `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits); no payload. Roll dialogs listen to refresh contributed-tag groups.
+- `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits, column hide/reveal), on every client; no payload. Roll dialogs listen to refresh contributed-tag groups.
+- `litm.sacrificePrepared` — `({ actor })` on clients other than the roller's when a Hero's roll turns into a Sacrifice; return `false` to suppress the default banner
+- `litm.campingStepChanged` — `({ from, to })` after camping navigates between steps
 - `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.

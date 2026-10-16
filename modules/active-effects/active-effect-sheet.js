@@ -50,7 +50,8 @@ export class LitmActiveEffectSheet extends HandlebarsApplicationMixin(
 			isStatusTag: effect.type === "status_tag",
 			hasQuestion: effect.system?.schema?.has("question") ?? false,
 			hasScratched: effect.system?.schema?.has("isScratched") ?? false,
-			hasTitleTag: effect.system?.schema?.has("isTitleTag") ?? false,
+			// Read-only: `LitmItem.ensureTitleTag` owns which tag is the title tag.
+			isTitleTag: effect.system?.isTitleTag === true,
 		};
 	}
 

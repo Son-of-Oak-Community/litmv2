@@ -50,6 +50,28 @@ export function partitionEffects(actor, ...types) {
 }
 
 /**
+ * The Fellowship theme's tags for the Fellowship a hero is linked to. They sit
+ * on the Fellowship actor's theme (`HeroData#fellowshipActor`), never on the
+ * hero, so `hero.allApplicableEffects()` does not contain them. To change
+ * one, write through `effect.parent`. Current Fellowship themes hold
+ * `fellowship_tag`; older and imported ones hold `power_tag`, so both count.
+ * @param {Actor} hero - Anything with `system.fellowshipActor`
+ * @param {Actor|null} [fallback] - Fellowship to use when the hero has none
+ * @returns {ActiveEffect[]}
+ */
+export function fellowshipTagEffects(hero, fallback = null) {
+	const fellowship = hero?.system?.fellowshipActor ?? fallback;
+	if (!fellowship) return [];
+	const { fellowship_tag, power_tag } = partitionEffects(
+		fellowship,
+		"fellowship_tag",
+		"power_tag",
+	);
+	const onTheme = (e) => e.parent?.documentName === "Item";
+	return [...fellowship_tag, ...power_tag.filter(onTheme)];
+}
+
+/**
  * Collapse duplicate title tags down to the first one, preserving order and
  * all other effects. A theme has exactly one title tag by design, but a
  * historical cross-client create race could leave stragglers (deleted by

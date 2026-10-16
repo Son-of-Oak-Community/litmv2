@@ -1,4 +1,5 @@
 import { scratchTag } from "../active-effects/scratchable-mixin.js";
+import { gainImprovement } from "../actor/hero/hero-data.js";
 import { resolveApprovedRoll } from "../apps/roll/moderation.js";
 import { LitmRollDialog } from "../apps/roll/roll-dialog.js";
 import {
@@ -63,11 +64,12 @@ export class Sockets {
 			actor.sheet?.updateRollDialog({ ...data, senderId: event.senderId });
 		});
 
-		Sockets.on("requestRollDialogSync", ({ data: { actorId } }) => {
+		Sockets.on("requestRollDialogSync", ({ data: { actorId, reseat } }) => {
 			const actor = game.actors.get(actorId);
 			if (!actor?.sheet?.hasRollDialog) return;
 			const dialog = actor.sheet.rollDialogInstance;
 			if (dialog.isOwner) dialog.dispatchSync();
+			else if (reseat) dialog.dispatchReseat();
 		});
 	}
 
@@ -84,13 +86,18 @@ export class Sockets {
 	}
 
 	static #registerRollModerationListeners() {
+		// Two GMs approving the same card each send this; roll it once.
+		const approvedRolls = new Set();
 		Sockets.on("rollDice", ({ senderId, data: { userId, messageId } }) => {
+			if (approvedRolls.has(messageId)) return;
 			const data = resolveApprovedRoll({ senderId, userId, messageId });
+			if (data) approvedRolls.add(messageId);
 			if (!data) return;
-			LitmRollDialog.roll(data);
+			LitmRollDialog.roll(data)?.catch(console.error);
 		});
 
-		Sockets.on("rejectRoll", ({ data: { actorId, name } }) => {
+		Sockets.on("rejectRoll", ({ data: { actorId, name, userId } }) => {
+			if (userId && userId !== game.userId) return;
 			ui.notifications.warn(
 				game.i18n.format("LITM.Ui.roll_rejected", { name }),
 			);
@@ -122,15 +129,39 @@ export class Sockets {
 		// Post-roll bookkeeping for ally tags: the rolling client can't
 		// update an effect on an actor it doesn't own, so it asks the
 		// active GM to apply the scratch (burn / single-use consumption).
+		// Hooks.callAll drops a relay's promise, so each relay logs its own
+		// failure rather than leave an unhandled rejection on the GM client.
 		Sockets.on("scratchEffect", async ({ data: { uuid } }) => {
 			if (game.user !== game.users.activeGM) return;
-			const effect = await foundry.utils.fromUuid(uuid);
-			if (!effect || effect.system?.isScratched) return;
-			const targetActor =
-				effect.parent?.documentName === "Item"
-					? effect.parent.parent
-					: effect.parent;
-			await scratchTag(targetActor, effect);
+			try {
+				const effect = await foundry.utils.fromUuid(uuid);
+				if (!effect || effect.system?.isScratched) return;
+				const targetActor =
+					effect.parent?.documentName === "Item"
+						? effect.parent.parent
+						: effect.parent;
+				await scratchTag(targetActor, effect);
+			} catch (err) {
+				error("scratchEffect relay failed", err);
+			}
+		});
+
+		// Same relay for Improve: a contributed weakness marks the theme of a
+		// Hero the roller doesn't own.
+		// Marks are applied one at a time: two weaknesses on the same theme
+		// arrive as two packets, and concurrent handlers would both read the
+		// same Improve value and write the same +1.
+		let improveQueue = Promise.resolve();
+		Sockets.on("gainImprovement", ({ data: { actorId, tag } }) => {
+			if (game.user !== game.users.activeGM) return;
+			improveQueue = improveQueue.then(async () => {
+				try {
+					const actor = game.actors.get(actorId);
+					if (actor) await gainImprovement(actor, tag);
+				} catch (err) {
+					error("gainImprovement relay failed", err);
+				}
+			});
 		});
 	}
 
@@ -144,22 +175,23 @@ export class Sockets {
 			// dropped player edits when the GM's sidebar was closed and
 			// double-applied when multiple GMs had it open.
 			if (game.user !== game.users.activeGM) return;
-			await getStoryTagSidebar()?.doUpdate(operation, data);
+			try {
+				await getStoryTagSidebar()?.doUpdate(operation, data);
+			} catch (err) {
+				error("storyTagsUpdate relay failed", err);
+			}
 		});
 
+		// The sender fires `litm.sceneTagsChanged` locally; this is the same
+		// signal for everyone else. Its listeners re-render roll dialogs and
+		// token labels, so third-party listeners see remote changes too.
 		Sockets.on("storyTagsRender", () => {
 			const sidebar = getStoryTagSidebar();
 			if (sidebar?.rendered) {
 				sidebar.invalidateCache();
 				sidebar.render();
-				sidebar.refreshRollDialogs();
-			} else {
-				game.actors.forEach((actor) => {
-					if (!actor.sheet?.hasRollDialog) return;
-					const dialog = actor.sheet.rollDialogInstance;
-					if (dialog?.rendered) dialog.render();
-				});
 			}
+			Hooks.callAll("litm.sceneTagsChanged");
 		});
 	}
 
@@ -175,20 +207,25 @@ export class Sockets {
 			"createHeroAsGM",
 			async ({ data: { actorData, userId, assignToUser } }) => {
 				if (game.user !== game.users.activeGM) return;
-				const data = foundry.utils.deepClone(actorData);
-				foundry.utils.setProperty(
-					data,
-					`ownership.${userId}`,
-					foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
-				);
-				const actor = await foundry.documents.Actor.create(data, {
-					renderSheet: false,
-					fromSidebar: false,
-					litm: { skipHeroWizard: true, skipAutoSetup: true },
-				});
-				if (!actor) return;
-				const user = game.users.get(assignToUser || userId);
-				if (user && !user.character) await user.update({ character: actor.id });
+				try {
+					const data = foundry.utils.deepClone(actorData);
+					foundry.utils.setProperty(
+						data,
+						`ownership.${userId}`,
+						foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+					);
+					const actor = await foundry.documents.Actor.create(data, {
+						renderSheet: false,
+						fromSidebar: false,
+						litm: { skipHeroWizard: true, skipAutoSetup: true },
+					});
+					if (!actor) return;
+					const user = game.users.get(assignToUser || userId);
+					if (user && !user.character)
+						await user.update({ character: actor.id });
+				} catch (err) {
+					error("createHeroAsGM relay failed", err);
+				}
 			},
 		);
 	}
@@ -213,11 +250,20 @@ export class Sockets {
 	}
 
 	static #registerCampingListeners() {
-		Sockets.on("campingOpen", () => {
-			Hooks.callAll("litm.camping.open");
+		// Both carry the scene the camp's session lives on: it need not be the
+		// scene a given client is looking at.
+		Sockets.on("campingOpen", ({ data }) => {
+			Hooks.callAll("litm.camping.open", { sceneId: data?.sceneId });
 		});
-		Sockets.on("campingSaveOp", ({ data: { key, payload } }) => {
-			Hooks.callAll("litm.camping.saveOp", { key, payload });
+		Sockets.on("campingSaveOp", ({ data: { key, payload, sceneId } }) => {
+			Hooks.callAll("litm.camping.saveOp", { key, payload, sceneId });
+		});
+		// A second GM's Begin Camp / Pack Up / Cancel, run by the active GM.
+		Sockets.on("campingLifecycle", ({ data }) => {
+			Hooks.callAll("litm.camping.lifecycle", {
+				action: data?.action,
+				sceneId: data?.sceneId,
+			});
 		});
 		Sockets.on("campingEnd", () => {
 			Hooks.callAll("litm.camping.end");

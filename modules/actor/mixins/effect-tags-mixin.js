@@ -55,7 +55,8 @@ export function EffectTagsMixin(Base) {
 		 *
 		 * If a status_tag with the same name (case-insensitive) already exists on
 		 * this actor or any of its owned items, the existing tiers are advanced
-		 * via `calculateMark(markTier)` rather than creating a duplicate.
+		 * via `calculateMark(markTier)` rather than creating a duplicate. A passed
+		 * `limitId` links that existing status when it has no limit yet.
 		 *
 		 * @param {string} name
 		 * @param {object} [options]
@@ -80,9 +81,19 @@ export function EffectTagsMixin(Base) {
 					)
 				: null;
 			if (existing) {
-				const newTiers = existing.system.calculateMark(markTier);
+				const update = {
+					_id: existing.id,
+					"system.tiers": existing.system.calculateMark(markTier),
+				};
+				// Link a status that counts towards no limit yet, so the limit sees
+				// the stack. One already linked keeps its link, even to a different
+				// limit: a status feeds a single limit, and moving it would silently
+				// take progress off the one it was feeding.
+				if (limitId && !existing.system.limitId) {
+					update["system.limitId"] = limitId;
+				}
 				return existing.parent.updateEmbeddedDocuments("ActiveEffect", [
-					{ _id: existing.id, "system.tiers": newTiers },
+					update,
 				]);
 			}
 			const data = statusTagEffect({ name, isHidden, limitId });

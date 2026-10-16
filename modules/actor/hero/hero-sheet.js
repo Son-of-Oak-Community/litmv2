@@ -398,7 +398,11 @@ export class HeroSheet extends LitmActorSheet {
 		// regular Roll button should bring the user back to a standard roll —
 		// preserve "tracked"/"mitigate" preferences, but clear sacrifice.
 		// Gate on hasRollDialog so we don't spawn an instance just to check.
-		if (this.hasRollDialog && this.rollDialogInstance.type === "sacrifice") {
+		// A camp action left behind is cleared the same way.
+		if (
+			this.hasRollDialog &&
+			["sacrifice", "campAction"].includes(this.rollDialogInstance.type)
+		) {
 			this.rollDialogInstance.setType("quick");
 		}
 		this.renderRollDialog();

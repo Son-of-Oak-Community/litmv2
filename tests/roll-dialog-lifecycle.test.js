@@ -87,9 +87,9 @@ describe("called-roll lifecycle", () => {
 		dialog.setSelection("tag", "negative", "gm", { narrator: true });
 		game.settings.get.mockReturnValue(true);
 		vi.spyOn(dialog, "_createModerationRequest").mockResolvedValue(undefined);
-		await LitmRollDialog._onSubmit.call(dialog, null, null, {});
 		dialog.rendered = true;
-		await dialog.close(); // Foundry's closeOnSubmit.
+		// _onSubmit closes the window itself once the request is posted.
+		await LitmRollDialog._onSubmit.call(dialog, null, null, {});
 
 		expect(dialog.narratorCall?.narratorUserId).toBe("gm");
 		expect(dialog.getSelection("tag").narrator).toBe(true);

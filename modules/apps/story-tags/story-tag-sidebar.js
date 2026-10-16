@@ -15,6 +15,7 @@ import {
 	tagDragData,
 } from "../../item/action/tag-string.js";
 import { info } from "../../logger.js";
+import { bindActionPresubmit } from "../../sheets/action-presubmit.js";
 import {
 	ACTOR_TAG_TYPES,
 	FLAG_LIMIT_TYPES,
@@ -52,6 +53,21 @@ const AbstractSidebarTab = foundry.applications.sidebar.AbstractSidebarTab;
  */
 const DEFAULT_VISIBLE_ACTOR_TYPES = new Set(["hero", "fellowship"]);
 
+/**
+ * Whether a newly tracked actor's column starts hidden. A hidden column means
+ * hidden tokens, so when the actor already has tokens on the scene they
+ * decide: adding a column never makes a placed token vanish or appear.
+ * @param {Actor} actor
+ * @returns {boolean}
+ */
+function startsHidden(actor) {
+	if (DEFAULT_VISIBLE_ACTOR_TYPES.has(actor.type)) return false;
+	const tokens =
+		canvas.scene?.tokens?.filter((t) => t.actorId === actor.id) ?? [];
+	if (tokens.length) return tokens.every((t) => t.hidden);
+	return true;
+}
+
 const STORY_TAG_OPERATIONS = {
 	createTags: (data) => ContentSources.createStoryTags(data),
 	updateTags: (data) => ContentSources.updateStoryTags(data),
@@ -65,6 +81,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 	/** @type {Token[]} Currently highlighted tokens from sidebar hover */
 	_highlighted = [];
+
+	/**
+	 * The last form `onSubmit` handled and what it held, so the next submit
+	 * from the same render can diff against it.
+	 * @type {{ form: HTMLFormElement, data: object }|null}
+	 */
+	#lastSubmit = null;
 
 	/** @type {Set<string>} Actor IDs whose sections are collapsed */
 	_collapsedActors = new Set();
@@ -511,43 +534,15 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		// Submit the form on pointerdown when an action button is clicked while
 		// an input is focused, preventing the blur→change→re-render from detaching
 		// the button before the click event fires.
-		this.element.addEventListener(
-			"pointerdown",
-			(event) => {
-				const actionBtn = event.target.closest("[data-action]");
-				if (!actionBtn) return;
-
-				const form = this.element.querySelector("form");
-				if (!form) return;
-
-				const focused = document.activeElement;
-				if (!focused || !form.contains(focused)) return;
-				if (!["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) return;
-
-				// Prevent click from firing (per Pointer Events spec, preventDefault on
-				// pointerdown suppresses the subsequent click). We execute the action
-				// manually after the form submit, since click would otherwise fire after
-				// the render replaces the DOM.
-				event.preventDefault();
-
-				const action = actionBtn.dataset.action;
-				const dataset = { ...actionBtn.dataset };
-
-				this._suppressNextChange = true;
-				const formData = new foundry.applications.ux.FormDataExtended(form);
-				this.onSubmit(null, form, formData)
-					.then(() => {
-						const handler = this.options.actions[action];
-						const fn = typeof handler === "object" ? handler.handler : handler;
-						if (!fn) return;
-						const syntheticTarget = document.createElement("button");
-						Object.assign(syntheticTarget.dataset, dataset);
-						fn.call(this, event, syntheticTarget);
-					})
-					.catch(console.error);
-			},
-			{ capture: true },
-		);
+		bindActionPresubmit(this, {
+			getForm: () => this.element.querySelector("form"),
+			submit: (form) =>
+				this.onSubmit(
+					null,
+					form,
+					new foundry.applications.ux.FormDataExtended(form),
+				),
+		});
 
 		// --- Delegated listeners on the stable outer element ---
 
@@ -1024,9 +1019,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		}
 
 		const existingHidden = this.config.hiddenActors ?? [];
-		const hiddenActors = DEFAULT_VISIBLE_ACTOR_TYPES.has(actor.type)
-			? existingHidden
-			: [...existingHidden, id];
+		const hiddenActors = startsHidden(actor)
+			? [...existingHidden, id]
+			: existingHidden;
 		await LitmSettings.setStoryTags({
 			...this.config,
 			actors: [...this.config.actors, id],
@@ -1039,35 +1034,84 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	/*  Form Handling                               */
 	/* -------------------------------------------- */
 
-	async onSubmit(_event, _form, formData) {
+	async onSubmit(_event, form, formData) {
 		this.invalidateCache();
 		const data = foundry.utils.expandObject(formData.object);
 		if (foundry.utils.isEmpty(data)) return;
 
+		// Any change submits the whole form, and rows the user never touched
+		// still hold whatever this form was rendered with. If somebody else
+		// changed one since, writing it back would undo their change, so the
+		// processors send only what differs from a baseline. The first submit
+		// from a render diffs against the inputs' own defaults (the template
+		// renders `value` and `checked` as attributes): a reset clone read
+		// through the same FormDataExtended gives them in the same shape. Later
+		// submits from that same form diff against the previous one instead,
+		// because a user can change a field back before the re-render lands and
+		// the defaults would call that "unchanged". A render swaps in a new
+		// <form>, which starts over from its defaults. Taken before any await,
+		// so overlapping submits chain in order.
+		const last = this.#lastSubmit;
+		this.#lastSubmit = { form, data };
+		let baseline = last?.form === form ? last.data : null;
+		if (!baseline) {
+			const clone = form.cloneNode(true);
+			clone.reset();
+			baseline = foundry.utils.expandObject(
+				new foundry.applications.ux.FormDataExtended(clone).object,
+			);
+		}
+		const {
+			story: renderedStory,
+			limits: renderedLimits,
+			...renderedActors
+		} = baseline;
+
 		const { story, limits: _limits, ...actors } = data;
 		const resolveActor = (id) => this.#resolveActor(id);
 
-		await applyActorTagUpdates(actors, resolveActor);
-		for (const id of Object.keys(actors)) await this.#triggerLimitRecalc(id);
+		const touched = await applyActorTagUpdates(
+			actors,
+			resolveActor,
+			renderedActors,
+		);
+		for (const id of touched) await this.#triggerLimitRecalc(id);
 
-		const storyTagUpdates = buildStoryTagUpdates(story);
-		const updatedLimits = await applyLimitUpdates(
+		// The scene column renders disabled for players, and FormDataExtended
+		// skips disabled fields: a player's form carries each scene tag's name
+		// but none of its checkboxes, which would read as "unscratch every
+		// scene tag and clear every tier". Only the GM edits scene tags here;
+		// players reach them through the tag actions instead.
+		const storyTagUpdates = game.user.isGM
+			? buildStoryTagUpdates(story, renderedStory)
+			: [];
+		const { storyLimits, flagLimitsWritten } = await applyLimitUpdates(
 			data.limits,
 			this.config.limits,
 			resolveActor,
+			renderedLimits,
 		);
 
 		if (game.user.isGM) {
 			if (storyTagUpdates.length) {
 				await ContentSources.updateStoryTags(storyTagUpdates);
 			}
-			await LitmSettings.setStoryTags({
-				...this.config,
-				limits: updatedLimits,
-			});
-			this.#broadcastRender();
-		} else if (storyTagUpdates.length) {
-			this.#broadcastUpdate("updateTags", storyTagUpdates);
+			if (storyLimits) {
+				await LitmSettings.setStoryTags({
+					...this.config,
+					limits: storyLimits,
+				});
+			}
+			// Also announces actor tag edits (`litm.sceneTagsChanged`), which the
+			// effect hooks alone do not. A submit that wrote nothing stays quiet.
+			if (
+				touched.length ||
+				storyTagUpdates.length ||
+				storyLimits ||
+				flagLimitsWritten
+			) {
+				this.#broadcastRender();
+			}
 		}
 	}
 
@@ -1381,7 +1425,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		const uniqueNewIds = [...newActors.keys()];
 		const newHiddenIds = [...newActors.values()]
-			.filter((a) => !DEFAULT_VISIBLE_ACTOR_TYPES.has(a.type))
+			.filter(startsHidden)
 			.map((a) => a.uuid);
 
 		await LitmSettings.setStoryTags({
@@ -1503,8 +1547,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	}
 
 	/**
-	 * Thin wrapper: resolves the actor from an id, delegates limit recalculation
-	 * to the data model, and emits `litm.limitReached` for each newly-crossed limit.
+	 * Thin wrapper: resolves the actor from an id and awaits limit recalculation
+	 * on the data model, which also announces `litm.limitReached` for each
+	 * newly-crossed limit. The sidebar never fires the hook itself.
 	 * @param {string} actorId
 	 * @returns {Promise<void>}
 	 */
@@ -1512,10 +1557,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const actor = this.#resolveActor(actorId);
 		if (!actor?.isOwner) return;
 		if (typeof actor.system?.recalculateLimitValues !== "function") return;
-		const result = await actor.system.recalculateLimitValues();
-		for (const limit of result.reached) {
-			Hooks.callAll("litm.limitReached", { actor, limit });
-		}
+		await actor.system.recalculateLimitValues();
 	}
 
 	async #removeFromSource(data) {
@@ -1608,6 +1650,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	}
 
 	async #removeAllTags() {
+		// Clearing the scene is the Narrator's call; players remove tags one at a time.
+		if (!game.user.isGM) return;
 		const tags = this.#packStoryTags;
 		if (!tags.length || !(await confirmDelete())) return;
 		return this.#storyTagOp(

@@ -201,10 +201,15 @@ async function _handleApproveModeration(_target, app) {
 				warn(`Moderation card ${app.id} was already resolved elsewhere.`);
 				return;
 			}
-			LitmRollDialog.roll(data);
-			// Reset own roll dialog locally (sockets don't echo to sender)
-			const actor = game.actors.get(data.actorId);
-			if (actor?.sheet?.rendered) actor.sheet.resetRollDialog();
+			LitmRollDialog.roll(data)?.catch(console.error);
+			// Reset own roll dialog locally (sockets don't echo to sender) —
+			// unless a newer roll has opened on it since this one was sent.
+			const sheet = game.actors.get(data.actorId)?.sheet;
+			if (
+				sheet?.hasRollDialog &&
+				sheet.rollDialogInstance.matchesSyncSession(data.syncSession)
+			)
+				sheet.resetRollDialog();
 		} else {
 			// Name the request; don't carry it. The requester's client reads the
 			// roll back off the card it authored (see resolveApprovedRoll), so a
@@ -219,9 +224,11 @@ async function _handleApproveModeration(_target, app) {
 			await app.delete().catch(console.error);
 		}
 
-		// Dispatch order to reset Roll Dialog on other clients
+		// Reset the approved roll on other clients. The session keeps the reset
+		// off a newer draft the roller opened while the Narrator deliberated.
 		Sockets.dispatch("resetRollDialog", {
 			actorId: data.actorId,
+			syncSession: data.syncSession,
 		});
 	} finally {
 		_moderationInFlight.delete(app.id);
@@ -232,6 +239,10 @@ async function _handleCompleteSacrifice(target) {
 	const { message, roll } = _getMessageAndRoll(target);
 	const { sacrificeLevel, sacrificeThemeId, sacrificeStatusName, actorId } =
 		roll.litm;
+	// Whoever rolled the Sacrifice completes it. A GM-authored card means the
+	// Narrator rolled it for a player who couldn't, so the Narrator finishes it
+	// too; only the author or a GM can latch the card anyway.
+	if (!message.isAuthor && !game.user.isGM) return;
 	const actor = game.actors.get(actorId);
 	if (!actor?.isOwner) return;
 
@@ -323,6 +334,7 @@ async function _handleRejectModeration(_target, app) {
 	_moderationInFlight.add(app.id);
 	try {
 		const data = await app.getFlag("litmv2", "data");
+		const userId = await app.getFlag("litmv2", "userId");
 		// Deleting the card claims the request, as in _handleApproveModeration:
 		// whoever fails to delete it is not the one who rejected it, and must not
 		// send the requester a second rejection.
@@ -332,10 +344,12 @@ async function _handleRejectModeration(_target, app) {
 			return;
 		}
 		if (!data?.actorId) return;
-		// Dispatch order to reopen
+		// Reopen the roll for the requester only; anyone else holding a dialog
+		// for this actor would reopen it with no owner.
 		Sockets.dispatch("rejectRoll", {
 			name: game.user.name,
 			actorId: data.actorId,
+			userId,
 		});
 	} finally {
 		_moderationInFlight.delete(app.id);
@@ -672,23 +686,35 @@ function onRenderChatMessage(app, html, _data) {
 		console.error("LITM spend-power exhaustion check failed:", e),
 	);
 
-	// Hide complete-sacrifice button if already completed
+	// Hide complete-sacrifice once completed, and from anyone but the roller
+	// (or a GM) — see `_handleCompleteSacrifice`.
 	const sacrificeBtn = element.querySelector(
 		"[data-click='complete-sacrifice']",
 	);
 	if (sacrificeBtn) {
 		const roll = app.rolls?.[0];
-		if (roll?.litm?.sacrificeCompleted) {
+		if (
+			roll?.litm?.sacrificeCompleted ||
+			(!app.isAuthor && !game.user.isGM)
+		) {
 			sacrificeBtn.remove();
 		}
 	}
 
-	// Hide theme advancement / evolution buttons for non-owners
-	for (const click of ["open-theme-advancement", "open-theme-evolution"]) {
-		const btn = element.querySelector(`[data-click='${click}']`);
-		if (btn && !app.isAuthor)
-			btn.closest(".litm-track-complete__footer")?.remove();
-	}
+	// Hide theme advancement / evolution buttons for non-owners. Advancement
+	// follows the Hero, not the card: an Improve relayed through the GM posts
+	// a GM-authored card for a player's theme. Evolution stays author-gated
+	// because it latches `evolutionResolved` on the message.
+	const advanceBtn = element.querySelector(
+		"[data-click='open-theme-advancement']",
+	);
+	if (advanceBtn && !game.actors.get(advanceBtn.dataset.actorId)?.isOwner)
+		advanceBtn.closest(".litm-track-complete__footer")?.remove();
+	const evolutionBtn = element.querySelector(
+		"[data-click='open-theme-evolution']",
+	);
+	if (evolutionBtn && !app.isAuthor)
+		evolutionBtn.closest(".litm-track-complete__footer")?.remove();
 
 	// Hide the evolution button once the wizard has resolved this card so
 	// the same chat message can't open the wizard a second time.
@@ -841,14 +867,16 @@ function _attachContextMenuToRollMessage() {
 				roll._total = (Number(roll._total) || 0) + delta;
 				roll.options.modifier = newModifier;
 				roll.options.totalPower = newTotalPower;
-				// Foundry's #renderRollContent skips re-render when message
-				// content already has child elements (which LitmRoll always
-				// produces). Re-render the roll ourselves and overwrite
-				// content so the displayed outcome reflects the new total —
-				// for sacrifice this is what gates the Complete Sacrifice
-				// flow on the re-resolved Miracle/Fate/In-Vain bracket.
-				const content = await roll.render();
-				await message.update({ content, rolls: [roll.toJSON()] });
+				// Plain-text content, like the card `toMessage` posted, so
+				// Foundry re-renders the roll on each client from `rolls`. That
+				// shows the re-resolved outcome (which gates Complete Sacrifice)
+				// and keeps each viewer's concealment mask: storing this
+				// client's render would hand every player the GM's unmasked
+				// tooltip.
+				await message.update({
+					content: String(roll.total),
+					rolls: [roll.toJSON()],
+				});
 				ui.notifications?.info(t("LITM.Ui.change_roll_values_done"));
 			},
 		};

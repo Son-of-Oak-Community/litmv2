@@ -232,6 +232,8 @@ export function buildContributedTagGroups(
 				ownCharacter.prototypeToken?.texture?.src || ownCharacter.img,
 			);
 			for (const e of ownCharacter.appliedEffects) {
+				// A status the Narrator hid on this Hero stays hidden here too.
+				if (!isEffectVisible(e)) continue;
 				const rawTag = effectToPlain(e);
 				const sel = dialog.getSelection(rawTag.uuid);
 				const tag = decorateTag({
@@ -747,12 +749,14 @@ export function buildGroupRollTabs(dialog, shared) {
 		if (!actor) continue;
 		let groups = buildActorEffectGroups(dialog, actor, shared);
 		if (actable) groups = keepSelectedOnly(groups);
+		// Masked like the sidebar's own groups: a concealed Challenge keeps its alias.
+		const label = actor.system?.maskedName ?? actor.name;
 		for (const group of groups) {
 			storyGroups.push({
 				...group,
 				themeName: group.themeName
-					? `${actor.name} — ${group.themeName}`
-					: actor.name,
+					? `${label} — ${group.themeName}`
+					: label,
 				themeImg:
 					group.themeImg ?? (actor.prototypeToken?.texture?.src || actor.img),
 			});

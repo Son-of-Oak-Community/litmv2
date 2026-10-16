@@ -1,3 +1,4 @@
+import { fellowshipTagEffects } from "../../active-effects/effect-queries.js";
 import { ACTOR_TYPES } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
 import { findFellowshipTheme, localize as t } from "../../utils.js";
@@ -38,7 +39,7 @@ export function canEditHero(actor) {
  * Partition an actor's applicable effects into the buckets the camping UI
  * needs. Reading once and slicing beats four full traversals.
  */
-function partitionEffects(actor) {
+export function partitionCampingEffects(actor) {
 	const buckets = {
 		statusEffects: [],
 		// Rest recovery covers personal power tags only. Scratched
@@ -46,15 +47,16 @@ function partitionEffects(actor) {
 		// the once-per-camp quality-time choice, not via a single hero's Rest.
 		scratchedRecoverable: [],
 		relationshipEffects: [],
-		scratchedFellowshipTags: [],
+		// Read from the Fellowship actor: its tags are not on the hero.
+		scratchedFellowshipTags: fellowshipTagEffects(actor).filter(
+			(e) => e.system?.isScratched,
+		),
 	};
 	for (const e of actor.allApplicableEffects?.() ?? []) {
 		if (e.type === "status_tag") buckets.statusEffects.push(e);
 		else if (e.type === "relationship_tag") buckets.relationshipEffects.push(e);
 		else if (e.type === "power_tag" && e.system?.isScratched) {
 			buckets.scratchedRecoverable.push(e);
-		} else if (e.type === "fellowship_tag" && e.system?.isScratched) {
-			buckets.scratchedFellowshipTags.push(e);
 		}
 	}
 	return buckets;
@@ -240,7 +242,7 @@ function buildQualityTimeContext(
 }
 
 function buildHeroContext(actor, heroState, allHeroes, isCamp) {
-	const buckets = partitionEffects(actor);
+	const buckets = partitionCampingEffects(actor);
 	const backpackTags = buildBackpackPills(actor, heroState);
 	const reflectTargets = buildReflectTargets(actor);
 	const periodCount = heroState.thirdPeriodActive ? 3 : 2;

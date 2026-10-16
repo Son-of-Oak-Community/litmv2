@@ -1,6 +1,6 @@
-import { createLegacyRelationshipEffects } from "../../actor/hero/hero-data.js";
-import { LitmItem } from "../../item/litm-item.js";
+import { createLegacyActorEffects } from "../../actor/litm-actor.js";
 import { error } from "../../logger.js";
+import { Sockets } from "../sockets.js";
 import {
 	findFellowshipTheme,
 	getStoryTagSidebar,
@@ -20,8 +20,10 @@ export function registerActorHooks() {
 	_enforceHeroItemLimits();
 	_validateEffectType();
 	_syncUiOnEffectChange();
+	_recalcLimitsOnStatusChange();
 	_syncRollDialogHudOnUpdate();
 	_flashSacrificeBannerOnUpdate();
+	_demoteRollDialogOnSeatTaken();
 	_syncStoryThemeActorToItem();
 	_enforceStoryThemeActorLimits();
 }
@@ -119,7 +121,9 @@ function _prepareCharacterOnCreate() {
 
 	Hooks.on("createActor", (actor, options) => {
 		(async () => {
-			if (!game.user.isGM) return;
+			// createActor fires on every client; with two GMs online, scaffolding
+			// on each would create every default item twice.
+			if (game.user !== game.users.activeGM) return;
 			// Compendium documents are templates, not playable copies — never
 			// auto-scaffold them (the write also fails on locked packs). A world
 			// copy made from the pack re-fires this hook and gets scaffolded then.
@@ -221,6 +225,49 @@ function _syncUiOnEffectChange() {
 	Hooks.on("deleteActiveEffect", sync);
 }
 
+/**
+ * Keep each limit's stored `value` in step with the statuses linked to it, and
+ * through `recalculateLimitValues` announce `litm.limitReached` when one crosses
+ * its max. Every status write goes through an ActiveEffect create, update or
+ * delete — `addStatus`, Spend Power Inflict, chat actions, the token HUD,
+ * sheets — so this one choke point covers them all, where only the story-tag
+ * sidebar used to recalc.
+ *
+ * Runs on the client of the user who made the change: it announces once, and
+ * that user owns the actor. A status with no limit moves no limit, so only
+ * linked statuses (or a change to the link itself) recalc. A recalc rewrites
+ * every limit's value as its statuses plus the offset Advance and Set Back left
+ * on it (`advanced`), so progress added directly survives it.
+ */
+function _recalcLimitsOnStatusChange() {
+	const recalc = (effect) => {
+		const actor =
+			effect.parent?.documentName === "Actor"
+				? effect.parent
+				: effect.parent?.parent;
+		if (!actor || actor.pack) return;
+		actor.system?.recalculateLimitValues?.()?.catch(console.error);
+	};
+
+	Hooks.on("createActiveEffect", (effect, _options, userId) => {
+		if (userId !== game.userId) return;
+		if (effect.type === "status_tag" && effect.system?.limitId) recalc(effect);
+	});
+	Hooks.on("updateActiveEffect", (effect, changes, _options, userId) => {
+		if (userId !== game.userId) return;
+		if (effect.type !== "status_tag") return;
+		const system = changes?.system;
+		if (!system) return;
+		const relinked = "limitId" in system;
+		if (!relinked && !("tiers" in system)) return;
+		if (relinked || effect.system?.limitId) recalc(effect);
+	});
+	Hooks.on("deleteActiveEffect", (effect, _options, userId) => {
+		if (userId !== game.userId) return;
+		if (effect.type === "status_tag" && effect.system?.limitId) recalc(effect);
+	});
+}
+
 const HERO_ITEM_LIMITS = {
 	theme: {
 		max: () => CONFIG.litmv2?.themeLimit ?? 4,
@@ -273,9 +320,12 @@ function _enforceStoryThemeActorLimits() {
 
 /**
  * Sync story_theme actor name/image to its embedded item when the actor changes.
+ * Gated to the user who made the change, who owns the embedded item through the
+ * actor — see `_syncTitleTagOnRename` in item-hooks.
  */
 function _syncStoryThemeActorToItem() {
-	Hooks.on("updateActor", (actor, data) => {
+	Hooks.on("updateActor", (actor, data, _options, userId) => {
+		if (userId !== game.userId) return;
 		if (actor.type !== "story_theme") return;
 		const theme = actor.system.storyTheme;
 		if (!theme) return;
@@ -288,8 +338,9 @@ function _syncStoryThemeActorToItem() {
 }
 
 /**
- * When an actor is imported (embedded items don't fire createItem),
- * create proper AEs from any stashed legacy flag data.
+ * When an actor is created (embedded items don't fire createItem), create
+ * proper AEs from any stashed legacy flag data. Sidebar "Import Data" skips
+ * this hook; `LitmActor#importFromJSON` covers it.
  *
  * createActor fires on every connected client; the follow-up writes
  * (ensureTitleTag, relationship effects) must run on exactly one of them.
@@ -301,16 +352,13 @@ function _syncStoryThemeActorToItem() {
 function _migrateLegacyActorOnCreate() {
 	Hooks.on("createActor", async (actor, _options, userId) => {
 		if (userId !== game.userId) return;
-		for (const item of actor.items) {
-			if (
-				item.flags?.litmv2?.legacyTags ||
-				item.flags?.litmv2?.legacyContents
-			) {
-				await LitmItem.createLegacyEffects(item);
-			}
-			await LitmItem.ensureTitleTag(item);
+		// Foundry doesn't await hook callbacks; log a failure instead of
+		// leaving it as an unhandled rejection.
+		try {
+			await createLegacyActorEffects(actor);
+		} catch (err) {
+			error(`Setting up actor ${actor.name} failed`, err);
 		}
-		await createLegacyRelationshipEffects(actor);
 	});
 }
 
@@ -332,6 +380,27 @@ function _syncRollDialogHudOnUpdate() {
 	Hooks.on("updateActor", (actor) => {
 		if (!ROLL_DIALOG_HOST_TYPES.has(actor.type)) return;
 		game.litmv2.rollDialogHud?.render?.();
+	});
+}
+
+/**
+ * A player may take the seat of a roll the GM opened from their Hero's sheet
+ * (`resolveRollDialogOwnership`). The presence flag then names the player,
+ * but the GM's dialog still believed it owned the roll, so both could press
+ * Roll. Step down to viewer and follow the new owner's draft.
+ */
+function _demoteRollDialogOnSeatTaken() {
+	Hooks.on("updateActor", (actor, changes) => {
+		const flagPath = `flags.litmv2.${FLAGS.rollDialogOwner}`;
+		if (!foundry.utils.hasProperty(changes, flagPath)) return;
+		const flag = actor.getFlag("litmv2", FLAGS.rollDialogOwner);
+		const sheet = actor.sheet;
+		if (!flag?.ownerId || !sheet?.hasRollDialog) return;
+		const dialog = sheet.rollDialogInstance;
+		if (!dialog.isOwner || flag.ownerId === game.user.id) return;
+		dialog.ownerId = flag.ownerId;
+		Sockets.dispatch("requestRollDialogSync", { actorId: actor.id });
+		if (dialog.rendered) dialog.render();
 	});
 }
 

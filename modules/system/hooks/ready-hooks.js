@@ -48,11 +48,18 @@ function _setupRollDialogHud() {
 			if (!flag) continue;
 			const isOwnFlag = flag.ownerId === game.user.id;
 			const isDisconnectedUser = !game.users.get(flag.ownerId)?.active;
-			if (isOwnFlag || (game.user.isGM && isDisconnectedUser)) {
+			// A called roll survives its owner's reload: the flag is how they
+			// find their seat again, and the Narrator is still holding the draft.
+			if (
+				(isOwnFlag && !flag.narrator) ||
+				(game.user.isGM && isDisconnectedUser)
+			) {
 				unsetPromises.push(actor.unsetFlag("litmv2", FLAGS.rollDialogOwner));
 			}
 		}
-		await Promise.all(unsetPromises);
+		// One stale flag the user can no longer clear must not keep both
+		// player-list widgets from rendering.
+		await Promise.allSettled(unsetPromises);
 		callHud.render();
 		hud.render();
 	});

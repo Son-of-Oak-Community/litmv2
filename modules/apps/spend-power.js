@@ -1,5 +1,5 @@
 import { isEffectVisible } from "../active-effects/effect-queries.js";
-import { maxStatusTier } from "../active-effects/status-tag-data.js";
+import { clampTier, maxStatusTier } from "../active-effects/status-tag-data.js";
 import {
 	computePowerBudget,
 	computeSuccessSpend,
@@ -63,7 +63,7 @@ const COST_CALCULATORS = {
 // Scratch reuses the picker calculator — both price one unit per selected chip.
 COST_CALCULATORS.scratchPicker = COST_CALCULATORS.picker;
 
-function defaultCostCalculator(li, cost, _entriesSection, hasTier) {
+export function defaultCostCalculator(li, cost, _entriesSection, hasTier) {
 	const entries = li.querySelectorAll(".litm-spend-power__entry");
 	if (entries.length === 0) return cost;
 	if (!hasTier) {
@@ -79,13 +79,21 @@ function defaultCostCalculator(li, cost, _entriesSection, hasTier) {
 	}
 	let total = 0;
 	entries.forEach((entry) => {
-		const tier = Math.max(
-			Number(entry.querySelector(".litm-spend-power__entry-tier")?.value ?? 1),
-			1,
-		);
-		total += cost * tier;
+		total += cost * readEntryTier(entry);
 	});
 	return total;
+}
+
+/**
+ * The tier typed into a status entry row, held to 1..the world's status track
+ * depth. The input's `max` only limits the spinner, not what can be typed, and
+ * a tier past the track would be charged in full but mark no box.
+ * @param {HTMLElement} row  An entry row
+ * @returns {number}
+ */
+function readEntryTier(row) {
+	const raw = row.querySelector(".litm-spend-power__entry-tier")?.value ?? 1;
+	return clampTier(raw, { min: 1 });
 }
 
 /**
@@ -298,6 +306,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			options,
 			actionSuccesses,
 			targets,
+			maxTier: maxStatusTier(),
 		};
 	}
 
@@ -785,7 +794,7 @@ function chatCard({ actor, action, body, power }) {
  * @param {SpendPowerApp}   dialog The app instance (for spendingOptions, messageId, alreadySpent)
  * @returns {object} SpendIntent
  */
-function parseSpendIntent(form, dialog) {
+export function parseSpendIntent(form, dialog) {
 	const checkedOptions = [
 		...form.querySelectorAll(".litm-spend-power__option"),
 	].filter((li) => li.querySelector("[data-option-check]").checked);
@@ -917,11 +926,7 @@ function parseSpendIntent(form, dialog) {
 		const entries = [...li.querySelectorAll(".litm-spend-power__entry")]
 			.map((row) => ({
 				name: row.querySelector(".litm-spend-power__entry-name").value.trim(),
-				tier: hasTier
-					? Number(
-							row.querySelector(".litm-spend-power__entry-tier")?.value ?? 1,
-						)
-					: null,
+				tier: hasTier ? readEntryTier(row) : null,
 				isSingleUse:
 					!hasTier &&
 					row.querySelector(".litm-spend-power__entry-single-use")?.checked ===

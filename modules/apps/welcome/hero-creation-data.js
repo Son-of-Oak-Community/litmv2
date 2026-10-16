@@ -1,6 +1,7 @@
 import {
 	fellowshipTagEffect,
 	powerTagEffect,
+	storyTagEffect,
 	weaknessTagEffect,
 } from "../../active-effects/effect-factories.js";
 import { POWER_TAG_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
@@ -913,17 +914,11 @@ export class HeroCreationData {
 			name: t("TYPES.Item.backpack"),
 			type: "backpack",
 			effects: backpackTags.map((tag, index) => ({
-				name: tag,
-				type: "story_tag",
+				...storyTagEffect({ name: tag }),
 				disabled:
 					appState.mode === "trope"
 						? tag !== selectedBackpackTag
 						: index !== appState.custom.activeBackpackIndex,
-				system: {
-					isScratched: false,
-					isSingleUse: false,
-					isHidden: false,
-				},
 			})),
 		};
 	}

@@ -118,11 +118,15 @@ export class CallForRollApp extends foundry.applications.api.HandlebarsApplicati
 			this.#actionDoc = null;
 			return null;
 		}
-		if (this.#actionDoc?.uuid === this.#actionUuid) return this.#actionDoc;
-		this.#actionDoc = await foundry.utils.fromUuid(this.#actionUuid);
-		if (this.#actionDoc?.name && !this.#title)
-			this.#title = this.#actionDoc.name;
-		return this.#actionDoc;
+		const uuid = this.#actionUuid;
+		if (this.#actionDoc?.uuid === uuid) return this.#actionDoc;
+		const doc = await foundry.utils.fromUuid(uuid);
+		// Clear or a different Action landed while the lookup was in flight:
+		// applying it now would put the old Action's name back in the title.
+		if (this.#actionUuid !== uuid) return this.#actionDoc;
+		this.#actionDoc = doc;
+		if (doc?.name && !this.#title) this.#title = doc.name;
+		return doc;
 	}
 
 	/**

@@ -168,6 +168,69 @@ describe("EffectTagsMixin.addStatus", () => {
 		expect(actor.createEmbeddedDocuments).not.toHaveBeenCalled();
 	});
 
+	describe("stacking onto an existing status with a limitId", () => {
+		const unlinked = (limitId = null) =>
+			fakeEffect({
+				type: "status_tag",
+				name: "Wounded",
+				system: {
+					limitId,
+					tiers: [true, false, false, false, false, false],
+					calculateMark: vi
+						.fn()
+						.mockReturnValue([false, true, false, false, false, false]),
+				},
+			});
+
+		it("links an unlinked existing status to the passed limit", async () => {
+			const existing = unlinked();
+			const actor = fakeActor({ effects: [existing] });
+			const model = buildModel(actor);
+
+			await model.addStatus("Wounded", { tier: 2, limitId: "limit-1" });
+
+			const [, [update]] = actor.updateEmbeddedDocuments.mock.calls[0];
+			expect(update).toMatchObject({
+				_id: existing.id,
+				"system.limitId": "limit-1",
+			});
+			expect(update["system.tiers"]).toBeDefined();
+		});
+
+		it("keeps an existing link to a different limit", async () => {
+			// One status feeds one limit. A status already counting towards another
+			// limit stays put; the stack still lands.
+			const actor = fakeActor({ effects: [unlinked("limit-other")] });
+			const model = buildModel(actor);
+
+			await model.addStatus("Wounded", { tier: 2, limitId: "limit-1" });
+
+			const [, [update]] = actor.updateEmbeddedDocuments.mock.calls[0];
+			expect("system.limitId" in update).toBe(false);
+			expect(update["system.tiers"]).toBeDefined();
+		});
+
+		it("leaves a status already linked to that limit alone", async () => {
+			const actor = fakeActor({ effects: [unlinked("limit-1")] });
+			const model = buildModel(actor);
+
+			await model.addStatus("Wounded", { tier: 2, limitId: "limit-1" });
+
+			const [, [update]] = actor.updateEmbeddedDocuments.mock.calls[0];
+			expect("system.limitId" in update).toBe(false);
+		});
+
+		it("does not link anything when no limitId is passed", async () => {
+			const actor = fakeActor({ effects: [unlinked()] });
+			const model = buildModel(actor);
+
+			await model.addStatus("Wounded", { tier: 2 });
+
+			const [, [update]] = actor.updateEmbeddedDocuments.mock.calls[0];
+			expect("system.limitId" in update).toBe(false);
+		});
+	});
+
 	it("routes stacking updates through existing.parent, not just the actor", async () => {
 		// A status that lives on an embedded item should be updated via that
 		// item's updateEmbeddedDocuments, even when addStatus is called on the

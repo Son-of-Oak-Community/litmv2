@@ -4,6 +4,12 @@ import {
 	buildThemeTagEffects,
 } from "../../item/litm-item.js";
 import { error, warn } from "../../logger.js";
+import { THEME_TAG_TYPES } from "../config.js";
+
+// Only theme-tag effects say a theme's tags were already migrated; an
+// unrelated effect (status, story tag...) must not stop the conversion.
+const hasThemeTagEffect = (effects) =>
+	effects.some((e) => THEME_TAG_TYPES.has(e.type));
 
 /**
  * Collect all effect changes for an actor and its items.
@@ -32,18 +38,22 @@ async function collectActorChanges(actor, changes) {
 	}
 
 	// Create relationship_tag effects from legacy relationships stashed
-	// as a flag by HeroData.migrateData, then clean up the DB.
+	// as a flag by LitmActor.migrateData, then clean up the DB. The stash is
+	// the only surviving copy of `system.relationships` once the schema has
+	// pruned it from the loaded actor, so that field is only unset when its
+	// contents are migrated (or already were).
 	if (actor.type === "hero") {
 		const rels = actor.getFlag("litmv2", "legacyRelationships");
-		if (
-			Array.isArray(rels) &&
-			rels.length &&
-			!actor.effects.some((e) => e.type === "relationship_tag")
-		) {
+		const hasRelationshipEffects = actor.effects.some(
+			(e) => e.type === "relationship_tag",
+		);
+		if (Array.isArray(rels) && rels.length && !hasRelationshipEffects) {
 			entry.toCreate.push(...buildRelationshipEffects(rels));
 			entry.flagsToUnset.push("legacyRelationships");
+			entry.systemFieldsToUnset.push("relationships");
+		} else if (hasRelationshipEffects) {
+			entry.systemFieldsToUnset.push("relationships");
 		}
-		entry.systemFieldsToUnset.push("relationships");
 	}
 
 	for (const item of actor.items) {
@@ -58,7 +68,7 @@ function collectItemChanges(item, changes) {
 	if (item.type === "theme" || item.type === "story_theme") {
 		const legacy = item.getFlag("litmv2", "legacyTags");
 		if (!legacy) return;
-		if (item.effects.size) return; // Already migrated
+		if (hasThemeTagEffect(item.effects)) return; // Already migrated
 
 		const entry = getEntry(changes, item);
 		entry.toCreate.push(
@@ -104,7 +114,8 @@ function getEntry(changes, parent) {
  *    from the DB before any item operations touch the parent actor.
  * 2. Creates — items first so their effects exist before actor creates
  *    trigger re-initialization hooks and migrateData guards.
- * 3. Flag cleanup — unset consumed legacy flags.
+ * 3. Flag cleanup — unset consumed legacy flags and fields, except on
+ *    parents whose Phase 2 create failed.
  */
 async function applyChanges(changes) {
 	const failures = [];
@@ -121,19 +132,23 @@ async function applyChanges(changes) {
 	const createsItemsFirst = entries.toSorted((a, b) =>
 		a.isItem === b.isItem ? 0 : a.isItem ? -1 : 1,
 	);
+	const failedCreates = new Set();
 	for (const { parentUuid, toCreate } of createsItemsFirst) {
 		if (!toCreate.length) continue;
 		try {
 			await AE.createDocuments(toCreate, { parentUuid });
 		} catch (err) {
+			failedCreates.add(parentUuid);
 			failures.push({ uuid: parentUuid, error: err });
 		}
 	}
 
 	// Phase 3: clean legacy source data and flags from the DB so
-	// migrateData won't re-synthesize the flags on future loads.
+	// migrateData won't re-synthesize the flags on future loads. A parent whose
+	// create failed keeps its legacy data: it is the only copy left.
 	const { ForcedDeletion } = foundry.data.operators;
 	for (const { parentUuid, flagsToUnset, systemFieldsToUnset } of entries) {
+		if (failedCreates.has(parentUuid)) continue;
 		if (!flagsToUnset.length && !systemFieldsToUnset.length) continue;
 		try {
 			const doc = await foundry.utils.fromUuid(parentUuid);

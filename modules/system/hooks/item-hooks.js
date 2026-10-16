@@ -1,5 +1,6 @@
 import { parseTagString } from "../../item/action/tag-string.js";
 import { LitmItem } from "../../item/litm-item.js";
+import { error } from "../../logger.js";
 import { getDefaultItemIcon, levelIcon } from "../../utils.js";
 
 export function registerItemHooks() {
@@ -25,8 +26,14 @@ export function registerItemHooks() {
 function _migrateLegacyItemOnCreate() {
 	Hooks.on("createItem", async (item, _options, userId) => {
 		if (userId !== game.userId) return;
-		await LitmItem.createLegacyEffects(item);
-		await LitmItem.ensureTitleTag(item);
+		// Foundry doesn't await hook callbacks; a failure here would otherwise
+		// surface only as an unhandled rejection.
+		try {
+			await LitmItem.createLegacyEffects(item);
+			await LitmItem.ensureTitleTag(item);
+		} catch (err) {
+			error(`Setting up item ${item.name} failed`, err);
+		}
 	});
 }
 
@@ -43,9 +50,19 @@ function _prepareThemeOnCreate() {
 
 /**
  * When a theme or story_theme is renamed, sync the title tag effect name.
+ *
+ * Like every mirror-sync hook below (and `_syncStoryThemeActorToItem` in
+ * actor-hooks), this fires on every connected client but must write from one.
+ * Gate to the user who made the change: an embedded document's ownership comes
+ * from its parent (Foundry's `BaseItem#getUserLevel` ignores an embedded item's
+ * own ownership field; an effect has none), so whoever could edit the item owns
+ * the effect, actor, or effects being mirrored to. Without the gate a
+ * non-owner's write is refused and, on the Fellowship (OWNER for everyone),
+ * every client writes at once.
  */
 function _syncTitleTagOnRename() {
-	Hooks.on("updateItem", (item, data) => {
+	Hooks.on("updateItem", (item, data, _options, userId) => {
+		if (userId !== game.userId) return;
 		if (item.type !== "theme" && item.type !== "story_theme") return;
 		if (!("name" in data)) return;
 		const titleTag = item.system.themeTag;
@@ -71,7 +88,8 @@ function _syncThemeImageOnLevelChange() {
  * Sync story_theme item name/image back to its parent actor when the item changes.
  */
 function _syncStoryThemeItemToActor() {
-	Hooks.on("updateItem", (item, data) => {
+	Hooks.on("updateItem", (item, data, _options, userId) => {
+		if (userId !== game.userId) return;
 		if (item.type !== "story_theme") return;
 		const actor = item.parent;
 		if (!actor || actor.type !== "story_theme") return;
@@ -84,7 +102,8 @@ function _syncStoryThemeItemToActor() {
 }
 
 function _syncAddonEffectsOnUpdate() {
-	Hooks.on("updateItem", (item) => {
+	Hooks.on("updateItem", (item, _data, _options, userId) => {
+		if (userId !== game.userId) return;
 		if (item.type !== "addon") return;
 		const actor = item.parent;
 		if (!actor || actor.documentName !== "Actor") return;
@@ -95,7 +114,8 @@ function _syncAddonEffectsOnUpdate() {
 }
 
 function _cleanupAddonEffectsOnDelete() {
-	Hooks.on("deleteItem", async (item) => {
+	Hooks.on("deleteItem", async (item, _options, userId) => {
+		if (userId !== game.userId) return;
 		if (item.type !== "addon") return;
 		const actor = item.parent;
 		if (!actor || actor.documentName !== "Actor") return;

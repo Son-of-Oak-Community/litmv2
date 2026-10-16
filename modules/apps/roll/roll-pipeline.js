@@ -1,5 +1,4 @@
 import { resolveEffect } from "../../active-effects/effect-queries.js";
-import { scratchTag as applyScratch } from "../../active-effects/scratchable-mixin.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { warn } from "../../logger.js";
 import { FLAGS, IMPROVE_MARKING_TAG_TYPES } from "../../system/config.js";
@@ -222,6 +221,39 @@ export function executeRoll({
 }
 
 /**
+ * Ask the active GM to scratch a tag this client can't write. With no GM
+ * online the request would reach nobody, so say so instead of dropping it.
+ * @param {object} tag
+ * @param {string} event  The GM relay socket event
+ * @param {object} data
+ */
+function relayScratch(tag, event, data) {
+	if (game.users.activeGM) return Sockets.dispatch(event, data);
+	// A tag the Narrator invoked from a concealed source stays unnamed here.
+	const name = tag.concealedAtRoll ? t("LITM.Ui.roll_concealed_tag") : tag.name;
+	ui.notifications.warn(
+		game.i18n.format("LITM.Ui.scratch_needs_narrator", { tag: name }),
+	);
+}
+
+/**
+ * Scratch as a post-roll consequence: an absolute set, never a toggle. A roll
+ * that runs twice (a double press, a retried submit, two approvals) must not
+ * un-burn the tag the first run burned.
+ * @param {ActiveEffect} effect
+ */
+async function scratchOnce(effect) {
+	if (effect.system?.isScratched) return;
+	const owner =
+		effect.parent?.documentName === "Item"
+			? effect.parent.parent
+			: effect.parent;
+	if (Hooks.call("litm.preTagScratched", owner, effect) === false) return;
+	await effect.system.setScratched(true);
+	Hooks.callAll("litm.tagScratched", owner, effect);
+}
+
+/**
  * Apply post-roll side effects: scratch used tags, gain improvements,
  * update roll JSON. Pure of UI concerns.
  */
@@ -237,7 +269,7 @@ export async function processPostRollEffects({
 		if (actor) {
 			const effect = resolveEffect(tag.id, actor, { fellowship: true });
 			if (effect) {
-				await applyScratch(actor, effect);
+				await scratchOnce(effect);
 				return;
 			}
 		}
@@ -247,7 +279,7 @@ export async function processPostRollEffects({
 			const update = [{ _id: tag._id, "system.isScratched": true }];
 			if (game.user.isGM) await ContentSources.updateStoryTags(update);
 			else
-				Sockets.dispatch("storyTagsUpdate", {
+				relayScratch(tag, "storyTagsUpdate", {
 					operation: "updateTags",
 					data: update,
 				});
@@ -258,12 +290,8 @@ export async function processPostRollEffects({
 		// parent document; otherwise ask the active GM via socket.
 		const effect = tag.uuid ? foundry.utils.fromUuidSync(tag.uuid) : null;
 		if (effect) {
-			const targetActor =
-				effect.parent?.documentName === "Item"
-					? effect.parent.parent
-					: effect.parent;
-			if (effect.isOwner) await applyScratch(targetActor, effect);
-			else Sockets.dispatch("scratchEffect", { uuid: tag.uuid });
+			if (effect.isOwner) await scratchOnce(effect);
+			else relayScratch(tag, "scratchEffect", { uuid: tag.uuid });
 			return;
 		}
 		// Diagnostic: a tag came back from the dialog but neither the rolling

@@ -101,7 +101,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 							disabled: pushedLocked,
 							sourceUuid: "",
 							sourceLabel: action.name,
-							html: await enrichHTML(text, action),
+							html: await enrichHTML(foundry.utils.escapeHTML(text), action),
 						}),
 					),
 				)
@@ -116,7 +116,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 			actors: sidebarActors,
 			appliedKeys,
 			disabled: pushedLocked,
-			enrich: (text, doc) => enrichHTML(text, doc),
+			enrich: (text, doc) => enrichHTML(foundry.utils.escapeHTML(text), doc),
 		});
 
 		// In-play actors as one-click target chips. Deliberately narrowed to the

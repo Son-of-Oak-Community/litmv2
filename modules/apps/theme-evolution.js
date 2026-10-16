@@ -682,38 +682,30 @@ async function submitExpand({
  * Replace the current theme with a full copy of a dropped theme item.
  * Wipes the current theme's non-title power/weakness tags, then copies
  * shape (name, themebook, level, quest, description, specials) and tags
- * from the source. Promise math follows the Core Book Replace rule:
- * +1 base plus +1 per extra power/weakness/special on the source.
+ * from the source. Promise math follows the Core Book Replace rule (p.192):
+ * +1 base plus +1 per extra power/weakness/special on the theme being
+ * replaced, as the form's Replace does.
+ *
+ * The source's tags and the replaced theme's caps are read before the
+ * target is touched: when `dropped` is `theme` itself, wiping the target
+ * empties the source's effect collection too. The wizard rejects that
+ * drop, but this function does not depend on it.
+ *
+ * @returns {Promise<boolean>} True once the theme was replaced; false when
+ *   the drop was refused and nothing changed.
  */
-async function applyDroppedTheme({ actor, theme, dropped }) {
+export async function applyDroppedTheme({ actor, theme, dropped }) {
 	const isFellowship = !!theme.system?.isFellowship;
 	if (!isFellowship && dropped.system?.isFellowship) {
 		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
-		return;
+		return false;
 	}
 	if (isFellowship && !dropped.system?.isFellowship) {
 		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
-		return;
+		return false;
 	}
 
-	await wipeNonTitleTagEffects(theme);
-
-	await theme.update({
-		name: dropped.name,
-		"system.themebook": dropped.system?.themebook ?? "",
-		"system.level": dropped.system?.level || getDefaultThemeLevel(),
-		"system.description": dropped.system?.description ?? "",
-		"system.quest.description": dropped.system?.quest?.description ?? "",
-		"system.quest.tracks.milestone.value": 0,
-		"system.quest.tracks.abandon.value": 0,
-		"system.improve.value": 0,
-		"system.nascentImprovements": 2,
-		"system.specialImprovements": foundry.utils.deepClone(
-			dropped.system?.specialImprovements ?? [],
-		),
-	});
-
-	// Copy power/weakness tag effects from the source. Title tag stays
+	// Power/weakness tag effects to copy from the source. Title tag stays
 	// on the current theme (it auto-renames to the new theme's name via
 	// the item-hooks rename sync); only revisable tags are duplicated.
 	const toCreate = [];
@@ -725,15 +717,55 @@ async function applyDroppedTheme({ actor, theme, dropped }) {
 		delete obj._id;
 		toCreate.push(obj);
 	}
+	const replacedCaps = getTradeCaps(getRevisableParts(theme));
+
+	const newName = dropped.name;
+	const update = {
+		name: newName,
+		"system.themebook": dropped.system?.themebook ?? "",
+		"system.level": dropped.system?.level || getDefaultThemeLevel(),
+		"system.description": dropped.system?.description ?? "",
+		"system.quest.description": dropped.system?.quest?.description ?? "",
+		"system.quest.tracks.milestone.value": 0,
+		"system.quest.tracks.abandon.value": 0,
+		"system.improve.value": 0,
+		"system.nascentImprovements": 2,
+		"system.specialImprovements": foundry.utils.deepClone(
+			dropped.system?.specialImprovements ?? [],
+		),
+	};
+	// Fellowship themes never mark Promise (Core Book p.193).
+	const promiseGained = isFellowship ? 0 : 1 + totalTradeCap(replacedCaps);
+
+	await wipeNonTitleTagEffects(theme);
+	await theme.update(update);
+
 	if (toCreate.length) {
 		await theme.createEmbeddedDocuments("ActiveEffect", toCreate);
 	}
 
 	if (!isFellowship) {
-		const sourceCaps = getTradeCaps(getRevisableParts(dropped));
-		const promiseGained = 1 + totalTradeCap(sourceCaps);
 		await applyPromiseToActor(actor, promiseGained);
 	}
+
+	// Same hook and notification as a Replace from the form
+	// (applyTransformation); `dropped` marks the drop-to-replace route.
+	Hooks.callAll("litm.themeAdvanced", actor, theme, {
+		...update,
+		litmEvolution: {
+			mode: "replace",
+			promiseGained,
+			tradedCount: totalTradeCap(replacedCaps),
+			dropped: true,
+		},
+	});
+	ui.notifications?.info(
+		game.i18n.format("LITM.Ui.evolution_replaced_notification", {
+			theme: newName,
+			actor: actor.name,
+		}),
+	);
+	return true;
 }
 
 export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -958,6 +990,11 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		const theme = getTheme(this);
 		if (!actor || !theme) return;
 		if (this._submitting) return;
+		// Replacing a theme with itself would wipe the tags it is meant to copy.
+		if (item.uuid === theme.uuid) {
+			ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_same"));
+			return;
+		}
 
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: t("LITM.Ui.evolution_drop_theme_confirm_title") },
@@ -970,7 +1007,9 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 
 		this._submitting = true;
 		try {
-			await applyDroppedTheme({ actor, theme, dropped: item });
+			const applied = await applyDroppedTheme({ actor, theme, dropped: item });
+			// A refused drop changed nothing: leave the wizard and its chat card be.
+			if (!applied) return;
 			await markSourceMessageResolved(this.messageId);
 			this.close();
 			theme.sheet?.render(true, { focus: true });

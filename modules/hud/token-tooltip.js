@@ -1,3 +1,4 @@
+import { StoryTagsStore } from "../apps/story-tags/story-tags-store.js";
 import { LitmSettings } from "../system/settings.js";
 
 /** Shared chrome for both the hover tooltip and the persistent labels. */
@@ -73,7 +74,12 @@ export function buildTooltipHTML(actor, isOwnerOrGM) {
 export function tokenTooltipHTML(token) {
 	const actor = token.actor;
 	if (!actor) return "";
-	return buildTooltipHTML(actor, game.user.isGM || actor.isOwner);
+	const isOwnerOrGM = game.user.isGM || actor.isOwner;
+	// A column hidden in the story-tag sidebar hides its actor's tags here too,
+	// the same as in the roll dialog and the chat card.
+	if (!isOwnerOrGM && StoryTagsStore.concealedActorIds.has(actor.id))
+		return "";
+	return buildTooltipHTML(actor, isOwnerOrGM);
 }
 
 /**

@@ -1,4 +1,5 @@
 import { enrichHTML, findThemebookByName, localize } from "../utils.js";
+import { bindActionPresubmit } from "./action-presubmit.js";
 
 const WEAKNESS_DROP_TYPES = new Set(["theme", "story_theme"]);
 
@@ -40,53 +41,10 @@ export function LitmSheetMixin(Base) {
 		async _onFirstRender(context, options) {
 			await super._onFirstRender(context, options);
 
-			// Prevent click from firing (per Pointer Events spec, preventDefault on
-			// pointerdown suppresses the subsequent click). We submit the form and
-			// execute the action manually, since rAF-deferred renders still fire
-			// before the click event in practice.
-			this.element.addEventListener(
-				"pointerdown",
-				(event) => {
-					const actionBtn = event.target.closest("[data-action]");
-					if (!actionBtn) return;
-					// ProseMirror's toolbar buttons also use [data-action]; let the
-					// editor handle its own controls.
-					if (actionBtn.closest("prose-mirror")) return;
-
-					const form = this.form;
-					if (!form) return;
-
-					const focused = document.activeElement;
-					if (!focused || !form.contains(focused)) return;
-					const isFormInput = ["INPUT", "TEXTAREA", "SELECT"].includes(
-						focused.tagName,
-					);
-					// ProseMirror focuses a contenteditable inside the <prose-mirror>
-					// custom element, which is form-associated and exposes live editor
-					// state via its value getter — so submit() will pick it up.
-					const isProseMirror = !!focused.closest("prose-mirror");
-					if (!isFormInput && !isProseMirror) return;
-
-					event.preventDefault();
-
-					const action = actionBtn.dataset.action;
-					const dataset = { ...actionBtn.dataset };
-
-					this._suppressNextChange = true;
-					this.submit()
-						.then(() => {
-							const handler = this.options.actions[action];
-							const fn =
-								typeof handler === "object" ? handler.handler : handler;
-							if (!fn) return;
-							const syntheticTarget = document.createElement("button");
-							Object.assign(syntheticTarget.dataset, dataset);
-							fn.call(this, event, syntheticTarget);
-						})
-						.catch(console.error);
-				},
-				{ capture: true },
-			);
+			bindActionPresubmit(this, {
+				getForm: () => this.form,
+				submit: () => this.submit(),
+			});
 
 			this.element.addEventListener("drop", (event) => {
 				const tagSlot = event.target.closest("[data-power-tag-target]");
