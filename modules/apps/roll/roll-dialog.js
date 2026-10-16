@@ -69,7 +69,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		},
 		form: {
 			handler: LitmRollDialog._onSubmit,
-			closeOnSubmit: true,
+			// Closed by `_onSubmit` itself: a submit refused by a guard (e.g. a
+			// Painful sacrifice with no theme left) must keep the window, and
+			// with it the shared roll, open.
+			closeOnSubmit: false,
 		},
 		actions: {
 			sendToNarrator: LitmRollDialog.#onSendToNarrator,
@@ -120,9 +123,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				await this._createModerationRequest(rollData);
 				this.suspendForModeration();
 				ui.notifications?.info(t("LITM.Ui.roll_sent_for_approval"));
+				await this.close?.({ submitted: true });
 				return;
 			}
-			return await executeRoll(rollData);
+			const result = await executeRoll(rollData);
+			await this.close?.({ submitted: true });
+			return result;
 		} finally {
 			submitting.delete(this);
 		}
@@ -233,6 +239,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const half = Math.ceil(power / 2);
 		const actor = this.actor;
 		if (!actor) return;
+		// The camp action is spent; the next ordinary roll must not reopen in
+		// camp mode or keep the sojourn bonus.
+		this.reset();
 		await this.close();
 		const { SpendPowerApp } = await import("../spend-power.js");
 		new SpendPowerApp({ actorId: actor.id, power: half }).render(true);
@@ -609,6 +618,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// Mitigation context only makes sense for a reaction; drop it when the
 		// player switches away so no stale "Reacting to…" banner survives.
 		if (type !== "mitigate") this.#mitigation = null;
+		// Likewise the sojourn bonus belongs to a camp action only.
+		if (type !== "campAction") this.#sojournBonus = 0;
 		// Sacrifice is its own ritual — clear any pending action so the
 		// dialog never shows the action strip alongside the sacrifice grid.
 		if (type === "sacrifice") {
@@ -642,6 +653,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#cachedTotalPower = null;
 		this.type = "campAction";
 		if (this.rendered) this.render();
+		// Viewers' Power totals include the bonus too.
+		this.#dispatchUpdate();
 	}
 
 	get ownerId() {
@@ -828,6 +841,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				name: effect.name,
 				type: effect.type,
 				system: effect.system,
+				// Getters on the data model (fellowship and relationship tags are
+				// always single-use) don't survive the moderation card's flags;
+				// plain fields do, so approved rolls still consume them.
+				isSingleUse: !!effect.system?.isSingleUse,
+				canBurn: effect.system?.canBurn,
 				state: sel.state,
 				value:
 					effect.type === "status_tag"
@@ -965,6 +983,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	async _prepareContext(_options) {
+		// A re-render can follow a change made elsewhere (a status tier in the
+		// sidebar): rows read live effects, so the total must too.
+		this.#cachedTotalPower = null;
 		await StoryTagsStore.loadStoryTags();
 		await this.#resolveAction();
 
@@ -1310,10 +1331,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const { name: id, value } = target;
 		const { type } = target.dataset;
 		const isCharacterTag = ALL_TAG_TYPES.has(type);
-		// For non-owners, register contributor metadata on first interaction
-		if (isCharacterTag && !this.isOwner && !this.#selectionMap.has(id)) {
-			this.#registerContributorMeta(id);
-		}
+		// For non-owners, attribute the tag on first interaction. The metadata
+		// rides on the selection itself: written on its own with an empty
+		// state, `setSelection` would delete it again at once.
+		const contributorMeta =
+			isCharacterTag && !this.isOwner && !this.#selectionMap.has(id)
+				? this.#contributorMetaFor(id)
+				: {};
 
 		// Check permission: non-owners can only modify tags they contributed or unclaimed tags
 		const existingSel = this.getSelection(id);
@@ -1341,19 +1365,20 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			const states = (target.getAttribute("states") ?? "").split(",");
 			const next = nextStateAfterScratched(states);
 			this.#revertTagChange(target, next);
-			this.setSelection(
-				id,
-				next,
-				next ? game.user.id : null,
-				this.#selectionStamp(),
-			);
+			this.setSelection(id, next, next ? game.user.id : null, {
+				...contributorMeta,
+				...this.#selectionStamp(),
+			});
 			this.#updateTotalPower();
 			this.#dispatchUpdate();
 			return;
 		}
 
 		const contributorId = value ? game.user.id : null;
-		this.setSelection(id, value, contributorId, this.#selectionStamp());
+		this.setSelection(id, value, contributorId, {
+			...contributorMeta,
+			...this.#selectionStamp(),
+		});
 
 		this.#updateTotalPower();
 		this.#dispatchUpdate();
@@ -1380,12 +1405,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	/**
-	 * Register contributor metadata for an effect a non-owner is claiming.
+	 * Contributor metadata for an effect a non-owner is claiming.
 	 * GM viewers scan every sidebar actor; non-owner players check their own
 	 * character. First owner of the effect wins.
 	 * @param {string} id  Effect UUID
+	 * @returns {object} metadata for `setSelection`, or `{}` when unowned
 	 */
-	#registerContributorMeta(id) {
+	#contributorMetaFor(id) {
 		const candidates = [];
 		if (game.user.isGM) {
 			for (const sidebarActor of this.#storyTagSidebar.actors ?? []) {
@@ -1399,14 +1425,14 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			const allTags = (actor.system.allRollTags ?? []).map(effectToPlain);
 			const found = allTags.find((t) => t.uuid === id);
 			if (!found) continue;
-			this.setSelection(id, "", null, {
+			return {
 				effectUuid: found.uuid,
 				contributorActorId: actor.id,
 				contributorActorName: actor.name,
 				contributorActorImg: actor.prototypeToken?.texture?.src || actor.img,
-			});
-			return;
+			};
 		}
+		return {};
 	}
 
 	addTag(tag, toScratch) {
@@ -1461,10 +1487,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.rollName = "";
 		this.type = "quick";
 		// reset() is state-only — it must NOT close the dialog. Closing is
-		// owned by `closeOnSubmit` on the owner's client and by the
+		// owned by `_onSubmit` on the owner's client and by the
 		// `closeRollDialog` socket on viewers (broadcast from the owner's
 		// close()). This reset runs inside the awaited submit handler (via the
-		// roll pipeline), i.e. *before* closeOnSubmit — so a close here fired a
+		// roll pipeline), i.e. *before* that close — so a close here fired a
 		// SECOND close per submit. Render and close share one Semaphore, so a
 		// "Roll this action" click landing between the two closes had its
 		// reopen render torn down by the trailing close: the dialog silently
@@ -1912,6 +1938,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sacrificeLevel: this.#sacrificeLevel,
 			sacrificeThemeId: this.#sacrificeThemeId,
 			sacrificeStatusName: this.#sacrificeStatusName,
+			sojournBonus: this.#sojournBonus,
 			ownerId: this.ownerId,
 			actionUuid: this.#actionUuid,
 			title: this.rollName,
@@ -1942,6 +1969,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			"sacrificeLevel",
 			"sacrificeThemeId",
 			"sacrificeStatusName",
+			"sojournBonus",
 			"ownerId",
 			"narratorCall",
 			"participantIds",
@@ -2039,6 +2067,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		sacrificeLevel,
 		sacrificeThemeId,
 		sacrificeStatusName,
+		sojournBonus,
 		ownerId,
 		narratorCall,
 		participantIds,
@@ -2058,6 +2087,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			this.#sacrificeThemeId = sacrificeThemeId;
 		if (sacrificeStatusName !== undefined)
 			this.#sacrificeStatusName = sacrificeStatusName;
+		if (sojournBonus !== undefined) this.#sojournBonus = sojournBonus;
 		if (ownerId !== undefined) this.ownerId = ownerId;
 		if (actionUuid !== undefined && actionUuid !== this.#actionUuid) {
 			this.#actionUuid = actionUuid;
