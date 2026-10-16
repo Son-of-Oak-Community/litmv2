@@ -725,6 +725,8 @@ export class LitmActorSheet extends LitmSheetMixin(
 			vignette,
 		);
 		const speaker = foundry.documents.ChatMessage.getSpeaker({ actor: this.document });
+		// The card is stored once for everyone: never bake in a concealed name.
+		speaker.alias = this.document.system?.publicName ?? speaker.alias;
 
 		await foundry.documents.ChatMessage.create({
 			content,

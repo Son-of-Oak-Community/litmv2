@@ -91,7 +91,8 @@ export class Sockets {
 			LitmRollDialog.roll(data)?.catch(console.error);
 		});
 
-		Sockets.on("rejectRoll", ({ data: { actorId, name } }) => {
+		Sockets.on("rejectRoll", ({ data: { actorId, name, userId } }) => {
+			if (userId && userId !== game.userId) return;
 			ui.notifications.warn(
 				game.i18n.format("LITM.Ui.roll_rejected", { name }),
 			);
