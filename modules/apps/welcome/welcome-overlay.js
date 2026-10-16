@@ -13,6 +13,35 @@ import { GENERAL_STORE, HERO_NAMES } from "./welcome-overlay-data.js";
 
 const THEME_SLOTS = 4;
 
+const MAX_POWER_TAGS = 2;
+
+/**
+ * Apply a power-tag checkbox change to a theme's current selection.
+ * Checking past the cap un-checks the box again and warns.
+ * @param {string[]} current        The theme's selected power tags
+ * @param {HTMLInputElement} target The toggled checkbox
+ * @returns {string[]|null} The new selection, or null when the change is
+ *   refused (already selected, or over the cap) and nothing should update
+ */
+export function toggledPowerTags(current, target) {
+	const value = target.value;
+	const selected = new Set(current.filter(Boolean));
+	if (target.checked) {
+		if (selected.has(value)) return null;
+		if (selected.size >= MAX_POWER_TAGS) {
+			target.checked = false;
+			ui.notifications.warn("LITM.Ui.hero_creation_max_power_tags", {
+				localize: true,
+			});
+			return null;
+		}
+		selected.add(value);
+	} else {
+		selected.delete(value);
+	}
+	return Array.from(selected);
+}
+
 const SLIDE_TEMPLATES = {
 	welcome: "systems/litmv2/templates/apps/welcome-overlay/welcome.html",
 	modeSelect: "systems/litmv2/templates/apps/welcome-overlay/mode-select.html",
@@ -850,25 +879,12 @@ export class WelcomeOverlay {
 		const index = Number(target.dataset.index || 0);
 		const choice = this._appState.trope.themes.choices[index];
 		if (!choice) return;
-		const value = target.value;
-		const selected = new Set(choice.powerTags.filter(Boolean));
-		if (target.checked) {
-			if (selected.has(value)) return;
-			if (selected.size >= 2) {
-				target.checked = false;
-				ui.notifications.warn("LITM.Ui.hero_creation_max_power_tags", {
-					localize: true,
-				});
-				return;
-			}
-			selected.add(value);
-		} else {
-			selected.delete(value);
-		}
-		choice.powerTags = Array.from(selected);
+		const powerTags = toggledPowerTags(choice.powerTags, target);
+		if (!powerTags) return;
+		choice.powerTags = powerTags;
 		choice.powerTagsMap = this._data.toLookupMap(choice.powerTags);
 		choice.powerTagOptions.forEach((tagOpt) => {
-			tagOpt.checked = selected.has(tagOpt.name);
+			tagOpt.checked = powerTags.includes(tagOpt.name);
 		});
 		await this.#renderCurrentSlide();
 	}
@@ -987,24 +1003,11 @@ export class WelcomeOverlay {
 		);
 		const theme = this._appState.custom.themes[idx];
 		if (!theme) return;
-		const value = target.value;
-		const selected = new Set(theme.selectedPowerTags.filter(Boolean));
-		if (target.checked) {
-			if (selected.has(value)) return;
-			if (selected.size >= 2) {
-				target.checked = false;
-				ui.notifications.warn("LITM.Ui.hero_creation_max_power_tags", {
-					localize: true,
-				});
-				return;
-			}
-			selected.add(value);
-		} else {
-			selected.delete(value);
-		}
-		theme.selectedPowerTags = Array.from(selected);
+		const powerTags = toggledPowerTags(theme.selectedPowerTags, target);
+		if (!powerTags) return;
+		theme.selectedPowerTags = powerTags;
 		theme.powerTagOptions.forEach((tagOpt) => {
-			tagOpt.checked = selected.has(tagOpt.name);
+			tagOpt.checked = powerTags.includes(tagOpt.name);
 		});
 		await this.#renderCurrentSlide();
 	}
