@@ -179,8 +179,8 @@
 		<!-- Right: story tags + challenges/journeys (shared scroll in 2-col mode) -->
 		<div class="litm--grid-col-right">
 			<div class="litm--grid-col litm--grid-col-story">
-				<section class="flexcol" data-id="story" data-context="remove-all-tags">
-					<h3 class="divider litm--section-header" data-tooltip="{{localize 'LITM.Ui.context_remove_all_tags'}}">
+				<section class="flexcol" data-id="story" {{#if isGM}}data-context="remove-all-tags"{{/if}}>
+					<h3 class="divider litm--section-header" {{#if isGM}}data-tooltip="{{localize 'LITM.Ui.context_remove_all_tags'}}"{{/if}}>
 						{{localize "LITM.Terms.story_tags"}}
 					</h3>
 					{{#if isGM}}

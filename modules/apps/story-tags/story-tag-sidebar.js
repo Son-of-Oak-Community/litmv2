@@ -52,6 +52,21 @@ const AbstractSidebarTab = foundry.applications.sidebar.AbstractSidebarTab;
  */
 const DEFAULT_VISIBLE_ACTOR_TYPES = new Set(["hero", "fellowship"]);
 
+/**
+ * Whether a newly tracked actor's column starts hidden. A hidden column means
+ * hidden tokens, so when the actor already has tokens on the scene they
+ * decide: adding a column never makes a placed token vanish or appear.
+ * @param {Actor} actor
+ * @returns {boolean}
+ */
+function startsHidden(actor) {
+	if (DEFAULT_VISIBLE_ACTOR_TYPES.has(actor.type)) return false;
+	const tokens =
+		canvas.scene?.tokens?.filter((t) => t.actorId === actor.id) ?? [];
+	if (tokens.length) return tokens.every((t) => t.hidden);
+	return true;
+}
+
 const STORY_TAG_OPERATIONS = {
 	createTags: (data) => ContentSources.createStoryTags(data),
 	updateTags: (data) => ContentSources.updateStoryTags(data),
@@ -1024,9 +1039,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		}
 
 		const existingHidden = this.config.hiddenActors ?? [];
-		const hiddenActors = DEFAULT_VISIBLE_ACTOR_TYPES.has(actor.type)
-			? existingHidden
-			: [...existingHidden, id];
+		const hiddenActors = startsHidden(actor)
+			? [...existingHidden, id]
+			: existingHidden;
 		await LitmSettings.setStoryTags({
 			...this.config,
 			actors: [...this.config.actors, id],
@@ -1381,7 +1396,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		const uniqueNewIds = [...newActors.keys()];
 		const newHiddenIds = [...newActors.values()]
-			.filter((a) => !DEFAULT_VISIBLE_ACTOR_TYPES.has(a.type))
+			.filter(startsHidden)
 			.map((a) => a.uuid);
 
 		await LitmSettings.setStoryTags({
@@ -1608,6 +1623,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	}
 
 	async #removeAllTags() {
+		// Clearing the scene is the Narrator's call; players remove tags one at a time.
+		if (!game.user.isGM) return;
 		const tags = this.#packStoryTags;
 		if (!tags.length || !(await confirmDelete())) return;
 		return this.#storyTagOp(

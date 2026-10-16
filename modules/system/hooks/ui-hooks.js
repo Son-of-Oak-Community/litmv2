@@ -253,9 +253,9 @@ function _refreshSidebarOnStoryTagsSetting() {
 			sidebar.invalidateCache();
 			if (sidebar.rendered) sidebar.render();
 		}
-		for (const app of foundry.applications.instances.values()) {
-			if (app instanceof LitmRollDialog && app.rendered) app.render();
-		}
+		// Re-renders roll dialogs and token labels; a hide/reveal lands here,
+		// after the new value is in the cache, not at `storyTagsRender`.
+		Hooks.callAll("litm.sceneTagsChanged");
 	});
 }
 

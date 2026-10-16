@@ -217,7 +217,11 @@ tooltip is rendered per client, so the Narrator still reads the real names.
 Without it the dialog's mask lasted exactly as long as it took someone to hover.
 `StoryTagsStore.hiddenActorIds` holds policy independently of sidebar membership;
 `concealedActorIds` applies the viewer's GM bypass for the dialog and target
-picker. Removing an actor from the sidebar is not a reveal. Live sources follow
+picker. Removing an actor from the sidebar is not a reveal. Hiding a column also hides the actor on the canvas: its
+tokens on the scene are hidden, tokens placed later arrive hidden
+(`preCreateToken`), and the token hover tooltip and persistent labels show
+players nothing for it. A newly tracked actor's column starts from its tokens'
+state, so adding a column never makes a placed token vanish. Live sources follow
 an explicit reveal; roll tags record `tagActorId` and `concealedAtRoll` so a
 deleted source cannot accidentally reveal a historical secret. Missing legacy
 actor-backed sources fail closed.
@@ -319,7 +323,7 @@ and not one three-state setting.
 
 ### Sockets
 
-Namespace `system.litmv2`. Events cover roll-dialog open/sync/close, GM moderation, GM-proxied mutation of unowned documents (scratch, apply success/status, hero creation), story tags, and camping. Canonical list and payload shapes: `modules/system/sockets.js` — read it rather than guessing an event name.
+Namespace `system.litmv2`. Events cover roll-dialog open/sync/close, GM moderation, GM-proxied mutation of unowned documents (scratch, Improve marks, apply success/status, hero creation), story tags, and camping. Canonical list and payload shapes: `modules/system/sockets.js` — read it rather than guessing an event name.
 
 `openRollDialog` starts a shared roll: the payload names the actor, the resolved
 `ownerId`, the participants (Acting Together only) and the Narrator's stamp.
@@ -438,7 +442,7 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.themeAdvanced` — after theme advancement
 - `litm.trackCompleted` — `{ actor, trackInfo: { text, type, actorId?, themeId? } }`
 - `litm.limitReached` — `{ actor, limit }` where `limit.max` is the effective max
-- `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits); no payload. Roll dialogs listen to refresh contributed-tag groups.
+- `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits, column hide/reveal), on every client; no payload. Roll dialogs listen to refresh contributed-tag groups.
 - `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.
