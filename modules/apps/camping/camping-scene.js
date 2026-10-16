@@ -50,6 +50,24 @@ async function getOrCreateCampingFolder() {
 }
 
 /**
+ * Keep only the ids that still resolve to an effect in `liveEffects`.
+ * Session state stores effect ids, and a tag can be deleted elsewhere (the
+ * sidebar, another client) while the session is open. Foundry's
+ * `ActiveEffect.deleteDocuments` looks every id up strictly and throws if any
+ * is missing, so one stale id would abort the whole delete.
+ */
+export function liveIds(ids, liveEffects) {
+	const live = new Set(liveEffects.map((e) => e.id));
+	return (ids ?? []).filter((id) => live.has(id));
+}
+
+/** Resolve stored story-tag effect ids against the live story-tag pack. */
+async function liveStoryTagIds(ids) {
+	if (!ids?.length) return [];
+	return liveIds(ids, await ContentSources.getStoryTags());
+}
+
+/**
  * Read the current camping state from the active scene's flags, returning
  * a deep clone so callers cannot accidentally mutate the live flag object.
  */
@@ -395,19 +413,27 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			await LitmCampingScene.#instance?.close();
 			return;
 		}
-		// GM cancel = discard this session for the whole table. Close first
-		// (nulls the singleton so the updateScene re-render hook short-
-		// circuits), then clear the flag.
-		await LitmCampingScene.close();
-		// Roll back any campsite effects created at Begin Camp.
+		// GM cancel = discard this session for the whole table. Read the state
+		// first, then close (nulls the singleton so the updateScene re-render
+		// hook short-circuits), then clear the flag.
 		const state = readState();
-		const createdIds = state?.placeOfStay?.createdCampsiteEffectIds ?? [];
-		if (createdIds.length) {
-			await ContentSources.deleteStoryTags(createdIds);
-			getStoryTagSidebar()?.render?.();
-			Sockets.dispatch("storyTagsRender", {});
+		await LitmCampingScene.close();
+		try {
+			// Roll back any campsite effects created at Begin Camp. Some may
+			// have been deleted since; only the live ones can be deleted.
+			const createdIds = await liveStoryTagIds(
+				state?.placeOfStay?.createdCampsiteEffectIds,
+			);
+			if (createdIds.length) {
+				await ContentSources.deleteStoryTags(createdIds);
+				getStoryTagSidebar()?.render?.();
+				Sockets.dispatch("storyTagsRender", {});
+			}
+		} finally {
+			// Whatever happens to the rollback, the session must not outlive
+			// Cancel: a stuck flag reopens the same camp on every client.
+			await canvas.scene?.unsetFlag(FLAG_SCOPE, FLAG_PATH);
 		}
-		await canvas.scene?.unsetFlag(FLAG_SCOPE, FLAG_PATH);
 	}
 
 	static async #onPackUp() {
@@ -495,7 +521,11 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		const state = readState();
 		if (!state) return;
 
-		const toExpire = (state.placeOfStay?.sceneTagsToExpire ?? []).slice();
+		// A tag the GM ticked may have been deleted since; only live ids can
+		// be deleted, and a stale one must not block Begin Camp.
+		const toExpire = await liveStoryTagIds(
+			state.placeOfStay?.sceneTagsToExpire,
+		);
 		if (toExpire.length) {
 			await ContentSources.deleteStoryTags(toExpire);
 		}
