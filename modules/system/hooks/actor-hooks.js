@@ -1,5 +1,4 @@
-import { createLegacyRelationshipEffects } from "../../actor/hero/hero-data.js";
-import { LitmItem } from "../../item/litm-item.js";
+import { createLegacyActorEffects } from "../../actor/litm-actor.js";
 import { error } from "../../logger.js";
 import {
 	findFellowshipTheme,
@@ -288,8 +287,9 @@ function _syncStoryThemeActorToItem() {
 }
 
 /**
- * When an actor is imported (embedded items don't fire createItem),
- * create proper AEs from any stashed legacy flag data.
+ * When an actor is created (embedded items don't fire createItem), create
+ * proper AEs from any stashed legacy flag data. Sidebar "Import Data" skips
+ * this hook; `LitmActor#importFromJSON` covers it.
  *
  * createActor fires on every connected client; the follow-up writes
  * (ensureTitleTag, relationship effects) must run on exactly one of them.
@@ -301,16 +301,7 @@ function _syncStoryThemeActorToItem() {
 function _migrateLegacyActorOnCreate() {
 	Hooks.on("createActor", async (actor, _options, userId) => {
 		if (userId !== game.userId) return;
-		for (const item of actor.items) {
-			if (
-				item.flags?.litmv2?.legacyTags ||
-				item.flags?.litmv2?.legacyContents
-			) {
-				await LitmItem.createLegacyEffects(item);
-			}
-			await LitmItem.ensureTitleTag(item);
-		}
-		await createLegacyRelationshipEffects(actor);
+		await createLegacyActorEffects(actor);
 	});
 }
 

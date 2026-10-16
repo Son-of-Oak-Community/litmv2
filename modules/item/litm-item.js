@@ -64,8 +64,9 @@ export function buildBackpackTagEffects(contents) {
  * Custom Item document class for Legend in the Mist.
  *
  * migrateData stashes legacy tag arrays in flags before schema validation
- * prunes them. The world migration and the createItem hook read the flags
- * and create proper ActiveEffect documents.
+ * prunes them. The world migration, the createItem hook and the
+ * importFromJSON override read the flags and create proper ActiveEffect
+ * documents.
  */
 export class LitmItem extends foundry.documents.Item {
 	static async createDialog(data = {}, createOptions = {}, dialogOptions = {}) {
@@ -78,6 +79,20 @@ export class LitmItem extends foundry.documents.Item {
 		story_theme: LitmItem.#stashLegacyThemeTags,
 		backpack: LitmItem.#stashLegacyBackpackContents,
 	};
+
+	/**
+	 * @override
+	 * Sidebar "Import Data" is an `update` with `noHook: true`, so createItem
+	 * never fires and the stash `migrateData` wrote into the imported flags
+	 * would never be consumed. Run the createItem consumer once the import
+	 * landed. Foundry only calls this on the importing client.
+	 */
+	async importFromJSON(json) {
+		await super.importFromJSON(json);
+		await LitmItem.createLegacyEffects(this);
+		await LitmItem.ensureTitleTag(this);
+		return this;
+	}
 
 	static migrateData(source) {
 		LitmItem.#LEGACY_STASHERS[source.type]?.(source);
