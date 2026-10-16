@@ -134,14 +134,17 @@ async function applyOpOnGM(key, payload, scene = campScene()) {
 }
 
 /**
- * Dispatch an op. GMs apply locally (serialized through `_applyQueue`).
- * Non-GMs send a `campingSaveOp` socket naming the camp's scene; the GM
- * applies on receipt, sharing the same queue so remote and local edits
- * compose cleanly.
+ * Dispatch an op. The active GM applies locally (serialized through
+ * `_applyQueue`). Everyone else, a second GM included, sends a
+ * `campingSaveOp` socket naming the camp's scene; the active GM applies on
+ * receipt, sharing the same queue so remote and local edits compose cleanly.
  */
 export function enqueueOp(key, payload) {
 	const scene = campScene();
-	if (game.user.isGM) return applyOpOnGM(key, payload, scene);
+	const activeGM = game.users.activeGM;
+	if (game.user.isGM && (!activeGM || activeGM === game.user)) {
+		return applyOpOnGM(key, payload, scene);
+	}
 	Sockets.dispatch("campingSaveOp", { key, payload, sceneId: scene?.id });
 	return Promise.resolve();
 }

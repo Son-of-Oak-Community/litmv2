@@ -407,6 +407,44 @@ describe("scene binding", () => {
 		);
 	});
 
+	describe("a second GM's edits", () => {
+		const edit = { value: "sojourn" };
+
+		beforeEach(() => {
+			sceneA.flags = { litmv2: { camping: defaultCampingState() } };
+			canvas.scene = sceneA;
+		});
+
+		it("go through the active GM's queue via the socket, not straight to the scene", async () => {
+			game.user = { id: "gm-2", isGM: true };
+			game.users.activeGM = { id: "gm-1", isGM: true };
+
+			await enqueueOp("set-type", edit);
+
+			expect(sceneA.setFlag).not.toHaveBeenCalled();
+			expect(Sockets.dispatch).toHaveBeenCalledWith("campingSaveOp", {
+				key: "set-type",
+				payload: edit,
+				sceneId: "scene-a",
+			});
+		});
+
+		it("are applied locally by the active GM", async () => {
+			await enqueueOp("set-type", edit);
+
+			expect(sessionOf(sceneA).type).toBe("sojourn");
+			expect(Sockets.dispatch).not.toHaveBeenCalled();
+		});
+
+		it("are applied locally when Foundry reports no active GM", async () => {
+			game.users.activeGM = null;
+
+			await enqueueOp("set-type", edit);
+
+			expect(sessionOf(sceneA).type).toBe("sojourn");
+		});
+	});
+
 	it("opens without arguments, as the hero sheet calls it", () => {
 		canvas.scene = sceneA;
 		expect(() => hook("litm.camping.open")()).not.toThrow();
