@@ -1,5 +1,4 @@
-import { createLegacyRelationshipEffects } from "../../actor/hero/hero-data.js";
-import { LitmItem } from "../../item/litm-item.js";
+import { createLegacyActorEffects } from "../../actor/litm-actor.js";
 import { error } from "../../logger.js";
 import { Sockets } from "../sockets.js";
 import {
@@ -337,8 +336,9 @@ function _syncStoryThemeActorToItem() {
 }
 
 /**
- * When an actor is imported (embedded items don't fire createItem),
- * create proper AEs from any stashed legacy flag data.
+ * When an actor is created (embedded items don't fire createItem), create
+ * proper AEs from any stashed legacy flag data. Sidebar "Import Data" skips
+ * this hook; `LitmActor#importFromJSON` covers it.
  *
  * createActor fires on every connected client; the follow-up writes
  * (ensureTitleTag, relationship effects) must run on exactly one of them.
@@ -353,16 +353,7 @@ function _migrateLegacyActorOnCreate() {
 		// Foundry doesn't await hook callbacks; log a failure instead of
 		// leaving it as an unhandled rejection.
 		try {
-			for (const item of actor.items) {
-				if (
-					item.flags?.litmv2?.legacyTags ||
-					item.flags?.litmv2?.legacyContents
-				) {
-					await LitmItem.createLegacyEffects(item);
-				}
-				await LitmItem.ensureTitleTag(item);
-			}
-			await createLegacyRelationshipEffects(actor);
+			await createLegacyActorEffects(actor);
 		} catch (err) {
 			error(`Setting up actor ${actor.name} failed`, err);
 		}

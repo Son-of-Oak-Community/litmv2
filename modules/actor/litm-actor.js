@@ -1,4 +1,22 @@
+import { LitmItem } from "../item/litm-item.js";
 import { ACTOR_TYPES } from "../system/config.js";
+import { createLegacyRelationshipEffects } from "./hero/hero-data.js";
+
+/**
+ * Turn the legacy data stashed on an actor and its embedded items into
+ * ActiveEffects. Embedded items never fire createItem, so each is converted
+ * here. Shared by the createActor hook and `LitmActor#importFromJSON`.
+ * @param {Actor} actor
+ */
+export async function createLegacyActorEffects(actor) {
+	for (const item of actor.items) {
+		if (item.flags?.litmv2?.legacyTags || item.flags?.litmv2?.legacyContents) {
+			await LitmItem.createLegacyEffects(item);
+		}
+		await LitmItem.ensureTitleTag(item);
+	}
+	await createLegacyRelationshipEffects(actor);
+}
 
 /**
  * Custom Actor document class for Legend in the Mist.
@@ -7,8 +25,9 @@ import { ACTOR_TYPES } from "../system/config.js";
  * cannot accidentally create duplicate fellowship actors.
  *
  * migrateData stashes legacy hero relationships in flags before schema
- * validation prunes them. The createActor hook and the world migration read
- * the flag and create proper relationship_tag ActiveEffects.
+ * validation prunes them. The createActor hook, the importFromJSON override
+ * and the world migration read the flag and create proper relationship_tag
+ * ActiveEffects.
  */
 export class LitmActor extends foundry.documents.Actor {
 	static async createDialog(data = {}, createOptions = {}, dialogOptions = {}) {
@@ -37,6 +56,19 @@ export class LitmActor extends foundry.documents.Actor {
 			source.flags.litmv2.legacyRelationships ??= relationships;
 		}
 		return super.migrateData(source, options);
+	}
+
+	/**
+	 * @override
+	 * Sidebar "Import Data" is an `update` with `noHook: true`, so createActor
+	 * never fires and the stash `migrateData` wrote into the imported flags
+	 * would never be consumed. Run the same consumer once the import landed.
+	 * Foundry only calls this on the importing client, so no user gate is needed.
+	 */
+	async importFromJSON(json) {
+		await super.importFromJSON(json);
+		await createLegacyActorEffects(this);
+		return this;
 	}
 
 	/**

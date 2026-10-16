@@ -4,6 +4,12 @@ import {
 	buildThemeTagEffects,
 } from "../../item/litm-item.js";
 import { error, warn } from "../../logger.js";
+import { THEME_TAG_TYPES } from "../config.js";
+
+// Only theme-tag effects say a theme's tags were already migrated; an
+// unrelated effect (status, story tag...) must not stop the conversion.
+const hasThemeTagEffect = (effects) =>
+	effects.some((e) => THEME_TAG_TYPES.has(e.type));
 
 /**
  * Collect all effect changes for an actor and its items.
@@ -62,7 +68,7 @@ function collectItemChanges(item, changes) {
 	if (item.type === "theme" || item.type === "story_theme") {
 		const legacy = item.getFlag("litmv2", "legacyTags");
 		if (!legacy) return;
-		if (item.effects.size) return; // Already migrated
+		if (hasThemeTagEffect(item.effects)) return; // Already migrated
 
 		const entry = getEntry(changes, item);
 		entry.toCreate.push(
