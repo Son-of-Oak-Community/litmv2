@@ -108,7 +108,8 @@ function getEntry(changes, parent) {
  *    from the DB before any item operations touch the parent actor.
  * 2. Creates — items first so their effects exist before actor creates
  *    trigger re-initialization hooks and migrateData guards.
- * 3. Flag cleanup — unset consumed legacy flags.
+ * 3. Flag cleanup — unset consumed legacy flags and fields, except on
+ *    parents whose Phase 2 create failed.
  */
 async function applyChanges(changes) {
 	const failures = [];
@@ -125,19 +126,23 @@ async function applyChanges(changes) {
 	const createsItemsFirst = entries.toSorted((a, b) =>
 		a.isItem === b.isItem ? 0 : a.isItem ? -1 : 1,
 	);
+	const failedCreates = new Set();
 	for (const { parentUuid, toCreate } of createsItemsFirst) {
 		if (!toCreate.length) continue;
 		try {
 			await AE.createDocuments(toCreate, { parentUuid });
 		} catch (err) {
+			failedCreates.add(parentUuid);
 			failures.push({ uuid: parentUuid, error: err });
 		}
 	}
 
 	// Phase 3: clean legacy source data and flags from the DB so
-	// migrateData won't re-synthesize the flags on future loads.
+	// migrateData won't re-synthesize the flags on future loads. A parent whose
+	// create failed keeps its legacy data: it is the only copy left.
 	const { ForcedDeletion } = foundry.data.operators;
 	for (const { parentUuid, flagsToUnset, systemFieldsToUnset } of entries) {
+		if (failedCreates.has(parentUuid)) continue;
 		if (!flagsToUnset.length && !systemFieldsToUnset.length) continue;
 		try {
 			const doc = await foundry.utils.fromUuid(parentUuid);
