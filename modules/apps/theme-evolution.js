@@ -684,8 +684,13 @@ async function submitExpand({
  * shape (name, themebook, level, quest, description, specials) and tags
  * from the source. Promise math follows the Core Book Replace rule:
  * +1 base plus +1 per extra power/weakness/special on the source.
+ *
+ * The source's tags and caps are read before the target is touched: when
+ * `dropped` is `theme` itself, wiping the target empties the source's
+ * effect collection too. The wizard rejects that drop, but this function
+ * does not depend on it.
  */
-async function applyDroppedTheme({ actor, theme, dropped }) {
+export async function applyDroppedTheme({ actor, theme, dropped }) {
 	const isFellowship = !!theme.system?.isFellowship;
 	if (!isFellowship && dropped.system?.isFellowship) {
 		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
@@ -695,6 +700,20 @@ async function applyDroppedTheme({ actor, theme, dropped }) {
 		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
 		return;
 	}
+
+	// Power/weakness tag effects to copy from the source. Title tag stays
+	// on the current theme (it auto-renames to the new theme's name via
+	// the item-hooks rename sync); only revisable tags are duplicated.
+	const toCreate = [];
+	for (const eff of dropped.effects) {
+		const isPower = POWER_TAG_TYPES.has(eff.type) && !eff.system?.isTitleTag;
+		const isWeakness = eff.type === "weakness_tag";
+		if (!isPower && !isWeakness) continue;
+		const obj = eff.toObject();
+		delete obj._id;
+		toCreate.push(obj);
+	}
+	const sourceCaps = getTradeCaps(getRevisableParts(dropped));
 
 	await wipeNonTitleTagEffects(theme);
 
@@ -713,24 +732,11 @@ async function applyDroppedTheme({ actor, theme, dropped }) {
 		),
 	});
 
-	// Copy power/weakness tag effects from the source. Title tag stays
-	// on the current theme (it auto-renames to the new theme's name via
-	// the item-hooks rename sync); only revisable tags are duplicated.
-	const toCreate = [];
-	for (const eff of dropped.effects) {
-		const isPower = POWER_TAG_TYPES.has(eff.type) && !eff.system?.isTitleTag;
-		const isWeakness = eff.type === "weakness_tag";
-		if (!isPower && !isWeakness) continue;
-		const obj = eff.toObject();
-		delete obj._id;
-		toCreate.push(obj);
-	}
 	if (toCreate.length) {
 		await theme.createEmbeddedDocuments("ActiveEffect", toCreate);
 	}
 
 	if (!isFellowship) {
-		const sourceCaps = getTradeCaps(getRevisableParts(dropped));
 		const promiseGained = 1 + totalTradeCap(sourceCaps);
 		await applyPromiseToActor(actor, promiseGained);
 	}
@@ -958,6 +964,11 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		const theme = getTheme(this);
 		if (!actor || !theme) return;
 		if (this._submitting) return;
+		// Replacing a theme with itself would wipe the tags it is meant to copy.
+		if (item.uuid === theme.uuid) {
+			ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_same"));
+			return;
+		}
 
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: t("LITM.Ui.evolution_drop_theme_confirm_title") },
