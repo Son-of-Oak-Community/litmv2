@@ -1050,7 +1050,12 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		await applyActorTagUpdates(actors, resolveActor);
 		for (const id of Object.keys(actors)) await this.#triggerLimitRecalc(id);
 
-		const storyTagUpdates = buildStoryTagUpdates(story);
+		// The scene column renders disabled for players, and FormDataExtended
+		// skips disabled fields: a player's form carries each scene tag's name
+		// but none of its checkboxes, which would read as "unscratch every
+		// scene tag and clear every tier". Only the GM edits scene tags here;
+		// players reach them through the tag actions instead.
+		const storyTagUpdates = game.user.isGM ? buildStoryTagUpdates(story) : [];
 		const updatedLimits = await applyLimitUpdates(
 			data.limits,
 			this.config.limits,
@@ -1066,8 +1071,6 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				limits: updatedLimits,
 			});
 			this.#broadcastRender();
-		} else if (storyTagUpdates.length) {
-			this.#broadcastUpdate("updateTags", storyTagUpdates);
 		}
 	}
 
