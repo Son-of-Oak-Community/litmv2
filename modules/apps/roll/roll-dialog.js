@@ -468,7 +468,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// sacrifice, mirroring the Roll button's behaviour in hero-sheet.
 		if (this.#actionUuid && this.type === "sacrifice") {
 			this.type = "quick";
-			this.updatePresence(true);
+			this.updatePresence(true).catch(console.error);
 		}
 		this.rollName = "";
 		this.#dispatchUpdate();
@@ -635,7 +635,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (this.rendered) this.render();
 		// Refresh presence so peers can react to the new type — e.g. the
 		// sacrifice banner fires off the flag transition to "sacrifice".
-		this.updatePresence(true);
+		this.updatePresence(true).catch(console.error);
 		// And tell the table. A shared roll is one object several people are
 		// looking at; a move only this client knows about is how the Narrator
 		// ends up calling for one roll while the roller reads another.
@@ -663,12 +663,27 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	set ownerId(value) {
 		const becomingOwner = value === game.user.id && value !== this.#ownerId;
+		const losingSeat =
+			this.#ownerId === game.user.id && value !== game.user.id;
 		this.#ownerId = value;
+		// A viewer only follows snapshots from its own session. Stepping down
+		// from a seat keeps the session this client published as owner, which
+		// would reject every snapshot from the new owner; start unbound so the
+		// first one names the session.
+		if (losingSeat && this.#sync)
+			this.#sync = new RollSync(this.#syncState(), foundry.utils.randomID());
 		// Sheet tag clicks can precede the ownership claim in renderRollDialog.
 		// Promote that local draft, including its first selection, rather than
 		// publishing the empty canonical state from before the click.
+		// Keep the session: a seat assigned by the Narrator arrives with the
+		// call's session already activated, and dropping it here made every
+		// Narrator edit to that roll look like it belonged to another one.
 		if (becomingOwner && this.#sync)
-			this.#sync = new RollSync(this.#syncState(), foundry.utils.randomID());
+			this.#sync = new RollSync(
+				this.#syncState(),
+				foundry.utils.randomID(),
+				this.#sync.session,
+			);
 	}
 
 	get isOwner() {
@@ -1999,6 +2014,30 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (this.isOwner) this.#sendSync(this.#sync.snapshot());
 	}
 
+	/**
+	 * The owner's client reloaded during a called roll and rejoined with an
+	 * empty draft. Viewers still hold the roll; ask them for it rather than
+	 * publish the empty one over the Narrator's move, Might and invocations.
+	 */
+	requestReseat() {
+		if (this.localOnly || !this.isOwner) return;
+		Sockets.dispatch("requestRollDialogSync", {
+			actorId: this.actorId,
+			reseat: true,
+		});
+	}
+
+	/** A viewer's answer to {@link requestReseat}: its last canonical view. */
+	dispatchReseat() {
+		if (this.localOnly || this.isOwner || !this.#syncActive) return;
+		this.#sendSync({
+			kind: "reseat",
+			revision: this.#sync.revision,
+			state: this.#sync.state,
+			session: this.#sync.session,
+		});
+	}
+
 	/** Generation token for lifecycle sockets; null before a viewer's first sync. */
 	get syncSession() {
 		return this.#sync.session ?? (this.isOwner ? this.#sync.peerId : null);
@@ -2036,6 +2075,15 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			if (this.#endedSyncSessions.has(data.sync.session)) return;
 			// Only the owner serializes edits; all other peers ignore proposals.
 			if (data.sync.kind === "edit" && !this.isOwner) return;
+			if (data.sync.kind === "reseat") {
+				if (!this.isOwner) return;
+				const { ownerId: _stale, ...state } = data.sync.state ?? {};
+				if (!this.#sync.adopt({ ...data.sync, state })) return;
+				this.#applySyncState(this.#sync.view);
+				this.#sendSync(this.#sync.snapshot());
+				if (this.rendered) this.render();
+				return;
+			}
 			if (
 				data.sync.kind === "snapshot" &&
 				data.senderId &&

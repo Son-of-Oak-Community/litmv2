@@ -96,6 +96,26 @@ export class RollSync {
 		};
 	}
 
+	/**
+	 * Take over a draft from a peer's canonical view, keeping its session and
+	 * revision. Used when the owner's client comes back after a reload with an
+	 * empty dialog while the rest of the table still holds the roll.
+	 * @param {{state: object, revision: number, session: string}} message
+	 * @returns {boolean} Whether the draft was adopted
+	 */
+	adopt(message) {
+		if (this.revision > 0 || !message?.state) return false;
+		if (this.session && message.session && this.session !== message.session)
+			return false;
+		this.session = message.session ?? this.session;
+		this.revision = message.revision ?? 0;
+		this.state = copy(message.state);
+		this.view = copy(message.state);
+		this.ack = {};
+		this.pending = [];
+		return true;
+	}
+
 	receive(message, isOwner) {
 		if (message.kind === "edit") {
 			if (!isOwner) return null;

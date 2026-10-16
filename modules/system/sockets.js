@@ -64,11 +64,12 @@ export class Sockets {
 			actor.sheet?.updateRollDialog({ ...data, senderId: event.senderId });
 		});
 
-		Sockets.on("requestRollDialogSync", ({ data: { actorId } }) => {
+		Sockets.on("requestRollDialogSync", ({ data: { actorId, reseat } }) => {
 			const actor = game.actors.get(actorId);
 			if (!actor?.sheet?.hasRollDialog) return;
 			const dialog = actor.sheet.rollDialogInstance;
 			if (dialog.isOwner) dialog.dispatchSync();
+			else if (reseat) dialog.dispatchReseat();
 		});
 	}
 
