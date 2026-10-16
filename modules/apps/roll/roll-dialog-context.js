@@ -232,6 +232,8 @@ export function buildContributedTagGroups(
 				ownCharacter.prototypeToken?.texture?.src || ownCharacter.img,
 			);
 			for (const e of ownCharacter.appliedEffects) {
+				// A status the Narrator hid on this Hero stays hidden here too.
+				if (!isEffectVisible(e)) continue;
 				const rawTag = effectToPlain(e);
 				const sel = dialog.getSelection(rawTag.uuid);
 				const tag = decorateTag({

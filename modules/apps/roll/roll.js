@@ -234,7 +234,8 @@ export class LitmRoll extends foundry.dice.Roll {
 		// out-of-spec content (e.g. legacy power_tag titles on fellowship
 		// themes) from yielding the burn bonus.
 		const scratchedTags = tags.filter(
-			(t) => t.state === "scratched" && t.system?.canBurn !== false,
+			(t) =>
+				t.state === "scratched" && (t.system?.canBurn ?? t.canBurn) !== false,
 		);
 		const isStatus = (t) => t.type === "status_tag";
 		const powerTags = tags.filter(
