@@ -1754,12 +1754,11 @@ section.standard-form.litm-actions-app {
 
 /* ── Theme (theme kit) embed card ── */
 
+/* The hero sheet's card border comes from .standard-form fieldset; the
+   embed sits outside any form, so give it the same edge. */
 .litm-render--theme {
-	text-align: center;
-}
-
-.litm-render--theme .theme-card-tags {
-	justify-content: center;
+	border-color: var(--color-fieldset-border);
+	border-radius: var(--radius-lg);
 }
 
 /* Title tags (theme name as a tag): larger, bold, uppercase */
@@ -1788,7 +1787,9 @@ section.standard-form.litm-actions-app {
    HR separator, and container query for the 2-column grid.
 ======================================== */
 
-.litm .theme-card {
+/* .litm.theme-card: the @render embed carries both classes on one element. */
+.litm .theme-card,
+.litm.theme-card {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacer-4);
