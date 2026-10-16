@@ -15,6 +15,7 @@ import {
 	tagDragData,
 } from "../../item/action/tag-string.js";
 import { info } from "../../logger.js";
+import { bindActionPresubmit } from "../../sheets/action-presubmit.js";
 import {
 	ACTOR_TAG_TYPES,
 	FLAG_LIMIT_TYPES,
@@ -533,43 +534,15 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		// Submit the form on pointerdown when an action button is clicked while
 		// an input is focused, preventing the blur→change→re-render from detaching
 		// the button before the click event fires.
-		this.element.addEventListener(
-			"pointerdown",
-			(event) => {
-				const actionBtn = event.target.closest("[data-action]");
-				if (!actionBtn) return;
-
-				const form = this.element.querySelector("form");
-				if (!form) return;
-
-				const focused = document.activeElement;
-				if (!focused || !form.contains(focused)) return;
-				if (!["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) return;
-
-				// Prevent click from firing (per Pointer Events spec, preventDefault on
-				// pointerdown suppresses the subsequent click). We execute the action
-				// manually after the form submit, since click would otherwise fire after
-				// the render replaces the DOM.
-				event.preventDefault();
-
-				const action = actionBtn.dataset.action;
-				const dataset = { ...actionBtn.dataset };
-
-				this._suppressNextChange = true;
-				const formData = new foundry.applications.ux.FormDataExtended(form);
-				this.onSubmit(null, form, formData)
-					.then(() => {
-						const handler = this.options.actions[action];
-						const fn = typeof handler === "object" ? handler.handler : handler;
-						if (!fn) return;
-						const syntheticTarget = document.createElement("button");
-						Object.assign(syntheticTarget.dataset, dataset);
-						fn.call(this, event, syntheticTarget);
-					})
-					.catch(console.error);
-			},
-			{ capture: true },
-		);
+		bindActionPresubmit(this, {
+			getForm: () => this.element.querySelector("form"),
+			submit: (form) =>
+				this.onSubmit(
+					null,
+					form,
+					new foundry.applications.ux.FormDataExtended(form),
+				),
+		});
 
 		// --- Delegated listeners on the stable outer element ---
 

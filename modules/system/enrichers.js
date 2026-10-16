@@ -209,7 +209,7 @@ export class Enrichers {
 
 			const label = Enrichers.#esc(flavour || scene.navName);
 			return Enrichers.#html(
-				`<a class="content-link" draggable="true" data-uuid="Scene.${scene._id}" data-id="${scene._id}" data-type="ActivateScene" data-tooltip="Scene"><i class="far fa-map"></i>${label}</a>`,
+				`<a class="content-link" draggable="true" data-uuid="Scene.${scene._id}" data-id="${scene._id}" data-type="ActivateScene" data-tooltip="DOCUMENT.Scene"><i class="far fa-map"></i>${label}</a>`,
 			);
 		};
 		CONFIG.TextEditor.enrichers.push({

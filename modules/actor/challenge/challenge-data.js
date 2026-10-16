@@ -3,6 +3,35 @@ import { advanceSystemLimit } from "../mixins/actor-limits.js";
 import { EffectTagsMixin } from "../mixins/effect-tags-mixin.js";
 import { LimitsMixin } from "../mixins/limits-mixin.js";
 
+/**
+ * Stable id for a legacy limit stored without one. migrateData runs on every
+ * load, and until something persists the limits array a random id would differ
+ * each time, orphaning any `limitId` link made in between. Hashing position and
+ * label gives the same id every load; position keeps same-labelled limits
+ * apart. Shaped like a Foundry id (16 alphanumeric characters).
+ * @param {number} index  Position in the source limits array
+ * @param {string} [label]
+ * @returns {string}
+ */
+function legacyLimitId(index, label) {
+	const input = `${index}:${label ?? ""}`;
+	let h1 = 0xdeadbeef;
+	let h2 = 0x41c6ce57;
+	for (let i = 0; i < input.length; i++) {
+		const ch = input.charCodeAt(i);
+		h1 = Math.imul(h1 ^ ch, 2654435761);
+		h2 = Math.imul(h2 ^ ch, 1597334677);
+	}
+	h1 =
+		Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^
+		Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+	h2 =
+		Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^
+		Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+	// A 32-bit value is at most 7 base-36 digits; pad each half to 8.
+	return [h1, h2].map((h) => (h >>> 0).toString(36).padStart(8, "0")).join("");
+}
+
 export class ChallengeData extends LimitsMixin(
 	EffectTagsMixin(foundry.abstract.TypeDataModel),
 ) {
@@ -51,9 +80,9 @@ export class ChallengeData extends LimitsMixin(
 		};
 	}
 
-	static migrateData(source) {
+	static migrateData(source, options) {
 		if (Array.isArray(source.limits)) {
-			for (const limit of source.limits) {
+			for (const [index, limit] of source.limits.entries()) {
 				if (typeof limit.max === "string") {
 					const parsed = Number(limit.max);
 					limit.max =
@@ -61,11 +90,16 @@ export class ChallengeData extends LimitsMixin(
 					if (limit.max === 0) limit.value = 0;
 				}
 				if (!limit.id) {
-					limit.id = foundry.utils.randomID();
+					// Partial cleaning is an update diff, which can add a brand-new
+					// limit: that needs a unique id. Only a full load is a legacy
+					// limit whose id must survive the next load.
+					limit.id = options?.partial
+						? foundry.utils.randomID()
+						: legacyLimitId(index, limit.label);
 				}
 			}
 		}
-		return super.migrateData(source);
+		return super.migrateData(source, options);
 	}
 
 	/** @override */

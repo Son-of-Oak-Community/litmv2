@@ -33,96 +33,105 @@ export async function applySpendIntent(actor, intent) {
 	let actionSpent = 0;
 	let genericSpent = 0;
 
-	// Apply action-success rows first
-	for (const opt of options) {
-		if (opt.source !== "action") continue;
-		const spent = await _applyActionSuccessOption(
-			opt,
-			actor,
-			messageId,
-			presetTarget,
-		);
-		actionSpent += spent;
-		results.push({ source: "action", key: opt.successKey, spent });
-	}
+	try {
+		// Apply action-success rows first
+		for (const opt of options) {
+			if (opt.source !== "action") continue;
+			const spent = await _applyActionSuccessOption(
+				opt,
+				actor,
+				messageId,
+				presetTarget,
+			);
+			actionSpent += spent;
+			results.push({ source: "action", key: opt.successKey, spent });
+		}
 
-	// Apply generic spend options
-	for (const opt of options) {
-		if (opt.source === "action") continue;
+		// Apply generic spend options
+		for (const opt of options) {
+			if (opt.source === "action") continue;
 
-		switch (opt.kind) {
-			case "statusPicker": {
-				const { power, bodyLines } = await _applyStatusPicker(
-					actor,
-					opt,
-					messageId,
-				);
-				genericSpent += power;
-				results.push({
-					kind: "statusPicker",
-					optionId: opt.optionId,
-					power,
-					bodyLines,
-				});
-				break;
-			}
-			case "counter": {
-				const { power } = _applyCounter(opt);
-				genericSpent += power;
-				results.push({
-					kind: "counter",
-					optionId: opt.optionId,
-					power,
-					count: opt.count,
-				});
-				break;
-			}
-			case "picker": {
-				const { power, tags } = await _applyPicker(actor, opt);
-				genericSpent += power;
-				results.push({ kind: "picker", optionId: opt.optionId, power, tags });
-				break;
-			}
-			case "scratchPicker": {
-				const { power, tags } = await _applyScratchPicker(opt);
-				genericSpent += power;
-				results.push({
-					kind: "scratchPicker",
-					optionId: opt.optionId,
-					power,
-					tags,
-				});
-				break;
-			}
-			default: {
-				// Inflict with a picked target applies the statuses directly
-				// (or via the GM relay); without one it stays the legacy
-				// draggable-chat-chip flow handled by _applyDefault.
-				const applied =
-					opt.optionId === "inflict_status" &&
-					opt.targetActorId &&
-					opt.entries?.length
-						? await _applyInflict(opt, messageId)
-						: _applyDefault(opt);
-				genericSpent += applied.power;
-				results.push({
-					kind: "default",
-					optionId: opt.optionId,
-					power: applied.power,
-					body: applied.body,
-				});
-				break;
+			switch (opt.kind) {
+				case "statusPicker": {
+					const { power, bodyLines } = await _applyStatusPicker(
+						actor,
+						opt,
+						messageId,
+					);
+					genericSpent += power;
+					results.push({
+						kind: "statusPicker",
+						optionId: opt.optionId,
+						power,
+						bodyLines,
+					});
+					break;
+				}
+				case "counter": {
+					const { power } = _applyCounter(opt);
+					genericSpent += power;
+					results.push({
+						kind: "counter",
+						optionId: opt.optionId,
+						power,
+						count: opt.count,
+					});
+					break;
+				}
+				case "picker": {
+					const { power, tags } = await _applyPicker(actor, opt);
+					genericSpent += power;
+					results.push({ kind: "picker", optionId: opt.optionId, power, tags });
+					break;
+				}
+				case "scratchPicker": {
+					const { power, tags } = await _applyScratchPicker(opt);
+					genericSpent += power;
+					results.push({
+						kind: "scratchPicker",
+						optionId: opt.optionId,
+						power,
+						tags,
+					});
+					break;
+				}
+				default: {
+					// Inflict with a picked target applies the statuses directly
+					// (or via the GM relay); without one it stays the legacy
+					// draggable-chat-chip flow handled by _applyDefault.
+					const applied =
+						opt.optionId === "inflict_status" &&
+						opt.targetActorId &&
+						opt.entries?.length
+							? await _applyInflict(opt, messageId)
+							: _applyDefault(opt);
+					genericSpent += applied.power;
+					results.push({
+						kind: "default",
+						optionId: opt.optionId,
+						power: applied.power,
+						body: applied.body,
+					});
+					break;
+				}
 			}
 		}
-	}
-
-	// Persist generic spends on the originating roll message. Action-success
-	// costs are deliberately not added: they are already tracked per-success
-	// in the appliedSuccessCosts flag, and the Spend Power budget subtracts
-	// both flags — folding them into spentPower too would double-count.
-	if (messageId && genericSpent > 0) {
-		const message = game.messages.get(messageId);
-		await message?.setFlag("litmv2", "spentPower", alreadySpent + genericSpent);
+	} finally {
+		// Persist generic spends on the originating roll message — in `finally`
+		// so a later option rejecting still records the Power of those that
+		// already landed (genericSpent only grows after an option applies);
+		// otherwise a resubmit would apply their writes again for free. Action-success
+		// costs are deliberately not added: they are already tracked per-success
+		// in the appliedSuccessCosts flag, and the Spend Power budget subtracts
+		// both flags — folding them into spentPower too would double-count.
+		if (messageId && genericSpent > 0) {
+			const message = game.messages.get(messageId);
+			await message?.setFlag(
+				"litmv2",
+				"spentPower",
+				alreadySpent + genericSpent,
+			);
+		}
 	}
 
 	return { results, totalSpent: actionSpent + genericSpent };
