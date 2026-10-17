@@ -135,6 +135,9 @@ export class ThemeSheet extends LitmItemSheet {
 			powerQuestionTexts,
 			weaknessQuestionTexts,
 			themeTagQuestion,
+			// The title tag carries the theme's linked reference (a Way of Magic
+			// journal, say); the hero sheet's theme card shows it on the title.
+			themeTag: this.system.themeTag,
 			availableSpecialImprovements,
 
 			// Display data

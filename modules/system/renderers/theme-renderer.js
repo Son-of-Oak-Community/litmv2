@@ -1,3 +1,4 @@
+import { levelIcon } from "../../utils.js";
 import { tagSpan } from "./renderer-utils.js";
 
 /**
@@ -25,33 +26,34 @@ export function renderTheme(item) {
 		container.appendChild(legend);
 	}
 
-	// Title as a themeTag
+	// Header as on the hero sheet: might icon, then the title tag
 	const header = document.createElement("div");
 	header.classList.add("theme-card-header");
-	header.appendChild(tagSpan(item.name, "litm-theme_tag"));
+	const row = document.createElement("div");
+	row.classList.add("flexrow", "noflex", "gap-sm");
+	const levelLabel = game.i18n.localize(`LITM.Terms.${sys.level}`);
+	const icon = document.createElement("img");
+	icon.classList.add("noflex", "icon-md");
+	icon.src = item.img || levelIcon(sys.level);
+	icon.alt = levelLabel;
+	icon.dataset.tooltip = levelLabel;
+	row.appendChild(icon);
+	const title = tagSpan(sys.themeTag?.name || item.name, "litm-power_tag");
+	title.classList.add("noflex", "litm-title_tag");
+	row.appendChild(title);
+	header.appendChild(row);
 	container.appendChild(header);
 
-	// Power tags
-	const powerTags = sys.powerTags?.filter((t) => t.name) ?? [];
-	if (powerTags.length) {
-		const tags = document.createElement("div");
-		tags.classList.add("theme-card-tags");
-		for (const pt of powerTags) {
-			tags.appendChild(tagSpan(pt.name, "litm-power_tag"));
-		}
-		container.appendChild(tags);
+	// Power and weakness tags share one wrapping row, as on the hero sheet
+	const tags = document.createElement("div");
+	tags.classList.add("theme-card-tags");
+	for (const pt of sys.powerTags?.filter((t) => t.name) ?? []) {
+		tags.appendChild(tagSpan(pt.name, "litm-power_tag"));
 	}
-
-	// Weakness tags
-	const weakTags = sys.weaknessTags?.filter((t) => t.name) ?? [];
-	if (weakTags.length) {
-		const tags = document.createElement("div");
-		tags.classList.add("theme-card-tags");
-		for (const wt of weakTags) {
-			tags.appendChild(tagSpan(wt.name, "litm-weakness_tag"));
-		}
-		container.appendChild(tags);
+	for (const wt of sys.weaknessTags?.filter((t) => t.name) ?? []) {
+		tags.appendChild(tagSpan(wt.name, "litm-weakness_tag"));
 	}
+	if (tags.children.length) container.appendChild(tags);
 
 	// Quest
 	if (sys.quest?.description) {

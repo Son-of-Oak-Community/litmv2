@@ -501,6 +501,9 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	font-family: var(--font-serif);
 	color: var(--color-text-primary);
 	gap: 0.2em;
+	/* The chip owns its height. Inherited from relaxed prose (Action card
+	   sections, journals), the skewed bar below grew a band of extra padding. */
+	line-height: 1.25;
 
 	&::before {
 		content: attr(data-text);
@@ -1207,6 +1210,15 @@ section.standard-form.litm-actions-app {
 	gap: var(--spacer-12);
 }
 
+/* Every @render card drags as its document (enrichers.js). */
+.litm-render[draggable="true"] {
+	cursor: grab;
+}
+
+.litm-render[draggable="true"]:active {
+	cursor: grabbing;
+}
+
 /* Cards wired with [data-render-action] are activated via a body-level
    delegated handler. Surface that with a clear hover and focus affordance. */
 .litm-render--card[data-render-action] {
@@ -1426,16 +1438,15 @@ section.standard-form.litm-actions-app {
 	position: relative;
 }
 
-/* GM send-roll-request button — absolute-positioned in the top-right
-   corner of the card so the centered title isn't pulled off-axis. */
-
+/* GM call-for-roll button — the card's one primary action, at the foot. */
 .litm-render--action__send {
-	position: absolute;
-	top: var(--spacer-8);
-	right: var(--spacer-8);
-	width: 2rem;
-	height: 2rem;
-	padding: 0;
+	align-self: center;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	width: auto;
+	margin-top: var(--spacer-8);
+	padding: var(--spacer-4) var(--spacer-16);
 	background: transparent;
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-sm);
@@ -1519,19 +1530,19 @@ section.standard-form.litm-actions-app {
 	font-family: var(--font-serif);
 	line-height: var(--line-height-relaxed);
 }
+/* Hang the arrow with absolute positioning, not text-indent: text-indent
+   inherits into inline-flex tag chips and drags their text over the prose. */
 .litm-render--action__consequences > li {
+	position: relative;
 	padding-left: 1.4em;
-	text-indent: -1.4em;
 	margin-bottom: var(--spacer-4);
 }
 .litm-render--action__consequences > li::before {
 	content: "»";
-	display: inline-block;
-	width: 1em;
-	margin-right: 0.4em;
+	position: absolute;
+	left: 0;
 	color: var(--color-litm-tag-text);
 	font-weight: 700;
-	text-indent: 0;
 }
 
 /* Read popout — minimal window that hosts a renderer's card. The card
@@ -1754,12 +1765,11 @@ section.standard-form.litm-actions-app {
 
 /* ── Theme (theme kit) embed card ── */
 
+/* The hero sheet's card border comes from .standard-form fieldset; the
+   embed sits outside any form, so give it the same edge. */
 .litm-render--theme {
-	text-align: center;
-}
-
-.litm-render--theme .theme-card-tags {
-	justify-content: center;
+	border-color: var(--color-fieldset-border);
+	border-radius: var(--radius-lg);
 }
 
 /* Title tags (theme name as a tag): larger, bold, uppercase */
@@ -1788,7 +1798,9 @@ section.standard-form.litm-actions-app {
    HR separator, and container query for the 2-column grid.
 ======================================== */
 
-.litm .theme-card {
+/* .litm.theme-card: the @render embed carries both classes on one element. */
+.litm .theme-card,
+.litm.theme-card {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacer-4);
@@ -1828,7 +1840,7 @@ section.standard-form.litm-actions-app {
 .litm .theme-card-tags {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 12px;
+	gap: var(--spacer-4) var(--spacer-12);
 }
 
 :is(

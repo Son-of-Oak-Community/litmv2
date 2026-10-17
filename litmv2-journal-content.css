@@ -21,9 +21,9 @@
    background-image has a solid colour fallback so a missing/uninstalled system
    degrades gracefully. Fonts stay litmv2-native (no official fonts referenced).
 
-   Single-theme by design: the reading surface is always parchment with dark ink
-   in both app themes (dark theme affects only the window chrome), because a .webp
-   box graphic cannot be recoloured for dark mode.
+   The reading surface is parchment with dark ink in light mode and dark in dark
+   mode. A .webp box graphic cannot be recoloured, so the boxes stay parchment
+   with dark ink in both themes.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -63,7 +63,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   Reading surface — always parchment, dark ink (both app themes)
+   Reading surface — parchment and dark ink in light mode (dark mode below)
    -------------------------------------------------------------------------- */
 .litm-journal .journal-entry-content {
 	background-color: #efdcae; /* fallback tint under the parchment */
@@ -81,6 +81,22 @@
    --color-text-primary (light) can't override the always-parchment surface. */
 .litm-journal .journal-page-content,
 .litm-journal .journal-entry-page {
+	color: var(--me-ink);
+}
+
+/* Dark mode is dark: drop the parchment page and ink the text light. The
+   raster parchment boxes stay parchment, so they keep dark ink. */
+body.theme-dark .litm-journal .journal-entry-content {
+	--me-ink: var(--color-text-primary);
+	--me-red: #c9886a;
+	--me-brown: #c9b99a;
+	background: none;
+}
+
+body.theme-dark .litm-journal :is(.notes, .themekit-big-box, .themekit-box, .tropes-wrapper .trope) {
+	--me-ink: #191813;
+	--me-red: #742a2b;
+	--me-brown: #724a32;
 	color: var(--me-ink);
 }
 
