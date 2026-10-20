@@ -1,7 +1,7 @@
 /**
  * Shared logic for advancing/setting back a Limit's value, regardless of
  * where the limit lives. Two helpers — one for `system.limits` arrays
- * (challenges) and one for `flags.litmv2.limits` arrays (hero, fellowship,
+ * (challenges) and one for `flags.litmv2.limits` arrays (hero,
  * journey) — return the same shape so callers can treat them uniformly.
  *
  * @typedef {object} LimitChangeResult

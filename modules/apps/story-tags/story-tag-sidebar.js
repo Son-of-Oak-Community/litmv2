@@ -1219,6 +1219,11 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				this.#refocusQuickAdd(sectionId);
 				return;
 			}
+
+			// Not a story tag named "x:4" — this column just has no Limits.
+			return ui.notifications.warn("LITM.Ui.warn_no_limits_here", {
+				localize: true,
+			});
 		}
 
 		const isStatus = parsed.type === "status_tag";
@@ -1361,7 +1366,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const source = target.dataset.source;
 		if (!(await confirmDelete("LITM.Terms.limit"))) return;
 
-		// Actor limits (hero/fellowship/journey flags, challenge system.limits)
+		// Actor limits (hero/journey flags, challenge system.limits)
 		if (source && source !== "story") {
 			const actor = this.#resolveActor(source);
 			if (!actor?.isOwner) return;

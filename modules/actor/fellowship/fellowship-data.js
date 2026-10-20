@@ -1,10 +1,8 @@
 import { ITEM_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
-import { advanceFlagLimit } from "../mixins/actor-limits.js";
 import { EffectTagsMixin } from "../mixins/effect-tags-mixin.js";
-import { LimitsMixin } from "../mixins/limits-mixin.js";
 
-export class FellowshipData extends LimitsMixin(
-	EffectTagsMixin(foundry.abstract.TypeDataModel),
+export class FellowshipData extends EffectTagsMixin(
+	foundry.abstract.TypeDataModel,
 ) {
 	static defineSchema() {
 		const fields = foundry.data.fields;
@@ -38,15 +36,5 @@ export class FellowshipData extends LimitsMixin(
 	 */
 	get allRollTags() {
 		return [...this.allTags, ...this.storyTags, ...this.statusEffects];
-	}
-
-	/**
-	 * Advance (or set back) a flag-stored limit by `delta`.
-	 * @param {string} limitId
-	 * @param {number} delta
-	 * @returns {Promise<import("../actor-limits.js").LimitChangeResult|null>}
-	 */
-	async advanceLimit(limitId, delta) {
-		return advanceFlagLimit(this.parent, limitId, delta);
 	}
 }

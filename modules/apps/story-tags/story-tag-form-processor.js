@@ -9,7 +9,7 @@
  *     to apply via `ContentSources.updateStoryTags` or broadcast as a
  *     player-side `updateTags` socket request.
  *   - `applyLimitUpdates` handles both world-scoped story limits and
- *     per-actor flag limits (hero / fellowship / journey).
+ *     per-actor flag limits (hero / journey).
  *
  * Each impure stage takes a `resolveActor(id)` callback so the sidebar can
  * supply its existing UUID-or-id resolution logic without this module
@@ -225,7 +225,7 @@ export async function applyLimitUpdates(
 			result.storyLimits = next;
 	}
 
-	// Actor limits: flag-backed (hero / fellowship / journey) and a Challenge's
+	// Actor limits: flag-backed (hero / journey) and a Challenge's
 	// `system.limits`; `setLimits` routes each to its store.
 	const flagUpdates = [];
 	for (const [source, sourceLimits] of Object.entries(limitsData)) {

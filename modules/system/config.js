@@ -116,8 +116,12 @@ export const ITEM_TYPES = {
 	addon: "addon",
 };
 
-/** Actor types that store limits in flags rather than system.limits. */
-export const FLAG_LIMIT_TYPES = new Set(["hero", "fellowship", "journey"]);
+/**
+ * Actor types that store limits in flags rather than system.limits. The
+ * Fellowship has none: the Core Book gives Limits to Heroes, Challenges and
+ * progress Limits only (p.169) — a group-wide clock is a story limit.
+ */
+export const FLAG_LIMIT_TYPES = new Set(["hero", "journey"]);
 
 export const BURN_POWER = 3;
 

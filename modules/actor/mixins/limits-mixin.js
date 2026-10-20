@@ -79,7 +79,7 @@ export function toggleLimitHiddenIn(limits, limitId) {
 /**
  * Mixin that adds a uniform limit-access protocol to actor data models.
  *
- * Default behaviour (flag-backed — hero, fellowship, journey):
+ * Default behaviour (flag-backed — hero, journey):
  *   - `get limits()`              → reads `flags.litmv2.limits`
  *   - `async setLimits(limits)`   → writes `flags.litmv2.limits`
  *   - `getEffectiveMax(limit)`    → `limit.max`
