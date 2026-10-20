@@ -27,7 +27,7 @@
 			</span>
 			{{/if}}
 		</div>
-		{{else if (eq type "challenge")}}
+		{{else if (and (eq type "challenge") (not limitedView))}}
 		<div class="challenge-meta">
 			<div class="flexrow rating-stars gap-xs">
 				{{#progress-buttons rating 5}}

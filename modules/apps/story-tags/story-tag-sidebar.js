@@ -3,7 +3,10 @@ import {
 	storyTagEffect,
 	updateEffectsByParent,
 } from "../../active-effects/effect-factories.js";
-import { resolveEffect } from "../../active-effects/effect-queries.js";
+import {
+	resolveEffect,
+	startsHiddenOn,
+} from "../../active-effects/effect-queries.js";
 import {
 	maxStatusTier,
 	StatusTagData,
@@ -1681,7 +1684,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const created = isStatus
 			? await actor.system.addStatus(tag.name, {
 					tiers: toTiers(tag.values),
-					isHidden: game.user.isGM,
+					isHidden: startsHiddenOn(actor),
 					limitId: tag.limitId,
 				})
 			: await actor.system.addStoryTag(
@@ -1689,7 +1692,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						name: tag.name,
 						isScratched: tag.isScratched ?? false,
 						isSingleUse: tag.isSingleUse ?? false,
-						isHidden: game.user.isGM,
+						isHidden: startsHiddenOn(actor),
 						limitId: tag.limitId,
 					}),
 				);

@@ -63,6 +63,20 @@ async function recalculate(model) {
 }
 
 /**
+ * Flip one limit's visibility to players. A limit saved before `hidden`
+ * existed counts as hidden. Shared by actor limits and the world's story limits.
+ * @param {object[]} limits
+ * @param {string} limitId
+ * @returns {object[]|null}  The new array, or null when no limit has that id
+ */
+export function toggleLimitHiddenIn(limits, limitId) {
+	if (!limits.some((l) => l.id === limitId)) return null;
+	return limits.map((l) =>
+		l.id === limitId ? { ...l, hidden: !(l.hidden ?? true) } : l,
+	);
+}
+
+/**
  * Mixin that adds a uniform limit-access protocol to actor data models.
  *
  * Default behaviour (flag-backed — hero, fellowship, journey):
@@ -95,6 +109,16 @@ export function LimitsMixin(Base) {
 		 */
 		async setLimits(limits) {
 			return setActorLimits(this.parent, limits);
+		}
+
+		/**
+		 * Reveal a limit to players who could not otherwise see it, or hide it again.
+		 * @param {string} limitId
+		 * @returns {Promise<void>}
+		 */
+		async toggleLimitHidden(limitId) {
+			const limits = toggleLimitHiddenIn(this.limits, limitId);
+			if (limits) return this.setLimits(limits);
 		}
 
 		/**

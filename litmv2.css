@@ -2039,6 +2039,17 @@ section.standard-form.litm-actions-app {
 	margin-bottom: var(--spacer-8);
 }
 
+/* Foundry draws a checked box from two layers: ::before pinned to the input's
+   top-left, ::after flowing on its text line. A taller input or line box (as in
+   this name row) drops ::after below ::before — two checkmarks. A grid pins the
+   flowing layer to the same corner. */
+.litm-actor .litm--conceal-toggle input[type="checkbox"] {
+	display: grid;
+	height: auto;
+	padding: 0;
+	line-height: var(--checkbox-size);
+}
+
 /* The header part intentionally skips incremental re-renders in edit mode
    (EDITOR_PARTS), so the alias input is always in the DOM and revealed by
    the checkbox state alone */

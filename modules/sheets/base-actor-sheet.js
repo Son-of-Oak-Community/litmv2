@@ -6,6 +6,7 @@ import {
 import {
 	isEffectVisible,
 	resolveEffect,
+	startsHiddenOn,
 } from "../active-effects/effect-queries.js";
 import { clampTier, maxStatusTier } from "../active-effects/status-tag-data.js";
 import { resolveRollDialogOwnership } from "../apps/roll/roll-pipeline.js";
@@ -509,7 +510,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 		if (isStatus) {
 			await this.document.system.addStatus(name, {
 				tiers: toTiers(data.values),
-				isHidden: game.user.isGM,
+				isHidden: startsHiddenOn(this.document),
 				limitId: data.limitId,
 			});
 		} else {
@@ -518,7 +519,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 					name,
 					isScratched: data.isScratched ?? false,
 					isSingleUse: data.isSingleUse ?? false,
-					isHidden: game.user.isGM,
+					isHidden: startsHiddenOn(this.document),
 				}),
 			);
 		}

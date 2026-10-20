@@ -21,10 +21,12 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 			removeLimit: ChallengeSheet.#onRemoveLimit,
 			increaseLimit: ChallengeSheet.#onIncreaseLimit,
 			decreaseLimit: ChallengeSheet.#onDecreaseLimit,
+			toggleLimitHidden: ChallengeSheet.#onToggleLimitHidden,
 			addVignette: LitmActorSheet._onAddVignette,
 			removeVignette: LitmActorSheet._onRemoveItem,
 			editVignette: LitmActorSheet._onEditItem,
 			sendVignetteToChat: LitmActorSheet._onSendVignetteToChat,
+			toggleVignetteHidden: LitmActorSheet._onToggleVignetteHidden,
 			adjustRating: ChallengeSheet.#onAdjustRating,
 			addMight: ChallengeSheet.#onAddMight,
 			removeMight: ChallengeSheet.#onRemoveMight,
@@ -83,6 +85,8 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 		const sys = this.system;
 		const isPlay = !this._isEditMode;
 		const hasObserverPermission = this.document.testUserPermission(game.user, 'OBSERVER');
+		const limitedView = this.document.testUserPermission(game.user, 'LIMITED', { exact: true });
+		if (limitedView) return this.#prepareLimitedContext(context);
 
 		const enriched = await this._enrichFields("description", "specialFeatures");
 		const enrichedTags = await enrichHTML(
@@ -167,6 +171,36 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 	}
 
 	/**
+	 * Limited viewers get the bio and the threats the Narrator revealed, nothing
+	 * else: the stat block is never put into context, so no template can leak it.
+	 * Addon threats have no item to carry a reveal flag, so they stay hidden.
+	 * @param {object} context  The base sheet context
+	 * @returns {Promise<object>}
+	 */
+	async #prepareLimitedContext(context) {
+		const sys = this.system;
+		const { vignettes } = await this._prepareVignettes();
+		return {
+			...context,
+			limitedView: true,
+			enriched: await this._enrichFields("description"),
+			concealed: sys.concealName ? { alias: sys.publicName } : null,
+			// Addon-only limits carry no `hidden`, so they stay hidden.
+			limits: (sys.derivedLimits ?? [])
+				.filter((l) => l.hidden === false)
+				.map(({ label, max, value }) => ({
+					label,
+					max,
+					value,
+					isImpossible: max === 0,
+				})),
+			displayVignettes: vignettes.filter(
+				(v) => !v.system.limitedPermissionHidden,
+			),
+		};
+	}
+
+	/**
 	 * Prepare addon threats (enriched HTML) and addon data for edit mode.
 	 * @returns {Promise<{addonThreats: object[], addons: object[]}>}
 	 */
@@ -229,6 +263,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 					...limit,
 					enrichedOutcome: await enrichHTML(limit.outcome, this.document),
 					isImpossible: limit.max === 0,
+					isOwn: canonicalIds.has(limit.id),
 					isAutoManaged: hasGroupedStatuses || !canonicalIds.has(limit.id),
 				};
 			}),
@@ -289,6 +324,11 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 		const limit = this.system.limits[Number(target.dataset.index)];
 		if (!limit || limit.max === 0) return;
 		await this.system.advanceLimit(limit.id, -1);
+	}
+
+	static async #onToggleLimitHidden(_event, target) {
+		await this.system.toggleLimitHidden(target.dataset.limitId);
+		this._notifyStoryTags();
 	}
 
 	static async #onAdjustRating(event, target) {
