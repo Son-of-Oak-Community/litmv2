@@ -171,11 +171,15 @@ export function buildStoryTagUpdates(story, rendered = {}) {
  */
 function withEditedLimitFields(limit, formLimit, renderedLimit, fields) {
 	if (!formLimit) return limit;
+	// The max box renders empty (placeholder "~") for "no maximum", so an
+	// empty max means 0 — on both sides, or an untouched row would diff.
+	const read = (source, field) =>
+		field === "max" && source?.[field] === "" ? 0 : source?.[field];
 	const edits = {};
 	for (const field of fields) {
-		const value = formLimit[field];
+		const value = read(formLimit, field);
 		if (value == null) continue;
-		if (renderedLimit && String(value) === String(renderedLimit[field]))
+		if (renderedLimit && String(value) === String(read(renderedLimit, field)))
 			continue;
 		if (String(value) === String(limit[field])) continue;
 		edits[field] = value;
@@ -221,13 +225,15 @@ export async function applyLimitUpdates(
 			result.storyLimits = next;
 	}
 
-	// Actor flag limits (hero / fellowship / journey)
+	// Actor limits: flag-backed (hero / fellowship / journey) and a Challenge's
+	// `system.limits`; `setLimits` routes each to its store.
 	const flagUpdates = [];
 	for (const [source, sourceLimits] of Object.entries(limitsData)) {
 		if (source === "story") continue;
 		const actor = resolveActor(source);
 		if (!actor?.isOwner) continue;
-		if (!FLAG_LIMIT_TYPES.has(actor.type)) continue;
+		if (!FLAG_LIMIT_TYPES.has(actor.type) && actor.type !== "challenge")
+			continue;
 		const existing = actor.system.limits;
 		const fields = actor.type === "hero" ? ["label"] : ["label", "max"];
 		const updated = existing.map((limit) =>

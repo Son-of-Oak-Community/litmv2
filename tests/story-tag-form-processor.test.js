@@ -424,6 +424,24 @@ describe("applyLimitUpdates", () => {
 			expect(result.flagLimitsWritten).toBe(true);
 		});
 
+		it("writes a Challenge's edited max through its own setLimits", async () => {
+			const challenge = fakeActor({
+				type: "challenge",
+				system: {
+					limits: [{ id: "C1", label: "Harm", max: 3, hidden: false }],
+					setLimits: vi.fn().mockResolvedValue(undefined),
+				},
+			});
+			const baseline = { Actor__c: { C1: { label: "Harm", max: "3" } } };
+			const form = { Actor__c: { C1: { label: "Harm", max: "4" } } };
+
+			await applyLimitUpdates(form, [], () => challenge, baseline);
+
+			expect(challenge.system.setLimits).toHaveBeenCalledWith([
+				{ id: "C1", label: "Harm", max: "4", hidden: false },
+			]);
+		});
+
 		it("never writes a hero's max, which is fixed by the world", async () => {
 			const hero = fakeActor({
 				type: "hero",
@@ -439,5 +457,31 @@ describe("applyLimitUpdates", () => {
 
 			expect(hero.system.setLimits).not.toHaveBeenCalled();
 		});
+	});
+});
+
+// The max box renders empty with a "~" placeholder for "no maximum".
+describe("applyLimitUpdates — empty max box", () => {
+	const run = (formMax, renderedMax, liveMax) =>
+		applyLimitUpdates(
+			{ story: { l1: { label: "Wall", max: formMax } } },
+			[{ id: "l1", label: "Wall", max: liveMax }],
+			() => null,
+			{ story: { l1: { label: "Wall", max: renderedMax } } },
+		);
+
+	it("leaves an untouched no-maximum limit alone", async () => {
+		const result = await run("", "", 0);
+		expect(result.storyLimits).toBeNull();
+	});
+
+	it("does not overwrite a max someone else changed while the box sat empty", async () => {
+		const result = await run("", "", 5);
+		expect(result.storyLimits).toBeNull();
+	});
+
+	it("clearing a max makes it no maximum", async () => {
+		const result = await run("", "4", 4);
+		expect(result.storyLimits[0].max).toBe(0);
 	});
 });

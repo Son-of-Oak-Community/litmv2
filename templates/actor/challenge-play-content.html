@@ -19,7 +19,7 @@
 					{{/if}}
 					{{#if limit.isImpossible}}
 					<div class="limit-controls">
-						<span class="limit-impossible">~</span>
+						<span class="limit-impossible" data-tooltip="{{localize 'LITM.Ui.limit_immune'}}">~</span>
 					</div>
 					{{else if (or limit.isAutoManaged (not @root.isOwner))}}
 					<div class="limit-controls">

@@ -17,6 +17,7 @@ import {
 	parseTagString,
 	tagDragData,
 } from "../../item/action/tag-string.js";
+import { toggleLimitHiddenIn } from "../../actor/mixins/limits-mixin.js";
 import { info } from "../../logger.js";
 import { bindActionPresubmit } from "../../sheets/action-presubmit.js";
 import {
@@ -131,6 +132,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			"open-sheet": StoryTagSidebar.#onOpenSheet,
 			"toggle-visibility": StoryTagSidebar.#onToggleVisibility,
 			"toggle-effect-visibility": StoryTagSidebar.#onToggleEffectVisibility,
+			"toggle-limit-visibility": StoryTagSidebar.#onToggleLimitVisibility,
+			"remove-all-tags": StoryTagSidebar.#onRemoveAllTags,
+			"remove-actor": StoryTagSidebar.#onRemoveActor,
 			"add-actor": StoryTagSidebar.#onAddActor,
 			"remove-tag": StoryTagSidebar.#onRemoveTag,
 			"deactivate-tag": StoryTagSidebar.#onDeactivateTag,
@@ -466,17 +470,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			await this.#prepareActorContext(actor, heroLimit);
 		}
 
-		// Partition story tags by limit (GM only)
-		if (game.user.isGM) {
-			const storyPartitioned = partitionTagsByLimit(
-				context.tags,
-				this.storyLimits,
-			);
-			context.storyLimits = storyPartitioned.limits;
-			context.tags = storyPartitioned.ungroupedTags;
-		} else {
-			context.storyLimits = [];
-		}
+		// Partition story tags by limit; players get only the revealed limits
+		const storyPartitioned = partitionTagsByLimit(
+			context.tags,
+			this.storyLimits.filter((l) => game.user.isGM || l.hidden === false),
+		);
+		context.storyLimits = storyPartitioned.limits;
+		context.tags = storyPartitioned.ungroupedTags;
 
 		// Split actors for two-column grid layout in popout
 		const isRight = (a) => a.type === "challenge" || a.type === "journey";
@@ -495,22 +495,26 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		actor.isChallenge = isChallenge;
 		actor.fixedMax = isHero;
 
-		const canSeeLimits =
-			(isChallenge || usesFlagLimits) &&
-			actorDoc &&
-			(game.user.isGM || (usesFlagLimits && actorDoc.isOwner));
-
-		if (canSeeLimits) {
-			const rawLimits = actorDoc.system.limits ?? [];
+		// The GM and a flag-limit owner see every limit; anyone else sees the ones
+		// the Narrator revealed.
+		if ((isChallenge || usesFlagLimits) && actorDoc) {
+			const seesAll = game.user.isGM || (usesFlagLimits && actorDoc.isOwner);
+			const rawLimits = (actorDoc.system.limits ?? []).filter(
+				(l) => seesAll || l.hidden === false,
+			);
 			const overridden = rawLimits.map((l) => ({
 				...l,
 				max: actorDoc.system.getEffectiveMax(l),
 			}));
 
 			const partitioned = partitionTagsByLimit(actor.tags, overridden);
-			// Enrich outcomes for challenge limits
+			// Enrich outcomes for challenge limits; the outcome stays the GM's
 			if (isChallenge) {
 				for (const limit of partitioned.limits) {
+					if (!game.user.isGM) {
+						limit.outcome = "";
+						continue;
+					}
 					limit.enrichedOutcome = limit.outcome
 						? await enrichHTML(limit.outcome, actorDoc)
 						: "";
@@ -637,7 +641,8 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				for (const inp of inputs) inp.classList.remove("litm--locked");
 				const target =
 					event.target.closest("input") ||
-					event.target.closest(".litm--limit-value")?.querySelector("input") ||
+					event.target.closest(".litm--limit-shield")?.querySelector("input") ||
+					limitHeader.querySelector("input.litm--limit-label") ||
 					inputs[0];
 				target.focus();
 				target.select();
@@ -1274,12 +1279,36 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		return this._toggleEffectVisibility(id, actorId);
 	}
 
+	static async #onToggleLimitVisibility(_event, target) {
+		if (!game.user.isGM) return;
+		const { limitId, source } = target.dataset;
+		if (source === "story") {
+			const limits = toggleLimitHiddenIn(this.config.limits ?? [], limitId);
+			if (limits) await LitmSettings.setStoryTags({ ...this.config, limits });
+		} else {
+			await this.#resolveActor(source)?.system.toggleLimitHidden?.(limitId);
+		}
+		return this.#broadcastRender();
+	}
+
+	static #onRemoveAllTags(_event, _target) {
+		return this.#removeAllTags();
+	}
+
+	static #onRemoveActor(_event, target) {
+		return this.#removeActor(target.dataset.id);
+	}
+
 	static #onAddActor(_event, _target) {
 		ui.actors.renderPopout();
 	}
 
-	static #onRemoveTag(_event, target) {
-		this.removeTag(target);
+	// The trash button asks first; Alt+click on the tag stays the instant removal.
+	static async #onRemoveTag(_event, target) {
+		const isStatus = target.dataset.tagType === "status_tag";
+		if (!(await confirmDelete(isStatus ? "LITM.Terms.status" : "LITM.Terms.tag")))
+			return;
+		return this.removeTag(target);
 	}
 
 	static async #onDeactivateTag(_event, target) {
@@ -1330,8 +1359,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const limitId = target.dataset.limitId;
 		if (!limitId) return;
 		const source = target.dataset.source;
+		if (!(await confirmDelete("LITM.Terms.limit"))) return;
 
-		// Actor flag limits (hero/fellowship/journey)
+		// Actor limits (hero/fellowship/journey flags, challenge system.limits)
 		if (source && source !== "story") {
 			const actor = this.#resolveActor(source);
 			if (!actor?.isOwner) return;

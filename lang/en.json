@@ -688,6 +688,7 @@
 			"item_transfer_content": "Select the tags you want to transfer to your backpack.",
 			"item_transfer_success": "Transferred {items} to your backpack.",
 			"item_transfer_title": "Transfer Backpack Tags",
+			"limit_immune": "No maximum — this Limit can't be reached",
 			"limit_label": "Limit Label",
 			"limit_outcome_placeholder": "Outcome when maxed",
 			"limit_reached": "{label}",
