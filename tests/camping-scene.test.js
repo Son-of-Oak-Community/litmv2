@@ -17,6 +17,7 @@ import {
 } from "../modules/apps/camping/camping-context.js";
 import {
 	enqueueOp,
+	enrichThreats,
 	LitmCampingScene,
 	liveIds,
 } from "../modules/apps/camping/camping-scene.js";
@@ -128,6 +129,38 @@ describe("liveIds", () => {
 	it("tolerates a missing id list", () => {
 		expect(liveIds(undefined, [{ id: "a" }])).toEqual([]);
 		expect(liveIds(null, [])).toEqual([]);
+	});
+});
+
+describe("enrichThreats", () => {
+	it("enriches threat and consequences against the vignette item, so statuses render as chips", async () => {
+		const item = { id: "v1", isOwner: true };
+		game.items = { get: vi.fn(() => item) };
+		const enrich = vi.fn(async (text) => `<chip>${text}</chip>`);
+		foundry.applications.ux = { TextEditor: { enrichHTML: enrich } };
+
+		const [out] = await enrichThreats([
+			{
+				id: "v1",
+				name: "Heavy Rain",
+				threat: "Rain [wet-3]",
+				consequences: ["[cold-2]", "[muddy-2]"],
+				isConsequenceOnly: false,
+			},
+		]);
+
+		expect(out).toEqual({
+			id: "v1",
+			name: "Heavy Rain",
+			threat: "<chip>Rain [wet-3]</chip>",
+			consequences: ["<chip>[cold-2]</chip>", "<chip>[muddy-2]</chip>"],
+			isConsequenceOnly: false,
+		});
+		expect(enrich).toHaveBeenCalledWith(
+			"Rain [wet-3]",
+			expect.objectContaining({ relativeTo: item }),
+		);
+		delete foundry.applications.ux;
 	});
 });
 

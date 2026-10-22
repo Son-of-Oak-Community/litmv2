@@ -5,7 +5,7 @@ import {
 import { error, warn } from "../../logger.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { Sockets } from "../../system/sockets.js";
-import { getStoryTagSidebar, localize as t } from "../../utils.js";
+import { enrichHTML, getStoryTagSidebar, localize as t } from "../../utils.js";
 import {
 	applyOperations,
 	buildOperations,
@@ -164,6 +164,26 @@ export function enqueueOp(key, payload) {
  * report their `checked` state as `on`/`kept`; numeric inputs report Number
  * conversions; everything else passes through as a string `value`.
  */
+/**
+ * Enrich Threat snapshots for display, so their tag-string markup renders as
+ * draggable chips the way it does on Journey and Challenge sheets. The
+ * snapshots themselves stay raw: Pack Up's recap is enriched as a ChatMessage.
+ */
+export function enrichThreats(threats) {
+	return Promise.all(
+		threats.map(async (entry) => {
+			const item = game.items.get(entry.id);
+			return {
+				...entry,
+				threat: await enrichHTML(entry.threat, item),
+				consequences: await Promise.all(
+					entry.consequences.map((c) => enrichHTML(c, item)),
+				),
+			};
+		}),
+	);
+}
+
 function buildPayloadFromTarget(target) {
 	const ds = target.dataset;
 	const payload = {};
@@ -355,7 +375,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			hasHeroes,
 			placeOfStay,
 			showThreats,
-			threats,
+			threats: await enrichThreats(threats),
 			hasThreats,
 			sceneStoryTags,
 			hasSceneStoryTags,
