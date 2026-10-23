@@ -581,8 +581,23 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const isStatus = tagType === "status_tag";
 
 		if (isStatus) {
+			// The play board has no inline name field, so ask for one up front.
+			let name = game.i18n.localize("LITM.Terms.status");
+			if ("promptName" in target.dataset) {
+				const result = await foundry.applications.api.DialogV2.input({
+					window: { title: game.i18n.localize("LITM.Ui.add_status") },
+					content: `<div class="form-group">
+						<label for="litm-status-name">${game.i18n.localize("LITM.Ui.status_name")}</label>
+						<input id="litm-status-name" name="name" type="text" required autofocus />
+					</div>`,
+					ok: { label: game.i18n.localize("LITM.Ui.add_status") },
+					rejectClose: false,
+				});
+				name = result?.name?.trim();
+				if (!name) return;
+			}
 			await this.document.createEmbeddedDocuments("ActiveEffect", [
-				statusTagEffect({ name: game.i18n.localize("LITM.Terms.status") }),
+				statusTagEffect({ name }),
 			]);
 		} else {
 			await this.document.system.addStoryTag(
