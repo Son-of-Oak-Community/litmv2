@@ -16,6 +16,7 @@ export function registerUiHooks() {
 	_renderRollDialogHudOnPlayers();
 	_listenToTagDragTransfer();
 	_refreshRollDialogsOnSceneTagChange();
+	_refreshRollDialogOnActorContentChange();
 	_refreshSidebarOnStoryTagsSetting();
 }
 
@@ -233,6 +234,32 @@ function _refreshRollDialogsOnSceneTagChange() {
 			if (app instanceof LitmRollDialog && app.rendered) app.render();
 		}
 	});
+}
+
+/**
+ * Re-render an actor's open roll dialog when its themes or tags change, so the
+ * Sacrifice view's tracks and tag lists follow edits made on the sheet. The
+ * dialog is not a document sheet, so Foundry's own `actor.apps` re-render
+ * never reaches it.
+ */
+function _refreshRollDialogOnActorContentChange() {
+	const refresh = (doc) => {
+		const actor =
+			doc.parent?.documentName === "Actor" ? doc.parent : doc.parent?.parent;
+		if (!actor?.sheet?.hasRollDialog) return;
+		const dialog = actor.sheet.rollDialogInstance;
+		if (dialog.rendered) dialog.render();
+	};
+	for (const hook of [
+		"createItem",
+		"updateItem",
+		"deleteItem",
+		"createActiveEffect",
+		"updateActiveEffect",
+		"deleteActiveEffect",
+	]) {
+		Hooks.on(hook, refresh);
+	}
 }
 
 /**
