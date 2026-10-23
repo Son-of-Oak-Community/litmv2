@@ -581,11 +581,14 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const tagType = target.dataset.tagType || "story_tag";
 		const isStatus = tagType === "status_tag";
 
-		if (isStatus) {
+		if (isStatus && !("promptName" in target.dataset)) {
+			// Edit mode names the row inline, so a fresh placeholder every time.
+			await this.document.createEmbeddedDocuments("ActiveEffect", [
+				statusTagEffect({ name: game.i18n.localize("LITM.Terms.status") }),
+			]);
+		} else if (isStatus) {
 			// The play board has no inline name field, so ask for one up front.
-			let name = game.i18n.localize("LITM.Terms.status");
-			if ("promptName" in target.dataset) {
-				const result = await foundry.applications.api.DialogV2.input({
+			const result = await foundry.applications.api.DialogV2.input({
 					window: { title: game.i18n.localize("LITM.Ui.add_status") },
 					content: `<div class="form-group">
 						<label for="litm-status-name">${game.i18n.localize("LITM.Ui.status_name")}</label>
@@ -594,12 +597,10 @@ export class LitmActorSheet extends LitmSheetMixin(
 					ok: { label: game.i18n.localize("LITM.Ui.add_status") },
 					rejectClose: false,
 				});
-				name = result?.name?.trim();
-				if (!name) return;
-			}
-			await this.document.createEmbeddedDocuments("ActiveEffect", [
-				statusTagEffect({ name }),
-			]);
+			const name = result?.name?.trim();
+			if (!name) return;
+			// A real name stacks onto a same-named status instead of duplicating it.
+			await this.document.system.addStatus(name);
 		} else {
 			await this.document.system.addStoryTag(
 				storyTagEffect({
