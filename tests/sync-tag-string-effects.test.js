@@ -27,6 +27,14 @@ const fakeDoc = (effects = []) => ({
 });
 
 describe("syncTagStringEffects", () => {
+	it("creates new effects hidden when asked, as a Challenge does", async () => {
+		const doc = fakeDoc();
+		await syncTagStringEffects(doc, "[rope], [drenched-2]", { hidden: true });
+
+		const [, created] = doc.createEmbeddedDocuments.mock.calls[0];
+		expect(created.map((c) => c.system.isHidden)).toEqual([true, true]);
+	});
+
 	it("creates story and status effects from markup, skipping weakness/limit tokens", async () => {
 		const doc = fakeDoc();
 		await syncTagStringEffects(

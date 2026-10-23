@@ -2039,6 +2039,17 @@ section.standard-form.litm-actions-app {
 	margin-bottom: var(--spacer-8);
 }
 
+/* Foundry draws a checked box from two layers: ::before pinned to the input's
+   top-left, ::after flowing on its text line. A taller input or line box (as in
+   this name row) drops ::after below ::before — two checkmarks. A grid pins the
+   flowing layer to the same corner. */
+.litm-actor .litm--conceal-toggle input[type="checkbox"] {
+	display: grid;
+	height: auto;
+	padding: 0;
+	line-height: var(--checkbox-size);
+}
+
 /* The header part intentionally skips incremental re-renders in edit mode
    (EDITOR_PARTS), so the alias input is always in the DOM and revealed by
    the checkbox state alone */
@@ -4867,7 +4878,8 @@ section.standard-form.litm-actions-app {
 .litm--story-tags .litm--tag-row .litm--single-use-label,
 .litm--story-tags .litm--tag-row .litm--scratch-label,
 .litm--story-tags .litm--limit-header .litm--tag-action-btn,
-.litm--story-tags .litm--header-visibility {
+.litm--story-tags .litm--header-visibility,
+.litm--story-tags .litm--header-action {
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity var(--transition-normal);
@@ -4880,7 +4892,9 @@ section.standard-form.litm-actions-app {
 .litm--story-tags .litm--tag-row.litm--tag-hidden .litm--visibility-toggle,
 .litm--story-tags .litm--limit-header:hover .litm--tag-action-btn,
 .litm--story-tags .litm--section-header:hover .litm--header-visibility,
-.litm--story-tags .litm--actor-hidden .litm--header-visibility {
+.litm--story-tags .litm--section-header:hover .litm--header-action,
+.litm--story-tags .litm--actor-hidden .litm--header-visibility,
+.litm--story-tags .litm--limit-header .litm--limit-is-hidden {
 	opacity: 1;
 	pointer-events: auto;
 	cursor: pointer;
@@ -4927,7 +4941,8 @@ section.standard-form.litm-actions-app {
 
 /* Collapse toggle & header visibility — ghost buttons */
 .litm--collapse-toggle,
-.litm--story-tags .litm--section-header .litm--visibility-toggle {
+.litm--story-tags .litm--section-header .litm--visibility-toggle,
+.litm--story-tags .litm--section-header .litm--header-action {
 	flex: none;
 	padding: 0 0.2em;
 	background: none;
@@ -4938,9 +4953,15 @@ section.standard-form.litm-actions-app {
 }
 
 .litm--collapse-toggle:hover,
-.litm--story-tags .litm--section-header .litm--visibility-toggle:hover {
+.litm--story-tags .litm--section-header .litm--visibility-toggle:hover,
+.litm--story-tags .litm--section-header .litm--header-action:hover {
 	background: none;
 	color: var(--color-text-primary);
+}
+
+/* A hidden Challenge limit keeps its eye-slash showing, like a hidden tag. */
+.litm--story-tags .litm--limit-header .litm--limit-is-hidden:not(:hover) {
+	color: var(--color-litm-hidden);
 }
 
 /* Same as the per-tag toggle: on a hidden column the eye-slash is the
@@ -5090,6 +5111,39 @@ input[type="text"].litm--quick-add-input,
 	width: 16px;
 	height: 16px;
 	flex-shrink: 0;
+}
+
+/* Shield and mark share one grid cell, so the mark sits on the shield. */
+.litm--limit-shield {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+}
+
+.litm--limit-shield > * {
+	grid-area: 1 / 1;
+}
+
+.litm--limit-shield .litm--limit-icon {
+	width: 22px;
+	height: 22px;
+}
+
+/* Outranks `.litm--limit-header .litm--limit-max`, which comes later. */
+.litm--limit-header .litm--limit-shield .litm--limit-shield-mark {
+	width: 22px;
+	height: auto;
+	padding: 0;
+	font-size: var(--font-size-12);
+	font-weight: 700;
+	line-height: 1;
+	text-align: center;
+	color: var(--color-light-2);
+
+	&::placeholder {
+		color: inherit;
+		opacity: 1;
+	}
 }
 
 .litm--limit-header .litm--limit-label {

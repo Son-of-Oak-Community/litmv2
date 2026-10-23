@@ -148,10 +148,20 @@ export function parseTagString(text) {
  * representation (`system.tags` string ↔ ActiveEffects).
  * @param {Document} doc      The actor (or item) owning the effects
  * @param {string} tagsString Bracket tag markup
+ * @param {object} [options]
+ * @param {boolean} [options.hidden=false]  Create new effects hidden from players
+ *        (existing effects keep their visibility; reconcile never updates it)
  * @returns {Promise<void>}
  */
-export async function syncTagStringEffects(doc, tagsString) {
-	return reconcileTagEffects(doc, parseTagString(tagsString), {
+export async function syncTagStringEffects(
+	doc,
+	tagsString,
+	{ hidden = false } = {},
+) {
+	const desired = parseTagString(tagsString).map((d) =>
+		hidden ? { ...d, system: { ...d.system, isHidden: true } } : d,
+	);
+	return reconcileTagEffects(doc, desired, {
 		filter: (e) =>
 			ACTOR_TAG_TYPES.has(e.type) && !e.getFlag("litmv2", "addonId"),
 	});

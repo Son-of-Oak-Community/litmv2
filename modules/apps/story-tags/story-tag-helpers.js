@@ -210,7 +210,9 @@ export function partitionTagsByLimit(tags, limits) {
 			limit,
 			StatusTagData.stackedTier(statusTierArrays),
 		);
-		return { ...limit, tags: groupedTags, computedValue };
+		// Max 0 is "no maximum" (Core Book p.169); story limits store it as text.
+		const noMax = Number(limit.max) === 0;
+		return { ...limit, tags: groupedTags, computedValue, noMax };
 	});
 	const groupedIds = new Set(
 		groupedLimits.flatMap((l) => l.tags.map((t) => t.id)),

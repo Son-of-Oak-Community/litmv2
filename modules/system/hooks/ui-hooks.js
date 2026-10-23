@@ -18,6 +18,32 @@ export function registerUiHooks() {
 	_refreshRollDialogsOnSceneTagChange();
 	_refreshRollDialogOnActorContentChange();
 	_refreshSidebarOnStoryTagsSetting();
+	_maskConcealedActorDirectory();
+}
+
+/**
+ * Concealed Challenges show their alias in the Actors sidebar, as they do on
+ * the sheet title, the story-tag sidebar and the token nameplate. Foundry
+ * renders the real name there; GM and owners get `maskedName === null`.
+ */
+function _maskConcealedActorDirectory() {
+	Hooks.on("renderActorDirectory", (_app, html) => {
+		if (game.user.isGM) return;
+		for (const li of html.querySelectorAll("[data-entry-id]")) {
+			const masked = game.actors.get(li.dataset.entryId)?.system?.maskedName;
+			if (!masked) continue;
+			const link = li.querySelector(".entry-name");
+			if (link) link.textContent = masked;
+			li.querySelector("img.thumbnail")?.setAttribute("alt", masked);
+		}
+	});
+	// The directory re-renders only for its `renderUpdateKeys` (name, img,
+	// ownership, sort, folder), so a concealment change needs a nudge.
+	Hooks.on("updateActor", (actor, changes) => {
+		if (game.user.isGM || actor.type !== "challenge") return;
+		const sys = changes.system ?? {};
+		if ("concealName" in sys || "alias" in sys) ui.actors?.render();
+	});
 }
 
 function _iconOnlyHeaderButtons() {

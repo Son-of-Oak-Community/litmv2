@@ -74,6 +74,8 @@ for (const file of files) {
 				const value = m[1].trim();
 				if (!value) continue;
 				if (value.includes("{{")) continue;
+				// Symbols with no letters (e.g. "~" for no maximum) have nothing to translate.
+				if (!/\p{L}/u.test(value)) continue;
 				hardcodedPlaceholders.push({
 					file: file.replace(process.cwd() + "/", ""),
 					line: idx + 1,

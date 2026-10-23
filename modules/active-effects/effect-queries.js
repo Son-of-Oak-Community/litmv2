@@ -17,6 +17,18 @@ export function isEffectVisible(e) {
 }
 
 /**
+ * Whether a tag or status the current user adds to `actor` starts hidden.
+ * The GM's additions start hidden so a scene can be prepped in secret — but
+ * not on an actor a player owns: `isHidden` hides it from that owner too, so a
+ * status dropped on a Hero would never reach its player.
+ * @param {Actor|null|undefined} actor
+ * @returns {boolean}
+ */
+export function startsHiddenOn(actor) {
+	return game.user.isGM && !actor?.hasPlayerOwner;
+}
+
+/**
  * Flatten an effect into a plain object suitable for templates and sockets.
  * @param {ActiveEffect} e
  * @returns {object}

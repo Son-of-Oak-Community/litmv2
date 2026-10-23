@@ -135,8 +135,10 @@ function _cleanupAddonEffectsOnDelete() {
  * @param {Item} addonItem    The addon item whose tags to sync
  */
 export async function syncAddonEffects(actor, addonItem) {
+	// Addons live on Challenges, whose tags start hidden from players.
 	const effects = parseTagString(addonItem.system.tags).map((data) => ({
 		...data,
+		system: { ...data.system, isHidden: true },
 		flags: { litmv2: { addonId: addonItem.id } },
 	}));
 	if (!effects.length) return;

@@ -54,7 +54,7 @@
 	{{/if}}
 	{{/if}}
 	<button type="button" class="litm--tag-action-btn" data-action="remove-tag"
-		data-id="{{tag.id}}" data-type="{{source}}" data-tooltip="{{localize 'LITM.Ui.remove'}}" aria-label="{{localize 'LITM.Ui.remove'}}">
+		data-id="{{tag.id}}" data-type="{{source}}" data-tag-type="{{tag.type}}" data-tooltip="{{localize 'LITM.Ui.remove'}}" aria-label="{{localize 'LITM.Ui.remove'}}">
 		<i class="fa-solid fa-trash" aria-hidden="true"></i>
 	</button>
 	{{/if}}
@@ -77,26 +77,42 @@
 {{#*inline 'limitGroup' limit source formKey editable isGM isChallenge fixedMax}}
 <div class="litm--limit-group" data-limit-id="{{limit.id}}" data-source="{{source}}">
 	<div class="litm--limit-header" data-limit-id="{{limit.id}}" data-source="{{source}}">
-		<img src="systems/litmv2/assets/media/icons/limit.svg" alt="" class="litm--limit-icon" aria-hidden="true" />
-		{{#if (and editable (not isChallenge))}}
+		{{!-- The max rides the shield, as on the Challenge sheet; "~" is no maximum.
+		      An editable max is the box itself, left empty for "~" (0 on submit). --}}
+		<span class="litm--limit-shield" {{#if limit.noMax}}data-tooltip="{{localize 'LITM.Ui.limit_immune'}}"{{/if}}>
+			<img src="systems/litmv2/assets/media/icons/limit.svg" alt="" class="litm--limit-icon" aria-hidden="true" />
+			{{#if (and editable (not fixedMax))}}
+			<input class="litm--limit-max litm--limit-shield-mark litm--locked" type="text"
+				name="limits.{{formKey}}.{{limit.id}}.max" value="{{#unless limit.noMax}}{{limit.max}}{{/unless}}" placeholder="~"
+				aria-label="{{localize 'LITM.Terms.limit'}}" />
+			{{else}}
+			<span class="litm--limit-shield-mark" {{#if limit.noMax}}aria-label="{{localize 'LITM.Ui.limit_immune'}}"{{/if}}>{{#if limit.noMax}}~{{else}}{{limit.max}}{{/if}}</span>
+			{{/if}}
+		</span>
+		{{#if editable}}
 		<input class="litm--limit-label litm--locked" type="text" name="limits.{{formKey}}.{{limit.id}}.label" value="{{limit.label}}"
 			data-focus="select" />
 		{{else}}
 		<span class="litm--limit-label">{{limit.label}}</span>
 		{{/if}}
-		<span class="litm--limit-value">
-			{{limit.computedValue}} / {{#if (and editable (not isChallenge) (not fixedMax))}}<input class="litm--limit-max litm--locked" type="text"
-				name="limits.{{formKey}}.{{limit.id}}.max" value="{{limit.max}}" />{{else}}{{limit.max}}{{/if}}
-		</span>
+		<span class="litm--limit-value">{{#unless limit.noMax}}{{limit.computedValue}} / {{limit.max}}{{/unless}}</span>
 		{{#if (and isChallenge limit.outcome)}}
 		<i class="fa-solid fa-circle-info litm--limit-info" aria-hidden="true"
 			data-tooltip="{{limit.enrichedOutcome}}"></i>
+		{{/if}}
+		{{#if isGM}}
+		{{!-- A limit saved before `hidden` existed counts as hidden --}}
+		<button type="button" class="litm--visibility-toggle litm--tag-action-btn{{#unless (eq limit.hidden false)}} litm--limit-is-hidden{{/unless}}"
+			data-action="toggle-limit-visibility" data-limit-id="{{limit.id}}" data-source="{{source}}"
+			data-tooltip="{{localize (ifThen (eq limit.hidden false) 'LITM.Ui.hide' 'LITM.Ui.show')}}" aria-label="{{localize (ifThen (eq limit.hidden false) 'LITM.Ui.hide' 'LITM.Ui.show')}}">
+			<i class="fa-solid {{ifThen (eq limit.hidden false) 'fa-eye' 'fa-eye-slash'}}" aria-hidden="true"></i>
+		</button>
 		{{/if}}
 		{{#if editable}}
 		{{#unless isChallenge}}
 		<button type="button" class="litm--tag-action-btn" data-action="remove-limit" data-limit-id="{{limit.id}}"
 			data-source="{{source}}" data-tooltip="{{localize 'LITM.Ui.remove_limit'}}" aria-label="{{localize 'LITM.Ui.remove_limit'}}">
-			<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+			<i class="fa-solid fa-trash" aria-hidden="true"></i>
 		</button>
 		{{/unless}}
 		{{/if}}
@@ -107,7 +123,7 @@
 		{{> tagItem tag=tag source=../source formKey=../formKey editable=../editable isGM=../isGM}}
 		{{/each}}
 	</ul>
-	{{else}}
+	{{else if editable}}
 	<div class="litm--limit-empty">{{localize "LITM.Ui.drop_statuses_here"}}</div>
 	{{/if}}
 </div>
@@ -133,6 +149,12 @@
 			data-action="toggle-visibility" data-id="{{id}}" data-type="actor"
 			data-tooltip="{{localize (ifThen hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}" aria-label="{{localize (ifThen hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}">
 			<i class="fa-solid {{ifThen hidden 'fa-eye-slash' 'fa-eye'}}" aria-hidden="true"></i>
+		</button>
+		{{/if}}
+		{{#if (and ../isGM (not isUserCharacter))}}
+		<button type="button" class="litm--header-action" data-action="remove-actor" data-id="{{id}}"
+			data-tooltip="{{localize 'LITM.Ui.remove'}}" aria-label="{{localize 'LITM.Ui.remove'}}">
+			<i class="fa-solid fa-trash" aria-hidden="true"></i>
 		</button>
 		{{/if}}
 		<button type="button" class="litm--collapse-toggle" data-action="toggle-collapse"
@@ -182,12 +204,16 @@
 				<section class="flexcol" data-id="story" {{#if isGM}}data-context="remove-all-tags"{{/if}}>
 					<h3 class="divider litm--section-header" {{#if isGM}}data-tooltip="{{localize 'LITM.Ui.context_remove_all_tags'}}"{{/if}}>
 						{{localize "LITM.Terms.story_tags"}}
+						{{#if isGM}}
+						<button type="button" class="litm--header-action" data-action="remove-all-tags"
+							data-tooltip="{{localize 'LITM.Ui.context_remove_all_tags'}}" aria-label="{{localize 'LITM.Ui.context_remove_all_tags'}}">
+							<i class="fa-solid fa-trash" aria-hidden="true"></i>
+						</button>
+						{{/if}}
 					</h3>
-					{{#if isGM}}
 					{{#each storyLimits as |limit|}}
-					{{> limitGroup limit=limit source="story" formKey="story" editable=true isGM=true isChallenge=false fixedMax=false}}
+					{{> limitGroup limit=limit source="story" formKey="story" editable=@root.isGM isGM=@root.isGM isChallenge=false fixedMax=false}}
 					{{/each}}
-					{{/if}}
 					<ul class="plain">
 						{{#each tags as |tag|}}
 						{{> tagItem tag=tag source="story" formKey="story" editable=../isGM isGM=../isGM}}

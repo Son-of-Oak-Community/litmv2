@@ -89,3 +89,32 @@ describe("ChallengeData.migrateData — id-less legacy limits", () => {
 		expect(ChallengeData.migrateData(source).limits[0].id).toBe("persisted-id");
 	});
 });
+
+// A revealed limit is what Limited sheet viewers and the sidebar show players.
+describe("ChallengeData.toggleLimitHidden", () => {
+	const limit = { id: "lim-1", label: "Harvest", max: 4, value: 1 };
+	const other = { id: "lim-2", label: "Flee", max: 2, value: 0 };
+	const makeModel = (limits) => {
+		const model = new ChallengeData({ _source: { limits } });
+		model.setLimits = vi.fn();
+		return model;
+	};
+
+	it("reveals a limit saved before the field existed (it counts as hidden)", async () => {
+		const model = makeModel([limit, other]);
+		await model.toggleLimitHidden("lim-1");
+		expect(model.setLimits).toHaveBeenCalledWith([{ ...limit, hidden: false }, other]);
+	});
+
+	it("hides a revealed limit again", async () => {
+		const model = makeModel([{ ...limit, hidden: false }]);
+		await model.toggleLimitHidden("lim-1");
+		expect(model.setLimits).toHaveBeenCalledWith([{ ...limit, hidden: true }]);
+	});
+
+	it("ignores an unknown id", async () => {
+		const model = makeModel([limit]);
+		await model.toggleLimitHidden("nope");
+		expect(model.setLimits).not.toHaveBeenCalled();
+	});
+});

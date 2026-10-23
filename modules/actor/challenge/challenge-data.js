@@ -72,6 +72,8 @@ export class ChallengeData extends LimitsMixin(
 					// What Advance and Set Back added on top of the linked statuses; the
 					// recalc keeps it. Negative for a Set Back, so no `min`.
 					advanced: new fields.NumberField({ initial: 0, integer: true }),
+					// Shown to Limited viewers only once the Narrator reveals it.
+					hidden: new fields.BooleanField({ initial: true }),
 				}),
 			),
 			tags: new fields.StringField({
@@ -291,6 +293,7 @@ export class ChallengeData extends LimitsMixin(
 	 * @returns {Promise<void>}
 	 */
 	async syncEffectsFromTagString(tagsString) {
-		return syncTagStringEffects(this.parent, tagsString);
+		// A Challenge's stat block is the Narrator's until revealed tag by tag.
+		return syncTagStringEffects(this.parent, tagsString, { hidden: true });
 	}
 }

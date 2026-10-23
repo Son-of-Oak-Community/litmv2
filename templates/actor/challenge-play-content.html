@@ -11,11 +11,17 @@
 							src="systems/litmv2/assets/media/icons/limit.svg" height="25" width="25" class="limit-icon" alt="" aria-hidden="true" />
 						<span class="limit-max">{{#if limit.isImpossible}}~{{else}}{{limit.max}}{{/if}}</span>
 					</span>
+					{{#if (and @root.isOwner limit.isOwn)}}
+					<button type="button" data-action="toggleLimitHidden" data-limit-id="{{limit.id}}"
+						data-tooltip="{{localize 'LITM.Ui.toggle_vignette_hidden'}}" aria-label="{{localize 'LITM.Ui.toggle_vignette_hidden'}}">
+						<i class="fa-solid {{ifThen (eq limit.hidden false) 'fa-eye' 'fa-eye-slash'}}" aria-hidden="true"></i>
+					</button>
+					{{/if}}
 					{{#if limit.isImpossible}}
 					<div class="limit-controls">
-						<span class="limit-impossible">~</span>
+						<span class="limit-impossible" data-tooltip="{{localize 'LITM.Ui.limit_immune'}}">~</span>
 					</div>
-					{{else if limit.isAutoManaged}}
+					{{else if (or limit.isAutoManaged (not @root.isOwner))}}
 					<div class="limit-controls">
 						<div class="limit-shields">
 							{{#progress-buttons limit.value limit.max}}
@@ -87,7 +93,7 @@
 	{{#if displayVignettes.length}}
 	<div class="grid-2col">
 		{{#each displayVignettes as |vignette|}}
-		{{> systems/litmv2/templates/partials/vignette-card-play.html vignette=vignette hasObserverPermission=@root.hasObserverPermission }}
+		{{> systems/litmv2/templates/partials/vignette-card-play.html vignette=vignette hasObserverPermission=@root.hasObserverPermission controlsVisibility=vignette._id }}
 		{{/each}}
 	</div>
 	{{/if}}
