@@ -159,12 +159,6 @@ export function enqueueOp(key, payload) {
 }
 
 /**
- * Extract a setter payload from a change-event target. Reads dataset fields
- * the templates declare alongside `data-update="<key>"`. Boolean inputs
- * report their `checked` state as `on`/`kept`; numeric inputs report Number
- * conversions; everything else passes through as a string `value`.
- */
-/**
  * Enrich Threat snapshots for display, so their tag-string markup renders as
  * draggable chips the way it does on Journey and Challenge sheets. The
  * snapshots themselves stay raw: Pack Up's recap is enriched as a ChatMessage.
@@ -184,6 +178,12 @@ export function enrichThreats(threats) {
 	);
 }
 
+/**
+ * Extract a setter payload from a change-event target. Reads dataset fields
+ * the templates declare alongside `data-update="<key>"`. Boolean inputs
+ * report their `checked` state as `on`/`kept`; numeric inputs report Number
+ * conversions; everything else passes through as a string `value`.
+ */
 function buildPayloadFromTarget(target) {
 	const ds = target.dataset;
 	const payload = {};
