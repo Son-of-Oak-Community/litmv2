@@ -1,3 +1,4 @@
+import { reconcileTagEffects } from "../../active-effects/effect-factories.js";
 import { parseTagString } from "../../item/action/tag-string.js";
 import { LitmItem } from "../../item/litm-item.js";
 import { error } from "../../logger.js";
@@ -107,8 +108,6 @@ function _syncAddonEffectsOnUpdate() {
 		if (item.type !== "addon") return;
 		const actor = item.parent;
 		if (!actor || actor.documentName !== "Actor") return;
-		// Delete-then-recreate: a partial failure wipes the addon's synced tags
-		// with nothing but an unhandledrejection to show for it.
 		resyncAddonEffects(actor, item).catch(console.error);
 	});
 }
@@ -129,34 +128,40 @@ function _cleanupAddonEffectsOnDelete() {
 }
 
 /**
- * Parse an addon item's tag string and create matching ActiveEffects on the parent actor.
- * Each effect is flagged with the addon's ID for later cleanup.
- * @param {Actor} actor       The parent actor
- * @param {Item} addonItem    The addon item whose tags to sync
+ * Effect creation data for an addon's tag string, flagged with the addon's ID
+ * for later cleanup. Addons live on Challenges, whose tags start hidden.
+ * @param {Item} addonItem    The addon item whose tags to read
+ * @returns {object[]}
  */
-export async function syncAddonEffects(actor, addonItem) {
-	// Addons live on Challenges, whose tags start hidden from players.
-	const effects = parseTagString(addonItem.system.tags).map((data) => ({
+function addonEffectData(addonItem) {
+	return parseTagString(addonItem.system.tags).map((data) => ({
 		...data,
 		system: { ...data.system, isHidden: true },
 		flags: { litmv2: { addonId: addonItem.id } },
 	}));
+}
+
+/**
+ * Parse an addon item's tag string and create matching ActiveEffects on the parent actor.
+ * @param {Actor} actor       The parent actor
+ * @param {Item} addonItem    The addon item whose tags to sync
+ */
+export async function syncAddonEffects(actor, addonItem) {
+	const effects = addonEffectData(addonItem);
 	if (!effects.length) return;
 
 	await actor.createEmbeddedDocuments("ActiveEffect", effects);
 }
 
 /**
- * Delete existing ActiveEffects from an addon, then recreate from its current tags.
+ * Converge an addon's synced effects onto its current tags. Tags that are
+ * still there keep their play state — revealed, scratched — so editing an
+ * addon never re-hides what the Narrator already showed.
  * @param {Actor} actor       The parent actor
  * @param {Item} addonItem    The updated addon item
  */
 export async function resyncAddonEffects(actor, addonItem) {
-	const toDelete = actor.effects
-		.filter((e) => e.getFlag("litmv2", "addonId") === addonItem.id)
-		.map((e) => e.id);
-	if (toDelete.length) {
-		await actor.deleteEmbeddedDocuments("ActiveEffect", toDelete);
-	}
-	await syncAddonEffects(actor, addonItem);
+	return reconcileTagEffects(actor, addonEffectData(addonItem), {
+		filter: (e) => e.getFlag("litmv2", "addonId") === addonItem.id,
+	});
 }

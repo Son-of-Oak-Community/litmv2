@@ -6,7 +6,7 @@ Guidance for Claude Code when working on litmv2.
 
 Legend in the Mist is a Foundry VTT v14 system (id: `litmv2`) for a rustic fantasy RPG based on the Mist Engine. Pure ES modules — no build step.
 
-Foundry source is symlinked at `./foundry/` (client code in `public/`, CSS at `public/css/foundry2.css`). API docs: <https://foundryvtt.com/api/v14/>. Prefer the `fvtt-v14-*` skills for Foundry patterns and `find-docs` for API lookup.
+Foundry source is symlinked at `./foundry/` (client code in `public/`, CSS at `public/css/foundry2.css`). API docs: <https://foundryvtt.com/api/v14/>. Prefer the `fvtt-v14:*` skills for Foundry patterns and `find-docs` for API lookup.
 
 ## Commands
 
@@ -15,6 +15,8 @@ Foundry source is symlinked at `./foundry/` (client code in `public/`, CSS at `p
 - `npm run i18n:diff` — translator diagnostic; diffs each non-English language against `lang/en.json`
 
 Local runtime-verification steps (launching the test world, rules-as-written source path) live in the gitignored `CLAUDE.local.md` — machine-specific, so not checked in.
+
+For CSS or rendering changes, screenshot the changed element next to its normal rendering elsewhere in the system (for example a tag chip on the hero sheet), and compare size, alignment and icons before calling it fixed.
 
 ## Extensibility (don't break the public API surface)
 
