@@ -1700,8 +1700,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			const firstLive = isPainful ? themes.find((t) => !isThemeSpent(t)) : null;
 			this.#sacrificeThemeId = (firstLive ?? themes[0]).id;
 		}
-		const trackPips = (value) =>
-			Array.from({ length: 3 }, (_, i) => ({ filled: i < (value ?? 0) }));
+		const trackPips = (value, length = 3) =>
+			Array.from({ length }, (_, i) => ({ filled: i < (value ?? 0) }));
 		return themes.map((theme) => {
 			const effects = [...theme.effects];
 			const powerTags = effects
@@ -1738,7 +1738,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					},
 					{
 						label: game.i18n.localize("LITM.Ui.improve"),
-						pips: trackPips(theme.system?.improve?.value),
+						pips: trackPips(
+							theme.system?.improve?.value,
+							CONFIG.litmv2.improveThreshold,
+						),
 					},
 					{
 						label: game.i18n.localize("LITM.Themes.milestone"),
