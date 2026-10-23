@@ -91,7 +91,12 @@ describe("_syncStoryThemeItemToActor (updateItem)", () => {
 
 describe("_syncAddonEffectsOnUpdate (updateItem)", () => {
 	const build = () => {
-		const stale = asEffect({ id: "stale", getFlag: vi.fn(() => "addon-1") });
+		const stale = asEffect({
+			id: "stale",
+			name: "Stale",
+			type: "story_tag",
+			getFlag: vi.fn(() => "addon-1"),
+		});
 		const actor = fakeActor({ type: "challenge", effects: [stale] });
 		const addon = fakeItem({ id: "addon-1", type: "addon" });
 		addon.parent = actor;
@@ -104,9 +109,8 @@ describe("_syncAddonEffectsOnUpdate (updateItem)", () => {
 		const { addon, actor } = build();
 		callAll("updateItem", addon, { system: { tags: "[Fog]" } }, {}, ME);
 		await vi.waitFor(() =>
-			expect(actor.createEmbeddedDocuments).toHaveBeenCalledTimes(1),
+			calledOnceWith(actor.deleteEmbeddedDocuments, "ActiveEffect", ["stale"]),
 		);
-		calledOnceWith(actor.deleteEmbeddedDocuments, "ActiveEffect", ["stale"]);
 	});
 
 	it("does nothing on any other client", async () => {
