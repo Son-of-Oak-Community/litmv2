@@ -22,7 +22,7 @@
 				{{/unless}}{{/if}}
 			</header>
 			{{#if threat}}
-			<p class="litm-camping-scene__threat-description">{{threat}}</p>
+			<div class="litm-camping-scene__threat-description">{{{threat}}}</div>
 			{{/if}}
 			{{#if ../isGM}}
 			{{#if consequences.length}}
@@ -30,7 +30,7 @@
 				<h4 class="litm-camping-scene__sub-label">{{localize "LITM.Ui.camping_threats_consequences"}}</h4>
 				<ul class="plain">
 					{{#each consequences}}
-					<li>{{this}}</li>
+					<li>{{{this}}}</li>
 					{{/each}}
 				</ul>
 			</div>
