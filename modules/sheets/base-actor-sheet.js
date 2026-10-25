@@ -12,6 +12,7 @@ import { clampTier, maxStatusTier } from "../active-effects/status-tag-data.js";
 import { resolveRollDialogOwnership } from "../apps/roll/roll-pipeline.js";
 import {
 	mapEffectForUI,
+	parseQuickAddInput,
 	toTiers,
 } from "../apps/story-tags/story-tag-helpers.js";
 import { completeTrackUpdate } from "../system/chat.js";
@@ -597,10 +598,16 @@ export class LitmActorSheet extends LitmSheetMixin(
 					ok: { label: game.i18n.localize("LITM.Ui.add_status") },
 					rejectClose: false,
 				});
-			const name = result?.name?.trim();
-			if (!name) return;
+			const input = result?.name?.trim();
+			if (!input) return;
+			// Read "name-N" as the story-tag sidebar's quick-add does: a status
+			// named "name" at tier N. Anything else is the name as typed.
+			const parsed = parseQuickAddInput(input);
+			const tiered = parsed?.type === "status_tag";
+			const name = tiered ? parsed.name : input;
+			const options = tiered && parsed.tier ? { tier: parsed.tier } : {};
 			// A real name stacks onto a same-named status instead of duplicating it.
-			await this.document.system.addStatus(name);
+			await this.document.system.addStatus(name, options);
 		} else {
 			await this.document.system.addStoryTag(
 				storyTagEffect({
