@@ -131,7 +131,13 @@ export function checkImprove({
 	return OK;
 }
 
-/** Shared by both Spend Power relays: a spendable card with Power left. */
+/**
+ * Shared by both Spend Power relays: a spendable card with Power left.
+ * shortcut: `spent` counts only relayed spends — Power spent on the sender's
+ * own actors and Spend Power's scratches are never billed here, so this caps
+ * the relayed share, not the card total. Upgrade when the card carries a
+ * spend ledger its author can't write.
+ */
 function checkSpend({ sender, card, ownsRollActor, cost, spent }) {
 	const bound = checkCardBinding({ sender, card, ownsRollActor });
 	if (!bound.ok) return bound;
@@ -179,10 +185,13 @@ export function checkSuccessRelay({
 	if (actorId !== card.actorId) return reject("actor is not the card's");
 	if (receipts.has(card.id, `success:${successKey}`))
 		return reject("success already applied");
+	// 0 skips a variable token; a hole arrives as null. Anything else must be a
+	// whole number: computeSuccessSpend prices a non-number at 0 while
+	// clampTier still applies it.
 	if (
 		!Array.isArray(chosenTiers ?? []) ||
 		(chosenTiers ?? []).some(
-			(n) => Number.isFinite(n) && (!Number.isInteger(n) || n < 1),
+			(n) => n != null && (!Number.isInteger(n) || n < 0),
 		)
 	)
 		return reject("invalid tier choice");

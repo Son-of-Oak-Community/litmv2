@@ -323,8 +323,14 @@ describe("checkSuccessRelay", () => {
 
 	it("rejects tier choices that would price a success below cost", () => {
 		expect(success({ chosenTiers: [-4] }).ok).toBe(false);
-		expect(success({ chosenTiers: [0] }).ok).toBe(false);
 		expect(success({ chosenTiers: "2" }).ok).toBe(false);
+		expect(success({ chosenTiers: ["6"] }).ok).toBe(false);
+		expect(success({ chosenTiers: [1.5] }).ok).toBe(false);
+	});
+
+	it("accepts skipped (0) and unset (null) tier slots", () => {
+		expect(success({ chosenTiers: [0, 2] }).ok).toBe(true);
+		expect(success({ chosenTiers: [null, 0] }).ok).toBe(true);
 	});
 
 	it("rejects an unresolved success (no cost)", () => {

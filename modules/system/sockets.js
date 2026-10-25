@@ -81,7 +81,9 @@ export class Sockets {
 		this.#bound = true;
 		// The server appends the real sending user's id as the second argument
 		// and drops any extra arguments a client emits; that, not anything in
-		// the payload, is who sent the packet.
+		// the payload, is who sent the packet. Undocumented: it is
+		// `handleCustomSocket` in foundry/dist/server/sockets.mjs (v14.369) —
+		// recheck it on a core bump.
 		game.socket.on("system.litmv2", (data, senderId) => {
 			if (!game.users.get(senderId))
 				return warn("Dropped a system socket packet with no attested sender");
