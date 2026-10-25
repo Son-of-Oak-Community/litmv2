@@ -5,6 +5,7 @@ import {
 } from "../modules/apps/spend-power-service.js";
 import { Sockets } from "../modules/system/sockets.js";
 import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
+import { asSender, rollCardFields } from "./__helpers__/relay-card.js";
 
 // The service dispatches GM relays through Sockets; mock the module so tests
 // can assert the relayed path without a live socket.
@@ -281,6 +282,8 @@ describe("applySpendIntent — scratch on unowned owners", () => {
 		expect(tag.update).not.toHaveBeenCalled();
 		expect(Sockets.dispatch).toHaveBeenCalledWith("scratchEffect", {
 			uuid: "Effect.t1",
+			messageId: null,
+			via: "spend",
 		});
 		expect(results[0].power).toBe(2);
 	});
@@ -318,6 +321,10 @@ describe("applySpendIntent — scratch on unowned owners", () => {
 describe("handleApplyStatusAsGM — GM socket handler", () => {
 	beforeEach(() => {
 		game.user.isGM = true;
+		asSender();
+		game.messages.get = vi.fn((id) =>
+			id === "m1" ? { id, ...rollCardFields({ actorId: "h1" }) } : null,
+		);
 	});
 
 	it("adds the status on the resolved actor", async () => {
@@ -327,6 +334,7 @@ describe("handleApplyStatusAsGM — GM socket handler", () => {
 
 		await handleApplyStatusAsGM({
 			op: "add",
+			senderId: "player-1",
 			userId: "player-1",
 			messageId: "m1",
 			actorId: "c1",
@@ -348,6 +356,7 @@ describe("handleApplyStatusAsGM — GM socket handler", () => {
 
 		await handleApplyStatusAsGM({
 			op: "reduce",
+			senderId: "player-1",
 			userId: "player-1",
 			messageId: "m1",
 			actorId: "c1",
@@ -366,6 +375,7 @@ describe("handleApplyStatusAsGM — GM socket handler", () => {
 
 		await handleApplyStatusAsGM({
 			op: "add",
+			senderId: "player-1",
 			userId: "player-1",
 			messageId: "m1",
 			actorId: "gone",
@@ -387,6 +397,7 @@ describe("handleApplyStatusAsGM — GM socket handler", () => {
 
 		await handleApplyStatusAsGM({
 			op: "reduce",
+			senderId: "player-1",
 			userId: "player-1",
 			messageId: "m1",
 			actorId: "c1",

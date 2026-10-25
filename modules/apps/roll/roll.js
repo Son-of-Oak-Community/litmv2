@@ -113,6 +113,15 @@ export class LitmRoll extends foundry.dice.Roll {
 		return theme?.name || null;
 	}
 
+	/** Whether the card offers Spend Power; the GM relays check the same. */
+	get canSpendPower() {
+		return (
+			(this.litm.type === "tracked" || this.litm.type === "mitigate") &&
+			(this.outcome.label === "success" || this.outcome.label === "snc") &&
+			this.power > 0
+		);
+	}
+
 	get modifier() {
 		return this.options.modifier || 0;
 	}
@@ -144,10 +153,7 @@ export class LitmRoll extends foundry.dice.Roll {
 			maxStatusTier: maxStatusTier(),
 			user: game.user.id,
 			isOwner: game.user.isGM || this.actor?.isOwner,
-			canSpendPower:
-				(this.litm.type === "tracked" || this.litm.type === "mitigate") &&
-				(this.outcome.label === "success" || this.outcome.label === "snc") &&
-				this.power > 0,
+			canSpendPower: this.canSpendPower,
 			// With automatic Improve marking disabled, offer the manual button
 			// for rolls that invoked a weakness/relationship tag. `gainedExp`
 			// doubles as the already-marked latch: the auto path persists it

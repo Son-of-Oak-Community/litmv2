@@ -58,9 +58,12 @@ export async function createLegacyRelationshipEffects(actor) {
  * Fires `litm.trackCompleted` when the mark fills the track.
  * @param {Actor} actor - The hero actor
  * @param {object} tag - Tag object with uuid and type properties
+ * @param {object} [options]
+ * @param {string} [options.messageId] - The roll card that earned the mark;
+ *   the GM relay checks the tag against it
  * @returns {Promise<object|null>} The fired trackInfo, or null
  */
-export async function gainImprovement(actor, tag) {
+export async function gainImprovement(actor, tag, { messageId } = {}) {
 	// Relationship tags always improve the fellowship theme
 	if (tag.type === EFFECT_TYPES.relationship_tag) {
 		// On an Acting Together roll the rolling actor *is* the Fellowship, and
@@ -73,7 +76,7 @@ export async function gainImprovement(actor, tag) {
 		if (!fellowship) return null;
 		const theme = findFellowshipTheme(fellowship);
 		if (!theme) return null;
-		return markThemeImprove(theme, fellowship, actor, tag);
+		return markThemeImprove(theme, fellowship, actor, tag, messageId);
 	}
 
 	// Trace effect → parent theme → owner actor via UUID
@@ -84,7 +87,7 @@ export async function gainImprovement(actor, tag) {
 	if (!parentTheme || parentTheme.type !== ITEM_TYPES.theme) return null;
 	const owner = parentTheme.parent;
 	if (!owner) return null;
-	return markThemeImprove(parentTheme, owner, actor, tag);
+	return markThemeImprove(parentTheme, owner, actor, tag, messageId);
 }
 
 /**
@@ -97,14 +100,16 @@ export async function gainImprovement(actor, tag) {
  * @param {Actor} owner
  * @param {Actor} actor - The rolling actor
  * @param {object} tag
+ * @param {string} [messageId]
  * @returns {Promise<object|null>}
  */
-async function markThemeImprove(theme, owner, actor, tag) {
+async function markThemeImprove(theme, owner, actor, tag, messageId) {
 	if (!theme.isOwner) {
 		if (game.users.activeGM) {
 			Sockets.dispatch("gainImprovement", {
 				actorId: actor.id,
 				tag: { type: tag.type, uuid: tag.uuid },
+				messageId,
 			});
 		} else {
 			ui.notifications.warn(

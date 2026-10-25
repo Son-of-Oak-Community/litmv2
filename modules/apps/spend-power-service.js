@@ -8,6 +8,12 @@ import {
 import { applySuccess } from "../item/action/chat-actions.js";
 import { error, warn } from "../logger.js";
 import { FLAGS } from "../system/config.js";
+import {
+	checkStatusRelay,
+	checkSuccessRelay,
+	relayReceipts,
+	resolveRelayCard,
+} from "../system/relay-guards.js";
 import { Sockets } from "../system/sockets.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
 
@@ -99,7 +105,11 @@ export async function applySpendIntent(actor, intent) {
 					break;
 				}
 				case "scratchPicker": {
-					const { power, tags } = await _applyScratchPicker(opt, charge);
+					const { power, tags } = await _applyScratchPicker(
+						opt,
+						messageId,
+						charge,
+					);
 					results.push({
 						kind: "scratchPicker",
 						optionId: opt.optionId,
@@ -324,7 +334,9 @@ function _enqueueRelay(payload, label, fn) {
 }
 
 async function _handleApplyStatusAsGM({
+	senderId,
 	userId,
+	messageId,
 	op,
 	actorId,
 	effectId,
@@ -338,18 +350,41 @@ async function _handleApplyStatusAsGM({
 	// "nothing" branch of the success relay).
 	if (!actor) return _whisperRelayNothing(userId, null);
 
+	let effect = null;
+	let cost;
 	if (op === "add") {
-		await actor.system.addStatus(name, {
-			tier: _inflictTier(tier),
-			isHidden: false,
-		});
-		return;
-	}
-	if (op === "reduce") {
-		const effect = resolveEffect(effectId, actor);
+		cost = _inflictTier(tier);
+	} else if (op === "reduce") {
+		effect = resolveEffect(effectId, actor);
 		if (!effect) return _whisperRelayNothing(userId, actor);
+		cost = tiers;
+	} else {
+		return warn(`applyStatusAsGM rejected: unknown op "${op}"`);
+	}
+
+	// Checked and charged inside the per-message queue, so two relays for one
+	// card can't both pass the budget before either is billed.
+	const sender = game.users.get(senderId);
+	const { card, ownsRollActor } = resolveRelayCard(sender, messageId);
+	const verdict = checkStatusRelay({
+		sender,
+		card,
+		ownsRollActor,
+		cost,
+		spent: relayReceipts.spent(messageId),
+		effect: effect && { isHidden: !!effect.system?.isHidden },
+	});
+	if (!verdict.ok)
+		return warn(
+			`applyStatusAsGM rejected: ${verdict.reason} (senderId ${senderId}, messageId ${messageId}, actorId ${actorId})`,
+		);
+
+	if (op === "add") {
+		await actor.system.addStatus(name, { tier: cost, isHidden: false });
+	} else {
 		await effect.system.reduceTier(tiers, { deleteOnEmpty: true });
 	}
+	if (card) relayReceipts.charge(card.id, cost);
 }
 
 async function _whisperRelayNothing(userId, target) {
@@ -361,7 +396,22 @@ async function _whisperRelayNothing(userId, target) {
 	});
 }
 
+/**
+ * The Power a relayed success would cost, priced the way applyActionSuccess
+ * bills it; null when the card's Action or the success doesn't resolve.
+ */
+async function _relayedSuccessCost(messageId, successKey, choices) {
+	const message = messageId ? game.messages.get(messageId) : null;
+	const actionUuid = message?.getFlag("litmv2", FLAGS.actionUuid);
+	const action = actionUuid ? await foundry.utils.fromUuid(actionUuid) : null;
+	const success = (action?.system?.successes ?? []).find(
+		(o) => o.id === successKey,
+	);
+	return success ? computeSuccessSpend(getSuccessCost(success), choices) : null;
+}
+
 async function _handleApplySuccessAsGM({
+	senderId,
 	userId,
 	actorId,
 	messageId,
@@ -389,7 +439,28 @@ async function _handleApplySuccessAsGM({
 		};
 	}
 
-	const { status } = await applyActionSuccess({
+	const sender = game.users.get(senderId);
+	const { card, ownsRollActor } = resolveRelayCard(sender, messageId);
+	const verdict = checkSuccessRelay({
+		sender,
+		card,
+		ownsRollActor,
+		actorId,
+		successKey,
+		chosenTiers,
+		cost: await _relayedSuccessCost(messageId, successKey, {
+			chosenTags,
+			chosenTiers,
+		}),
+		spent: relayReceipts.spent(messageId),
+		receipts: relayReceipts,
+	});
+	if (!verdict.ok)
+		return warn(
+			`applySuccessAsGM rejected: ${verdict.reason} (senderId ${senderId}, messageId ${messageId}, successKey ${successKey})`,
+		);
+
+	const { status, spent } = await applyActionSuccess({
 		actor,
 		messageId,
 		successKey,
@@ -399,6 +470,10 @@ async function _handleApplySuccessAsGM({
 		presetLimitInfo,
 	});
 
+	if (status === "applied" && card) {
+		relayReceipts.add(card.id, `success:${successKey}`);
+		relayReceipts.charge(card.id, spent);
+	}
 	// "already" (race-guard double-submit) stays silent: the first apply
 	// already produced the card the player is looking at.
 	if (status !== "nothing") return;
@@ -542,7 +617,7 @@ async function _applyPicker(actor, opt, charge) {
  * (world-pack) story tags carry no actor owner (`isScene`) and route through
  * the story-tag write fork instead.
  */
-async function _applyScratchPicker(opt, charge) {
+async function _applyScratchPicker(opt, messageId, charge) {
 	const { chips, cost } = opt;
 	const tags = [];
 	// Charge only for scratches that actually land. A chip whose owner/effect
@@ -566,7 +641,11 @@ async function _applyScratchPicker(opt, charge) {
 		} else if (game.users.activeGM) {
 			// Players can't write an unowned owner's effect — the active GM
 			// applies the scratch (same relay the roll flow uses for ally tags).
-			Sockets.dispatch("scratchEffect", { uuid: effect.uuid });
+			Sockets.dispatch("scratchEffect", {
+				uuid: effect.uuid,
+				messageId,
+				via: "spend",
+			});
 		} else {
 			warn(`Scratch dropped — no active GM to apply "${tagName}".`);
 			continue;
@@ -603,6 +682,7 @@ async function _applyScratchPicker(opt, charge) {
 			Sockets.dispatch("storyTagsUpdate", {
 				operation: "updateTags",
 				data: updates,
+				messageId,
 			});
 			applied = true;
 		} else {

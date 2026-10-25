@@ -1,4 +1,5 @@
 import { resolveEffect } from "../../active-effects/effect-queries.js";
+import { scratchOnce } from "../../active-effects/scratchable-mixin.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { warn } from "../../logger.js";
 import { FLAGS, IMPROVE_MARKING_TAG_TYPES } from "../../system/config.js";
@@ -237,23 +238,6 @@ function relayScratch(tag, event, data) {
 }
 
 /**
- * Scratch as a post-roll consequence: an absolute set, never a toggle. A roll
- * that runs twice (a double press, a retried submit, two approvals) must not
- * un-burn the tag the first run burned.
- * @param {ActiveEffect} effect
- */
-async function scratchOnce(effect) {
-	if (effect.system?.isScratched) return;
-	const owner =
-		effect.parent?.documentName === "Item"
-			? effect.parent.parent
-			: effect.parent;
-	if (Hooks.call("litm.preTagScratched", owner, effect) === false) return;
-	await effect.system.setScratched(true);
-	Hooks.callAll("litm.tagScratched", owner, effect);
-}
-
-/**
  * Apply post-roll side effects: scratch used tags, gain improvements,
  * update roll JSON. Pure of UI concerns.
  */
@@ -282,6 +266,7 @@ export async function processPostRollEffects({
 				relayScratch(tag, "storyTagsUpdate", {
 					operation: "updateTags",
 					data: update,
+					messageId: res.id,
 				});
 			return;
 		}
@@ -291,7 +276,12 @@ export async function processPostRollEffects({
 		const effect = tag.uuid ? foundry.utils.fromUuidSync(tag.uuid) : null;
 		if (effect) {
 			if (effect.isOwner) await scratchOnce(effect);
-			else relayScratch(tag, "scratchEffect", { uuid: tag.uuid });
+			else
+				relayScratch(tag, "scratchEffect", {
+					uuid: tag.uuid,
+					messageId: res.id,
+					via: "roll",
+				});
 			return;
 		}
 		// Diagnostic: a tag came back from the dialog but neither the rolling
@@ -333,7 +323,7 @@ export async function processPostRollEffects({
 		? weaknessTags.filter((t) => IMPROVE_MARKING_TAG_TYPES.has(t.type))
 		: [];
 	for (const tag of realWeaknessTags) {
-		await gainImprovement(actor, tag);
+		await gainImprovement(actor, tag, { messageId: res.id });
 	}
 	roll.options.gainedExp = LitmSettings.autoMarkImprove;
 

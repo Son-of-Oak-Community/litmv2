@@ -4,6 +4,7 @@ import {
 	updateEffectsByParent,
 } from "../../active-effects/effect-factories.js";
 import {
+	isEffectVisible,
 	resolveEffect,
 	startsHiddenOn,
 } from "../../active-effects/effect-queries.js";
@@ -11,13 +12,13 @@ import {
 	maxStatusTier,
 	StatusTagData,
 } from "../../active-effects/status-tag-data.js";
+import { toggleLimitHiddenIn } from "../../actor/mixins/limits-mixin.js";
 import {
 	classifyTagStringMatch,
 	isStatusDescriptor,
 	parseTagString,
 	tagDragData,
 } from "../../item/action/tag-string.js";
-import { toggleLimitHiddenIn } from "../../actor/mixins/limits-mixin.js";
 import { info } from "../../logger.js";
 import { bindActionPresubmit } from "../../sheets/action-presubmit.js";
 import {
@@ -1311,7 +1312,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	// The trash button asks first; Alt+click on the tag stays the instant removal.
 	static async #onRemoveTag(_event, target) {
 		const isStatus = target.dataset.tagType === "status_tag";
-		if (!(await confirmDelete(isStatus ? "LITM.Terms.status" : "LITM.Terms.tag")))
+		if (
+			!(await confirmDelete(isStatus ? "LITM.Terms.status" : "LITM.Terms.tag"))
+		)
 			return;
 		return this.removeTag(target);
 	}
@@ -1651,8 +1654,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			return this.#broadcastRender();
 		}
 
-		// Sort within story tags (pack AEs)
-		const effects = this.#packStoryTags;
+		// Sort within story tags (pack AEs). A player sorts among the tags they
+		// can see: the GM relay refuses writes to hidden ones.
+		const effects = this.#packStoryTags.filter(isEffectVisible);
 		const source = effects.find((e) => e._id === sourceId);
 		if (!source) return;
 

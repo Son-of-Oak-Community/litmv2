@@ -42,13 +42,14 @@ describe("gainImprovement ownership", () => {
 		const roller = fakeActor({ type: "hero" });
 		const { theme, tag } = contributedWeakness({ isOwner: false });
 
-		const result = await gainImprovement(roller, tag);
+		const result = await gainImprovement(roller, tag, { messageId: "m1" });
 
 		expect(result).toBeNull();
 		expect(theme.update).not.toHaveBeenCalled();
 		expect(Sockets.dispatch).toHaveBeenCalledWith("gainImprovement", {
 			actorId: roller.id,
 			tag: { type: "weakness_tag", uuid: tag.uuid },
+			messageId: "m1",
 		});
 	});
 

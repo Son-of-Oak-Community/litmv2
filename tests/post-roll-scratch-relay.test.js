@@ -14,7 +14,7 @@ function run(tag) {
 	return processPostRollEffects({
 		actor: fakeActor({ type: "hero" }),
 		roll: { options: {}, toJSON: () => ({}) },
-		res: { update: vi.fn() },
+		res: { id: "m1", update: vi.fn() },
 		scratchedTags: [tag],
 		powerTags: [],
 		weaknessTags: [],
@@ -27,7 +27,13 @@ const allyTag = () => {
 	foundry.utils.fromUuidSync.mockReturnValue(effect);
 	return { id: "not-mine", uuid: effect.uuid, name: "rope", type: "power_tag" };
 };
-const sceneTag = { id: "s1", _id: "s1", uuid: "Compendium.world.tags.ActiveEffect.s1", name: "fog", type: "story_tag" };
+const sceneTag = {
+	id: "s1",
+	_id: "s1",
+	uuid: "Compendium.world.tags.ActiveEffect.s1",
+	name: "fog",
+	type: "story_tag",
+};
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -41,7 +47,11 @@ describe("post-roll scratch relay", () => {
 		game.users.activeGM = { id: "gm" };
 		const tag = allyTag();
 		await run(tag);
-		expect(Sockets.dispatch).toHaveBeenCalledWith("scratchEffect", { uuid: tag.uuid });
+		expect(Sockets.dispatch).toHaveBeenCalledWith("scratchEffect", {
+			uuid: tag.uuid,
+			messageId: "m1",
+			via: "roll",
+		});
 	});
 
 	it("warns instead of dropping an ally tag when no GM is online", async () => {
@@ -69,7 +79,12 @@ describe("post-roll scratch is idempotent", () => {
 			toggleScratch: vi.fn(),
 		};
 		foundry.utils.fromUuidSync.mockReturnValue(effect);
-		const tag = { id: "elsewhere", uuid: effect.uuid, name: "sword", type: "power_tag" };
+		const tag = {
+			id: "elsewhere",
+			uuid: effect.uuid,
+			name: "sword",
+			type: "power_tag",
+		};
 		await run(tag);
 		await run(tag);
 		expect(effect.system.isScratched).toBe(true);

@@ -5,6 +5,7 @@ import {
 } from "../modules/apps/spend-power-service.js";
 import { Sockets } from "../modules/system/sockets.js";
 import { fakeActor } from "./__helpers__/factories.js";
+import { asSender, rollCardFields } from "./__helpers__/relay-card.js";
 
 vi.mock("../modules/system/sockets.js", () => ({
 	Sockets: { dispatch: vi.fn() },
@@ -115,11 +116,16 @@ describe("applySpendIntent — Inflict tier is clamped to the status track", () 
 describe("handleApplyStatusAsGM — clamps a relayed add", () => {
 	beforeEach(() => {
 		game.user.isGM = true;
+		asSender();
+		game.messages.get = vi.fn((id) =>
+			id === "m1" ? { id, ...rollCardFields({ actorId: "h1" }) } : null,
+		);
 	});
 
 	const relay = (tier) =>
 		handleApplyStatusAsGM({
 			op: "add",
+			senderId: "player-1",
 			userId: "player-1",
 			messageId: "m1",
 			actorId: "c1",

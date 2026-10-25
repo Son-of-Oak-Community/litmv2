@@ -1,4 +1,4 @@
-import { scratchTag } from "../active-effects/scratchable-mixin.js";
+import { scratchOnce } from "../active-effects/scratchable-mixin.js";
 import { gainImprovement } from "../actor/hero/hero-data.js";
 import { resolveApprovedRoll } from "../apps/roll/moderation.js";
 import { LitmRollDialog } from "../apps/roll/roll-dialog.js";
@@ -10,8 +10,18 @@ import {
 	handleApplyStatusAsGM,
 	handleApplySuccessAsGM,
 } from "../apps/spend-power-service.js";
+import { StoryTagsStore } from "../apps/story-tags/story-tags-store.js";
 import { error, warn } from "../logger.js";
 import { getStoryTagSidebar } from "../utils.js";
+import { ContentSources } from "./content-sources.js";
+import {
+	checkImprove,
+	checkScratch,
+	relayReceipts,
+	resolveRelayCard,
+	sanitizeHeroRequest,
+	sanitizeStoryOp,
+} from "./relay-guards.js";
 
 export class Sockets {
 	static dispatch(event, data) {
@@ -21,14 +31,8 @@ export class Sockets {
 			);
 		}
 
-		const senderId = game.user.id;
 		const id = foundry.utils.randomID();
-		game.socket.emit("system.litmv2", {
-			id,
-			data,
-			event,
-			senderId,
-		});
+		game.socket.emit("system.litmv2", { id, data, event });
 	}
 
 	static #bound = false;
@@ -37,11 +41,14 @@ export class Sockets {
 		Hooks.on(`litm.socket.${event}`, cb);
 		if (this.#bound) return;
 		this.#bound = true;
-		game.socket.on("system.litmv2", (data) => {
-			const { event: e, senderId, ...d } = data;
+		// The server appends the real sending user's id as the second argument
+		// and drops any extra arguments a client emits; that, not anything in
+		// the payload, is who sent the packet.
+		game.socket.on("system.litmv2", (data, senderId) => {
+			if (!game.users.get(senderId))
+				return warn("Dropped a system socket packet with no attested sender");
 			if (senderId === game.userId) return;
-			// senderId is client-authored and so never trustworthy on its own,
-			// but handlers can't even raise the bar without seeing it.
+			const { event: e, senderId: _claimed, ...d } = data ?? {};
 			Hooks.callAll(`litm.socket.${e}`, { ...d, senderId });
 		});
 	}
@@ -126,25 +133,44 @@ export class Sockets {
 			},
 		);
 
-		// Post-roll bookkeeping for ally tags: the rolling client can't
-		// update an effect on an actor it doesn't own, so it asks the
-		// active GM to apply the scratch (burn / single-use consumption).
+		// Post-roll bookkeeping for ally tags, and Spend Power's scratch: the
+		// sender can't update an effect on an actor it doesn't own, so it asks
+		// the active GM, citing the roll card that earned the scratch.
 		// Hooks.callAll drops a relay's promise, so each relay logs its own
 		// failure rather than leave an unhandled rejection on the GM client.
-		Sockets.on("scratchEffect", async ({ data: { uuid } }) => {
-			if (game.user !== game.users.activeGM) return;
-			try {
-				const effect = await foundry.utils.fromUuid(uuid);
-				if (!effect || effect.system?.isScratched) return;
-				const targetActor =
-					effect.parent?.documentName === "Item"
-						? effect.parent.parent
-						: effect.parent;
-				await scratchTag(targetActor, effect);
-			} catch (err) {
-				error("scratchEffect relay failed", err);
-			}
-		});
+		Sockets.on(
+			"scratchEffect",
+			async ({ senderId, data: { uuid, messageId, via } }) => {
+				if (game.user !== game.users.activeGM) return;
+				try {
+					const effect = await foundry.utils.fromUuid(uuid);
+					if (!effect) return;
+					const sender = game.users.get(senderId);
+					const { card, ownsRollActor } = resolveRelayCard(sender, messageId);
+					const verdict = checkScratch({
+						sender,
+						card,
+						ownsRollActor,
+						via,
+						effect: {
+							uuid: effect.uuid,
+							type: effect.type,
+							isSingleUse: !!effect.system?.isSingleUse,
+							isHidden: !!effect.system?.isHidden,
+						},
+						receipts: relayReceipts,
+					});
+					if (!verdict.ok)
+						return warn(
+							`scratchEffect rejected: ${verdict.reason} (senderId ${senderId}, uuid ${uuid}, messageId ${messageId})`,
+						);
+					if (card) relayReceipts.add(card.id, `scratch:${effect.uuid}`);
+					await scratchOnce(effect);
+				} catch (err) {
+					error("scratchEffect relay failed", err);
+				}
+			},
+		);
 
 		// Same relay for Improve: a contributed weakness marks the theme of a
 		// Hero the roller doesn't own.
@@ -152,35 +178,84 @@ export class Sockets {
 		// arrive as two packets, and concurrent handlers would both read the
 		// same Improve value and write the same +1.
 		let improveQueue = Promise.resolve();
-		Sockets.on("gainImprovement", ({ data: { actorId, tag } }) => {
-			if (game.user !== game.users.activeGM) return;
-			improveQueue = improveQueue.then(async () => {
-				try {
-					const actor = game.actors.get(actorId);
-					if (actor) await gainImprovement(actor, tag);
-				} catch (err) {
-					error("gainImprovement relay failed", err);
-				}
-			});
-		});
+		Sockets.on(
+			"gainImprovement",
+			({ senderId, data: { actorId, tag, messageId } }) => {
+				if (game.user !== game.users.activeGM) return;
+				improveQueue = improveQueue.then(async () => {
+					try {
+						// The live effect decides what is marked; the payload's type
+						// is ignored.
+						const effect = tag?.uuid
+							? await foundry.utils.fromUuid(tag.uuid)
+							: null;
+						if (!effect) return;
+						const sender = game.users.get(senderId);
+						const { card, ownsRollActor } = resolveRelayCard(sender, messageId);
+						const verdict = checkImprove({
+							sender,
+							card,
+							ownsRollActor,
+							actorId,
+							effect: { uuid: effect.uuid, type: effect.type },
+							receipts: relayReceipts,
+						});
+						if (!verdict.ok)
+							return warn(
+								`gainImprovement rejected: ${verdict.reason} (senderId ${senderId}, uuid ${tag.uuid}, messageId ${messageId})`,
+							);
+						if (card) relayReceipts.add(card.id, `improve:${effect.uuid}`);
+						const actor = game.actors.get(actorId);
+						if (actor)
+							await gainImprovement(actor, {
+								type: effect.type,
+								uuid: effect.uuid,
+							});
+					} catch (err) {
+						error("gainImprovement relay failed", err);
+					}
+				});
+			},
+		);
 	}
 
 	static #registerStoryTagsListeners() {
-		Sockets.on("storyTagsUpdate", async ({ data: { operation, data } }) => {
-			// Exactly one GM applies the world-pack write — the active GM —
-			// regardless of whether the Tags sidebar is open on any client.
-			// (`doUpdate` self-guards GM and writes through ContentSources; the
-			// sidebar never needed to be rendered.) Mirrors the scratchEffect
-			// handler above. The previous `sidebar?.rendered` gate silently
-			// dropped player edits when the GM's sidebar was closed and
-			// double-applied when multiple GMs had it open.
-			if (game.user !== game.users.activeGM) return;
-			try {
-				await getStoryTagSidebar()?.doUpdate(operation, data);
-			} catch (err) {
-				error("storyTagsUpdate relay failed", err);
-			}
-		});
+		Sockets.on(
+			"storyTagsUpdate",
+			async ({ senderId, data: { operation, data, messageId } }) => {
+				// Exactly one GM applies the world-pack write — the active GM —
+				// regardless of whether the Tags sidebar is open on any client.
+				// (`doUpdate` self-guards GM and writes through ContentSources; the
+				// sidebar never needed to be rendered.) Mirrors the scratchEffect
+				// handler above. The previous `sidebar?.rendered` gate silently
+				// dropped player edits when the GM's sidebar was closed and
+				// double-applied when multiple GMs had it open.
+				if (game.user !== game.users.activeGM) return;
+				try {
+					// The sidebar's player-side checks are UI; re-apply them here.
+					const sender = game.users.get(senderId);
+					const tags = await ContentSources.getStoryTags();
+					const verdict = sanitizeStoryOp(operation, data, {
+						sender,
+						tags: new Map(
+							tags.map((e) => [
+								e.id,
+								{ uuid: e.uuid, isHidden: !!e.system?.isHidden },
+							]),
+						),
+						limitIds: new Set(StoryTagsStore.storyLimits.map((l) => l.id)),
+						...resolveRelayCard(sender, messageId),
+					});
+					if (!verdict.ok)
+						return warn(
+							`storyTagsUpdate rejected: ${verdict.reason} (senderId ${senderId}, operation ${operation})`,
+						);
+					await getStoryTagSidebar()?.doUpdate(operation, verdict.data);
+				} catch (err) {
+					error("storyTagsUpdate relay failed", err);
+				}
+			},
+		);
 
 		// The sender fires `litm.sceneTagsChanged` locally; this is the same
 		// signal for everyone else. Its listeners re-render roll dialogs and
@@ -203,49 +278,59 @@ export class Sockets {
 	// createActor hook (the actor carries a correlation flag), not a return
 	// channel — the socket layer is fire-and-forget.
 	static #registerHeroCreationListener() {
-		Sockets.on(
-			"createHeroAsGM",
-			async ({ data: { actorData, userId, assignToUser } }) => {
-				if (game.user !== game.users.activeGM) return;
-				try {
-					const data = foundry.utils.deepClone(actorData);
-					foundry.utils.setProperty(
-						data,
-						`ownership.${userId}`,
-						foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
-					);
-					const actor = await foundry.documents.Actor.create(data, {
-						renderSheet: false,
-						fromSidebar: false,
-						litm: { skipHeroWizard: true, skipAutoSetup: true },
-					});
-					if (!actor) return;
-					const user = game.users.get(assignToUser || userId);
-					if (user && !user.character)
-						await user.update({ character: actor.id });
-				} catch (err) {
-					error("createHeroAsGM relay failed", err);
-				}
-			},
-		);
+		// One creation in flight per player, so a flood can't fill the world.
+		const inFlight = new Set();
+		Sockets.on("createHeroAsGM", async ({ senderId, data }) => {
+			if (game.user !== game.users.activeGM) return;
+			const sender = game.users.get(senderId);
+			// Rebuilt from what the wizard sends: no ownership, folder or flags
+			// from the payload, and only the sender can own or be assigned it.
+			const verdict = sanitizeHeroRequest({
+				sender,
+				payload: data,
+				levels: foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS,
+			});
+			if (!verdict.ok)
+				return warn(
+					`createHeroAsGM rejected: ${verdict.reason} (senderId ${senderId})`,
+				);
+			if (inFlight.has(senderId))
+				return warn(
+					`createHeroAsGM rejected: a creation is in flight (senderId ${senderId})`,
+				);
+			inFlight.add(senderId);
+			try {
+				const actor = await foundry.documents.Actor.create(verdict.actorData, {
+					renderSheet: false,
+					fromSidebar: false,
+					litm: { skipHeroWizard: true, skipAutoSetup: true },
+				});
+				if (actor && !sender.character)
+					await sender.update({ character: actor.id });
+			} catch (err) {
+				error("createHeroAsGM relay failed", err);
+			} finally {
+				inFlight.delete(senderId);
+			}
+		});
 	}
 
 	// Players can't mutate actors they don't own; when a Spend Power action
 	// success targets a GM-owned actor (or limit), the player's client relays
 	// the fully-resolved apply here and the active GM executes it — flags,
 	// chat card and all. Mirrors the scratchEffect / storyTagsUpdate GM-proxy
-	// pattern; the roll already passed GM moderation, so no confirmation.
+	// pattern; the handlers check the card and its Power budget.
 	static #registerSuccessRelayListener() {
-		Sockets.on("applySuccessAsGM", async ({ data }) => {
+		Sockets.on("applySuccessAsGM", async ({ senderId, data }) => {
 			if (game.user !== game.users.activeGM) return;
-			await handleApplySuccessAsGM(data);
+			await handleApplySuccessAsGM({ ...data, senderId });
 		});
 
 		// Same trust model for the generic Spend Power options: Inflict's
 		// status add and Reduce's tier drop on actors the player doesn't own.
-		Sockets.on("applyStatusAsGM", async ({ data }) => {
+		Sockets.on("applyStatusAsGM", async ({ senderId, data }) => {
 			if (game.user !== game.users.activeGM) return;
-			await handleApplyStatusAsGM(data);
+			await handleApplyStatusAsGM({ ...data, senderId });
 		});
 	}
 

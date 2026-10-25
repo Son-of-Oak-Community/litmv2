@@ -24,6 +24,7 @@ import {
 	IMPROVE_MARKING_TAG_TYPES,
 	POWER_TAG_TYPES,
 } from "../config.js";
+import { relayReceipts } from "../relay-guards.js";
 import { dialogContent, formatCostLabel } from "../renderers/renderer-utils.js";
 import { Sockets } from "../sockets.js";
 
@@ -88,6 +89,8 @@ async function applyThemeSacrifice(actor, level, { themeId, statusName } = {}) {
 
 export function registerChatHooks() {
 	Hooks.on("renderChatMessageHTML", onRenderChatMessage);
+	// A card's relay receipts go with it (see relay-guards.js).
+	Hooks.on("deleteChatMessage", (message) => relayReceipts.forget(message.id));
 	Hooks.on("litm.trackCompleted", _onTrackCompleted);
 	Hooks.on("litm.limitReached", _onLimitReached);
 	_attachContextMenuToRollMessage();
@@ -163,7 +166,7 @@ async function _handleMarkImprove(target) {
 		IMPROVE_MARKING_TAG_TYPES.has(tag.type),
 	);
 	for (const tag of tags) {
-		await gainImprovement(actor, tag);
+		await gainImprovement(actor, tag, { messageId: message.id });
 	}
 
 	roll.options.gainedExp = true;
@@ -693,10 +696,7 @@ function onRenderChatMessage(app, html, _data) {
 	);
 	if (sacrificeBtn) {
 		const roll = app.rolls?.[0];
-		if (
-			roll?.litm?.sacrificeCompleted ||
-			(!app.isAuthor && !game.user.isGM)
-		) {
+		if (roll?.litm?.sacrificeCompleted || (!app.isAuthor && !game.user.isGM)) {
 			sacrificeBtn.remove();
 		}
 	}

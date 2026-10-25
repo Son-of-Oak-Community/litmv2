@@ -5,6 +5,7 @@ import {
 } from "../modules/apps/spend-power-service.js";
 import { makeTagStringRe } from "../modules/system/config.js";
 import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
+import { asSender, rollCardFields } from "./__helpers__/relay-card.js";
 
 // applySuccess (chat-actions) dispatches the GM relay through Sockets; mock
 // the module so tests can assert the relayed path without a live socket.
@@ -28,6 +29,7 @@ function fakeRollMessage({ applied = [], costs = {} } = {}) {
 	};
 	return {
 		id: "m1",
+		...rollCardFields(),
 		getFlag: vi.fn((_scope, key) => flags[key]),
 		update: vi.fn(async () => {}),
 		setFlag: vi.fn(async () => {}),
@@ -208,10 +210,12 @@ describe("handleApplySuccessAsGM — GM socket handler", () => {
 	// activeGM before calling it), so every test sets game.user.isGM.
 	beforeEach(() => {
 		game.user.isGM = true;
+		asSender();
 	});
 
 	function relayPayload(overrides = {}) {
 		return {
+			senderId: "player-1",
 			userId: "player-1",
 			actorId: "h1",
 			messageId: "m1",
@@ -370,6 +374,7 @@ describe("handleApplySuccessAsGM — GM socket handler", () => {
 		};
 		const message = {
 			id: "m1",
+			...rollCardFields(),
 			getFlag: vi.fn((_s, key) => foundry.utils.deepClone(flags[key])),
 			update: vi.fn(async (data) => {
 				for (const [k, v] of Object.entries(data)) {

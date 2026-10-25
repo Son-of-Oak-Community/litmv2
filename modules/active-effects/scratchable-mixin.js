@@ -37,3 +37,20 @@ export async function scratchTag(actor, effect) {
 	Hooks.callAll("litm.tagScratched", actor, effect);
 	return true;
 }
+
+/**
+ * Scratch as a consequence: an absolute set, never a toggle, with the same
+ * hook guards. A roll that runs twice (a double press, a retried submit, two
+ * approvals, a replayed relay) must not un-burn what the first run burned.
+ * @param {ActiveEffect} effect
+ */
+export async function scratchOnce(effect) {
+	if (effect.system?.isScratched) return;
+	const owner =
+		effect.parent?.documentName === "Item"
+			? effect.parent.parent
+			: effect.parent;
+	if (Hooks.call("litm.preTagScratched", owner, effect) === false) return;
+	await effect.system.setScratched(true);
+	Hooks.callAll("litm.tagScratched", owner, effect);
+}
