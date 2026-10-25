@@ -359,7 +359,11 @@ async function _handleApplyStatusAsGM({
 		if (!effect) return _whisperRelayNothing(userId, actor);
 		cost = tiers;
 	} else {
-		return warn(`applyStatusAsGM rejected: unknown op "${op}"`);
+		return Sockets.reportRejected(
+			"applyStatusAsGM",
+			`unknown op "${op}"`,
+			senderId,
+		);
 	}
 
 	// Checked and charged inside the per-message queue, so two relays for one
@@ -375,8 +379,11 @@ async function _handleApplyStatusAsGM({
 		effect: effect && { isHidden: !!effect.system?.isHidden },
 	});
 	if (!verdict.ok)
-		return warn(
-			`applyStatusAsGM rejected: ${verdict.reason} (senderId ${senderId}, messageId ${messageId}, actorId ${actorId})`,
+		return Sockets.reportRejected(
+			"applyStatusAsGM",
+			verdict.reason,
+			senderId,
+			`messageId ${messageId}, actorId ${actorId}`,
 		);
 
 	if (op === "add") {
@@ -456,8 +463,11 @@ async function _handleApplySuccessAsGM({
 		receipts: relayReceipts,
 	});
 	if (!verdict.ok)
-		return warn(
-			`applySuccessAsGM rejected: ${verdict.reason} (senderId ${senderId}, messageId ${messageId}, successKey ${successKey})`,
+		return Sockets.reportRejected(
+			"applySuccessAsGM",
+			verdict.reason,
+			senderId,
+			`messageId ${messageId}, successKey ${successKey}`,
 		);
 
 	const { status, spent } = await applyActionSuccess({

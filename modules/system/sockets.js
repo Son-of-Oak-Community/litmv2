@@ -35,6 +35,44 @@ export class Sockets {
 		game.socket.emit("system.litmv2", { id, data, event });
 	}
 
+	/** Localization key per GM-proxy relay, naming what the sender asked for. */
+	static #RELAY_ACTIONS = {
+		scratchEffect: "LITM.Ui.relay_action_scratch",
+		gainImprovement: "LITM.Ui.relay_action_improve",
+		storyTagsUpdate: "LITM.Ui.relay_action_scene_tags",
+		createHeroAsGM: "LITM.Ui.relay_action_create_hero",
+		applyStatusAsGM: "LITM.Ui.relay_action_status",
+		applySuccessAsGM: "LITM.Ui.relay_action_success",
+	};
+
+	/** Last warning time per "senderId:relay", so a flood of forged packets shows once. */
+	static #lastRejectNotice = new Map();
+
+	/**
+	 * Log a refused GM-proxy relay and tell the Narrator who asked. A
+	 * legitimate request is never refused, so the toast surfaces either a
+	 * tampering player or a bug; the details stay in the console.
+	 * @param {string} relay     Socket event name
+	 * @param {string} reason    Guard verdict reason
+	 * @param {string} senderId  Attested sender
+	 * @param {string} [details] Extra ids for the console
+	 */
+	static reportRejected(relay, reason, senderId, details = "") {
+		warn(
+			`${relay} rejected: ${reason} (senderId ${senderId}${details ? `, ${details}` : ""})`,
+		);
+		const key = `${senderId}:${relay}`;
+		const now = Date.now();
+		if (now - (Sockets.#lastRejectNotice.get(key) ?? 0) < 10_000) return;
+		Sockets.#lastRejectNotice.set(key, now);
+		ui.notifications?.warn(
+			game.i18n.format("LITM.Ui.relay_rejected", {
+				user: game.users.get(senderId)?.name ?? senderId,
+				action: game.i18n.localize(Sockets.#RELAY_ACTIONS[relay] ?? relay),
+			}),
+		);
+	}
+
 	static #bound = false;
 
 	static on(event, cb) {
@@ -161,8 +199,11 @@ export class Sockets {
 						receipts: relayReceipts,
 					});
 					if (!verdict.ok)
-						return warn(
-							`scratchEffect rejected: ${verdict.reason} (senderId ${senderId}, uuid ${uuid}, messageId ${messageId})`,
+						return Sockets.reportRejected(
+							"scratchEffect",
+							verdict.reason,
+							senderId,
+							`uuid ${uuid}, messageId ${messageId}`,
 						);
 					if (card) relayReceipts.add(card.id, `scratch:${effect.uuid}`);
 					await scratchOnce(effect);
@@ -201,8 +242,11 @@ export class Sockets {
 							receipts: relayReceipts,
 						});
 						if (!verdict.ok)
-							return warn(
-								`gainImprovement rejected: ${verdict.reason} (senderId ${senderId}, uuid ${tag.uuid}, messageId ${messageId})`,
+							return Sockets.reportRejected(
+								"gainImprovement",
+								verdict.reason,
+								senderId,
+								`uuid ${tag.uuid}, messageId ${messageId}`,
 							);
 						if (card) relayReceipts.add(card.id, `improve:${effect.uuid}`);
 						const actor = game.actors.get(actorId);
@@ -247,8 +291,11 @@ export class Sockets {
 						...resolveRelayCard(sender, messageId),
 					});
 					if (!verdict.ok)
-						return warn(
-							`storyTagsUpdate rejected: ${verdict.reason} (senderId ${senderId}, operation ${operation})`,
+						return Sockets.reportRejected(
+							"storyTagsUpdate",
+							verdict.reason,
+							senderId,
+							`operation ${operation}`,
 						);
 					await getStoryTagSidebar()?.doUpdate(operation, verdict.data);
 				} catch (err) {
@@ -291,12 +338,16 @@ export class Sockets {
 				levels: foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS,
 			});
 			if (!verdict.ok)
-				return warn(
-					`createHeroAsGM rejected: ${verdict.reason} (senderId ${senderId})`,
+				return Sockets.reportRejected(
+					"createHeroAsGM",
+					verdict.reason,
+					senderId,
 				);
 			if (inFlight.has(senderId))
-				return warn(
-					`createHeroAsGM rejected: a creation is in flight (senderId ${senderId})`,
+				return Sockets.reportRejected(
+					"createHeroAsGM",
+					"a creation is in flight",
+					senderId,
 				);
 			inFlight.add(senderId);
 			try {
