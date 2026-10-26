@@ -108,6 +108,8 @@ Journey --------- Nx vignette (one marked generalConsequences)
 
 Typed sheets inherit through `LitmSheetMixin` → `LitmActorSheet` (items: `LitmItemSheet`); each has a `Landscape` variant. Challenge & Journey also mix in `TagStringSyncMixin`.
 
+`HeroSheetCards` (`landscape-sheets.js`; opt-in via Configure Sheet; root class `.litm-hero-cards`, CSS in `litmv2.css` §25) extends `HeroSheet`, sets `cardsLayout` for the template branches that differ, and owns `toggleHeroPanel` (portrait-panel fold, stored in the client setting `heroPanelCollapsed`) and card drag-reorder: themes by `item.sort`, the Fellowship card (another actor's item) by the hero flag `fellowshipIndex` (`card-order.js`). In both modes a theme's note is on the card's back, never the face (`flipThemeCard`; flip state lives on the sheet instance, not in data). `editNotes` (DialogV2 + `<prose-mirror>` over `system.notes`, a Play-mode button shown only when the sheet `editable`) lives on the base `HeroSheet`, so both hero sheets have it.
+
 All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — `_isEditMode` drives it; `_configureRenderParts()` swaps in the `PLAY_HEADER_TEMPLATE` / `PLAY_DESCRIPTION_TEMPLATE` / `PLAY_CONTENT_TEMPLATE` statics in play mode. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
 
 `LitmActorSheet` also owns the roll dialog (`hasRollDialog`, `rollDialogInstance`, `renderRollDialog`, `resetRollDialog`, `updateRollDialog`). They live on the base, not on `HeroSheet`, because Acting Together rides the Fellowship actor — and because the roll-dialog HUD and the roll sockets address whatever actor the `rollDialogOwner` flag names, without checking its type.

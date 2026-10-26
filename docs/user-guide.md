@@ -31,7 +31,7 @@ closing it; press again to close.
 
 Every character sheet has two modes. **Play** is for the session: tags are
 clickable chips. **Edit** (`E`, or the toggle in the header) is for writing
-themes, tags and notes.
+themes, tags and the hero's description.
 
 Clicking things in Play mode:
 
@@ -48,6 +48,25 @@ Themes, themebooks and tropes are added by dragging them onto the sheet. Marking
 Improve is automatic when you invoke a weakness or relationship tag (unless the
 Narrator turned that off — then the chat card offers a **Mark Improve** button).
 A full Improve track opens theme advancement.
+
+### Hero Sheet (Cards)
+
+An optional layout. Choose **Hero Sheet (Cards)** in the sheet's **Configure
+Sheet** menu (the header's cog); the classic sheet stays the default.
+
+- **Portrait panel.** With a custom portrait, the header shows a wide panel;
+  the arrow button folds it down to a thumbnail. Your choice is remembered per
+  browser, for every Cards sheet you open.
+- **Name and description.** Click the hero's name or the description to expand
+  or collapse a long description.
+- **Statuses first.** Statuses and the backpack's story tags lead the board,
+  above the themes, because they change every scene and statuses count toward
+  Power.
+- **Relationships.** Your relationship tags get their own card, apart from the
+  Fellowship theme.
+- **Notes.** The Notes button in the Play-mode action row opens an editor for
+  the hero's notes. It is there on both sheets, for the hero's owner only, but
+  the notes are not secret: anyone who can see the hero can read them.
 
 ---
 

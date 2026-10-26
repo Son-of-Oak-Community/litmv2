@@ -1,6 +1,6 @@
 <div class="theme-card-header">
 	<div class="flexrow noflex gap-sm">
-		<img class="noflex icon-md" src="{{img}}" alt="{{levelLabel}}" data-tooltip="{{levelLabel}}" />
+		{{#unless @root.cardsLayout}}<img class="noflex icon-md" src="{{img}}" alt="{{levelLabel}}" data-tooltip="{{levelLabel}}" />{{/unless}}
 		{{> systems/litmv2/templates/partials/play-tag.html themeTag
 		noBurn=noBurn
 		action=action

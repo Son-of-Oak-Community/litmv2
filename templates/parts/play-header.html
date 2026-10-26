@@ -1,8 +1,21 @@
-<div class="flexrow gap-md litm--play-header">
+<div class="flexrow gap-md litm--play-header{{#if cardsLayout}} litm--play-header--art{{/if}}">
 	{{> systems/litmv2/templates/partials/play-profile-img.html}}
+	{{#if cardsLayout}}
+	{{!-- Wide layout only (CSS hides it otherwise): folds the portrait panel to a thumbnail. --}}
+	<button type="button" class="litm--hero-panel-toggle" data-action="toggleHeroPanel" aria-expanded="true"
+		data-tooltip="{{localize 'LITM.Ui.hero_panel_toggle'}}" aria-label="{{localize 'LITM.Ui.hero_panel_toggle'}}">
+		<i class="fa-solid fa-angles-left" aria-hidden="true"></i>
+	</button>
+	{{/if}}
 
 	<div class="flex1 flexcol gap-sm">
+		{{#if (and cardsLayout enriched.description)}}
+		<h1 class="litm--hero-name"><button type="button" class="litm--hero-name__toggle"
+			data-action="toggleThemeDescription" aria-controls="litm-hero-description-{{document.id}}" aria-expanded="false"
+			data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}">{{document.name}}</button></h1>
+		{{else}}
 		<h1 {{#if (eq type "hero")}}class="litm--hero-name"{{/if}}>{{#if concealed}}{{concealed.alias}}{{else}}{{document.name}}{{/if}}</h1>
+		{{/if}}
 		{{#if concealed.realName}}
 		<span class="litm--conceal-real-name" data-tooltip="{{localize 'LITM.Ui.conceal_hidden_from_players'}}">
 			<i class="fa-solid fa-eye-slash" aria-hidden="true"></i> {{concealed.realName}}
