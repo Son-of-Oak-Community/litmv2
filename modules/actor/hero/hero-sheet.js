@@ -94,6 +94,7 @@ export class HeroSheet extends LitmActorSheet {
 				"systems/litmv2/templates/partials/edit-theme-tags-activatable.html",
 				"systems/litmv2/templates/partials/icon-fellowship-hint.html",
 				"systems/litmv2/templates/partials/hidden-toggle.html",
+				"systems/litmv2/templates/partials/hero-relationships.html",
 			],
 		},
 	};
@@ -442,6 +443,8 @@ export class HeroSheet extends LitmActorSheet {
 						_id: fellowshipTheme.id,
 						id: fellowshipTheme.id,
 						img: fellowshipTheme.img,
+						levelLabel: data.levelLabel,
+						levelIcon: data.levelIcon,
 						themeTag: data.themeTag,
 						system: data.system,
 					};

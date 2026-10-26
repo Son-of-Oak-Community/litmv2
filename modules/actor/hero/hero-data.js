@@ -228,7 +228,11 @@ export class HeroData extends LimitsMixin(
 	#themeContainers(predicate) {
 		return this.parent.items
 			.filter(predicate)
-			.sort((a, b) => a.sort - b.sort)
+			.sort(
+				(a, b) =>
+					a.sort - b.sort ||
+					a.name.localeCompare(b.name, undefined, { numeric: true }),
+			)
 			.map((theme) => ({
 				theme,
 				tags: dedupeTitleTags(
