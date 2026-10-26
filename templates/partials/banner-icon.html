@@ -1,0 +1,5 @@
+{{!-- A Cards banner's icon. For an owner it is the banner's action button
+(edit, open, add); a viewer sees the plain icon. Takes src (image) or glyph
+(Font Awesome class), action, label, and the action's data: itemId, actorId,
+tagType, promptName. tooltip is the viewer's hover text. --~}}
+{{#if @root.editable}}<button type="button" class="litm--banner-icon" data-action="{{action}}"{{#if itemId}} data-item-id="{{itemId}}"{{/if}}{{#if actorId}} data-actor-id="{{actorId}}"{{/if}}{{#if tagType}} data-tag-type="{{tagType}}"{{/if}}{{#if promptName}} data-prompt-name{{/if}} data-tooltip="{{label}}" aria-label="{{label}}">{{#if src}}<img src="{{src}}" alt="" />{{else}}<i class="fa-solid {{glyph}}" aria-hidden="true"></i>{{/if}}</button>{{else if src}}<img class="litm--banner-icon" src="{{src}}" alt=""{{#if tooltip}} data-tooltip="{{tooltip}}"{{/if}} />{{else}}<i class="litm--banner-icon fa-solid {{glyph}}" aria-hidden="true"></i>{{/if}}

@@ -73,6 +73,22 @@ describe("HeroData.themes", () => {
 		expect(themes[0].tags.map((e) => e.name)).toEqual(["title", "proud"]);
 	});
 
+	it("breaks sort ties by name so all-zero sorts render deterministically", () => {
+		const themes = ["Theme 10", "Theme 3", "Theme 1", "Theme 2"].map((name) => {
+			const theme = fakeItem({ type: "theme", name });
+			theme.sort = 0;
+			theme.system = { isFellowship: false };
+			return theme;
+		});
+		const { model } = makeHero({ items: themes });
+		expect(model.themes.map((t) => t.theme.name)).toEqual([
+			"Theme 1",
+			"Theme 2",
+			"Theme 3",
+			"Theme 10",
+		]);
+	});
+
 	it("collapses duplicate title tags to a single one (read-side guard)", () => {
 		const theme = fakeItem({
 			type: "theme",
@@ -281,5 +297,11 @@ describe("HeroData.fellowshipActor", () => {
 		} finally {
 			delete globalThis.game.litmv2;
 		}
+	});
+});
+
+describe("HeroData schema", () => {
+	it("defaults notes to an empty string", () => {
+		expect(HeroData.defineSchema().notes.options.initial).toBe("");
 	});
 });

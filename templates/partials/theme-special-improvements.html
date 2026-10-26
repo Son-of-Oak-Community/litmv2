@@ -1,9 +1,14 @@
 {{#if system.specialImprovements.length}}
 <div class="flexcol gap-xs">
+	{{#if @root.cardsLayout}}<span class="theme-card__quest-label">{{localize "LITM.Ui.special_improvements"}}</span>{{/if}}
 	<ul class="plain special-improvements-list">
 		{{#each system.specialImprovements as |improvement|}}
 		<li class="{{#if improvement.isLocked}}is-locked{{else}}{{#unless improvement.isActive}}is-inactive{{/unless}}{{/if}}"
-			{{#if improvement.isLocked}}data-tooltip="{{localize 'LITM.Ui.improvement_locked_hint'}}"{{/if}}>
+			{{#if improvement.isLocked}}{{#if (and @root.cardsLayout (or improvement.enrichedDescription improvement.description))}}tabindex="0"
+			data-tooltip="{{#if improvement.enrichedDescription}}{{improvement.enrichedDescription}}{{else}}{{improvement.description}}{{/if}}<hr />{{localize 'LITM.Ui.improvement_locked_hint'}}"
+			{{else}}data-tooltip="{{localize 'LITM.Ui.improvement_locked_hint'}}"{{/if}}
+			{{else if @root.cardsLayout}}{{#if (or improvement.enrichedDescription improvement.description)}}tabindex="0"
+			data-tooltip="{{#if improvement.enrichedDescription}}{{improvement.enrichedDescription}}{{else}}{{improvement.description}}{{/if}}"{{/if}}{{/if}}>
 			{{#if improvement.isLocked}}
 			<i class="fa-solid fa-lock litm-tag-check" aria-hidden="true"></i>
 			{{else}}
@@ -12,11 +17,13 @@
 			{{/if}}
 			<div>
 				<h5>{{improvement.name}}</h5>
+				{{#unless @root.cardsLayout}}
 				{{#if improvement.enrichedDescription}}
 				<div class="enriched-content">{{{improvement.enrichedDescription}}}</div>
 				{{else if improvement.description}}
 				<p>{{improvement.description}}</p>
 				{{/if}}
+				{{/unless}}
 			</div>
 		</li>
 		{{/each}}

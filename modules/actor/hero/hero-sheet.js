@@ -63,6 +63,7 @@ export class HeroSheet extends LitmActorSheet {
 			openThemeEvolution: HeroSheet.#onOpenThemeEvolution,
 			toggleTier: { handler: HeroSheet.#onToggleTier, buttons: [0, 2] },
 			openCamping: HeroSheet.#onOpenCamping,
+			editNotes: HeroSheet._onEditNotes,
 		},
 		form: {
 			handler: HeroSheet.#onSubmitForm,
@@ -88,6 +89,7 @@ export class HeroSheet extends LitmActorSheet {
 			templates: [
 				"systems/litmv2/templates/partials/edit-theme-tags-activatable.html",
 				"systems/litmv2/templates/partials/icon-fellowship-hint.html",
+				"systems/litmv2/templates/partials/hero-relationships.html",
 			],
 		},
 	};
@@ -166,6 +168,33 @@ export class HeroSheet extends LitmActorSheet {
 
 	static #onOpenCamping() {
 		game.litmv2?.LitmCampingScene?.open();
+	}
+
+	/**
+	 * Open the hero's notes in a rich-text dialog and save them on confirm.
+	 * @this {HeroSheet}
+	 */
+	static async _onEditNotes() {
+		// The button is hidden too; this also stops a stale one on a now-locked hero.
+		if (!this.isEditable) return;
+		const id = `litm-notes-${this.document.id}`;
+		// A fixed id would otherwise stack a second dialog with a duplicate DOM id.
+		const open = foundry.applications.instances.get(id);
+		if (open) return open.bringToFront();
+		const { escapeHTML } = foundry.utils;
+		const result = await foundry.applications.api.DialogV2.input({
+			id,
+			window: {
+				title: `${game.i18n.localize("LITM.Ui.notes")}: ${this.document.name}`,
+				icon: "fa-solid fa-feather-pointed",
+			},
+			classes: ["litm-notes-dialog"],
+			position: { width: 560 },
+			content: `<prose-mirror name="notes" data-document-uuid="${this.document.uuid}" value="${escapeHTML(this.document.system.notes)}"></prose-mirror>`,
+			ok: { label: game.i18n.localize("LITM.Ui.notes_save") },
+			rejectClose: false,
+		});
+		if (result) await this.document.update({ "system.notes": result.notes });
 	}
 
 	/** @override */
@@ -309,6 +338,8 @@ export class HeroSheet extends LitmActorSheet {
 						_id: fellowshipTheme.id,
 						id: fellowshipTheme.id,
 						img: fellowshipTheme.img,
+						levelLabel: data.levelLabel,
+						levelIcon: data.levelIcon,
 						themeTag: data.themeTag,
 						system: data.system,
 					};
