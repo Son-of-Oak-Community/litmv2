@@ -37,6 +37,7 @@ describe("createActor scaffolding", () => {
 	afterEach(() => {
 		game.user = saved.user;
 		game.users.activeGM = saved.activeGM;
+		vi.unstubAllGlobals();
 	});
 
 	it("runs on the active GM", async () => {
@@ -51,5 +52,16 @@ describe("createActor scaffolding", () => {
 		const actor = storyThemeActor();
 		await fireCreateActor(actor);
 		expect(actor.createEmbeddedDocuments).not.toHaveBeenCalled();
+	});
+
+	it("gives a new Hero's default themes increasing sort values", async () => {
+		vi.stubGlobal("CONST", { SORT_INTEGER_DENSITY: 100000 });
+		game.users.activeGM = game.user;
+		const actor = fakeActor({ type: "hero" });
+		await fireCreateActor(actor);
+		const [, themes] = actor.createEmbeddedDocuments.mock.calls[0];
+		expect(themes.map((it) => it.sort)).toEqual([
+			100000, 200000, 300000, 400000,
+		]);
 	});
 });

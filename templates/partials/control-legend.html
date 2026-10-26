@@ -1,4 +1,4 @@
-<legend class="control flexrow gap-sm">
+<legend class="control flexrow gap-sm{{#if extraClass}} {{extraClass}}{{/if}}">
 	<span class="flex1">{{localize label}}</span>
 	<button type="button" class="noflex" data-action="{{action}}"
 		{{#if type}}data-type="{{type}}"{{/if}}

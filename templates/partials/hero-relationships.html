@@ -1,0 +1,20 @@
+{{!-- Hero relationship list. Sits under the Fellowship theme, inside its card. --}}
+<ul class="plain litm--relationships">
+	{{#each relationshipVisible as |relationship|}}
+	<li class="flexrow gap-sm">
+		<div class="flexrow noflex gap-sm" data-action="viewActor" data-actor-id="{{relationship.actorId}}"
+			data-tooltip="{{localize 'LITM.Ui.click_to_view_actor'}}" role="button" tabindex="0">
+			{{#if relationship.img}}
+			<img class="relationship-img noflex" src="{{relationship.img}}" alt="{{relationship.name}}" />
+			{{/if}}
+			<span class="litm--relationship-name">{{relationship.name}}</span>
+		</div>
+		{{> systems/litmv2/templates/partials/play-tag.html
+		_id=relationship.effectId
+		name=relationship.tag
+		type="relationship_tag"
+		isScratched=relationship.isScratched
+		}}
+	</li>
+	{{/each}}
+</ul>

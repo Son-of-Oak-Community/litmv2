@@ -559,17 +559,25 @@ export class LitmActorSheet extends LitmSheetMixin(
 	 */
 	static #onToggleThemeDescription(event, target) {
 		if (event.target?.closest?.("a, input, select, textarea")) return;
+		const controls = target.getAttribute?.("aria-controls");
 		const description =
 			target.closest?.(".theme-card__description") ??
-			target.querySelector?.(".theme-card__description");
-		if (!description) return;
+			target.querySelector?.(".theme-card__description") ??
+			(controls && this.element.querySelector(`#${CSS.escape(controls)}`));
+		// Cards marks a hero description that fits (or is unclamped) as static.
+		if (!description || description.classList.contains("is-static")) return;
 		const body = description.querySelector(".theme-card__description-body");
 		if (body)
 			description.style.setProperty(
 				"--description-height",
 				`${body.scrollHeight}px`,
 			);
-		description.classList.toggle("is-expanded");
+		const expanded = description.classList.toggle("is-expanded");
+		// The hero name controls the description; keep it in sync whichever was clicked.
+		if (description.id)
+			this.element
+				.querySelector(`[aria-controls="${description.id}"]`)
+				?.setAttribute("aria-expanded", String(expanded));
 	}
 
 	/**
@@ -734,10 +742,12 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const itemId = actionTarget?.dataset?.itemId;
 		const item = this.document.items.get(itemId);
 		if (!item) return;
-		
-		await item.update({ 'system.limitedPermissionHidden': !item.system.limitedPermissionHidden });
+
+		await item.update({
+			"system.limitedPermissionHidden": !item.system.limitedPermissionHidden,
+		});
 	}
-	
+
 	static async _onSendVignetteToChat(_event, target) {
 		const actionTarget = target.closest?.("[data-item-id]") ?? target;
 		const itemId = actionTarget?.dataset?.itemId;
@@ -748,7 +758,9 @@ export class LitmActorSheet extends LitmSheetMixin(
 			"systems/litmv2/templates/chat/vignette-display.html",
 			vignette,
 		);
-		const speaker = foundry.documents.ChatMessage.getSpeaker({ actor: this.document });
+		const speaker = foundry.documents.ChatMessage.getSpeaker({
+			actor: this.document,
+		});
 		// The card is stored once for everyone: never bake in a concealed name.
 		speaker.alias = this.document.system?.publicName ?? speaker.alias;
 

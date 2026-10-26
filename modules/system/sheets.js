@@ -17,6 +17,7 @@ import { LitmJournalSheet } from "../sheets/journal-sheet.js";
 import {
 	ChallengeSheetLandscape,
 	FellowshipSheetLandscape,
+	HeroSheetCards,
 	HeroSheetLandscape,
 	JourneySheetLandscape,
 } from "../sheets/landscape-sheets.js";
@@ -70,6 +71,15 @@ export class LitmSheets {
 				types: ["hero"],
 				makeDefault: false,
 				label: "LITM.Sheets.hero_landscape",
+			},
+		);
+		foundry.documents.collections.Actors.registerSheet(
+			"litmv2",
+			HeroSheetCards,
+			{
+				types: ["hero"],
+				makeDefault: false,
+				label: "LITM.Sheets.hero_cards",
 			},
 		);
 		foundry.documents.collections.Actors.registerSheet(

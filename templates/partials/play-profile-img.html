@@ -1,5 +1,10 @@
 {{#if hasCustomImage}}
-<img class="profile-img noflex" src="{{document.img}}" alt="{{document.name}}"
+<img class="profile-img noflex{{#if @root.cardsLayout}} litm--play-portrait{{/if}}" src="{{document.img}}" alt="{{document.name}}"
 	data-action="showPortraitArtwork"
 	data-tooltip="{{localize 'LITM.Ui.view_image'}}" />
+{{else if @root.cardsLayout}}
+{{!-- Default image: framed placeholder; owners pick a portrait with the same editImage action edit mode uses. --}}
+<img class="profile-img noflex litm--play-portrait litm--play-portrait--placeholder" src="{{document.img}}" alt="{{document.name}}"
+	{{#if isOwner}}data-edit="img" data-action="editImage" role="button" tabindex="0"
+	data-tooltip="{{localize 'LITM.Ui.edit_image'}}" aria-label="{{localize 'LITM.Ui.edit_image'}}"{{/if}} />
 {{/if}}

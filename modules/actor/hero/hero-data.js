@@ -138,6 +138,8 @@ export class HeroData extends LimitsMixin(
 		const fields = foundry.data.fields;
 		return {
 			description: new fields.HTMLField({ initial: "" }),
+			/** Free-form notes. The sheet shows them only to owners; the data reaches every client, as all actor data does. */
+			notes: new fields.HTMLField({ initial: "" }),
 			promise: new fields.NumberField({
 				initial: 0,
 				min: 0,
@@ -228,7 +230,11 @@ export class HeroData extends LimitsMixin(
 	#themeContainers(predicate) {
 		return this.parent.items
 			.filter(predicate)
-			.sort((a, b) => a.sort - b.sort)
+			.sort(
+				(a, b) =>
+					a.sort - b.sort ||
+					a.name.localeCompare(b.name, undefined, { numeric: true }),
+			)
 			.map((theme) => ({
 				theme,
 				tags: dedupeTitleTags(
