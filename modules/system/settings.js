@@ -195,6 +195,12 @@ export class LitmSettings {
 			// without a world reload.
 			onChange: () => ContentSources.loadStatusCompendium(),
 		});
+		game.settings.register("litmv2", "heroPanelCollapsed", {
+			scope: "client",
+			config: false,
+			type: Boolean,
+			default: false,
+		});
 		game.settings.register("litmv2", "statusesSeeded", {
 			scope: "world",
 			config: false,
