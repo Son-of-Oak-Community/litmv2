@@ -12,6 +12,7 @@ Foundry source is symlinked at `./foundry/` (client code in `public/`, CSS at `p
 
 - `npm test` — Vitest unit-test suite
 - `npm run test:shuffle -- --sequence.seed=N` — the suite serially in a shuffled order, as CI runs it. Most files share one module graph per worker (`isolate: false`); a file that mocks modules is isolated automatically, and one that patches shared state opts in with a `// vitest-isolate: <why>` comment (`vitest.config.js`)
+- `npm run check` / `npm run check:fix` — Biome lint + format (also `lint`, `format`)
 - `npm run i18n:check` — find missing/superfluous localization keys
 - `npm run i18n:diff` — translator diagnostic; diffs each non-English language against `lang/en.json`
 
@@ -108,7 +109,7 @@ Journey --------- Nx vignette (one marked generalConsequences)
 
 Typed sheets inherit through `LitmSheetMixin` → `LitmActorSheet` (items: `LitmItemSheet`); each has a `Landscape` variant. Challenge & Journey also mix in `TagStringSyncMixin`.
 
-All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — sheets switch templates by overriding `_getEditModeTemplate()` and `_configureRenderParts()`. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
+All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — `_isEditMode` drives it; `_configureRenderParts()` swaps in the `PLAY_HEADER_TEMPLATE` / `PLAY_DESCRIPTION_TEMPLATE` / `PLAY_CONTENT_TEMPLATE` statics in play mode. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
 
 `HeroSheet`'s `editNotes` (DialogV2 + `<prose-mirror>` over `system.notes`, a Play-mode button shown only when the sheet `editable`) lives on the base sheet, so every hero sheet subclass has it.
 
@@ -166,9 +167,7 @@ unit-tested):
   `#handleSacrificeBonusChange`, which revert, and in `setType`; the markup is
   not the boundary. **The GM may set the move and the Might on any
   roll, called or not** — judging Might is the Narrator's job (p.272), so the
-  settings column renders for them even as a non-owner viewer. That is a
-  deliberate widening of the pre-branch behaviour, where the column was
-  owner-only.
+  settings column renders for them even as a non-owner viewer.
 - **Nothing that contributes to Power is read from the form.** `extractRollData`
   takes it all from the dialog's own fields, because `FormDataExtended` skips
   `:disabled` controls — reading Might off the form would drop exactly the value
@@ -212,8 +211,7 @@ to match.
 
 There is **no durable chat record** of a call. Pickup is the existing roll-dialog
 HUD strip in `#players`, driven by the same `rollDialogOwner` flag every other
-open roll uses; the roll posts its own card. `litm.narratorCallReceived` is gone
-with the receive step it named.
+open roll uses; the roll posts its own card.
 
 **Closing a view is not ending the roll — except for the Narrator.** A player
 viewer can close their window without retracting the owner's presence. The
@@ -576,10 +574,11 @@ New `.webp` assets must be added to the `preloads` array in `LitmConfig`. All im
 ## Design System
 
 The system has a fully-implemented visual identity — **not aspirational**. New UI
-must match it. Full detail (tokens, patterns, composition recipes, anti-references)
-lives in `.claude/rules/design-system.md`, which auto-loads for `templates/**`,
-`*.css`, and the `sheets`/`apps`/`components`/`renderers` modules.
+must match it. The reference is `litmv2.css` itself: its header indexes numbered
+sections (tag system, theme cards, roll dialog, roster §21, …), and §1 Global
+defines the tokens (`--font-*`, `--color-litm-*`, …).
 
-**Read that rule before writing any UI, template, or CSS.** If you catch yourself
+**Before writing any UI, template, or CSS, find the matching section and reuse its
+classes and tokens.** If you catch yourself
 writing inline `style="..."` or `border-radius: 999px`, stop — there is a litm
 token or class for it.
