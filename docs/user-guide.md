@@ -68,6 +68,8 @@ There are three hero sheets. Pick one in the sheet's **Configure Sheet** menu
 
 ### Hero Sheet (Cards)
 
+A tour of the board is in [Hero Sheet (Cards)](hero-sheet-cards.md).
+
 - **Portrait panel.** On a wide sheet the portrait becomes a side panel. The arrow button
   folds it down to a thumbnail, and your choice is remembered per browser for
   every Cards sheet you open. A hero with no portrait and no description
