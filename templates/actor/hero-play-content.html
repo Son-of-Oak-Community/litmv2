@@ -5,8 +5,8 @@
 	<fieldset class="theme-card item"{{#if @root.cardsLayout}} data-fellowship-card data-flip-key="{{fellowship._id}}"{{else}}
 		data-action="toggleThemeDescription"
 		data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}"{{/if}} data-tour="fellowship-section" data-banner="fellowship">
-		<legend class="litm-banner theme-card__book{{#if @root.cardsLayout}} draggable{{/if}}">{{#if (and @root.cardsLayout fellowship.hasTheme)}}<img class="litm--banner-icon" src="{{fellowship.img}}" alt="{{fellowship.levelLabel}}" data-tooltip="{{fellowship.levelLabel}}" />{{/if}}{{localize "LITM.Terms.fellowship"}}{{#if (and @root.cardsLayout fellowship.hasTheme fellowship.system.description)}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}</legend>
-		{{#if (and @root.cardsLayout fellowship.hasTheme fellowship.system.description)}}<div class="theme-card__back">{{{ fellowship.system.description }}}</div>{{/if}}
+		<legend class="litm-banner theme-card__book{{#if (and @root.cardsLayout @root.editable)}} draggable{{/if}}">{{#if (and @root.cardsLayout fellowship.hasTheme)}}{{> "systems/litmv2/templates/partials/banner-icon.html" src="systems/litmv2/assets/media/icons/fellowship.svg" action="viewActor" actorId=fellowship.actorId label=(localize "LITM.Ui.click_to_edit_fellowship") tooltip=fellowship.levelLabel}}{{/if}}{{localize "LITM.Terms.fellowship"}}{{#if (and @root.cardsLayout fellowship.hasTheme fellowship.system.description)}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}</legend>
+		{{#if (and @root.cardsLayout fellowship.hasTheme fellowship.system.description)}}<div class="theme-card__back"><h4 class="theme-card__back-title">{{#if fellowship.themeTag.name}}{{fellowship.themeTag.name}}{{else}}{{fellowship.name}}{{/if}}</h4>{{{ fellowship.system.description }}}</div>{{/if}}
 		{{#if fellowship.hasTheme}}
 		<div data-fellowship-actor-id="{{fellowship.actorId}}" data-item-id="{{fellowship._id}}">
 			{{> systems/litmv2/templates/partials/theme-card-header.html fellowship noBurn=true}}
@@ -57,8 +57,8 @@
 		<fieldset class="theme-card item"{{#if @root.cardsLayout}} data-item-id="{{theme._id}}" data-flip-key="{{theme._id}}"{{else}}
 			data-action="toggleThemeDescription"
 			data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}"{{/if}} data-id="{{theme._id}}" data-level="{{theme.system.level}}">
-			<legend class="litm-banner theme-card__book{{#if @root.cardsLayout}} draggable{{/if}}">{{#if @root.cardsLayout}}<img class="litm--banner-icon" src="{{theme.img}}" alt="{{theme.levelLabel}}" data-tooltip="{{theme.levelLabel}}" />{{/if}}{{theme.system.themebook}}{{#if (and @root.cardsLayout theme.system.description)}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}</legend>
-			{{#if (and @root.cardsLayout theme.system.description)}}<div class="theme-card__back">{{{ theme.system.description }}}</div>{{/if}}
+			<legend class="litm-banner theme-card__book{{#if (and @root.cardsLayout @root.editable)}} draggable{{/if}}">{{#if @root.cardsLayout}}{{> "systems/litmv2/templates/partials/banner-icon.html" src=theme.img action="editItem" itemId=theme._id label=(localize "LITM.Ui.click_to_edit_theme") tooltip=theme.levelLabel}}{{/if}}{{theme.system.themebook}}{{#if (and @root.cardsLayout theme.system.description)}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}</legend>
+			{{#if (and @root.cardsLayout theme.system.description)}}<div class="theme-card__back"><h4 class="theme-card__back-title">{{#if theme.themeTag.name}}{{theme.themeTag.name}}{{else}}{{theme.name}}{{/if}}</h4>{{{ theme.system.description }}}</div>{{/if}}
 			{{> systems/litmv2/templates/partials/theme-card-header.html theme}}
 
 			{{> systems/litmv2/templates/partials/play-theme-tags.html theme}}
@@ -91,11 +91,14 @@
 		{{#if backpack}}
 		<fieldset class="litm-kit-card litm-kit-card--backpack">
 			<legend class="litm-kit-card__head flexrow gap-sm">
+				{{#if @root.cardsLayout}}{{> "systems/litmv2/templates/partials/banner-icon.html" src="systems/litmv2/assets/media/icons/backpack.svg" action="editItem" itemId=backpack.id label=(localize "LITM.Ui.edit_backpack")}}{{/if}}
 				<span class="litm-banner litm-banner--sm">{{backpack.name}}</span>
+				{{#unless @root.cardsLayout}}
 				<button type="button" class="noflex" data-action="editItem" data-item-id="{{backpack.id}}"
 					data-tooltip="{{localize 'LITM.Ui.edit_backpack'}}" aria-label="{{localize 'LITM.Ui.edit_backpack'}}">
 					<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
 				</button>
+				{{/unless}}
 			</legend>
 
 			{{#if backpack.tags.length}}
@@ -117,6 +120,7 @@
 		{{else if @root.cardsLayout}}
 		<fieldset class="litm-kit-card litm-kit-card--backpack">
 			<legend class="litm-kit-card__head flexrow gap-sm">
+				<img class="litm--banner-icon" src="systems/litmv2/assets/media/icons/backpack.svg" alt="" />
 				<span class="litm-banner litm-banner--sm">{{localize "LITM.Terms.backpack"}}</span>
 			</legend>
 			<p class="hint">{{localize "LITM.Ui.no_backpack"}}</p>
@@ -130,11 +134,14 @@
 
 		<fieldset class="litm-hero-board__statuses litm-kit-card litm-kit-card--statuses">
 			<legend class="litm-kit-card__head flexrow gap-sm">
+				{{#if @root.cardsLayout}}{{> "systems/litmv2/templates/partials/banner-icon.html" glyph="fa-droplet" action="addStoryTag" tagType="status_tag" promptName=true label=(localize "LITM.Ui.add_status")}}{{/if}}
 				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.statuses"}}</span>
+				{{#unless @root.cardsLayout}}
 				<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="status_tag" data-prompt-name
 					data-tooltip="{{localize 'LITM.Ui.add_status'}}" aria-label="{{localize 'LITM.Ui.add_status'}}">
 					<i class="fa-solid fa-droplet" aria-hidden="true"></i>
 				</button>
+				{{/unless}}
 			</legend>
 			{{#if statuses.length}}
 			<div class="litm--play-statuses">

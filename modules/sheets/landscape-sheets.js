@@ -47,6 +47,9 @@ export class HeroSheetCards extends HeroSheet {
 	/** Class on the sheet root while the wide portrait panel is folded away. */
 	static PANEL_COLLAPSED_CLASS = "litm-hero-cards--panel-collapsed";
 
+	/** Root class that enables the panel's fold transition while it runs. */
+	static PANEL_ANIMATING_CLASS = "litm-hero-cards--panel-animating";
+
 	/** Theme cards turned to their back (the note), by `data-flip-key`; kept across re-renders. */
 	#flipped = new Set();
 
@@ -76,7 +79,15 @@ export class HeroSheetCards extends HeroSheet {
 	 */
 	static async _onToggleHeroPanel() {
 		this.#panelCollapsed = !this.#panelCollapsed;
+		const root = this.element;
+		root.classList.add(HeroSheetCards.PANEL_ANIMATING_CLASS);
 		this.#applyPanelCollapsed(this.#panelCollapsed);
+		const folds = root
+			.getAnimations({ subtree: true })
+			.filter((a) => a instanceof CSSTransition);
+		Promise.allSettled(folds.map((a) => a.finished)).then(() =>
+			root.classList.remove(HeroSheetCards.PANEL_ANIMATING_CLASS),
+		);
 		this.#measureDescription();
 		await game.settings.set(
 			"litmv2",
@@ -118,6 +129,19 @@ export class HeroSheetCards extends HeroSheet {
 	}
 
 	/**
+	 * Foundry disables every control on a sheet the viewer cannot edit. Folding
+	 * the panel and flipping a card save nothing to the hero, so a viewer keeps them.
+	 * @override
+	 */
+	_toggleDisabled(disabled) {
+		super._toggleDisabled(disabled);
+		for (const button of this.element.querySelectorAll(
+			".litm--hero-panel-toggle, [data-action='flipThemeCard']",
+		))
+			button.disabled = false;
+	}
+
+	/**
 	 * Bound on the frame, which outlives part re-renders, so it is added once.
 	 * Cards only: on the other hero sheets a click on the card toggles its note.
 	 * @override
@@ -131,13 +155,29 @@ export class HeroSheetCards extends HeroSheet {
 	}
 
 	/**
-	 * Play mode: double-clicking a theme card's banner opens that theme's
-	 * sheet, or the Fellowship's sheet for the Fellowship card.
+	 * Double-clicking a theme card's banner opens that theme's sheet, or the
+	 * Fellowship's sheet for the Fellowship card; the backpack banner opens
+	 * the backpack. In Edit mode this replaces the banners' edit buttons, and
+	 * the Statuses banner adds a status. In Play mode, Statuses and Moment of
+	 * Fulfillment, which have no sheet of their own, switch to Edit mode.
+	 * Owners only: a viewer gets no shortcuts into documents they cannot edit.
 	 * @param {MouseEvent} event
 	 * @protected
 	 */
 	_onBannerDblClick(event) {
-		if (this._isEditMode || event.target.closest("button")) return;
+		if (!this.isEditable || event.target.closest("button")) return;
+		const kit = event.target.closest(".litm-kit-card > legend")?.parentElement;
+		if (kit?.matches(".litm-kit-card--backpack"))
+			return this.document.system.backpackItem?.sheet.render(true);
+		if (this._isEditMode && kit?.matches(".litm-kit-card--statuses"))
+			return LitmActorSheet._onAddStoryTag.call(this, event, {
+				dataset: { tagType: "status_tag" },
+			});
+		if (
+			!this._isEditMode &&
+			kit?.matches(".litm-kit-card--statuses, .litm-kit-card--mof")
+		)
+			return this._onChangeSheetMode();
 		const card = event.target.closest(".theme-card > legend")?.parentElement;
 		if (!card) return;
 		const doc = card.matches("[data-banner='fellowship']")
@@ -207,6 +247,8 @@ export class HeroSheetCards extends HeroSheet {
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 		context.cardsLayout = true;
+		// The "What do you do?" buttons act as this hero; a viewer gets none.
+		context.viewOnlyActions = !this.isEditable;
 		context.fellowshipSlot = fellowshipSlot(
 			this.document.getFlag("litmv2", FLAGS.fellowshipIndex),
 			context.themes?.length ?? 0,
@@ -294,7 +336,12 @@ export class HeroSheetCards extends HeroSheet {
 	/** @override */
 	async _onRender(context, options) {
 		await super._onRender(context, options);
-		this.#panelCollapsed ??= game.settings.get("litmv2", "heroPanelCollapsed");
+		// A hero with neither art nor a description has nothing to show in the panel.
+		const emptyPanel =
+			!!this.element.querySelector(".litm--play-portrait--placeholder") &&
+			!this.element.querySelector(".litm--hero-description");
+		this.#panelCollapsed ??=
+			game.settings.get("litmv2", "heroPanelCollapsed") || emptyPanel;
 		this.#applyPanelCollapsed(this.#panelCollapsed);
 		for (const card of this.element.querySelectorAll(
 			".theme-card[data-flip-key]",

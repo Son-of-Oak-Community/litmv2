@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HeroSheet } from "../modules/actor/hero/hero-sheet.js";
 import { LitmActorSheet } from "../modules/sheets/base-actor-sheet.js";
 import { HeroSheetCards } from "../modules/sheets/landscape-sheets.js";
@@ -7,19 +7,25 @@ globalThis.CSS = { escape: String };
 
 const COLLAPSED = HeroSheetCards.PANEL_COLLAPSED_CLASS;
 
-function makeElement({ art = true } = {}) {
+function makeElement({ art = true, placeholder = false } = {}) {
 	const classes = new Set();
 	const toggle = { setAttribute: vi.fn() };
 	return {
 		classList: {
 			toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)),
+			add: (c) => classes.add(c),
+			remove: (c) => classes.delete(c),
 			contains: (c) => classes.has(c),
 		},
+		getAnimations: () => [],
 		querySelector: (sel) => {
 			if (sel === ".litm--play-header--art") return art ? {} : null;
 			if (sel === ".litm--hero-panel-toggle") return toggle;
+			if (sel === ".litm--play-portrait--placeholder")
+				return placeholder ? {} : null;
 			return null;
 		},
+		querySelectorAll: () => [],
 		_toggle: toggle,
 		_classes: classes,
 	};
@@ -71,6 +77,15 @@ describe("HeroSheetCards toggleHeroPanel", () => {
 		);
 	});
 
+	it("enables the fold transition only while the toggle runs it", async () => {
+		const { sheet, element } = makeCardsSheet();
+		await toggle.call(sheet);
+		await Promise.resolve();
+		expect(
+			element._classes.has(HeroSheetCards.PANEL_ANIMATING_CLASS),
+		).toBe(false);
+	});
+
 	it("does not apply the class without the art layout, but still persists", async () => {
 		const { sheet, element } = makeCardsSheet({ art: false });
 		await toggle.call(sheet);
@@ -80,6 +95,26 @@ describe("HeroSheetCards toggleHeroPanel", () => {
 			"heroPanelCollapsed",
 			true,
 		);
+	});
+});
+
+describe("HeroSheetCards panel seed on render", () => {
+	beforeEach(() => {
+		vi.spyOn(HeroSheet.prototype, "_onRender").mockResolvedValue();
+	});
+
+	it("starts folded when the hero has no art and no description", async () => {
+		game.settings.get.mockReturnValue(false);
+		const { sheet, element } = makeCardsSheet({ placeholder: true });
+		await sheet._onRender({}, {});
+		expect(element._classes.has(COLLAPSED)).toBe(true);
+	});
+
+	it("follows the setting when the hero has art", async () => {
+		game.settings.get.mockReturnValue(false);
+		const { sheet, element } = makeCardsSheet();
+		await sheet._onRender({}, {});
+		expect(element._classes.has(COLLAPSED)).toBe(false);
 	});
 });
 
@@ -226,5 +261,101 @@ describe("toggleThemeDescription", () => {
 		expect(() =>
 			action.call(sheet, { target: { closest: () => null } }, target),
 		).not.toThrow();
+	});
+});
+
+describe("HeroSheetCards banner double-click", () => {
+	const dblclick = HeroSheetCards.prototype._onBannerDblClick;
+	const render = vi.fn();
+	// A theme banner: closest(".theme-card > legend") → the legend, whose card is the theme.
+	const card = { matches: () => false, dataset: { itemId: "t1" } };
+	const event = {
+		target: {
+			closest: (sel) =>
+				sel === ".theme-card > legend" ? { parentElement: card } : null,
+		},
+	};
+	const makeSheet = (isEditable) => ({
+		isEditable,
+		_isEditMode: false,
+		document: { items: { get: () => ({ sheet: { render } }) } },
+	});
+
+	it("opens the theme's sheet for an owner", () => {
+		dblclick.call(makeSheet(true), event);
+		expect(render).toHaveBeenCalledWith(true);
+	});
+
+	it("does nothing for a viewer who cannot edit the hero", () => {
+		render.mockClear();
+		dblclick.call(makeSheet(false), event);
+		expect(render).not.toHaveBeenCalled();
+	});
+
+	it("opens the backpack and themes in Edit mode", () => {
+		const backpack = vi.fn();
+		const kit = { matches: (sel) => sel === ".litm-kit-card--backpack" };
+		const sheet = {
+			...makeSheet(true),
+			_isEditMode: true,
+			document: {
+				items: { get: () => ({ sheet: { render } }) },
+				system: { backpackItem: { sheet: { render: backpack } } },
+			},
+		};
+		dblclick.call(sheet, {
+			target: {
+				closest: (sel) =>
+					sel === ".litm-kit-card > legend" ? { parentElement: kit } : null,
+			},
+		});
+		expect(backpack).toHaveBeenCalledWith(true);
+		render.mockClear();
+		dblclick.call(sheet, event);
+		expect(render).toHaveBeenCalledWith(true);
+	});
+
+	it("adds a status from the Statuses banner in Edit mode", async () => {
+		const create = vi.fn();
+		const kit = { matches: (sel) => sel === ".litm-kit-card--statuses" };
+		const sheet = {
+			...makeSheet(true),
+			_isEditMode: true,
+			_notifyStoryTags: () => {},
+			document: { createEmbeddedDocuments: create },
+		};
+		await dblclick.call(sheet, {
+			target: {
+				closest: (sel) =>
+					sel === ".litm-kit-card > legend" ? { parentElement: kit } : null,
+			},
+		});
+		expect(create).toHaveBeenCalledWith("ActiveEffect", [
+			expect.objectContaining({ type: "status_tag" }),
+		]);
+	});
+});
+
+describe("HeroSheetCards view-only controls", () => {
+	afterEach(() => {
+		delete HeroSheet.prototype._toggleDisabled;
+	});
+
+	it("keeps the panel toggle and card flips enabled for a viewer", () => {
+		const toggle = { disabled: false };
+		const flip = { disabled: false };
+		const roll = { disabled: false };
+		// Stand-in for Foundry's pass, which disables every control in the form.
+		HeroSheet.prototype._toggleDisabled = function (disabled) {
+			for (const b of [toggle, flip, roll]) b.disabled = disabled;
+		};
+		const sheet = new HeroSheetCards();
+		Object.defineProperty(sheet, "element", {
+			value: { querySelectorAll: () => [toggle, flip] },
+		});
+		sheet._toggleDisabled(true);
+		expect(toggle.disabled).toBe(false);
+		expect(flip.disabled).toBe(false);
+		expect(roll.disabled).toBe(true);
 	});
 });

@@ -49,24 +49,59 @@ Improve is automatic when you invoke a weakness or relationship tag (unless the
 Narrator turned that off — then the chat card offers a **Mark Improve** button).
 A full Improve track opens theme advancement.
 
+**Notes.** The **Notes** button in the Play-mode action row opens an editor for
+the hero's notes. It's on every hero sheet. Only the hero's owners can open
+or save the notes, and the button is hidden on a hero you can't edit (for
+example one in a locked compendium).
+
+To add tags to the backpack, use its edit button in Edit mode. The backpack's
+own sheet is where tags are added.
+
+### Choosing a layout
+
+There are three hero sheets. Pick one in the sheet's **Configure Sheet** menu
+(the header's cog):
+
+- **Hero Sheet** (the default): vertical, one column.
+- **Hero Sheet (Landscape)**: the same sheet, opened wide.
+- **Hero Sheet (Cards)**: every theme is a printed card, in a row.
+
 ### Hero Sheet (Cards)
 
-An optional layout. Choose **Hero Sheet (Cards)** in the sheet's **Configure
-Sheet** menu (the header's cog); the classic sheet stays the default.
-
-- **Portrait panel.** With a custom portrait, the header shows a wide panel;
-  the arrow button folds it down to a thumbnail. Your choice is remembered per
-  browser, for every Cards sheet you open.
+- **Portrait panel.** On a wide sheet the portrait becomes a side panel. The arrow button
+  folds it down to a thumbnail, and your choice is remembered per browser for
+  every Cards sheet you open. A hero with no portrait and no description
+  starts with the panel folded, so the width goes to the cards. Until a
+  portrait is set, the owner can click the framed placeholder to pick one.
 - **Name and description.** Click the hero's name or the description to expand
   or collapse a long description.
 - **Statuses first.** Statuses and the backpack's story tags lead the board,
   above the themes, because they change every scene and statuses count toward
   Power.
-- **Relationships.** Your relationship tags get their own card, apart from the
-  Fellowship theme.
-- **Notes.** The Notes button in the Play-mode action row opens an editor for
-  the hero's notes. It is there on both sheets, for the hero's owner only, but
-  the notes are not secret: anyone who can see the hero can read them.
+- **Theme cards.** One tag per line, then the tracks, a **Quest** strip, and
+  a **Special Improvements** strip. Improvements show their name. Hover one for
+  its text; a locked one also says how to unlock it. A theme with no tags yet
+  shows as a short stub card. Cards are printed on parchment, light or dark
+  to match the theme.
+- **Flip a card.** The rotate button in a card's banner turns it over to show
+  the theme's note. This works in Play and Edit mode.
+- **Open a theme.** Double-click a card's banner to open that
+  theme's sheet. On the Fellowship card it opens the Fellowship sheet.
+  The Backpack banner opens the backpack. These work in Edit mode too, in
+  place of edit buttons. In Play mode the Statuses and Moment of Fulfillment
+  banners switch the sheet to Edit mode; in Edit mode the Statuses banner adds
+  a status.
+- **Banner icons.** For the hero's owner, a banner's icon is its button: a
+  theme's or the Backpack's icon opens it for editing, the Fellowship's opens
+  the Fellowship sheet, and the Statuses droplet adds a status. This works in
+  Play and Edit mode.
+- **Reorder.** Drag a card by its banner to move it along the row. That
+  includes the Fellowship card, whose position is saved for this hero.
+- **Relationships.** Your relationship tags sit inside the Fellowship card,
+  under their own **Relationships** strip.
+- **Colour-blind mode.** With **Colorblind-safe Palette** on, the Origin,
+  Adventure, Greatness and Fellowship banners switch to hues that stay
+  distinct.
 
 ---
 
