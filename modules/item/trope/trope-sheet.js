@@ -11,6 +11,7 @@ export class TropeSheet extends LitmItemSheet {
 		},
 		dragDrop: [{ dropSelector: "[data-theme-kit-drop]" }],
 		actions: {
+			addEntry: TropeSheet.#onAddEntry,
 			removeEntry: TropeSheet.#onRemoveEntry,
 		},
 		form: {
@@ -93,6 +94,13 @@ export class TropeSheet extends LitmItemSheet {
 				displayLabel: entry?.displayLabel || "",
 			};
 		});
+	}
+
+	static async #onAddEntry(_event, target) {
+		const path = target.dataset.path;
+		if (!path) return;
+		const values = foundry.utils.getProperty(this.document, path) || [];
+		await this.document.update({ [path]: [...values, ""] });
 	}
 
 	static async #onRemoveEntry(_event, target) {
