@@ -2,7 +2,12 @@ import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { TagStringSyncMixin } from "../../sheets/tag-string-sync-mixin.js";
 import { EFFECT_TYPES, MIGHT_OPTIONS } from "../../system/config.js";
 import { syncAddonEffects } from "../../system/hooks/item-hooks.js";
-import { confirmDelete, enrichHTML, removeAtIndex } from "../../utils.js";
+import {
+	confirmDelete,
+	enrichHTML,
+	keepUnrenderedArrayKeys,
+	removeAtIndex,
+} from "../../utils.js";
 import { ChallengeData } from "./challenge-data.js";
 
 /**
@@ -288,6 +293,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 
 	static async #onSubmitChallengeForm(_event, _form, formData) {
 		const submitData = formData.object;
+		keepUnrenderedArrayKeys(submitData, this.document, "system.limits");
 
 		await this._updateEmbeddedFromForm(submitData);
 

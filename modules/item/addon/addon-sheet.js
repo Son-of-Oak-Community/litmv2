@@ -1,7 +1,12 @@
 import { ChallengeData } from "../../actor/challenge/challenge-data.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
 import { MIGHT_OPTIONS } from "../../system/config.js";
-import { enrichHTML, removeAtIndex, localize as t } from "../../utils.js";
+import {
+	enrichHTML,
+	keepUnrenderedArrayKeys,
+	removeAtIndex,
+	localize as t,
+} from "../../utils.js";
 
 export class AddonSheet extends LitmItemSheet {
 	/** @override */
@@ -71,6 +76,7 @@ export class AddonSheet extends LitmItemSheet {
 
 	static async #onSubmitForm(_event, _form, formData) {
 		const submitData = formData.object;
+		keepUnrenderedArrayKeys(submitData, this.document, "system.limits");
 		await this.document.update(submitData);
 	}
 

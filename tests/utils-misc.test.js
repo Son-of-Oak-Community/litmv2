@@ -3,6 +3,7 @@ import { effectToPlain } from "../modules/active-effects/effect-queries.js";
 import {
 	availableThemebookImprovements,
 	getDefaultItemIcon,
+	keepUnrenderedArrayKeys,
 	titleCase,
 	toQuestionOptions,
 } from "../modules/utils.js";
@@ -154,5 +155,41 @@ describe("getDefaultItemIcon", () => {
 
 	it("returns null for unknown item types", () => {
 		expect(getDefaultItemIcon("unknown")).toBeNull();
+	});
+});
+
+describe("keepUnrenderedArrayKeys", () => {
+	const doc = {
+		_source: {
+			system: {
+				limits: [
+					{ id: "a", label: "harm", value: 3, advanced: 1, hidden: false },
+					{ id: "b", label: "flee", value: 0, advanced: 0, hidden: true },
+				],
+			},
+		},
+	};
+
+	it("fills unrendered keys from the stored entry, keeping submitted ones", () => {
+		const data = {
+			name: "Ogre",
+			"system.limits.0.label": "hurt",
+			"system.limits.1.label": "flee",
+		};
+		keepUnrenderedArrayKeys(data, doc, "system.limits");
+		expect(data).toMatchObject({
+			"system.limits.0.id": "a",
+			"system.limits.0.label": "hurt",
+			"system.limits.0.value": 3,
+			"system.limits.0.advanced": 1,
+			"system.limits.0.hidden": false,
+			"system.limits.1.id": "b",
+		});
+	});
+
+	it("leaves the data alone when the form does not render the array", () => {
+		const data = { name: "Ogre" };
+		keepUnrenderedArrayKeys(data, doc, "system.limits");
+		expect(data).toEqual({ name: "Ogre" });
 	});
 });

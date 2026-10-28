@@ -4,7 +4,11 @@ import {
 } from "../../apps/roll/roll-request.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
 import { POWER_REF_TAG_TYPES } from "../../system/config.js";
-import { removeAtIndex, localize as t } from "../../utils.js";
+import {
+	keepUnrenderedArrayKeys,
+	removeAtIndex,
+	localize as t,
+} from "../../utils.js";
 import { ACTION_CATEGORIES, SUCCESS_VERBS } from "./action-data.js";
 
 /**
@@ -93,6 +97,7 @@ export class ActionSheet extends LitmItemSheet {
 	}
 
 	static async #onSubmit(_event, _form, formData) {
+		keepUnrenderedArrayKeys(formData.object, this.document, "system.successes");
 		await this.document.update(formData.object);
 	}
 
