@@ -128,7 +128,10 @@ export class ActionData extends foundry.abstract.TypeDataModel {
 			}
 
 			source.successes = newSuccesses;
-			source.extraFeats = carriedFeats;
+			// A sheet update sends `successes` alone; writing an empty list here would wipe the stored feats.
+			if (carriedFeats.length || Array.isArray(source.extraFeats)) {
+				source.extraFeats = carriedFeats;
+			}
 		}
 
 		return super.migrateData(source);

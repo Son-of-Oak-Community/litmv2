@@ -27,7 +27,14 @@ describe("ActionData.migrateData", () => {
 		expect(out.successes).toEqual([
 			{ id: "s1", verb: "create", text: "[map]" },
 		]);
-		expect(out.extraFeats).toEqual([]);
+		expect(out.extraFeats).toBeUndefined();
+	});
+
+	it("leaves extraFeats out of a successes-only update diff (#177)", () => {
+		const out = ActionData.migrateData({
+			successes: [{ id: "s1", verb: "enhance", text: "" }],
+		});
+		expect("extraFeats" in out).toBe(false);
 	});
 
 	it("converts a status payload with tier into [name-N] markup", () => {
