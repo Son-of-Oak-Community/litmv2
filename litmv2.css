@@ -451,8 +451,11 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	border: none;
 }
 
+/* Explicit width: the img inside is width:100%, which Safari otherwise
+   resolves against the SVG's 128px intrinsic size and stacks the pips. */
 :is(.litm .progress-box) {
 	--button-size: 24px;
+	width: var(--button-size);
 	min-width: 20px;
 	background: none;
 	border: none;
@@ -1900,10 +1903,12 @@ section.standard-form.litm-actions-app {
 }
 
 /* Tighter vertical envelope (20px box, 2px block padding) so wrapped
-   rows sit close together; the glyph stays 16px either way. */
+   rows sit close together; the glyph stays 16px either way, so the box
+   keeps the 24px width its 4px inline padding needs. */
 .litm .theme-card-track .progress-box {
 	flex: none;
 	--button-size: 20px;
+	width: 24px;
 	padding-block: 2px;
 }
 
