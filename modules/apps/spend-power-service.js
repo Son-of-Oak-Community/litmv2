@@ -29,14 +29,15 @@ function _inflictTier(tier) {
  * @param {number} intent.totalCost  Pre-computed total power cost
  * @param {string|null} intent.messageId  Originating roll message id
  * @param {number} intent.alreadySpent    Generic Power already spent on this
- *   message (the spentPower flag; applied action successes are tracked
- *   separately in appliedSuccessCosts)
+ *   message when the dialog opened (the spentPower flag; applied action
+ *   successes are tracked separately in appliedSuccessCosts). Informational:
+ *   the flag is re-read before it is written.
  * @param {string|null} [intent.targetActorId]  Actor picked on the dialog's
  *   target chip row; pre-resolves the target for actor-targeted successes.
  * @returns {Promise<{ results: object[], totalSpent: number }>}
  */
 export async function applySpendIntent(actor, intent) {
-	const { options, messageId, alreadySpent, targetActorId } = intent;
+	const { options, messageId, targetActorId } = intent;
 	const presetTarget = targetActorId ? game.actors.get(targetActorId) : null;
 	const results = [];
 	let actionSpent = 0;
@@ -143,12 +144,12 @@ export async function applySpendIntent(actor, intent) {
 		// Spend Power budget subtracts both flags — folding them into
 		// spentPower too would double-count.
 		if (messageId && genericSpent > 0) {
+			// Read the flag now, not the `alreadySpent` the dialog captured when it
+			// opened: a second Spend Power window on the same roll may have
+			// written since, and adding to the stale figure would overwrite it.
 			const message = game.messages.get(messageId);
-			await message?.setFlag(
-				"litmv2",
-				"spentPower",
-				alreadySpent + genericSpent,
-			);
+			const spentNow = message?.getFlag("litmv2", "spentPower") ?? 0;
+			await message?.setFlag("litmv2", "spentPower", spentNow + genericSpent);
 		}
 	}
 
