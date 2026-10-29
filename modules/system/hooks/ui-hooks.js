@@ -269,12 +269,26 @@ function _refreshRollDialogsOnSceneTagChange() {
  * never reaches it.
  */
 function _refreshRollDialogOnActorContentChange() {
+	// `_sheet`, not `sheet`: the getter would build a sheet for every actor
+	// touched on every client, only to find it has no dialog.
+	const openDialogOf = (actor) => {
+		const sheet = actor?._sheet;
+		if (!sheet?.hasRollDialog) return null;
+		const dialog = sheet.rollDialogInstance;
+		return dialog.rendered ? dialog : null;
+	};
 	const refresh = (doc) => {
 		const actor =
 			doc.parent?.documentName === "Actor" ? doc.parent : doc.parent?.parent;
-		if (!actor?.sheet?.hasRollDialog) return;
-		const dialog = actor.sheet.rollDialogInstance;
-		if (dialog.rendered) dialog.render();
+		if (!actor) return;
+		openDialogOf(actor)?.render().catch(console.error);
+		// Acting Together rides the Fellowship's dialog, with a tab per Hero.
+		const fellowship = game.litmv2.fellowship;
+		if (!fellowship || fellowship === actor) return;
+		const group = openDialogOf(fellowship);
+		if (group?.participantIds.includes(actor.id)) {
+			group.render().catch(console.error);
+		}
 	};
 	for (const hook of [
 		"createItem",

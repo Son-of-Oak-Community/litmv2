@@ -961,6 +961,7 @@
 			"warn_fellowship_not_fellowship": "Only fellowship themes can be added to a fellowship actor.",
 			"warn_fellowship_singleton": "Only one fellowship can exist.",
 			"warn_fellowship_use_actor": "Fellowship themes belong on fellowship actors. Link a fellowship by dropping it onto your hero sheet.",
+			"warn_hero_drop_creation_kit": "Themebooks and Tropes are for hero creation, not for adding to a Hero.",
 			"warn_incompatible_data": "This system can't import that data.",
 			"warn_invalid_effect_target": "This effect type cannot be applied to that document.",
 			"warn_no_backpack": "This hero has no backpack to receive tags.",

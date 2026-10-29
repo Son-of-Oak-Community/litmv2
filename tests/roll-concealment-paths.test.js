@@ -214,4 +214,23 @@ describe("roll concealment across persisted and rendered paths", () => {
 		game.user.isGM = true;
 		expect(tooltipFor(raw)[bucket][0].name).toBe(secret.name);
 	});
+
+	it("masks a hidden effect on a visible actor, and records it at roll time", () => {
+		config.hiddenActors = [];
+		StoryTagsStore.invalidateCache();
+		const effect = { parent: source, system: { isHidden: true } };
+		foundry.utils.fromUuidSync.mockImplementation((uuid) =>
+			uuid === "Actor.hidden" ? source : uuid === secret.uuid ? effect : null,
+		);
+		const tags = LitmRoll.captureConcealment([secret]);
+		expect(tags[0].effectHiddenAtRoll).toBe(true);
+		expect(
+			tooltipFor({ powerTags: tags }).powerTags[0].name,
+		).toBe("LITM.Ui.roll_concealed_tag");
+		effect.system.isHidden = false;
+		expect(tooltipFor({ powerTags: tags }).powerTags[0].name).toBe(secret.name);
+		game.user.isGM = true;
+		effect.system.isHidden = true;
+		expect(tooltipFor({ powerTags: tags }).powerTags[0].name).toBe(secret.name);
+	});
 });

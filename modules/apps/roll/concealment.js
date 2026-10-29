@@ -27,18 +27,23 @@
  * @param {Set<string>} args.concealedActorIds  Current hidden actor policy.
  * @param {boolean} args.isGM  Explicit viewer bypass, including recorded secrets.
  * @param {(tag: object) => string|null} args.resolveActorId
+ * @param {(tag: object) => boolean|undefined} [args.isEffectHidden]
+ *   Whether the tag's live effect is hidden; undefined when it is gone.
  * @param {string} args.maskName  What a concealed tag is called instead.
  * @returns {object[]} A new array when anything was masked, else the original.
  */
 export function maskConcealedTags(
 	tags,
-	{ concealedActorIds, resolveActorId, maskName, isGM = false } = {},
+	{ concealedActorIds, resolveActorId, isEffectHidden, maskName, isGM = false } = {},
 ) {
 	if (!tags?.length) return tags ?? [];
 	if (isGM) return tags;
 	let masked = false;
 	const result = tags.map((tag) => {
-		if (!isTagConcealed(tag, { concealedActorIds, resolveActorId })) return tag;
+		if (
+			!isTagConcealed(tag, { concealedActorIds, resolveActorId, isEffectHidden })
+		)
+			return tag;
 		masked = true;
 		return { ...tag, name: maskName, isConcealed: true };
 	});
@@ -50,11 +55,16 @@ export function maskConcealedTags(
  * Sidebar removal retains that policy. When a source is gone, its recorded
  * policy is the fallback rather than silently revealing historical secrets.
  * Legacy actor-backed tags with a missing source fail closed; scene tags do not.
+ * A single hidden effect (a Challenge's tags start hidden) is concealed on its
+ * own, and a consumed one keeps the hiding it had when rolled.
  */
 export function isTagConcealed(
 	tag,
-	{ concealedActorIds, resolveActorId } = {},
+	{ concealedActorIds, resolveActorId, isEffectHidden } = {},
 ) {
+	const effectHidden = isEffectHidden?.(tag);
+	if (effectHidden) return true;
+	if (effectHidden === undefined && tag.effectHiddenAtRoll) return true;
 	const resolved = resolveActorId?.(tag);
 	const actorId =
 		resolved ?? tag.tagActorId ?? /^Actor\.([^.]+)\./.exec(tag.uuid ?? "")?.[1];

@@ -3,10 +3,10 @@ import { warn } from "../../logger.js";
 /**
  * Authorize an approved moderation request and recover the roll it stands for.
  *
- * Foundry relays `system.litmv2` packets between clients without a
- * server-verified sender, so every field of an inbound payload — `senderId`
- * included — is client-authored. A `rollDice` handler that trusts the payload's
- * roll data lets any client make another player's client execute an
+ * The server attests who sent a `system.litmv2` packet (see `Sockets.on`), but
+ * every other field of an inbound payload is client-authored. A `rollDice`
+ * handler that trusts the payload's roll data lets any client make another
+ * player's client execute an
  * attacker-chosen roll: a chat card authored as the victim, their single-use
  * tags consumed, Improve marked. The GM-only check on the *sending* side is a
  * UI affordance, not a security boundary.
@@ -19,7 +19,7 @@ import { warn } from "../../logger.js";
  * raises the bar for that residual case.
  *
  * @param {object} payload
- * @param {string} payload.senderId   Client-authored id of the emitting user.
+ * @param {string} payload.senderId   Server-attested id of the emitting user.
  * @param {string} payload.userId     Id of the user the approval is addressed to.
  * @param {string} payload.messageId  Id of the moderation card being approved.
  * @returns {object|null} The stored roll data, or null when unauthorized.

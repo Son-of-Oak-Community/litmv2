@@ -699,6 +699,10 @@ export class HeroSheet extends LitmActorSheet {
 			return this._onSortItem(event, item);
 		}
 
+		const refuseCreationKit = () =>
+			ui.notifications.warn(
+				game.i18n.localize("LITM.Ui.warn_hero_drop_creation_kit"),
+			);
 		const handlers = {
 			theme: () => {
 				if (item.system.isFellowship) {
@@ -725,6 +729,9 @@ export class HeroSheet extends LitmActorSheet {
 				if (numBackpacks >= 1) return this.#handleLootDrop(item);
 				return this.document.createEmbeddedDocuments("Item", [item.toObject()]);
 			},
+			// Foundry would embed these as items the Hero sheet never shows.
+			themebook: refuseCreationKit,
+			trope: refuseCreationKit,
 		};
 
 		const handler = handlers[item.type];

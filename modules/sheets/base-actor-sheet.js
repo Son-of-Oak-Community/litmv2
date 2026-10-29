@@ -735,7 +735,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const item = this.document.items.get(itemId);
 		if (!item) return;
 		
-		item.update({ 'system.limitedPermissionHidden': !item.system.limitedPermissionHidden });
+		await item.update({ 'system.limitedPermissionHidden': !item.system.limitedPermissionHidden });
 	}
 	
 	static async _onSendVignetteToChat(_event, target) {

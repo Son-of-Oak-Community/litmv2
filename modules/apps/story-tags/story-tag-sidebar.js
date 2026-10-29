@@ -1006,7 +1006,12 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	 * @param {object} data  Parsed drag payload (type === "Actor")
 	 */
 	async #handleActorDrop(data) {
-		const id = data.uuid || `Actor.${data.id}`;
+		let id = data.uuid || `Actor.${data.id}`;
+		if (id.startsWith("Compendium.")) {
+			const worldActor = await this.#worldCopyOf(id);
+			if (!worldActor) return;
+			id = worldActor.uuid;
+		}
 
 		if (this.actors.map((a) => a.id).includes(id)) return;
 
@@ -1036,6 +1041,24 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			hiddenActors,
 		});
 		return this.#broadcastRender();
+	}
+
+	/**
+	 * A compendium actor (a rulebook `@render` card, a pack entry) joins the
+	 * scene as a world actor: the sidebar tracks and edits what it lists, and a
+	 * pack is neither the scene's nor, usually, writable. A second drop reuses
+	 * the first import.
+	 * @param {string} uuid  Compendium uuid of the dropped actor
+	 * @returns {Promise<Actor|null>}
+	 */
+	async #worldCopyOf(uuid) {
+		const existing = game.actors.find(
+			(a) => a._stats?.compendiumSource === uuid,
+		);
+		if (existing) return existing;
+		const source = await foundry.utils.fromUuid(uuid);
+		if (!source) return null;
+		return game.actors.importDocument(source);
 	}
 
 	/* -------------------------------------------- */
