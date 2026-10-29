@@ -24,6 +24,7 @@ import { mitigationPreselect } from "./mitigation.js";
 import { collectScratchableTags } from "./scratch-sources.js";
 import { applySpendIntent } from "./spend-power-service.js";
 import { collectReducibleStatuses } from "./status-sources.js";
+import { parseQuickAddInput } from "./story-tags/story-tag-helpers.js";
 import { StoryTagsStore } from "./story-tags/story-tags-store.js";
 import { getTargetCandidates } from "./target-picker.js";
 
@@ -94,6 +95,33 @@ export function defaultCostCalculator(li, cost, _entriesSection, hasTier) {
 function readEntryTier(row) {
 	const raw = row.querySelector(".litm-spend-power__entry-tier")?.value ?? 1;
 	return clampTier(raw, { min: 1 });
+}
+
+/**
+ * Read tag markup typed into an entry's name the way the sidebar's quick-add
+ * does: "wet-3" in a status row sets the tier box, "rope!" in a tag row ticks
+ * single-use. The name keeps only the name, so the row prices what it creates.
+ * Markup of the other kind is left as typed.
+ * @param {HTMLElement} row  An entry row
+ * @returns {boolean} Whether the row changed
+ */
+export function applyTypedTagSyntax(row) {
+	const nameInput = row.querySelector(".litm-spend-power__entry-name");
+	const parsed = parseQuickAddInput(nameInput?.value.trim());
+	if (!parsed) return false;
+	const tierInput = row.querySelector(".litm-spend-power__entry-tier");
+	const singleUse = row.querySelector(".litm-spend-power__entry-single-use");
+	if (tierInput && parsed.type === "status_tag") {
+		nameInput.value = parsed.name;
+		if (Number.isInteger(parsed.tier)) tierInput.value = parsed.tier;
+		return true;
+	}
+	if (singleUse && parsed.type === "story_tag" && parsed.isSingleUse) {
+		nameInput.value = parsed.name;
+		singleUse.checked = true;
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -514,6 +542,11 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		// Checkbox toggles reveal/hide their entry section. Native change event,
 		// not covered by [data-action].
 		form.addEventListener("change", (event) => {
+			if (event.target.classList.contains("litm-spend-power__entry-name")) {
+				const row = event.target.closest(".litm-spend-power__entry");
+				if (row && applyTypedTagSyntax(row)) this.#updatePower(form);
+				return;
+			}
 			if (
 				event.target.classList.contains("litm-spend-power__entry-single-use")
 			) {
@@ -923,7 +956,10 @@ export function parseSpendIntent(form, dialog) {
 		}
 
 		// default
-		const entries = [...li.querySelectorAll(".litm-spend-power__entry")]
+		const rows = [...li.querySelectorAll(".litm-spend-power__entry")];
+		// Spend pressed with focus still in a name field skips its change event.
+		rows.forEach(applyTypedTagSyntax);
+		const entries = rows
 			.map((row) => ({
 				name: row.querySelector(".litm-spend-power__entry-name").value.trim(),
 				tier: hasTier ? readEntryTier(row) : null,
