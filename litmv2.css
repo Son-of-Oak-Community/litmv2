@@ -6295,7 +6295,9 @@ fieldset.litm-party-overview > legend {
 	font-family: var(--font-serif);
 	font-style: italic;
 	font-size: var(--font-size-13);
-	opacity: 0.7;
+	/* Dimmed by colour, not opacity: opacity makes a stacking context that
+	   paints over the floated portrait and swallows its clicks. */
+	color: color-mix(in srgb, currentColor 70%, transparent);
 	margin: 2px 0 0;
 }
 
