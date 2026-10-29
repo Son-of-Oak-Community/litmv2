@@ -30,7 +30,11 @@ export class StoryThemeData extends foundry.abstract.TypeDataModel {
 		}
 		// Migrate invalid "story" level to first valid level
 		const validLevels = getThemeLevels();
-		if (validLevels.length && !validLevels.includes(source.level)) {
+		if (
+			"level" in source &&
+			validLevels.length &&
+			!validLevels.includes(source.level)
+		) {
 			source.level = getDefaultThemeLevel();
 		}
 		// Strip legacy tag arrays — tags are now ActiveEffects.
