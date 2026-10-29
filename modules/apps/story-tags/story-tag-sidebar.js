@@ -893,6 +893,10 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const source = limitTarget.dataset.source;
 		const isExternal = !data.sourceId;
 
+		// A Story write on either end goes through the Narrator for a player.
+		const touchesStory = source === "story" || data.sourceContainer === "story";
+		if (touchesStory && !this.#canWriteStoryPack()) return;
+
 		if (source === "story") {
 			// Same container — update limitId on existing pack AE
 			if (data.sourceId) {
@@ -930,7 +934,11 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		}
 
 		// Cross-container — move tag to this actor's limit
-		await this.#addTagToActor({ id: source, tag: { ...data, limitId } });
+		const added = await this.#addTagToActor({
+			id: source,
+			tag: { ...data, limitId },
+		});
+		if (!added) return;
 		return this.#removeFromSource(data);
 	}
 
@@ -979,11 +987,19 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	async #handleCrossContainerDrop(data, dropContainer) {
 		const actorTarget =
 			dropContainer && dropContainer !== "story" ? dropContainer : null;
+
+		// Only remove the source once the destination has the tag, so a refused
+		// drop (not the owner, no backpack, no Narrator online) moves nothing.
+		// A Story write on either end goes through the Narrator for a player.
+		const touchesStory = !actorTarget || data.sourceContainer === "story";
+		if (touchesStory && !this.#canWriteStoryPack()) return;
+
 		if (actorTarget) {
-			await this.#addTagToActor({
+			const added = await this.#addTagToActor({
 				id: actorTarget,
 				tag: data,
 			});
+			if (!added) return;
 			return this.#removeFromSource(data);
 		}
 
@@ -1621,6 +1637,21 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		await actor.system.recalculateLimitValues();
 	}
 
+	/**
+	 * Whether a Story-section write from this client will land. A player's pack
+	 * writes are relayed to the active Narrator, so with none online they would
+	 * silently never happen; warn instead, so a move can bail before it removes
+	 * its source.
+	 * @returns {boolean}
+	 */
+	#canWriteStoryPack() {
+		if (game.user.isGM || game.users.activeGM) return true;
+		ui.notifications.warn("LITM.Ui.story_tags_need_narrator", {
+			localize: true,
+		});
+		return false;
+	}
+
 	async #removeFromSource(data) {
 		if (!data.sourceContainer || !data.sourceId) return;
 
@@ -1721,17 +1752,23 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		);
 	}
 
+	/**
+	 * Add a tag or status to an actor. Reports whether it landed, so a move can
+	 * leave the source alone when the destination refused it.
+	 * @param {object} options
+	 * @param {string} options.id  Target actor id / UUID
+	 * @param {object} options.tag  Legacy tag descriptor
+	 * @returns {Promise<boolean>} False when nothing was added
+	 */
 	async #addTagToActor({ id, tag }) {
 		const actor = this.#resolveActor(id);
 		if (!actor) {
-			return ui.notifications.error("LITM.Ui.error_no_actor", {
-				localize: true,
-			});
+			ui.notifications.error("LITM.Ui.error_no_actor", { localize: true });
+			return false;
 		}
 		if (!actor.isOwner) {
-			return ui.notifications.error("LITM.Ui.warn_not_owner", {
-				localize: true,
-			});
+			ui.notifications.error("LITM.Ui.warn_not_owner", { localize: true });
+			return false;
 		}
 
 		const isStatus = isStatusDescriptor(tag);
@@ -1754,9 +1791,14 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						limitId: tag.limitId,
 					}),
 				);
-		if (created?.[0]) this._editOnRender = created[0].id;
+		// `addStoryTag` warns and returns nothing when a Hero has no backpack, and
+		// an empty result means the create was cancelled. Stacking onto an
+		// existing status resolves with the updated effect, which counts.
+		if (!created?.length) return false;
+		this._editOnRender = created[0].id;
 		await this.#triggerLimitRecalc(id);
-		return this.#broadcastRender();
+		this.#broadcastRender();
+		return true;
 	}
 
 	async #removeTagFromActor({ actorId, id }) {
