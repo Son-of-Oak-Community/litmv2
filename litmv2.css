@@ -564,6 +564,13 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	font-weight: 400;
 }
 
+/* A flex legend (banner + edit/add buttons) hugs its content. Chrome does
+   that by default; Safari stretches a display:flex legend to the fieldset
+   width, and the .flexrow children grow into the space. */
+.litm legend.flexrow {
+	width: fit-content;
+}
+
 /* ──────────────────────────────────────────────────────────────────────
    Shared section header — small-caps label with extending decorative
    lines. Aliases the legacy `.litm-render__section-header` so the
