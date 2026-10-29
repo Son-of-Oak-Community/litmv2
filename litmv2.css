@@ -2088,8 +2088,12 @@ section.standard-form.litm-actions-app {
 	margin: 0px;
 }
 
+/* Foundry gives images max-width: 100%, which makes a replaced element
+   compressible: Firefox and Safari then count it as ~0 in a min-content
+   column, and the hero header ran its name under the description. */
 .litm-actor .profile-img {
 	width: 100px;
+	max-width: none;
 	height: 100px;
 	border-radius: var(--radius-circle);
 	object-fit: cover;
@@ -2295,6 +2299,12 @@ section.standard-form.litm-actions-app {
 .litm-hero-sheet .litm--play-header > .flexcol {
 	flex: 0;
 	min-width: 25ch;
+}
+
+.litm-hero-sheet .litm--play-header > .flexcol > .flexrow {
+	/* The Promise row is exactly as wide as its content; Firefox and Safari
+	   measure the title a few px wider and wrapped the diamonds below it. */
+	flex-wrap: nowrap;
 }
 
 .litm-hero-sheet .litm--play-header > .flexcol:first-child {
