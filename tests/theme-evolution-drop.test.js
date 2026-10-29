@@ -25,11 +25,12 @@ function tagEffect({ name, type = "power_tag", isTitleTag = false }) {
 
 /**
  * A theme item whose effect collection really empties when effects are
- * deleted, as Foundry's EmbeddedCollection does.
+ * deleted, as Foundry's EmbeddedCollection does. `power` counts the power
+ * tags besides the title tag, which every theme also carries.
  */
 function fakeTheme({
 	name = "Theme",
-	power = 4,
+	power = 3,
 	weakness = 2,
 	isFellowship = false,
 	specials = [],
@@ -89,14 +90,13 @@ describe("applyDroppedTheme", () => {
 				"Hardened Warrior power 0",
 				"Hardened Warrior power 1",
 				"Hardened Warrior power 2",
-				"Hardened Warrior power 3",
 				"Hardened Warrior weakness 0",
 				"Hardened Warrior weakness 1",
 			].sort(),
 		);
 		// Creation data must not carry the old ids over.
 		expect(created.every((e) => e._id === undefined)).toBe(true);
-		// 4 power (1 over baseline) + 2 weakness (1 over baseline) + base 1.
+		// Title + 3 power (1 over baseline) + 2 weakness (1 over baseline) + base 1.
 		expect(actor.update).toHaveBeenCalledWith({ "system.promise": 3 });
 	});
 
@@ -117,15 +117,17 @@ describe("applyDroppedTheme", () => {
 	// the theme you are replacing" — the replaced theme, not the dropped one.
 	it("counts Promise from the theme being replaced, not the dropped one", async () => {
 		const actor = fakeActor({ system: { promise: 0, pendingPromise: 0 } });
-		// 4 power (1 over) + 1 weakness (0 over) + 1 active special = 2 extras.
+		// Title + 3 power (1 over) + 1 weakness (0 over) + 1 active special = 2
+		// extras.
 		const target = fakeTheme({
 			name: "Target",
-			power: 4,
+			power: 3,
 			weakness: 1,
 			specials: [{ name: "Quick", isActive: true }],
 		});
-		// 5 power (2 over) + 2 weakness (1 over) = 3 extras, which must not count.
-		const source = fakeTheme({ name: "Source", power: 5, weakness: 2 });
+		// Title + 4 power (2 over) + 2 weakness (1 over) = 3 extras, which must
+		// not count.
+		const source = fakeTheme({ name: "Source", power: 4, weakness: 2 });
 
 		await applyDroppedTheme({ actor, theme: target, dropped: source });
 
@@ -134,8 +136,9 @@ describe("applyDroppedTheme", () => {
 
 	it("gains just the base Promise when the replaced theme has no extras", async () => {
 		const actor = fakeActor({ system: { promise: 0, pendingPromise: 0 } });
-		const target = fakeTheme({ name: "Target", power: 3, weakness: 1 });
-		const source = fakeTheme({ name: "Source", power: 5, weakness: 2 });
+		// Title + 2 power and 1 weakness: the baseline theme, nothing beyond it.
+		const target = fakeTheme({ name: "Target", power: 2, weakness: 1 });
+		const source = fakeTheme({ name: "Source", power: 4, weakness: 2 });
 
 		await applyDroppedTheme({ actor, theme: target, dropped: source });
 
@@ -181,8 +184,8 @@ describe("applyDroppedTheme", () => {
 
 	it("fires litm.themeAdvanced with the replace payload shape the form path uses", async () => {
 		const actor = fakeActor({ name: "Gerrin", system: { promise: 0 } });
-		// Replaced theme: 4 power (1 over) + 2 weakness (1 over) = 2 extras.
-		const theme = fakeTheme({ name: "Target", power: 4, weakness: 2 });
+		// Replaced theme: title + 3 power (1 over) + 2 weakness (1 over) = 2 extras.
+		const theme = fakeTheme({ name: "Target", power: 3, weakness: 2 });
 		const dropped = fakeTheme({ name: "Source", power: 2, weakness: 1 });
 
 		await applyDroppedTheme({ actor, theme, dropped });
@@ -303,7 +306,7 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		expect(Hooks.callAll).not.toHaveBeenCalled();
 		expect(message.setFlag).not.toHaveBeenCalled();
 		expect(wizard.close).not.toHaveBeenCalled();
-		expect(theme.effects).toHaveLength(7);
+		expect(theme.effects).toHaveLength(6); // title + 3 power + 2 weakness
 	});
 
 	it("keeps the wizard open and the chat card unresolved when the drop is refused as the wrong kind", async () => {

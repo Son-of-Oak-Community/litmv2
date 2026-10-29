@@ -9,8 +9,9 @@
  * Promise math (p.193):
  *   Evolve  → +1 (base) plus +1 per *optionally* traded extra
  *   Replace → +1 (base) plus +1 per *mandatorily* traded extra
- *   Extras are: power tags beyond the third, weakness tags beyond the
- *   first, and any Special Improvement on the discarded theme.
+ *   Extras are: power tags beyond the third (the title tag is the first
+ *   of the three), weakness tags beyond the first, and any Special
+ *   Improvement on the discarded theme.
  *   Fellowship themes do not gain Promise (p.193).
  *
  * The wizard transforms the theme in place rather than deleting and
