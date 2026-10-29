@@ -21,7 +21,7 @@ import { Sockets } from "../system/sockets.js";
 import {
 	availableThemebookImprovements,
 	confirmDelete,
-	enrichHTML,
+	enrichPlainText,
 	findThemebookByName,
 	getStoryTagSidebar,
 	levelIcon,
@@ -122,8 +122,8 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const enriched = await Promise.all(
 			themeContext.system.specialImprovements.map(async (imp) => ({
 				...imp,
-				enrichedDescription: await enrichHTML(
-					foundry.utils.escapeHTML(imp.description || ""),
+				enrichedDescription: await enrichPlainText(
+					imp.description,
 					this.document,
 				),
 			})),
@@ -158,8 +158,8 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const lockedEnriched = await Promise.all(
 			locked.map(async (imp) => ({
 				...imp,
-				enrichedDescription: await enrichHTML(
-					foundry.utils.escapeHTML(imp.description || ""),
+				enrichedDescription: await enrichPlainText(
+					imp.description,
 					this.document,
 				),
 			})),
@@ -398,13 +398,13 @@ export class LitmActorSheet extends LitmSheetMixin(
 				.sort((a, b) => a.sort - b.sort)
 				.map(async (i) => {
 					const itemData = i.toObject();
-					itemData.system.threat = await enrichHTML(
+					itemData.system.threat = await enrichPlainText(
 						itemData.system.threat,
 						this.document,
 					);
 					itemData.system.consequences = await Promise.all(
 						itemData.system.consequences.map((c) =>
-							enrichHTML(c, this.document),
+							enrichPlainText(c, this.document),
 						),
 					);
 					itemData.system.hasCustomImage = i.system.hasCustomImage;

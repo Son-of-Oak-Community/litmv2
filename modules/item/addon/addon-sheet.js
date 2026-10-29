@@ -2,10 +2,10 @@ import { ChallengeData } from "../../actor/challenge/challenge-data.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
 import { MIGHT_OPTIONS } from "../../system/config.js";
 import {
-	enrichHTML,
+	enrichPlainText,
 	keepUnrenderedArrayKeys,
-	removeAtIndex,
 	localize as t,
+	removeAtIndex,
 } from "../../utils.js";
 
 export class AddonSheet extends LitmItemSheet {
@@ -58,9 +58,9 @@ export class AddonSheet extends LitmItemSheet {
 			this.system.threats.map(async (t, index) => ({
 				...t,
 				index,
-				enrichedThreat: await enrichHTML(t.threat, this.document),
+				enrichedThreat: await enrichPlainText(t.threat, this.document),
 				enrichedConsequences: await Promise.all(
-					t.consequences.map((c) => enrichHTML(c, this.document)),
+					t.consequences.map((c) => enrichPlainText(c, this.document)),
 				),
 			})),
 		);

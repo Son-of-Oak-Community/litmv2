@@ -135,6 +135,21 @@ export async function enrichHTML(text, document) {
 	);
 }
 
+/**
+ * Enrich a plain-text field — a threat, a consequence, a tag line — so its
+ * tag, status and link markup renders, while the text itself never becomes
+ * HTML. `TextEditor.enrichHTML` only takes an HTML string, so the text goes
+ * in escaped: its enrichers match decoded text nodes, so `[Ma's cooking]`
+ * still becomes a chip, and an `<img onerror>` stays inert text.
+ * @param {string} text          Plain text, possibly holding enricher markup
+ * @param {Document} document    The document context for enrichment
+ * @returns {Promise<string>}
+ */
+export async function enrichPlainText(text, document) {
+	if (!text) return "";
+	return enrichHTML(foundry.utils.escapeHTML(text), document);
+}
+
 export function toQuestionOptions(questions = [], skipFirst = 0) {
 	const options = {};
 

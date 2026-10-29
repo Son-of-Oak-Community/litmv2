@@ -4,11 +4,11 @@ import {
 	vignetteCard,
 } from "../modules/system/renderers/vignette-renderer.js";
 
-// Regression coverage for GH#94: a vignette description stored as HTML (e.g.
-// "<p>With an eerie smile…</p>" pasted in from rules text) was being assigned
-// via textContent and rendered as a literal string. The renderer now routes
-// threat and consequence text through enrichHTML and assigns the result as
-// innerHTML, so HTML markup survives as DOM rather than escaped text.
+// Regression coverage for GH#94: the enriched threat and consequence HTML (tag
+// chips, links) was assigned via textContent and rendered as a literal string.
+// The renderer assigns the enrichment result as innerHTML. The stored text is
+// plain, though: it is escaped before enrichment, so markup a player typed
+// into a threat stays text instead of running in the viewer's browser.
 
 // --- Minimal element stub ---
 // Vitest runs under `environment: "node"` (see vitest.config.js), so there's
@@ -83,40 +83,56 @@ function ownerDoc() {
 }
 
 describe("vignetteCard", () => {
-	it("renders threat HTML via innerHTML, not as escaped textContent (GH#94)", async () => {
+	it("renders the enriched threat via innerHTML, not textContent (GH#94)", async () => {
+		enrichHTML.mockImplementation(
+			async (text) => `<span class="litm-tag">${text}</span>`,
+		);
 		const card = await vignetteCard({
 			label: "Spectre",
-			threat: "<p>With an eerie smile, the ghost beckons.</p>",
+			threat: "The ghost beckons",
 			relativeTo: ownerDoc(),
 		});
 
 		const threat = card.find("div", "threat-text");
 		expect(threat).not.toBeNull();
-		// HTML lands in innerHTML — that's what lets the browser parse <p>.
+		// The enricher's markup lands in innerHTML, so the chip is DOM.
 		expect(threat.innerHTML).toBe(
-			"<p>With an eerie smile, the ghost beckons.</p>",
+			'<span class="litm-tag">The ghost beckons</span>',
 		);
 		// And nothing has been assigned via textContent (that's the bug).
 		expect(threat.textContent).toBe("");
 	});
 
-	it("renders each consequence's HTML via innerHTML (GH#94)", async () => {
+	it("renders each enriched consequence via innerHTML (GH#94)", async () => {
 		const card = await vignetteCard({
 			label: "Spectre",
-			consequences: [
-				"<p>You are <strong>haunted</strong>.</p>",
-				"<p>The temperature drops.</p>",
-			],
+			consequences: ["You are [haunted]", "The temperature drops"],
 			relativeTo: ownerDoc(),
 		});
 
 		const items = card.findAll("li", "consequence-item");
 		expect(items).toHaveLength(2);
-		expect(items[0].innerHTML).toBe("<p>You are <strong>haunted</strong>.</p>");
-		expect(items[1].innerHTML).toBe("<p>The temperature drops.</p>");
+		expect(items[0].innerHTML).toBe("You are [haunted]");
+		expect(items[1].innerHTML).toBe("The temperature drops");
 		for (const li of items) {
 			expect(li.textContent).toBe("");
 		}
+	});
+
+	it("escapes markup typed into the threat and consequences", async () => {
+		const card = await vignetteCard({
+			label: "Spectre",
+			threat: "<img src=x onerror=alert(1)>",
+			consequences: ["<script>x</script>"],
+			relativeTo: ownerDoc(),
+		});
+
+		expect(card.find("div", "threat-text").innerHTML).toBe(
+			"&lt;img src=x onerror=alert(1)&gt;",
+		);
+		expect(card.find("li", "consequence-item").innerHTML).toBe(
+			"&lt;script&gt;x&lt;/script&gt;",
+		);
 	});
 
 	it("passes the relativeTo document through to enrichHTML", async () => {
@@ -172,7 +188,7 @@ describe("renderVignette", () => {
 			name: "Spectre",
 			isOwner: true,
 			system: {
-				threat: "<em>spooky</em>",
+				threat: "spooky",
 				consequences: [],
 				isConsequenceOnly: false,
 			},
@@ -181,7 +197,7 @@ describe("renderVignette", () => {
 		await renderVignette(item);
 
 		expect(enrichHTML).toHaveBeenCalledWith(
-			"<em>spooky</em>",
+			"spooky",
 			expect.objectContaining({ relativeTo: item }),
 		);
 	});
@@ -190,7 +206,7 @@ describe("renderVignette", () => {
 		const mockItem = {
 			name: "Mock",
 			system: {
-				threat: "<em>spooky</em>",
+				threat: "spooky",
 				consequences: [],
 				isConsequenceOnly: false,
 			},
@@ -200,7 +216,7 @@ describe("renderVignette", () => {
 		await renderVignette(mockItem, actor);
 
 		expect(enrichHTML).toHaveBeenCalledWith(
-			"<em>spooky</em>",
+			"spooky",
 			expect.objectContaining({ relativeTo: actor }),
 		);
 	});

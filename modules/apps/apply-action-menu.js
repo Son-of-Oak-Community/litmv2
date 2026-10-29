@@ -3,7 +3,11 @@ import { applyConsequence } from "../item/action/chat-actions.js";
 import { error } from "../logger.js";
 import { FLAGS } from "../system/config.js";
 import { LitmSettings } from "../system/settings.js";
-import { enrichHTML, getStoryTagSidebar, localize as t } from "../utils.js";
+import {
+	enrichPlainText,
+	getStoryTagSidebar,
+	localize as t,
+} from "../utils.js";
 import {
 	buildConsequenceItem,
 	gatherSidebarConsequences,
@@ -101,7 +105,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 							disabled: pushedLocked,
 							sourceUuid: "",
 							sourceLabel: action.name,
-							html: await enrichHTML(foundry.utils.escapeHTML(text), action),
+							html: await enrichPlainText(text, action),
 						}),
 					),
 				)
@@ -116,7 +120,7 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 			actors: sidebarActors,
 			appliedKeys,
 			disabled: pushedLocked,
-			enrich: (text, doc) => enrichHTML(foundry.utils.escapeHTML(text), doc),
+			enrich: (text, doc) => enrichPlainText(text, doc),
 		});
 
 		// In-play actors as one-click target chips. Deliberately narrowed to the

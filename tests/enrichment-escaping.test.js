@@ -16,6 +16,7 @@ import {
 import { ApplyActionMenuApp } from "../modules/apps/apply-action-menu.js";
 import { LitmActorSheet } from "../modules/sheets/base-actor-sheet.js";
 import { makeTagStringRe } from "../modules/system/config.js";
+import { enrichPlainText } from "../modules/utils.js";
 
 vi.mock("../modules/system/sockets.js", () => ({
 	Sockets: { dispatch: vi.fn() },
@@ -181,5 +182,26 @@ describe("apply-action menu escapes consequence text before enrichment", () => {
 	it("still scans variable tiers from the raw text", async () => {
 		const ctx = await prepare({ consequences: ["Heroes are [shaken-]"] });
 		expect(ctx.items[0].varTokens).toEqual([{ idx: 0, name: "shaken" }]);
+	});
+});
+
+describe("enrichPlainText", () => {
+	const doc = { isOwner: true };
+
+	it("hands the enrichers escaped text", async () => {
+		const html = await enrichPlainText(`Watch out ${PAYLOAD}`, doc);
+		expectEscaped(enriched[0]);
+		expectEscaped(html);
+	});
+
+	it("keeps tag, status and link markup for the enrichers", async () => {
+		await enrichPlainText("Inflict [wounded-3] on @UUID[Actor.abc]{Gerrin}", doc);
+		expect(enriched[0]).toBe("Inflict [wounded-3] on @UUID[Actor.abc]{Gerrin}");
+	});
+
+	it("skips enrichment for empty text", async () => {
+		expect(await enrichPlainText("", doc)).toBe("");
+		expect(await enrichPlainText(undefined, doc)).toBe("");
+		expect(enriched).toEqual([]);
 	});
 });
