@@ -125,6 +125,7 @@ describe("applySpendIntent — reduce_status owner routing", () => {
 			userId: "player-1",
 			messageId: null,
 			actorId: "c1",
+			actorUuid: "Actor.c1",
 			effectId: "s1",
 			tiers: 1,
 		});
@@ -213,6 +214,7 @@ describe("applySpendIntent — inflict_status targeting", () => {
 			userId: "player-1",
 			messageId: null,
 			actorId: "c1",
+			actorUuid: "Actor.c1",
 			name: "enraged",
 			tier: 3,
 		});

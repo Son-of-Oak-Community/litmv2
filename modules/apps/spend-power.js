@@ -291,6 +291,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 			: [];
 		const inflictTargets = sidebarCandidates.map((c) => ({
 			id: c.id,
+			uuid: c.uuid,
 			name: c.label,
 			img: c.img,
 		}));
@@ -335,12 +336,16 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		// spend, instead of being prompted after the fact.
 		let targets = [];
 		if (actionSuccesses.some((s) => s.needsActorTarget)) {
-			const preferredId = [...(game.user.targets ?? [])][0]?.actor?.id ?? null;
+			// By uuid: with three unlinked bandits on the scene, the id would
+			// pre-check all of them and leave the radio group on the last.
+			const preferredUuid =
+				[...(game.user.targets ?? [])][0]?.actor?.uuid ?? null;
 			targets = sidebarCandidates.map((c) => ({
 				id: c.id,
+				uuid: c.uuid,
 				name: c.label,
 				img: c.img,
-				selected: c.id === preferredId,
+				selected: c.uuid === preferredUuid,
 			}));
 		}
 
@@ -899,6 +904,7 @@ export function parseSpendIntent(form, dialog) {
 						effectId: item.dataset.effectId,
 						name: item.dataset.statusName,
 						actorId: item.dataset.actorId,
+						actorUuid: item.dataset.actorUuid,
 						tiers: Math.max(0, max - value),
 					};
 				})
@@ -958,6 +964,7 @@ export function parseSpendIntent(form, dialog) {
 				tagId: chip.dataset.tagId,
 				tagName: chip.dataset.tagName,
 				actorId: chip.dataset.actorId,
+				actorUuid: chip.dataset.actorUuid,
 				isScene: chip.dataset.sceneTag === "true",
 				isSingleUse: chip.dataset.singleUse === "true",
 			}));
@@ -987,9 +994,11 @@ export function parseSpendIntent(form, dialog) {
 			}))
 			.filter(({ name }) => name !== "");
 		// Inflict's optional target chip — "" (post to chat) parses to null,
-		// which keeps the legacy draggable-chat-chip behavior.
-		const targetActorId =
-			li.querySelector("input[name='inflict-target']:checked")?.value || null;
+		// which keeps the legacy draggable-chat-chip behavior. The uuid names
+		// the document: an unlinked token shares its world actor's id.
+		const inflictTarget = li.querySelector(
+			"input[name='inflict-target']:checked",
+		);
 		options.push({
 			kind: "default",
 			optionId,
@@ -998,14 +1007,18 @@ export function parseSpendIntent(form, dialog) {
 			hasTier,
 			draggable: !!option.draggable,
 			entries,
-			targetActorId,
+			targetActorId: inflictTarget?.value || null,
+			targetActorUuid: inflictTarget?.dataset?.actorUuid || null,
 		});
 	}
 
+	const successTarget = form.querySelector(
+		"input[name='success-target']:checked",
+	);
 	return {
 		options,
-		targetActorId:
-			form.querySelector("input[name='success-target']:checked")?.value ?? null,
+		targetActorId: successTarget?.value ?? null,
+		targetActorUuid: successTarget?.dataset?.actorUuid || null,
 		messageId: dialog.messageId,
 		alreadySpent: dialog.alreadySpent,
 	};

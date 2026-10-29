@@ -21,7 +21,12 @@ const { DialogV2 } = foundry.applications.api;
  * @param {boolean} [options.allowSelf=false]   Whether to include the rolling actor.
  * @param {Actor|null} [options.exclude=null]   Actor to exclude from the list.
  * @param {string[]|null} [options.types=null]  Restrict to these actor types (default: any).
- * @returns {object[]}  Entries of `{id, label, img, actor}`.
+ *
+ * Entries are told apart by `actor.uuid`, not `actor.id`: an unlinked token's
+ * actor is synthetic and shares its world actor's id, so two bandit tokens must
+ * stay two entries. `id` stays for consumers that address world actors by id;
+ * anything that writes to the candidate has to resolve `uuid`.
+ * @returns {object[]}  Entries of `{id, uuid, label, img, actor}`.
  */
 export function getTargetCandidates({
 	allowSelf = false,
@@ -35,15 +40,17 @@ export function getTargetCandidates({
 	const candidates = [];
 
 	const add = (actor, img) => {
-		if (!actor || seen.has(actor.id)) return;
+		if (!actor || seen.has(actor.uuid ?? actor.id)) return;
 		if (!allowSelf && actor === exclude) return;
 		if (allowedTypes && !allowedTypes.has(actor.type)) return;
 		// Checked here rather than per source: an actor hidden in the sidebar is
 		// hidden however it is reached, including through a token on the scene.
+		// By id on purpose, so hiding a world actor hides all of its tokens.
 		if (hiddenActorIds.has(actor.id)) return;
-		seen.add(actor.id);
+		seen.add(actor.uuid ?? actor.id);
 		candidates.push({
 			id: actor.id,
+			uuid: actor.uuid,
 			label: actor.system?.maskedName ?? actor.name,
 			img,
 			actor,

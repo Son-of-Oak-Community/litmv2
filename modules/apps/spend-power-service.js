@@ -32,6 +32,22 @@ export function scratchCost(cost, isSingleUse) {
 }
 
 /**
+ * Resolve the actor a Spend Power write names. A uuid wins when there is one:
+ * an unlinked token's actor is synthetic and shares its world actor's id, so
+ * the id alone lands the write on the world actor (every copy, and the sidebar
+ * column) or misses an effect that only the token has. A uuid that no longer
+ * resolves is `null`, never a fall back to the id. With no uuid (older intents)
+ * the world actor is looked up by id.
+ * @param {string|null|undefined} uuid  The actor's uuid
+ * @param {string|null|undefined} id    The actor's id
+ * @returns {Actor|null}
+ */
+function _resolveActor(uuid, id) {
+	if (uuid) return foundry.utils.fromUuidSync(uuid) ?? null;
+	return id ? (game.actors.get(id) ?? null) : null;
+}
+
+/**
  * Apply a parsed spend intent to an actor, executing all document mutations.
  *
  * @param {Actor} actor         The acting character
@@ -45,11 +61,13 @@ export function scratchCost(cost, isSingleUse) {
  *   the flag is re-read before it is written.
  * @param {string|null} [intent.targetActorId]  Actor picked on the dialog's
  *   target chip row; pre-resolves the target for actor-targeted successes.
+ * @param {string|null} [intent.targetActorUuid]  The picked chip's uuid. Wins
+ *   over the id, which an unlinked token shares with its world actor.
  * @returns {Promise<{ results: object[], totalSpent: number }>}
  */
 export async function applySpendIntent(actor, intent) {
-	const { options, messageId, targetActorId } = intent;
-	const presetTarget = targetActorId ? game.actors.get(targetActorId) : null;
+	const { options, messageId, targetActorId, targetActorUuid } = intent;
+	const presetTarget = _resolveActor(targetActorUuid, targetActorId);
 	const results = [];
 	let actionSpent = 0;
 	let genericSpent = 0;
@@ -339,12 +357,13 @@ async function _handleApplyStatusAsGM({
 	userId,
 	op,
 	actorId,
+	actorUuid,
 	effectId,
 	name,
 	tier,
 	tiers,
 }) {
-	const actor = game.actors.get(actorId);
+	const actor = _resolveActor(actorUuid, actorId);
 	// A vanished target/effect between dispatch and receipt would be a silent
 	// no-op on the GM client — whisper the acting player instead (mirrors the
 	// "nothing" branch of the success relay).
@@ -379,17 +398,18 @@ async function _handleApplySuccessAsGM({
 	messageId,
 	successKey,
 	targetActorId,
+	targetActorUuid,
 	limitInfo,
 	chosenTiers,
 	chosenTags,
 }) {
 	const actor = game.actors.get(actorId);
 	if (!actor) return;
-	const presetTarget = targetActorId ? game.actors.get(targetActorId) : null;
+	const presetTarget = _resolveActor(targetActorUuid, targetActorId);
 	// A vanished target must bail like a vanished limit actor below —
 	// falling through with a null presetTarget would reopen the target
 	// picker on the GM's client for opponent verbs.
-	if (targetActorId && !presetTarget) return;
+	if ((targetActorUuid || targetActorId) && !presetTarget) return;
 	let presetLimitInfo = null;
 	if (limitInfo) {
 		const limitActor = game.actors.get(limitInfo.actorId);
@@ -431,9 +451,10 @@ async function _applyStatusPicker(actor, opt, messageId, charge) {
 	const { reductions, cost } = opt;
 	const bodyLines = [];
 	let paidTiers = 0;
-	for (const { effectId, name, actorId, tiers } of reductions) {
-		const owner = (actorId ? game.actors.get(actorId) : null) ?? actor;
-		const effect = resolveEffect(effectId, owner);
+	for (const { effectId, name, actorId, actorUuid, tiers } of reductions) {
+		const owner =
+			actorId || actorUuid ? _resolveActor(actorUuid, actorId) : actor;
+		const effect = owner ? resolveEffect(effectId, owner) : null;
 		if (!effect) {
 			warn(`Status reduction skipped — "${name}" could not be resolved.`);
 			continue;
@@ -452,6 +473,7 @@ async function _applyStatusPicker(actor, opt, messageId, charge) {
 				userId: game.user.id,
 				messageId,
 				actorId: owner.id,
+				actorUuid: owner.uuid,
 				effectId: effect.id,
 				tiers,
 			});
@@ -485,8 +507,8 @@ async function _applyStatusPicker(actor, opt, messageId, charge) {
  * _applyDefault). Unowned targets route through the applyStatusAsGM relay.
  */
 async function _applyInflict(opt, messageId, charge) {
-	const { entries, cost, targetActorId } = opt;
-	const target = game.actors.get(targetActorId);
+	const { entries, cost, targetActorId, targetActorUuid } = opt;
+	const target = _resolveActor(targetActorUuid, targetActorId);
 	if (!target) {
 		warn("Inflict skipped — target actor not found.");
 		return { power: 0, body: "" };
@@ -511,6 +533,7 @@ async function _applyInflict(opt, messageId, charge) {
 				userId: game.user.id,
 				messageId,
 				actorId: target.id,
+				actorUuid: target.uuid,
 				name,
 				tier: tierN,
 			});
@@ -581,9 +604,16 @@ async function _applyScratchPicker(opt, charge) {
 
 	// Actor-owned story/backpack tags: scratch directly on their owner. Scene
 	// tags carry no actor effect (handled via the fork below).
-	for (const { tagId, tagName, actorId, isScene, isSingleUse } of chips) {
+	for (const {
+		tagId,
+		tagName,
+		actorId,
+		actorUuid,
+		isScene,
+		isSingleUse,
+	} of chips) {
 		if (isScene) continue;
-		const owner = actorId ? game.actors.get(actorId) : null;
+		const owner = _resolveActor(actorUuid, actorId);
 		const effect = owner ? resolveEffect(tagId, owner) : null;
 		if (!effect) {
 			warn(`Scratch skipped — tag "${tagName}" could not be resolved.`);

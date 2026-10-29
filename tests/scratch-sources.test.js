@@ -73,7 +73,10 @@ describe("collectScratchableTags", () => {
 			name,
 			system: { isScratched: false, isSingleUse: true },
 		});
-		const hero = actor("h1", "Gerrin", [tag("e1", "tonic"), single("e2", "torch")]);
+		const hero = actor("h1", "Gerrin", [
+			tag("e1", "tonic"),
+			single("e2", "torch"),
+		]);
 		const foe = actor("c1", "Bandit", [single("e3", "flare")]);
 		const groups = collectScratchableTags(
 			hero,
@@ -87,6 +90,48 @@ describe("collectScratchableTags", () => {
 			],
 			[{ id: "e3", name: "flare", isSingleUse: true }],
 			[{ id: "s1", name: "fog", isSingleUse: true }],
+		]);
+	});
+
+	// Unlinked tokens of one actor share its id but are separate documents; each
+	// keeps its own group, addressed by uuid.
+	it("keeps a group per unlinked token and carries each one's uuid", () => {
+		const withUuid = (a, uuid) => ({ ...a, uuid });
+		const hero = withUuid(
+			actor("h1", "Gerrin", [tag("e1", "tonic")]),
+			"Actor.h1",
+		);
+		const bandit1 = withUuid(
+			actor("bandit", "Bandit", [tag("e3", "reinforcements")]),
+			"Scene.s1.Token.t1.Actor.bandit",
+		);
+		const bandit2 = withUuid(
+			actor("bandit", "Bandit", [tag("e4", "ambush")]),
+			"Scene.s1.Token.t2.Actor.bandit",
+		);
+		const asCandidate = (a) => ({
+			id: a.id,
+			uuid: a.uuid,
+			label: a.name,
+			actor: a,
+		});
+
+		const groups = collectScratchableTags(hero, [
+			asCandidate(hero),
+			asCandidate(bandit1),
+			asCandidate(bandit2),
+		]);
+
+		expect(
+			groups.map(({ ownerId, ownerUuid, tags }) => [
+				ownerId,
+				ownerUuid,
+				tags.map((t) => t.id),
+			]),
+		).toEqual([
+			["h1", "Actor.h1", ["e1"]],
+			["bandit", "Scene.s1.Token.t1.Actor.bandit", ["e3"]],
+			["bandit", "Scene.s1.Token.t2.Actor.bandit", ["e4"]],
 		]);
 	});
 

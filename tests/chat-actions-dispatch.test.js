@@ -530,6 +530,7 @@ describe("applySuccess — GM relay for unowned targets", () => {
 			messageId: "m1",
 			successKey: "succ1",
 			targetActorId: "opp1",
+			targetActorUuid: "Actor.opp1",
 			limitInfo: null,
 			chosenTiers: [],
 			chosenTags: null,

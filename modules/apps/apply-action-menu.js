@@ -134,15 +134,21 @@ export class ApplyActionMenuApp extends foundry.applications.api.HandlebarsAppli
 		const preselected = participantIds.length
 			? new Set(participantIds)
 			: new Set([rollingActorId]);
+		// Consequences are applied by actor id here, so one chip per actor:
+		// candidates are told apart by uuid, and two unlinked tokens of one actor
+		// would otherwise be two chips sharing a value.
+		const chipIds = new Set();
 		const targets = getTargetCandidates({
 			allowSelf: true,
 			types: ["hero", "story_theme", "fellowship"],
-		}).map((c) => ({
-			id: c.id,
-			name: c.label,
-			img: c.img,
-			selected: preselected.has(c.id),
-		}));
+		})
+			.filter((c) => !chipIds.has(c.id) && chipIds.add(c.id))
+			.map((c) => ({
+				id: c.id,
+				name: c.label,
+				img: c.img,
+				selected: preselected.has(c.id),
+			}));
 
 		return {
 			actionName: action?.name ?? "",

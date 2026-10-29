@@ -14,7 +14,7 @@ function unscratchedStoryTags(actor) {
 /**
  * Group scratchable story tags by owner: the rolling actor first (isOwn),
  * then each candidate that owns any. Candidates are deduped against the
- * rolling actor by id.
+ * rolling actor by uuid (falling back to id).
  * @param {Actor} actor                          The rolling actor.
  * @param {{id:string,label:string,actor:Actor}[]} candidates  Target candidates.
  * @param {{id:string,name:string,isSingleUse?:boolean}[]} sceneTags Pre-filtered scene story tags
@@ -25,7 +25,7 @@ function unscratchedStoryTags(actor) {
  *        free of game/user globals. Applies to every group, the rolling actor's
  *        included: a Narrator-hidden tag is already invisible on the hero's own
  *        sheet, so this picker must not be the surface that leaks it.
- * @returns {{ownerId:string,ownerName:string,isOwn:boolean,isScene?:boolean,tags:{id:string,name:string,isSingleUse:boolean}[]}[]}
+ * @returns {{ownerId:string,ownerUuid?:string,ownerName:string,isOwn:boolean,isScene?:boolean,tags:{id:string,name:string,isSingleUse:boolean}[]}[]}
  */
 export function collectScratchableTags(
 	actor,
@@ -48,22 +48,26 @@ export function collectScratchableTags(
 	if (actor && own.length) {
 		groups.push({
 			ownerId: actor.id,
+			ownerUuid: actor.uuid,
 			ownerName: actor.name,
 			isOwn: true,
 			tags: own.map(toChip),
 		});
 	}
-	if (actor) seen.add(actor.id);
+	if (actor) seen.add(actor.uuid ?? actor.id);
 
+	// Keyed by uuid: unlinked tokens of one actor share its id.
 	for (const cand of candidates) {
-		if (seen.has(cand.id)) continue;
-		seen.add(cand.id);
+		const key = cand.uuid ?? cand.id;
+		if (seen.has(key)) continue;
+		seen.add(key);
 		const tags = unscratchedStoryTags(cand.actor).filter(
 			(e) => !tagFilter || tagFilter(e),
 		);
 		if (!tags.length) continue;
 		groups.push({
 			ownerId: cand.id,
+			ownerUuid: cand.uuid,
 			ownerName: cand.label,
 			isOwn: false,
 			tags: tags.map(toChip),
