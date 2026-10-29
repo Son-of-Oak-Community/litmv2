@@ -252,12 +252,6 @@ export async function transferBackpackTags(sourceItem, targetItem, tagIds) {
 }
 
 /**
- * Remove an element at the given index from an array field and update the document.
- * @param {Document} doc   The Foundry document to update
- * @param {string} path    The dot-notation path to the array field (e.g. "system.limits")
- * @param {number} index   The index to remove
- */
-/**
  * Fill the keys a form leaves out of each submitted array entry from the
  * stored entry. Foundry replaces arrays whole and cleans each element with
  * schema defaults, so a form that renders only `label` would otherwise reset
@@ -276,6 +270,12 @@ export function keepUnrenderedArrayKeys(submitData, doc, path) {
 	});
 }
 
+/**
+ * Remove an element at the given index from an array field and update the document.
+ * @param {Document} doc   The Foundry document to update
+ * @param {string} path    The dot-notation path to the array field (e.g. "system.limits")
+ * @param {number} index   The index to remove
+ */
 export async function removeAtIndex(doc, path, index) {
 	const arr = foundry.utils.getProperty(doc, path) ?? [];
 	await doc.update({ [path]: arr.filter((_, i) => i !== index) });
