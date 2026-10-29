@@ -17,6 +17,15 @@ import { ensureHeroState } from "./camping-state.js";
 // `CONFIG.litmv2.improveThreshold` instead — see `trackMax()`.
 const TRACK_MAX = 3;
 
+// Where each track lives on a theme item (theme-data.js): Improve sits at the
+// top level, Abandon / Milestone nest under `quest.tracks`. Reads and writes
+// both go through these paths so they can't drift apart.
+const TRACK_PATHS = {
+	improve: "system.improve.value",
+	abandon: "system.quest.tracks.abandon.value",
+	milestone: "system.quest.tracks.milestone.value",
+};
+
 /** Effective max for a theme track — Improve is world-configurable. */
 function trackMax(track) {
 	return track === "improve" ? CONFIG.litmv2.improveThreshold : TRACK_MAX;
@@ -39,7 +48,7 @@ function trackMax(track) {
  *     renames:               [{ effect, newName }],
  *     improves:              [{ theme, owner, newValue }],  // camp-mode reflect
  *     improvements:          [{ theme, owner, sourceHero }], // sojourn-mode reflect
- *     questMarks:            [{ theme, owner, track, newValue, sourceHero }],
+ *     questMarks:            [{ theme, owner, track, path, newValue, sourceHero }],
  *     relationshipCreations: [{ heroActor, targetId, name }],
  *   }
  *   recap: mirrors the camp scene's own flow — Periods, then Quality Time,
@@ -127,7 +136,8 @@ function emptyOps() {
 		improves: [],
 		improvements: [],
 		// Abandon / Milestone Quest marks from Reflect (Core Book p.181).
-		// Each entry: { theme, owner, track: "abandon" | "milestone", newValue, sourceHero }
+		// Each entry: { theme, owner, track: "abandon" | "milestone", path, newValue, sourceHero }
+		// `path` is the theme update path of the track (see TRACK_PATHS).
 		questMarks: [],
 		relationshipCreations: [],
 	};
@@ -336,14 +346,18 @@ function bumpTrack(track, theme, owner, accum, ops, sourceHero) {
 		existing.newValue = Math.min(existing.newValue + 1, max);
 		return existing.newValue;
 	}
-	const newValue = Math.min((theme.system?.[track]?.value ?? 0) + 1, max);
+	const path = TRACK_PATHS[track];
+	const newValue = Math.min(
+		(foundry.utils.getProperty(theme, path) ?? 0) + 1,
+		max,
+	);
 	if (track === "improve") {
 		const entry = { theme, owner, newValue };
 		map.set(key, entry);
 		ops.improves.push(entry);
 		return newValue;
 	}
-	const entry = { theme, owner, track, newValue, sourceHero };
+	const entry = { theme, owner, track, path, newValue, sourceHero };
 	map.set(key, entry);
 	ops.questMarks.push(entry);
 	return newValue;
@@ -377,11 +391,9 @@ function buildReflectOps(act, hero, state, world, trackAccum, ops, lines) {
 		}
 	}
 
-	// Quest marks — Sojourn Reflect lets players also mark Abandon /
-	// Milestone "if the player sees fit to do so" (Core Book p.181).
-	// Camp Reflect grants only Improve, so we skip the picker on camp
-	// and gate the apply path here too in case a stale state slips through.
-	if (state.type === "camp") return;
+	// Quest marks — Reflect, camp or sojourn, is also a good time to mark
+	// Abandon / Milestone "if the player sees fit to do so" (Core Book p.181).
+	// Only the Improve reward above differs between the two.
 	for (const track of ["abandon", "milestone"]) {
 		const targetId =
 			track === "abandon"
@@ -552,7 +564,7 @@ export async function applyOperations(operations) {
 	// track max, so the third mark lands exactly on the boundary
 	// `detectTrackCompletion` checks.
 	for (const { theme, owner, newValue } of operations.improves) {
-		await completeTrackUpdate(theme, "system.improve.value", newValue, owner);
+		await completeTrackUpdate(theme, TRACK_PATHS.improve, newValue, owner);
 	}
 
 	// Abandon / Milestone Quest marks from Reflect — same clamp +
@@ -561,17 +573,11 @@ export async function applyOperations(operations) {
 	for (const {
 		theme,
 		owner,
-		track,
+		path,
 		newValue,
 		sourceHero,
 	} of operations.questMarks) {
-		await completeTrackUpdate(
-			theme,
-			`system.${track}.value`,
-			newValue,
-			owner,
-			sourceHero,
-		);
+		await completeTrackUpdate(theme, path, newValue, owner, sourceHero);
 	}
 
 	// Sojourn-mode Improvements — fill the improve track and fire

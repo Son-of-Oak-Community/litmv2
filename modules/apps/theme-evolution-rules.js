@@ -8,8 +8,15 @@
 
 import { POWER_TAG_TYPES } from "../system/config.js";
 
+/**
+ * A theme's first three power tags: the title tag and two more (Core Book
+ * p.77 / p.192). Promise is only earned for power tags beyond them.
+ */
 export const POWER_BASELINE = 3;
 export const WEAKNESS_BASELINE = 1;
+// The title tag is one of the baseline power tags but is never revisable or
+// tradable, so {@link getRevisableParts} leaves it out of the list.
+const TITLE_TAG_COUNT = 1;
 export const PROMISE_MAX = 5;
 
 /**
@@ -73,13 +80,14 @@ export function getRevisableParts(theme) {
 /**
  * Maximum number of trade marks per kind for a given revisable list,
  * following the Core Book p.193 rule (power beyond third, weakness
- * beyond first, every special).
+ * beyond first, every special). The revisable list holds no title tag,
+ * which already fills one of the three baseline power slots.
  */
 export function getTradeCaps(revisable) {
 	const counts = { power: 0, weakness: 0, special: 0 };
 	for (const p of revisable) counts[p.kind] = (counts[p.kind] ?? 0) + 1;
 	return {
-		power: Math.max(0, counts.power - POWER_BASELINE),
+		power: Math.max(0, counts.power - (POWER_BASELINE - TITLE_TAG_COUNT)),
 		weakness: Math.max(0, counts.weakness - WEAKNESS_BASELINE),
 		special: counts.special,
 	};

@@ -190,13 +190,14 @@ describe("getRevisableParts", () => {
 	});
 
 	it("trade caps shrink when locked parts are excluded", () => {
-		// 5 power tags total but only 3 unlocked → 0 extras (baseline 3),
-		// even though the raw count of 5 would otherwise yield 2 extras.
+		// Title + 5 power tags, but only the title and 2 are unlocked → 0 extras
+		// (baseline 3), even though the raw count of 6 would otherwise yield 3.
 		const t = {
 			effects: [
+				effect({ id: "title", name: "Title", isTitleTag: true }),
 				effect({ id: "p0", name: "p0" }),
 				effect({ id: "p1", name: "p1" }),
-				effect({ id: "p2", name: "p2" }),
+				effect({ id: "p2", name: "p2", disabled: true }),
 				effect({ id: "p3", name: "p3", disabled: true }),
 				effect({ id: "p4", name: "p4", disabled: true }),
 			],
@@ -208,20 +209,43 @@ describe("getRevisableParts", () => {
 });
 
 describe("getTradeCaps", () => {
+	// Core Book p.77 / p.192: a theme is "the title tag and two more power
+	// tags", and Promise is for "each power tag beyond the third". The title
+	// tag is one of those three, though never itself revisable or tradable.
+	const powerCap = (nonTitlePower) =>
+		getTradeCaps(getRevisableParts(theme({ power: nonTitlePower }))).power;
+
 	it("returns zero caps for a baseline theme", () => {
 		const caps = getTradeCaps(
 			getRevisableParts(
-				theme({ power: POWER_BASELINE, weakness: WEAKNESS_BASELINE }),
+				theme({ power: POWER_BASELINE - 1, weakness: WEAKNESS_BASELINE }),
 			),
 		);
 		expect(caps).toEqual({ power: 0, weakness: 0, special: 0 });
+	});
+
+	it("counts the title tag as the first of the three baseline power tags", () => {
+		expect(powerCap(2)).toBe(0); // title + 2 power tags
+		expect(powerCap(3)).toBe(1); // title + 3 power tags: one beyond the third
+		expect(powerCap(5)).toBe(3);
+	});
+
+	it("a nascent theme (title tag only) has nothing to trade", () => {
+		expect(powerCap(0)).toBe(0);
+		expect(powerCap(1)).toBe(0);
+	});
+
+	it("keeps the title tag out of the tradable list", () => {
+		const parts = getRevisableParts(theme({ power: 3 }));
+		expect(parts.filter((p) => p.kind === "power")).toHaveLength(3);
+		expect(parts.some((p) => p.id === "title")).toBe(false);
 	});
 
 	it("caps trades to extras beyond baseline", () => {
 		const caps = getTradeCaps(
 			getRevisableParts(
 				theme({
-					power: POWER_BASELINE + 2,
+					power: POWER_BASELINE + 1,
 					weakness: WEAKNESS_BASELINE + 1,
 					specials: [special({ name: "a" }), special({ name: "b" })],
 				}),
