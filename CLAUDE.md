@@ -345,8 +345,11 @@ A called roll survives its owner's reload. `ready` keeps the user's own
 narrator-stamped `rollDialogOwner` flag, and on rejoining the owner sends
 `requestRollDialogSync` with `reseat: true`; a viewer answers with its
 canonical view and the fresh owner adopts it (`RollSync#adopt`) rather than
-publishing an empty draft. When a player takes the seat of a roll the GM was
-holding, the GM's dialog steps down to viewer on the flag change.
+publishing an empty draft. Edits accepted while that reseat is in flight are
+replayed on top of the adopted draft (`RollSync#expectReseat`); only a fresh
+owner (revision 0) waits for one. When a player takes the seat of a roll the
+GM was holding, every open dialog follows the new owner on the flag change
+(`LitmRollDialog#followSeat`), and the new owner keeps the old revision.
 
 ## Active Effects: the canonical tag store
 

@@ -84,6 +84,8 @@ export class ContentSources {
 	 * An empty setting means no filter: all packs of the matching document
 	 * type plus world items. A non-empty setting selects exactly the checked
 	 * sources; world items are included only via the `WORLD_SOURCE_ID` sentinel.
+	 * Selected ids that no longer exist are dropped; if none remain the setting
+	 * counts as empty.
 	 * Note: `includeWorld` has no meaning for the "statuses" category (statuses live only in compendium packs).
 	 * @param {string} category - One of: "themebooks", "themekits", "tropes", "statuses"
 	 * @returns {{ packs: CompendiumCollection[], includeWorld: boolean }}
@@ -99,13 +101,22 @@ export class ContentSources {
 		// any client that asks. Filtering on `visible` here is what actually
 		// keeps GM-only pack content out of player-facing pickers, so each
 		// client resolves its own view of the configured sources.
-		const allPacks = ContentSources.getCandidatePacks(category).filter(
-			(p) => p.visible,
+		const candidates = ContentSources.getCandidatePacks(category);
+		const allPacks = candidates.filter((p) => p.visible);
+
+		// A selected pack can vanish (its module was disabled). Ids that no longer
+		// exist are ignored, and with none left the selection is empty — the same
+		// reading the config app takes ("No sources selected. All … are included"),
+		// rather than filtering everything out. Existence, not visibility: a
+		// player whose only selected packs are GM-only must not get everything.
+		// Statuses have no World row, so the sentinel is not a source there.
+		const known = new Set(candidates.map((p) => p.collection));
+		const live = (selected ?? []).filter((id) =>
+			id === WORLD_SOURCE_ID ? category !== "statuses" : known.has(id),
 		);
+		if (!live.length) return { packs: allPacks, includeWorld: true };
 
-		if (!selected?.length) return { packs: allPacks, includeWorld: true };
-
-		const idSet = new Set(selected);
+		const idSet = new Set(live);
 		return {
 			packs: allPacks.filter((p) => idSet.has(p.collection)),
 			includeWorld: idSet.has(WORLD_SOURCE_ID),
@@ -150,7 +161,10 @@ export class ContentSources {
 	 * Idempotent — skips if already seeded.
 	 */
 	static async seedStatuses() {
-		if (!game.user.isGM) return;
+		// Active GM only, like migrateWorld: two GMs on a first load would both
+		// create the status pack.
+		const activeGM = game.users.activeGM;
+		if (!game.user.isGM || (activeGM && activeGM !== game.user)) return;
 		if (LitmSettings.statusesSeeded) return;
 
 		try {
@@ -168,13 +182,19 @@ export class ContentSources {
 	 * Called once at ready time after seedStatuses.
 	 */
 	static async loadStatusCompendium() {
-		const packs = ContentSources.getPacks("statuses");
-		if (!packs.length) return;
-		const configs = await ContentSources.getStatusEffectConfigs(packs);
-		CONFIG.statusEffects = configs;
-		info(
-			`Loaded ${configs.length} statuses from ${packs.length} compendium pack(s)`,
-		);
+		// Awaited in the ready hook ahead of socket registration, so it must not
+		// reject: a client that fails here would never register its listeners.
+		try {
+			const packs = ContentSources.getPacks("statuses");
+			if (!packs.length) return;
+			const configs = await ContentSources.getStatusEffectConfigs(packs);
+			CONFIG.statusEffects = configs;
+			info(
+				`Loaded ${configs.length} statuses from ${packs.length} compendium pack(s)`,
+			);
+		} catch (err) {
+			error("Failed to load statuses from compendium packs", err);
+		}
 	}
 
 	/**
@@ -182,7 +202,8 @@ export class ContentSources {
 	 * deduplicated by slugified id. The v14 `CONFIG.statusEffects` Proxy keys
 	 * on `id` and its `ownKeys` trap throws on duplicate keys, so two docs that
 	 * slugify to the same id (within or across packs) would otherwise corrupt
-	 * the global — last one wins here.
+	 * the global — last one wins here. A pack that fails to load is logged and
+	 * skipped so it cannot take the other packs' statuses down with it.
 	 * @param {CompendiumCollection[]} [packs] - Defaults to the status packs.
 	 * @returns {Promise<object[]>}
 	 */
@@ -191,7 +212,13 @@ export class ContentSources {
 	) {
 		const byId = new Map();
 		for (const pack of packs) {
-			const docs = await pack.getDocuments();
+			let docs;
+			try {
+				docs = await pack.getDocuments();
+			} catch (err) {
+				error(`Failed to load statuses from ${pack.collection}`, err);
+				continue;
+			}
 			for (const doc of docs) {
 				const id = doc.name.slugify({ strict: true });
 				byId.set(id, { id, _id: doc.id, name: doc.name, img: doc.img });

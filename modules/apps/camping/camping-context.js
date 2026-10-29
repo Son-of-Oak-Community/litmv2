@@ -107,7 +107,7 @@ function buildReflectTargets(actor) {
 function buildActivityRows(
 	heroState,
 	periodCount,
-	{ statusEffects, scratchedRecoverable, reflectTargets, isCamp },
+	{ statusEffects, scratchedRecoverable, reflectTargets },
 ) {
 	const claimed = new Set(
 		heroState.activities
@@ -135,10 +135,6 @@ function buildActivityRows(
 			isRest: act.activity === "rest",
 			isReflect: act.activity === "reflect",
 			isCampAction: act.activity === "campAction",
-			// Camp Reflect grants only Improve (Core Book p.181). Sojourn
-			// Reflect additionally allows marking Milestone/Abandon. Surface
-			// the flag so the template can hide those rows on a camp scene.
-			showQuestMarks: !isCamp,
 			canRest,
 			canReflect,
 			canCampAction: true,
@@ -241,7 +237,7 @@ function buildQualityTimeContext(
 	};
 }
 
-function buildHeroContext(actor, heroState, allHeroes, isCamp) {
+function buildHeroContext(actor, heroState, allHeroes) {
 	const buckets = partitionCampingEffects(actor);
 	const backpackTags = buildBackpackPills(actor, heroState);
 	const reflectTargets = buildReflectTargets(actor);
@@ -249,7 +245,6 @@ function buildHeroContext(actor, heroState, allHeroes, isCamp) {
 	const activities = buildActivityRows(heroState, periodCount, {
 		...buckets,
 		reflectTargets,
-		isCamp,
 	});
 	const qualityTime = buildQualityTimeContext(
 		actor,
@@ -282,10 +277,9 @@ function buildHeroContext(actor, heroState, allHeroes, isCamp) {
 export function buildContext(state) {
 	const live = state ?? defaultCampingState();
 	const allHeroes = getCampingHeroes();
-	const isCamp = live.type !== "sojourn";
 	const showThreats = LitmSettings.showCampingThreats;
 	const heroes = allHeroes.map((actor) =>
-		buildHeroContext(actor, ensureHeroState(live, actor.id), allHeroes, isCamp),
+		buildHeroContext(actor, ensureHeroState(live, actor.id), allHeroes),
 	);
 	const placeOfStay = buildPlaceOfStayContext(live);
 	const threats = showThreats ? buildThreatsContext(live) : [];

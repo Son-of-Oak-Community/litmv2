@@ -212,6 +212,8 @@ globalThis.foundry = {
 			ActorSheetV2: StubAppV2,
 			ItemSheetV2: StubAppV2,
 		},
+		// The Tags sidebar extends AbstractSidebarTab at module load.
+		sidebar: { AbstractSidebarTab: StubAppV2 },
 		handlebars: {
 			renderTemplate: () => Promise.resolve(""),
 		},

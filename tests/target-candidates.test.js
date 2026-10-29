@@ -96,6 +96,62 @@ describe("getTargetCandidates", () => {
 		expect(candidates[0].img).toBe("Gerrin.webp");
 	});
 
+	// An unlinked token's actor is synthetic: it shares the world actor's id but
+	// is its own document with its own uuid (Scene.x.Token.y.Actor.id). Callers
+	// that need to write to the *token* have to get the uuid, and distinct
+	// tokens must stay distinct.
+	describe("unlinked tokens", () => {
+		const unlinked = (tokenId, extra = {}) =>
+			makeActor("Bandit", "challenge", {
+				uuid: `Scene.s1.Token.${tokenId}.Actor.Bandit`,
+				...extra,
+			});
+
+		it("carries each candidate's uuid", () => {
+			const gerrin = makeActor("Gerrin", "hero");
+			trackActors([gerrin]);
+
+			expect(getTargetCandidates()[0]).toMatchObject({
+				id: "Gerrin",
+				uuid: "Actor.Gerrin",
+			});
+		});
+
+		it("keeps distinct unlinked tokens of one actor as separate candidates", () => {
+			const a = unlinked("t1");
+			const b = unlinked("t2");
+			trackActors([]);
+			canvas.tokens.placeables = [makeToken(a), makeToken(b)];
+
+			const candidates = getTargetCandidates();
+			expect(candidates.map((c) => c.uuid)).toEqual([a.uuid, b.uuid]);
+			expect(candidates.map((c) => c.id)).toEqual(["Bandit", "Bandit"]);
+			expect(candidates.map((c) => c.actor)).toEqual([a, b]);
+		});
+
+		it("still dedupes a linked token and a sidebar entry for the same world actor", () => {
+			const gerrin = makeActor("Gerrin", "hero");
+			trackActors([gerrin]);
+			// A linked token's actor *is* the world actor.
+			canvas.tokens.placeables = [makeToken(gerrin), makeToken(gerrin)];
+
+			expect(getTargetCandidates()).toHaveLength(1);
+		});
+
+		it("hides every token of a sidebar-hidden world actor", () => {
+			const world = makeActor("Bandit", "challenge");
+			trackActors([world], { hidden: [world] });
+			canvas.tokens.placeables = [
+				makeToken(unlinked("t1")),
+				makeToken(unlinked("t2")),
+			];
+
+			game.user = { isGM: false };
+			StoryTagsStore.invalidateCache();
+			expect(getTargetCandidates()).toEqual([]);
+		});
+	});
+
 	it("falls back to token art for an actor with no portrait", () => {
 		const gerrin = makeActor("Gerrin", "hero", { img: null });
 		trackActors([gerrin]);

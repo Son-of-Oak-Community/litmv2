@@ -69,3 +69,48 @@ describe("LitmItem.ensureTitleTag", () => {
 		expect(item.createEmbeddedDocuments).not.toHaveBeenCalled();
 	});
 });
+
+// Migrations 002/003 and the createItem/createActor hooks all funnel through
+// here. A burn is persistent state on the title tag, so a duplicate that is
+// scratched has to be the one that survives.
+describe("LitmItem.ensureTitleTag duplicates", () => {
+	const titleTag = (isScratched) =>
+		fakeEffect({
+			type: "power_tag",
+			system: { isTitleTag: true, isScratched },
+		});
+
+	it("keeps the first title tag when none are scratched", async () => {
+		const [keep, dupe] = [titleTag(false), titleTag(false)];
+		const item = theme([keep, dupe]);
+
+		await LitmItem.ensureTitleTag(item);
+
+		expect(item.deleteEmbeddedDocuments).toHaveBeenCalledWith("ActiveEffect", [
+			dupe.id,
+		]);
+	});
+
+	it("keeps the scratched title tag so the burn is not undone", async () => {
+		const [fresh, burned] = [titleTag(false), titleTag(true)];
+		const item = theme([fresh, burned]);
+
+		await LitmItem.ensureTitleTag(item);
+
+		expect(item.deleteEmbeddedDocuments).toHaveBeenCalledWith("ActiveEffect", [
+			fresh.id,
+		]);
+	});
+
+	it("deletes every other copy when several are present", async () => {
+		const [a, b, c] = [titleTag(false), titleTag(true), titleTag(false)];
+		const item = theme([a, b, c]);
+
+		await LitmItem.ensureTitleTag(item);
+
+		expect(item.deleteEmbeddedDocuments).toHaveBeenCalledWith("ActiveEffect", [
+			a.id,
+			c.id,
+		]);
+	});
+});

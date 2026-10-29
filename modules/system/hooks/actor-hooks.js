@@ -388,6 +388,11 @@ function _syncRollDialogHudOnUpdate() {
  * (`resolveRollDialogOwnership`). The presence flag then names the player,
  * but the GM's dialog still believed it owned the roll, so both could press
  * Roll. Step down to viewer and follow the new owner's draft.
+ *
+ * The GM is not the only one who has to hear it. Every other client holding a
+ * dialog for the roll still named the old owner, and a dialog only accepts
+ * snapshots from the owner it knows, so a third viewer went deaf to the new
+ * one. Each of them follows the seat and asks for the draft again.
  */
 function _demoteRollDialogOnSeatTaken() {
 	Hooks.on("updateActor", (actor, changes) => {
@@ -397,8 +402,9 @@ function _demoteRollDialogOnSeatTaken() {
 		const sheet = actor.sheet;
 		if (!flag?.ownerId || !sheet?.hasRollDialog) return;
 		const dialog = sheet.rollDialogInstance;
-		if (!dialog.isOwner || flag.ownerId === game.user.id) return;
-		dialog.ownerId = flag.ownerId;
+		// The new owner's own client claims the seat itself, in `renderRollDialog`.
+		if (flag.ownerId === game.user.id) return;
+		if (!dialog.followSeat(flag.ownerId)) return;
 		Sockets.dispatch("requestRollDialogSync", { actorId: actor.id });
 		if (dialog.rendered) dialog.render();
 	});

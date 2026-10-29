@@ -168,6 +168,9 @@ export async function applySuccess({
 				messageId: relay.messageId,
 				successKey: relay.successKey,
 				targetActorId: targetActor?.id ?? null,
+				// An unlinked token's actor shares its world actor's id; the uuid is
+				// what lets the GM's client find the token itself.
+				targetActorUuid: targetActor?.uuid ?? null,
 				limitInfo: limitInfo
 					? {
 							actorId: limitInfo.actor.id,

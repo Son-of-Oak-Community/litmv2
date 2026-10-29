@@ -13,6 +13,7 @@ import {
 } from "../../active-effects/status-tag-data.js";
 import {
 	classifyTagStringMatch,
+	effectDragState,
 	isStatusDescriptor,
 	parseTagString,
 	tagDragData,
@@ -411,7 +412,6 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						.map(() => null),
 			isScratched: false,
 			isSingleUse: false,
-			hidden: game.user.isGM,
 			id: foundry.utils.randomID(),
 		};
 		this._editOnRender = tag.id;
@@ -817,11 +817,32 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const match = [...`[${text}]`.matchAll(CONFIG.litmv2.tagStringRe)][0];
 		if (!match) return;
 
+		// The label names only the highest tier and the single-use mark, so the
+		// rest of the tag's state comes from the effect the row stands for.
+		const effect = this.#resolveDragSource(
+			target.dataset.type,
+			target.dataset.id,
+		);
 		const data = tagDragData(classifyTagStringMatch(match), {
 			sourceId: target.dataset.id,
 			sourceContainer: target.dataset.type,
+			...effectDragState(effect),
 		});
 		event.dataTransfer.setData("text/plain", JSON.stringify(data));
+	}
+
+	/**
+	 * The effect a sidebar row stands for.
+	 * @param {string} container  An actor id / UUID, or "story"
+	 * @param {string} id  The effect id
+	 * @returns {ActiveEffect|null}
+	 */
+	#resolveDragSource(container, id) {
+		if (container === "story") {
+			return this.#packStoryTags.find((e) => e._id === id) ?? null;
+		}
+		const actor = this.#resolveActor(container);
+		return actor ? resolveEffect(id, actor) : null;
 	}
 
 	async _onDrop(dragEvent) {
@@ -893,14 +914,20 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const source = limitTarget.dataset.source;
 		const isExternal = !data.sourceId;
 
+		// A Story write on either end goes through the Narrator for a player.
+		const touchesStory = source === "story" || data.sourceContainer === "story";
+		if (touchesStory && !this.#canWriteStoryPack()) return;
+
 		if (source === "story") {
-			// Same container — update limitId on existing pack AE
-			if (data.sourceId) {
+			// Same container — update limitId on existing pack AE. A `sourceId`
+			// from an actor column is no pack id, so only the Story's own tags
+			// take this path.
+			if (data.sourceContainer === "story") {
 				return this.#storyTagOp("updateTags", [
 					{ _id: data.sourceId, "system.limitId": limitId },
 				]);
 			}
-			// External — create new pack AE with limitId
+			// External, or moved in from an actor — create new pack AE with limitId
 			const effectData = ContentSources.legacyTagToEffectData({
 				...data,
 				limitId,
@@ -930,7 +957,11 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		}
 
 		// Cross-container — move tag to this actor's limit
-		await this.#addTagToActor({ id: source, tag: { ...data, limitId } });
+		const added = await this.#addTagToActor({
+			id: source,
+			tag: { ...data, limitId },
+		});
+		if (!added) return;
 		return this.#removeFromSource(data);
 	}
 
@@ -979,11 +1010,19 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	async #handleCrossContainerDrop(data, dropContainer) {
 		const actorTarget =
 			dropContainer && dropContainer !== "story" ? dropContainer : null;
+
+		// Only remove the source once the destination has the tag, so a refused
+		// drop (not the owner, no backpack, no Narrator online) moves nothing.
+		// A Story write on either end goes through the Narrator for a player.
+		const touchesStory = !actorTarget || data.sourceContainer === "story";
+		if (touchesStory && !this.#canWriteStoryPack()) return;
+
 		if (actorTarget) {
-			await this.#addTagToActor({
+			const added = await this.#addTagToActor({
 				id: actorTarget,
 				tag: data,
 			});
+			if (!added) return;
 			return this.#removeFromSource(data);
 		}
 
@@ -1262,14 +1301,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			type: isStatus ? "status_tag" : "story_tag",
 			isScratched: false,
 			isSingleUse: parsed.isSingleUse ?? false,
-			hidden: game.user.isGM,
 			id: foundry.utils.randomID(),
 		};
 
 		input.value = "";
 
 		if (sectionId === "story") {
-			const effectData = ContentSources.legacyTagToEffectData(tag);
+			const effectData = ContentSources.legacyTagToEffectData({
+				...tag,
+				hidden: game.user.isGM,
+			});
 			await this.#storyTagOp("createTags", [effectData]);
 		} else {
 			await this.#addTagToActor({ id: sectionId, tag });
@@ -1621,6 +1662,21 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		await actor.system.recalculateLimitValues();
 	}
 
+	/**
+	 * Whether a Story-section write from this client will land. A player's pack
+	 * writes are relayed to the active Narrator, so with none online they would
+	 * silently never happen; warn instead, so a move can bail before it removes
+	 * its source.
+	 * @returns {boolean}
+	 */
+	#canWriteStoryPack() {
+		if (game.user.isGM || game.users.activeGM) return true;
+		ui.notifications.warn("LITM.Ui.story_tags_need_narrator", {
+			localize: true,
+		});
+		return false;
+	}
+
 	async #removeFromSource(data) {
 		if (!data.sourceContainer || !data.sourceId) return;
 
@@ -1721,28 +1777,36 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		);
 	}
 
+	/**
+	 * Add a tag or status to an actor. Reports whether it landed, so a move can
+	 * leave the source alone when the destination refused it.
+	 * @param {object} options
+	 * @param {string} options.id  Target actor id / UUID
+	 * @param {object} options.tag  Legacy tag descriptor
+	 * @returns {Promise<boolean>} False when nothing was added
+	 */
 	async #addTagToActor({ id, tag }) {
 		const actor = this.#resolveActor(id);
 		if (!actor) {
-			return ui.notifications.error("LITM.Ui.error_no_actor", {
-				localize: true,
-			});
+			ui.notifications.error("LITM.Ui.error_no_actor", { localize: true });
+			return false;
 		}
 		if (!actor.isOwner) {
-			return ui.notifications.error("LITM.Ui.warn_not_owner", {
-				localize: true,
-			});
+			ui.notifications.error("LITM.Ui.warn_not_owner", { localize: true });
+			return false;
 		}
 
 		const isStatus = isStatusDescriptor(tag);
 
 		// Statuses go through the canonical entry so same-name statuses stack
 		// (case-insensitively) instead of duplicating; story tags go through
-		// addStoryTag so heroes route them into the backpack.
+		// addStoryTag so heroes route them into the backpack. A moved tag brings
+		// its own hidden flag; one with none (a chip from prose, a fresh add)
+		// starts the way the column's owner would expect.
 		const created = isStatus
 			? await actor.system.addStatus(tag.name, {
 					tiers: toTiers(tag.values),
-					isHidden: startsHiddenOn(actor),
+					isHidden: tag.hidden ?? startsHiddenOn(actor),
 					limitId: tag.limitId,
 				})
 			: await actor.system.addStoryTag(
@@ -1750,13 +1814,18 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						name: tag.name,
 						isScratched: tag.isScratched ?? false,
 						isSingleUse: tag.isSingleUse ?? false,
-						isHidden: startsHiddenOn(actor),
+						isHidden: tag.hidden ?? startsHiddenOn(actor),
 						limitId: tag.limitId,
 					}),
 				);
-		if (created?.[0]) this._editOnRender = created[0].id;
+		// `addStoryTag` warns and returns nothing when a Hero has no backpack, and
+		// an empty result means the create was cancelled. Stacking onto an
+		// existing status resolves with the updated effect, which counts.
+		if (!created?.length) return false;
+		this._editOnRender = created[0].id;
 		await this.#triggerLimitRecalc(id);
-		return this.#broadcastRender();
+		this.#broadcastRender();
+		return true;
 	}
 
 	async #removeTagFromActor({ actorId, id }) {

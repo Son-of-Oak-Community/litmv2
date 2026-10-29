@@ -239,3 +239,87 @@ export async function requestRollFromNarrator(actor) {
 	ui.notifications?.info(t("LITM.Ui.roll_request_sent"));
 	return message;
 }
+
+/**
+ * Cards being answered right now. Claim-by-delete alone settles the race
+ * correctly: the loser finds the card gone and stops. This is for the console.
+ * A second click on the same client makes Foundry log its own "ChatMessage
+ * does not exist" before the delete rejects, and two red errors for a
+ * double-click is a bad look for a working outcome. Same guard, same reason,
+ * as the moderation handlers.
+ */
+const requestsInFlight = new Set();
+
+/**
+ * The Narrator picking up a player's "I'd like to roll" (see
+ * {@link requestRollFromNarrator}). Turning the ask into a call is the whole
+ * action, so the card goes as soon as it is answered: the same claim-by-delete
+ * the moderation cards use, which keeps a second Narrator from calling it
+ * twice.
+ *
+ * Two things the card cannot know, because it is a durable record of a moment
+ * that has passed:
+ *
+ * - A roll may be open for that Hero by now (called from the picker, a
+ *   reaction, a Sacrifice). Calling again would re-stamp the presence flag and
+ *   `configureSharedRoll` would wipe whatever the player has selected, so the
+ *   card steps aside instead.
+ * - The call may not open. A module vetoing `litm.narratorCall`, or a failed
+ *   write, would otherwise lose the request along with the card, so the card
+ *   goes back.
+ *
+ * @param {ChatMessage} message The roll-request card.
+ */
+export async function answerRollRequest(message) {
+	if (!game.user.isGM) return;
+	if (requestsInFlight.has(message.id)) return;
+	requestsInFlight.add(message.id);
+	try {
+		const actorId = message.getFlag("litmv2", "rollRequestFrom")?.actorId;
+		const actor = actorId ? game.actors.get(actorId) : null;
+		if (!actor) {
+			ui.notifications.warn(t("LITM.Actions.apply_no_actor"));
+			return;
+		}
+		// The same truthy check `requestRollFromNarrator` makes when the card is
+		// sent, made again because the roll may have opened since.
+		if (actor.getFlag("litmv2", FLAGS.rollDialogOwner)) {
+			await message.delete().catch(() => null);
+			ui.notifications.info(
+				game.i18n.format("LITM.Ui.roll_request_superseded", {
+					name: actor.name,
+				}),
+			);
+			return;
+		}
+		const claimed = await message.delete().catch(() => null);
+		if (!claimed) {
+			warn(`Roll request ${message.id} was already answered elsewhere.`);
+			return;
+		}
+		let opened = null;
+		try {
+			opened = await openSharedRoll({ actorId: actor.id });
+		} catch (err) {
+			console.error(err);
+		}
+		if (!opened) await restoreRollRequest(message);
+	} finally {
+		requestsInFlight.delete(message.id);
+	}
+}
+
+/**
+ * Post a claimed card again as a new document: the old id is already being
+ * deleted on every client.
+ * @param {ChatMessage} message
+ */
+async function restoreRollRequest(message) {
+	const { whisper, speaker, content, flags } = message.toObject();
+	await foundry.documents.ChatMessage.create({
+		whisper,
+		speaker,
+		content,
+		flags,
+	}).catch(console.error);
+}
