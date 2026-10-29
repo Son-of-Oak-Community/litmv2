@@ -141,7 +141,21 @@ export class Sockets {
 			}
 		});
 
-		// Same relay for Improve: a contributed weakness marks the theme of a
+		// Spend Power's Recover on a Fellowship tag the player doesn't own: the
+		// inverse of the scratch relay above.
+		Sockets.on("recoverEffect", async ({ data: { uuid } }) => {
+			if (game.user !== game.users.activeGM) return;
+			try {
+				const effect = await foundry.utils.fromUuid(uuid);
+				// Set, never toggle: a replayed request must not re-scratch the tag.
+				if (effect?.system?.isScratched)
+					await effect.update({ "system.isScratched": false });
+			} catch (err) {
+				error("recoverEffect relay failed", err);
+			}
+		});
+
+		// Same relay shape for Improve: a contributed weakness marks the theme of a
 		// Hero the roller doesn't own.
 		// Marks are applied one at a time: two weaknesses on the same theme
 		// arrive as two packets, and concurrent handlers would both read the

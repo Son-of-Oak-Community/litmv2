@@ -56,6 +56,48 @@ describe("collectReducibleStatuses", () => {
 		]);
 	});
 
+	// Unlinked tokens of one actor share its id but are separate documents; each
+	// keeps its own group, addressed by uuid.
+	it("keeps a group per unlinked token and carries each one's uuid", () => {
+		const withUuid = (a, uuid) => ({ ...a, uuid });
+		const hero = withUuid(
+			actor("h1", "Gerrin", [status("e1", "wounded", 2)]),
+			"Actor.h1",
+		);
+		const bandit1 = withUuid(
+			actor("bandit", "Bandit", [status("e3", "enraged", 3)]),
+			"Scene.s1.Token.t1.Actor.bandit",
+		);
+		const bandit2 = withUuid(
+			actor("bandit", "Bandit", [status("e4", "enraged", 1)]),
+			"Scene.s1.Token.t2.Actor.bandit",
+		);
+		const asCandidate = (a) => ({
+			id: a.id,
+			uuid: a.uuid,
+			label: a.name,
+			actor: a,
+		});
+
+		const groups = collectReducibleStatuses(hero, [
+			asCandidate(hero),
+			asCandidate(bandit1),
+			asCandidate(bandit2),
+		]);
+
+		expect(
+			groups.map(({ ownerId, ownerUuid, statuses }) => [
+				ownerId,
+				ownerUuid,
+				statuses.map((s) => s.id),
+			]),
+		).toEqual([
+			["h1", "Actor.h1", ["e1"]],
+			["bandit", "Scene.s1.Token.t1.Actor.bandit", ["e3"]],
+			["bandit", "Scene.s1.Token.t2.Actor.bandit", ["e4"]],
+		]);
+	});
+
 	it("omits the own group when the rolling actor has no live statuses", () => {
 		const hero = actor("h1", "Gerrin", []);
 		const foe = actor("c1", "Serpent", [status("e3", "enraged", 1)]);

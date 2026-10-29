@@ -21,6 +21,33 @@ function _inflictTier(tier) {
 }
 
 /**
+ * Power to scratch one tag: the option's cost, or 1 for a single-use story tag
+ * (Core Book p.165). One definition for the dialog's live total and the charge.
+ * @param {number} cost            The scratch option's per-tag cost
+ * @param {boolean} [isSingleUse]  Whether the tag is a single-use story tag
+ * @returns {number}
+ */
+export function scratchCost(cost, isSingleUse) {
+	return isSingleUse ? 1 : cost;
+}
+
+/**
+ * Resolve the actor a Spend Power write names. A uuid wins when there is one:
+ * an unlinked token's actor is synthetic and shares its world actor's id, so
+ * the id alone lands the write on the world actor (every copy, and the sidebar
+ * column) or misses an effect that only the token has. A uuid that no longer
+ * resolves is `null`, never a fall back to the id. With no uuid (older intents)
+ * the world actor is looked up by id.
+ * @param {string|null|undefined} uuid  The actor's uuid
+ * @param {string|null|undefined} id    The actor's id
+ * @returns {Actor|null}
+ */
+function _resolveActor(uuid, id) {
+	if (uuid) return foundry.utils.fromUuidSync(uuid) ?? null;
+	return id ? (game.actors.get(id) ?? null) : null;
+}
+
+/**
  * Apply a parsed spend intent to an actor, executing all document mutations.
  *
  * @param {Actor} actor         The acting character
@@ -29,15 +56,18 @@ function _inflictTier(tier) {
  * @param {number} intent.totalCost  Pre-computed total power cost
  * @param {string|null} intent.messageId  Originating roll message id
  * @param {number} intent.alreadySpent    Generic Power already spent on this
- *   message (the spentPower flag; applied action successes are tracked
- *   separately in appliedSuccessCosts)
+ *   message when the dialog opened (the spentPower flag; applied action
+ *   successes are tracked separately in appliedSuccessCosts). Informational:
+ *   the flag is re-read before it is written.
  * @param {string|null} [intent.targetActorId]  Actor picked on the dialog's
  *   target chip row; pre-resolves the target for actor-targeted successes.
+ * @param {string|null} [intent.targetActorUuid]  The picked chip's uuid. Wins
+ *   over the id, which an unlinked token shares with its world actor.
  * @returns {Promise<{ results: object[], totalSpent: number }>}
  */
 export async function applySpendIntent(actor, intent) {
-	const { options, messageId, alreadySpent, targetActorId } = intent;
-	const presetTarget = targetActorId ? game.actors.get(targetActorId) : null;
+	const { options, messageId, targetActorId, targetActorUuid } = intent;
+	const presetTarget = _resolveActor(targetActorUuid, targetActorId);
 	const results = [];
 	let actionSpent = 0;
 	let genericSpent = 0;
@@ -143,12 +173,12 @@ export async function applySpendIntent(actor, intent) {
 		// Spend Power budget subtracts both flags — folding them into
 		// spentPower too would double-count.
 		if (messageId && genericSpent > 0) {
+			// Read the flag now, not the `alreadySpent` the dialog captured when it
+			// opened: a second Spend Power window on the same roll may have
+			// written since, and adding to the stale figure would overwrite it.
 			const message = game.messages.get(messageId);
-			await message?.setFlag(
-				"litmv2",
-				"spentPower",
-				alreadySpent + genericSpent,
-			);
+			const spentNow = message?.getFlag("litmv2", "spentPower") ?? 0;
+			await message?.setFlag("litmv2", "spentPower", spentNow + genericSpent);
 		}
 	}
 
@@ -327,12 +357,13 @@ async function _handleApplyStatusAsGM({
 	userId,
 	op,
 	actorId,
+	actorUuid,
 	effectId,
 	name,
 	tier,
 	tiers,
 }) {
-	const actor = game.actors.get(actorId);
+	const actor = _resolveActor(actorUuid, actorId);
 	// A vanished target/effect between dispatch and receipt would be a silent
 	// no-op on the GM client — whisper the acting player instead (mirrors the
 	// "nothing" branch of the success relay).
@@ -367,17 +398,18 @@ async function _handleApplySuccessAsGM({
 	messageId,
 	successKey,
 	targetActorId,
+	targetActorUuid,
 	limitInfo,
 	chosenTiers,
 	chosenTags,
 }) {
 	const actor = game.actors.get(actorId);
 	if (!actor) return;
-	const presetTarget = targetActorId ? game.actors.get(targetActorId) : null;
+	const presetTarget = _resolveActor(targetActorUuid, targetActorId);
 	// A vanished target must bail like a vanished limit actor below —
 	// falling through with a null presetTarget would reopen the target
 	// picker on the GM's client for opponent verbs.
-	if (targetActorId && !presetTarget) return;
+	if ((targetActorUuid || targetActorId) && !presetTarget) return;
 	let presetLimitInfo = null;
 	if (limitInfo) {
 		const limitActor = game.actors.get(limitInfo.actorId);
@@ -419,9 +451,10 @@ async function _applyStatusPicker(actor, opt, messageId, charge) {
 	const { reductions, cost } = opt;
 	const bodyLines = [];
 	let paidTiers = 0;
-	for (const { effectId, name, actorId, tiers } of reductions) {
-		const owner = (actorId ? game.actors.get(actorId) : null) ?? actor;
-		const effect = resolveEffect(effectId, owner);
+	for (const { effectId, name, actorId, actorUuid, tiers } of reductions) {
+		const owner =
+			actorId || actorUuid ? _resolveActor(actorUuid, actorId) : actor;
+		const effect = owner ? resolveEffect(effectId, owner) : null;
 		if (!effect) {
 			warn(`Status reduction skipped — "${name}" could not be resolved.`);
 			continue;
@@ -440,6 +473,7 @@ async function _applyStatusPicker(actor, opt, messageId, charge) {
 				userId: game.user.id,
 				messageId,
 				actorId: owner.id,
+				actorUuid: owner.uuid,
 				effectId: effect.id,
 				tiers,
 			});
@@ -473,8 +507,8 @@ async function _applyStatusPicker(actor, opt, messageId, charge) {
  * _applyDefault). Unowned targets route through the applyStatusAsGM relay.
  */
 async function _applyInflict(opt, messageId, charge) {
-	const { entries, cost, targetActorId } = opt;
-	const target = game.actors.get(targetActorId);
+	const { entries, cost, targetActorId, targetActorUuid } = opt;
+	const target = _resolveActor(targetActorUuid, targetActorId);
 	if (!target) {
 		warn("Inflict skipped — target actor not found.");
 		return { power: 0, body: "" };
@@ -499,6 +533,7 @@ async function _applyInflict(opt, messageId, charge) {
 				userId: game.user.id,
 				messageId,
 				actorId: target.id,
+				actorUuid: target.uuid,
 				name,
 				tier: tierN,
 			});
@@ -517,22 +552,38 @@ function _applyCounter(opt) {
 	return { power: opt.cost * opt.count };
 }
 
+/**
+ * Recover (un-scratch) the selected tags. The list comes from
+ * `HeroData#scratchedTags`, which spans the Fellowship as well as the hero, so
+ * resolution looks there too. The Fellowship is usually GM-owned: a write the
+ * player can't make goes through the active GM, same as `_applyScratchPicker`.
+ * Charged per recovery that lands — an unresolved tag, or one with no GM to
+ * write it, is skipped and not billed.
+ */
 async function _applyPicker(actor, opt, charge) {
 	const { chips, cost } = opt;
-	const power = cost * chips.length;
 	const tags = [];
+	let recovered = 0;
 	for (const { tagId, tagName } of chips) {
-		const effect = resolveEffect(tagId, actor);
-		if (effect) await effect.update({ "system.isScratched": false });
+		const effect = resolveEffect(tagId, actor, { fellowship: true });
+		if (!effect) {
+			warn(`Recover skipped — tag "${tagName}" could not be resolved.`);
+			continue;
+		}
+		if (effect.isOwner || game.user.isGM) {
+			await effect.update({ "system.isScratched": false });
+		} else if (game.users.activeGM) {
+			Sockets.dispatch("recoverEffect", { uuid: effect.uuid });
+		} else {
+			warn(`Recover dropped — no active GM to apply "${tagName}".`);
+			continue;
+		}
+		recovered++;
 		charge(cost);
 		// Recovered tags render as live (un-scratched) chips of their real type.
-		tags.push({
-			name: tagName,
-			type: effect?.type ?? "story_tag",
-			isScratched: false,
-		});
+		tags.push({ name: tagName, type: effect.type, isScratched: false });
 	}
-	return { power, tags };
+	return { power: cost * recovered, tags };
 }
 
 /**
@@ -549,13 +600,20 @@ async function _applyScratchPicker(opt, charge) {
 	// vanished, or a scene write that can't be routed (no sidebar / no active
 	// GM), is skipped and not billed — Power is scarce, so a silent drop must
 	// not cost the player anything or show a false "scratched" chip.
-	let scratched = 0;
+	let power = 0;
 
 	// Actor-owned story/backpack tags: scratch directly on their owner. Scene
 	// tags carry no actor effect (handled via the fork below).
-	for (const { tagId, tagName, actorId, isScene } of chips) {
+	for (const {
+		tagId,
+		tagName,
+		actorId,
+		actorUuid,
+		isScene,
+		isSingleUse,
+	} of chips) {
 		if (isScene) continue;
-		const owner = actorId ? game.actors.get(actorId) : null;
+		const owner = _resolveActor(actorUuid, actorId);
 		const effect = owner ? resolveEffect(tagId, owner) : null;
 		if (!effect) {
 			warn(`Scratch skipped — tag "${tagName}" could not be resolved.`);
@@ -572,8 +630,9 @@ async function _applyScratchPicker(opt, charge) {
 			continue;
 		}
 		tags.push({ name: tagName, type: effect.type, isScratched: true });
-		scratched++;
-		charge(cost);
+		const price = scratchCost(cost, isSingleUse);
+		power += price;
+		charge(price);
 	}
 
 	// Scene story tags live in the world pack, which players can't write
@@ -612,12 +671,16 @@ async function _applyScratchPicker(opt, charge) {
 			for (const c of sceneChips) {
 				tags.push({ name: c.tagName, type: "story_tag", isScratched: true });
 			}
-			scratched += sceneChips.length;
-			charge(cost * sceneChips.length);
+			const scenePower = sceneChips.reduce(
+				(sum, c) => sum + scratchCost(cost, c.isSingleUse),
+				0,
+			);
+			power += scenePower;
+			charge(scenePower);
 		}
 	}
 
-	return { power: cost * scratched, tags };
+	return { power, tags };
 }
 
 function _applyDefault(opt) {

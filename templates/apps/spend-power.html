@@ -20,7 +20,7 @@
 			{{#each targets}}
 			<li class="litm--apply-target-chip">
 				<label>
-					<input type="radio" name="success-target" value="{{id}}" {{#if selected}}checked{{/if}} />
+					<input type="radio" name="success-target" value="{{id}}" data-actor-uuid="{{uuid}}" {{#if selected}}checked{{/if}} />
 					{{#if img}}<img src="{{img}}" alt="" />{{/if}}
 					<span>{{name}}</span>
 				</label>
@@ -126,8 +126,8 @@
 					<h4 class="litm-render__section-header">{{#if group.isScene}}{{localize "LITM.Ui.story_tags"}}{{else if group.isOwn}}{{localize "LITM.Ui.your_tags"}}{{else}}{{group.ownerName}}{{/if}}</h4>
 					<ul class="litm-spend-power__tag-chip-list">
 						{{#each group.tags as |tag|}}
-						<li class="litm-spend-power__tag-chip" data-action="toggle-chip" data-tag-id="{{tag.id}}" data-tag-name="{{tag.name}}" data-actor-id="{{group.ownerId}}"{{#if group.isScene}} data-scene-tag="true"{{/if}}>
-							<span class="litm-tag" data-text="{{tag.name}}">{{tag.name}}</span>
+						<li class="litm-spend-power__tag-chip" data-action="toggle-chip" data-tag-id="{{tag.id}}" data-tag-name="{{tag.name}}" data-actor-id="{{group.ownerId}}" data-actor-uuid="{{group.ownerUuid}}"{{#if group.isScene}} data-scene-tag="true"{{/if}}{{#if tag.isSingleUse}} data-single-use="true"{{/if}}>
+							<span class="litm-tag{{#if tag.isSingleUse}} litm--single-use{{/if}}" data-text="{{tag.name}}">{{tag.name}}{{#if tag.isSingleUse}} ✱{{/if}}</span>
 						</li>
 						{{/each}}
 					</ul>
@@ -141,7 +141,7 @@
 						{{#each group.statuses as |status|}}
 						{{!-- The counter shows the *resulting* tier: it starts at the
 						      current tier and minus reduces it; the drop is what's paid. --}}
-						<li class="litm-spend-power__status-item" data-effect-id="{{status.id}}" data-status-name="{{status.name}}" data-max-tier="{{status.tier}}" data-actor-id="{{group.ownerId}}">
+						<li class="litm-spend-power__status-item" data-effect-id="{{status.id}}" data-status-name="{{status.name}}" data-max-tier="{{status.tier}}" data-actor-id="{{group.ownerId}}" data-actor-uuid="{{group.ownerUuid}}">
 							<span class="litm-spend-power__status-name">{{status.name}}-{{status.tier}}</span>
 							<div class="litm-spend-power__status-reduce flexrow">
 								<button type="button" class="litm-spend-power__counter-btn" data-action="counter-dec">
@@ -176,7 +176,7 @@
 						{{#each option.targets}}
 						<li class="litm--apply-target-chip">
 							<label>
-								<input type="radio" name="inflict-target" value="{{id}}" />
+								<input type="radio" name="inflict-target" value="{{id}}" data-actor-uuid="{{uuid}}" />
 								{{#if img}}<img src="{{img}}" alt="" />{{/if}}
 								<span>{{name}}</span>
 							</label>

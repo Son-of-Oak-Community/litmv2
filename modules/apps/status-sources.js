@@ -15,7 +15,7 @@ function activeStatuses(actor) {
 /**
  * Group reducible statuses by owner: the rolling actor first (isOwn), then
  * each candidate that carries any. Candidates are deduped against the rolling
- * actor by id.
+ * actor by uuid (falling back to id).
  * @param {Actor} actor                          The rolling actor.
  * @param {{id:string,label:string,actor:Actor}[]} candidates  Target candidates.
  * @param {object} [options]
@@ -24,7 +24,7 @@ function activeStatuses(actor) {
  *        free of game/user globals. Applies to every group, the rolling actor's
  *        included: a Narrator-hidden status is already invisible on the hero's
  *        own sheet, so this picker must not be the surface that leaks it.
- * @returns {{ownerId:string,ownerName:string,isOwn:boolean,statuses:{id:string,name:string,tier:number}[]}[]}
+ * @returns {{ownerId:string,ownerUuid?:string,ownerName:string,isOwn:boolean,statuses:{id:string,name:string,tier:number}[]}[]}
  */
 export function collectReducibleStatuses(
 	actor,
@@ -45,22 +45,26 @@ export function collectReducibleStatuses(
 	if (actor && own.length) {
 		groups.push({
 			ownerId: actor.id,
+			ownerUuid: actor.uuid,
 			ownerName: actor.name,
 			isOwn: true,
 			statuses: own.map(toEntry),
 		});
 	}
-	if (actor) seen.add(actor.id);
+	if (actor) seen.add(actor.uuid ?? actor.id);
 
+	// Keyed by uuid: unlinked tokens of one actor share its id.
 	for (const cand of candidates) {
-		if (seen.has(cand.id)) continue;
-		seen.add(cand.id);
+		const key = cand.uuid ?? cand.id;
+		if (seen.has(key)) continue;
+		seen.add(key);
 		const statuses = activeStatuses(cand.actor).filter(
 			(e) => !statusFilter || statusFilter(e),
 		);
 		if (!statuses.length) continue;
 		groups.push({
 			ownerId: cand.id,
+			ownerUuid: cand.uuid,
 			ownerName: cand.label,
 			isOwn: false,
 			statuses: statuses.map(toEntry),

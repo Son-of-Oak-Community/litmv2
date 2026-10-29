@@ -13,8 +13,14 @@ beforeEach(() => {
 	game.user.id = "player-1";
 });
 
+// The tests below open their dialog with `alreadySpent: 1`, which is what the
+// message's spentPower flag holds.
 function rollMessage() {
-	const message = { id: "m1", setFlag: vi.fn(async () => {}) };
+	const message = {
+		id: "m1",
+		getFlag: vi.fn((_scope, key) => (key === "spentPower" ? 1 : undefined)),
+		setFlag: vi.fn(async () => {}),
+	};
 	game.messages.get = vi.fn((id) => (id === "m1" ? message : null));
 	return message;
 }
