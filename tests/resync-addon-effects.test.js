@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { makeTagStringRe } from "../modules/system/config.js";
 import { resyncAddonEffects } from "../modules/system/hooks/item-hooks.js";
 
@@ -24,9 +24,18 @@ const fakeActor = (effects) => ({
 	deleteEmbeddedDocuments: vi.fn().mockResolvedValue([]),
 });
 
-const addon = (tags) => ({ id: "addon-1", system: { tags } });
+const addon = (tags, { hasPlayerOwner = false } = {}) => ({
+	id: "addon-1",
+	parent: { hasPlayerOwner },
+	system: { tags },
+});
 
 describe("resyncAddonEffects", () => {
+	const isGM = game.user.isGM;
+	afterEach(() => {
+		game.user.isGM = isGM;
+	});
+
 	it("keeps a revealed or scratched tag as it is when the addon changes", async () => {
 		const thorny = fakeEffect({
 			id: "thorny",
@@ -44,6 +53,7 @@ describe("resyncAddonEffects", () => {
 	});
 
 	it("creates added tags hidden and flagged, and deletes removed ones", async () => {
+		game.user.isGM = true;
 		const actor = fakeActor([
 			fakeEffect({ id: "old", name: "old", addonId: "addon-1" }),
 		]);
@@ -62,6 +72,16 @@ describe("resyncAddonEffects", () => {
 			"ActiveEffect",
 			["old"],
 		);
+	});
+
+	it("creates them visible on a Challenge a player owns", async () => {
+		game.user.isGM = true;
+		const actor = fakeActor([]);
+
+		await resyncAddonEffects(actor, addon("[bramble]", { hasPlayerOwner: true }));
+
+		const [, created] = actor.createEmbeddedDocuments.mock.calls[0];
+		expect(created[0].system.isHidden).toBe(false);
 	});
 
 	it("leaves the Challenge's own tags and other addons' tags alone", async () => {

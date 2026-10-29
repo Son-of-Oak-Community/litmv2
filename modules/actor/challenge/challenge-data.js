@@ -1,3 +1,4 @@
+import { startsHiddenOn } from "../../active-effects/effect-queries.js";
 import { syncTagStringEffects } from "../../item/action/tag-string.js";
 import { advanceSystemLimit } from "../mixins/actor-limits.js";
 import { EffectTagsMixin } from "../mixins/effect-tags-mixin.js";
@@ -293,7 +294,10 @@ export class ChallengeData extends LimitsMixin(
 	 * @returns {Promise<void>}
 	 */
 	async syncEffectsFromTagString(tagsString) {
-		// A Challenge's stat block is the Narrator's until revealed tag by tag.
-		return syncTagStringEffects(this.parent, tagsString, { hidden: true });
+		// A Challenge's stat block is the Narrator's until revealed tag by tag,
+		// unless a player owns it and would lose sight of their own tags.
+		return syncTagStringEffects(this.parent, tagsString, {
+			hidden: startsHiddenOn(this.parent),
+		});
 	}
 }

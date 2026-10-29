@@ -1,4 +1,5 @@
 import { reconcileTagEffects } from "../../active-effects/effect-factories.js";
+import { startsHiddenOn } from "../../active-effects/effect-queries.js";
 import { parseTagString } from "../../item/action/tag-string.js";
 import { LitmItem } from "../../item/litm-item.js";
 import { error } from "../../logger.js";
@@ -129,14 +130,15 @@ function _cleanupAddonEffectsOnDelete() {
 
 /**
  * Effect creation data for an addon's tag string, flagged with the addon's ID
- * for later cleanup. Addons live on Challenges, whose tags start hidden.
+ * for later cleanup. Addons live on Challenges, whose tags start hidden
+ * unless a player owns the Challenge.
  * @param {Item} addonItem    The addon item whose tags to read
  * @returns {object[]}
  */
 function addonEffectData(addonItem) {
 	return parseTagString(addonItem.system.tags).map((data) => ({
 		...data,
-		system: { ...data.system, isHidden: true },
+		system: { ...data.system, isHidden: startsHiddenOn(addonItem.parent) },
 		flags: { litmv2: { addonId: addonItem.id } },
 	}));
 }
