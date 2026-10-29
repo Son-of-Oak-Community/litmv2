@@ -902,7 +902,7 @@
 			"spend_power_title": "Spend Power",
 			"status_name": "Status Name",
 			"story_tags": "Story Tags",
-			"story_tags_need_narrator": "No Narrator is online to update the Story section, so nothing was moved. Try again once they're back.",
+			"story_tags_need_narrator": "No Narrator is online to update the Story section. Try again once they're back.",
 			"story_theme_actor_empty": "This story theme has no content yet.",
 			"story_theme_name": "Story Theme Name",
 			"switch_to_edit_mode": "Switch to Edit Mode",
