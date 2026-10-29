@@ -7,6 +7,8 @@ export class StoryThemeActorSheet extends LitmActorSheet {
 		position: { width: 400, height: "auto" },
 		actions: {
 			openThemeSheet: StoryThemeActorSheet.#onOpenThemeSheet,
+			// play-tag.html gives owners `selectTag`; on this card a tag opens the theme.
+			selectTag: StoryThemeActorSheet.#onOpenThemeSheet,
 		},
 		window: {
 			icon: "fa-solid fa-book-open",
