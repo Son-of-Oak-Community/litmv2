@@ -2745,10 +2745,18 @@ section.standard-form.litm-actions-app {
 
 .litm-challenge-sheet .limit-header {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacer-16);
+	justify-content: flex-end;
+	gap: var(--spacer-8);
 	margin-bottom: 0;
+}
+
+/* The label takes the free space, so the controls and the eye toggle sit
+   flush right and line up from one limit to the next. When a long limit
+   does not fit, they wrap to their own line, still flush right. */
+.litm-challenge-sheet .limit-header > .litm-limit {
+	margin-inline-end: auto;
 }
 
 .litm-challenge-sheet .limit-header:has(+ .limit-outcome) {
@@ -2759,15 +2767,30 @@ section.standard-form.litm-actions-app {
 	display: flex;
 	align-items: center;
 	gap: var(--spacer-8);
+	min-width: 0;
+}
+
+/* The +/- controls and the eye toggle wrap as one group. On a line of
+   their own and still too wide, the shields wrap last. */
+.litm-challenge-sheet .limit-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-8);
+	min-width: 0;
 }
 
 .litm-challenge-sheet .limit-shields {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 	align-items: center;
 	gap: 2px;
+	min-width: 0;
 }
 
 .litm-challenge-sheet .limit-shield {
+	/* Never squeeze a shield, or let the row slide it under the +/- buttons. */
+	flex: none;
 	width: 22px;
 	height: 22px;
 }
@@ -2784,6 +2807,7 @@ section.standard-form.litm-actions-app {
 }
 
 .litm-challenge-sheet .limit-adjust {
+	flex: none;
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-sm);
 	display: inline-flex;
