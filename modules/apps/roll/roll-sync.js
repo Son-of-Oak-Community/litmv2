@@ -107,8 +107,13 @@ export class RollSync {
 	 * this sync is still entitled to {@link adopt} even though same-session edits
 	 * (the Narrator's, say) may have reached it first and moved its revision.
 	 * Those edits are kept so the adopted draft can be rebuilt with them.
+	 *
+	 * Only a sync that holds no revision yet can wait. `renderRollDialog` asks
+	 * for a reseat whenever the assigned owner renders, a live roll included, and
+	 * an owner already holding revisions must keep its draft whoever answers.
 	 */
 	expectReseat() {
+		if (this.revision > 0) return;
 		this.awaitingReseat = true;
 		this.early = [];
 	}

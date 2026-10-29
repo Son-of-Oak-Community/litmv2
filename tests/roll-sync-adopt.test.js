@@ -109,6 +109,16 @@ describe("RollSync.adopt while awaiting a reseat", () => {
 		expect(owner.adopt({ state: base, revision: 8, session: "call-0" })).toBe(false);
 	});
 
+	it("is not armed on a live owner that already holds revisions", () => {
+		// `renderRollDialog` asks for a reseat whenever the assigned owner renders,
+		// reload or not. A live draft must not be replaced by whoever answers.
+		const owner = new RollSync({ type: "quick", might: 0, selections: [] }, "p2", "call-1");
+		owner.edit({ ...base, might: 1 }, true);
+		owner.expectReseat();
+		expect(owner.adopt({ state: { selections: [] }, revision: 0, session: null })).toBe(false);
+		expect(owner.view.might).toBe(1);
+	});
+
 	it("keeps the old behaviour once the wait is abandoned", () => {
 		const owner = reloadedOwner();
 		owner.edit({ ...base, might: 1 }, true);

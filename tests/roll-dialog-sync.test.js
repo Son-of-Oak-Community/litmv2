@@ -265,6 +265,26 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 		expect(gm.extractRollData().might).toBe(3);
 	});
 
+	it("is not rolled back by a stray reply when a live owner re-renders", async () => {
+		// The sheet asks for a reseat whenever the assigned owner renders the
+		// dialog, mid-roll included (a reaction, the HUD strip, the keybinding).
+		const owner = make("player", { ownerId: "player" });
+		const stray = make("gm", { ownerId: "player" });
+		as("player", () => {
+			owner.setSelection("t1", "positive", "player");
+			owner.dispatchSync();
+		});
+		const held = last().sync.revision;
+
+		as("player", () => owner.requestReseat());
+		as("gm", () => stray.dispatchReseat());
+		await as("player", () => owner.receiveUpdate(last()));
+
+		expect(owner.getSelection("t1").state).toBe("positive");
+		as("player", () => owner.dispatchSync());
+		expect(last().sync.revision).toBe(held);
+	});
+
 	it("carries on with what it has when nobody answers in time", async () => {
 		vi.useFakeTimers();
 		try {
