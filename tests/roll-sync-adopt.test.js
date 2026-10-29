@@ -35,3 +35,85 @@ describe("RollSync.adopt", () => {
 		expect(viewer.view).toEqual(draft);
 	});
 });
+
+// A reloaded owner is not idle while it waits for a viewer to answer: the
+// Narrator's edit can reach it first. The first answer must still win, with the
+// early edit replayed on top, instead of every reply being refused because the
+// owner already holds a revision.
+describe("RollSync.adopt while awaiting a reseat", () => {
+	const base = { type: "quick", might: 0, selections: [["t1", { state: "positive" }]] };
+
+	/** A Narrator viewer that holds the canonical draft at revision 8. */
+	const narratorView = () => {
+		const narrator = new RollSync({ type: "quick", might: 0, selections: [] }, "gm", "call-1");
+		narrator.receive({ kind: "snapshot", revision: 8, ack: {}, state: base, session: "call-1" }, false);
+		return narrator;
+	};
+	const reloadedOwner = () => {
+		const owner = new RollSync({ type: "quick", might: 0, selections: [] }, "p2", "call-1");
+		owner.expectReseat();
+		return owner;
+	};
+
+	it("adopts the first reply after an early edit and keeps the edit", () => {
+		const narrator = narratorView();
+		const owner = reloadedOwner();
+		const early = narrator.edit({ ...base, might: 3 }, false);
+		owner.receive(early, true);
+
+		expect(owner.adopt({ state: base, revision: 8, session: "call-1" })).toBe(true);
+		expect(owner.view.might).toBe(3);
+		expect(owner.view.selections).toEqual(base.selections);
+		// Past the adopted revision, or viewers (at 8) would drop it again.
+		expect(owner.snapshot().revision).toBeGreaterThan(8);
+	});
+
+	it("replays the owner's own early edits too", () => {
+		const owner = reloadedOwner();
+		owner.edit({ ...base, selections: [["own", { state: "positive" }]] }, true);
+
+		expect(owner.adopt({ state: base, revision: 8, session: "call-1" })).toBe(true);
+		expect(owner.view.selections.map(([id]) => id)).toEqual(["t1", "own"]);
+	});
+
+	it("acknowledges the early edit so the Narrator stops replaying it", () => {
+		const narrator = narratorView();
+		const owner = reloadedOwner();
+		owner.receive(narrator.edit({ ...base, might: 3 }, false), true);
+		expect(narrator.pending).toHaveLength(1);
+
+		owner.adopt({ state: base, revision: 8, session: "call-1" });
+		narrator.receive(owner.snapshot(), false);
+
+		expect(narrator.pending).toHaveLength(0);
+		expect(narrator.view.might).toBe(3);
+	});
+
+	it("keeps the adopted revision when nothing came in early", () => {
+		const owner = reloadedOwner();
+		owner.adopt({ state: base, revision: 8, session: "call-1" });
+		expect(owner.snapshot().revision).toBe(8);
+	});
+
+	it("takes only the first reply", () => {
+		const owner = reloadedOwner();
+		owner.edit({ ...base, might: 1 }, true);
+		expect(owner.adopt({ state: base, revision: 8, session: "call-1" })).toBe(true);
+		expect(owner.adopt({ state: { ...base, might: 5 }, revision: 8, session: "call-1" })).toBe(false);
+		expect(owner.view.might).toBe(1);
+	});
+
+	it("still refuses another session's draft", () => {
+		const owner = reloadedOwner();
+		owner.edit({ ...base, might: 1 }, true);
+		expect(owner.adopt({ state: base, revision: 8, session: "call-0" })).toBe(false);
+	});
+
+	it("keeps the old behaviour once the wait is abandoned", () => {
+		const owner = reloadedOwner();
+		owner.edit({ ...base, might: 1 }, true);
+		owner.abandonReseat();
+		expect(owner.adopt({ state: base, revision: 8, session: "call-1" })).toBe(false);
+		expect(owner.view.might).toBe(1);
+	});
+});

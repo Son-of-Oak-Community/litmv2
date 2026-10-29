@@ -23,6 +23,10 @@ export class RollSync {
 		this.ack = {};
 		this.pending = [];
 		this.session = session;
+		// Set while a reloaded owner waits for a viewer's canonical view; see
+		// `expectReseat`. `early` holds the edits accepted in the meantime.
+		this.awaitingReseat = false;
+		this.early = [];
 	}
 
 	apply(state, operation) {
@@ -83,6 +87,7 @@ export class RollSync {
 		this.ack[operation.peerId] = operation.sequence;
 		this.revision++;
 		this.view = copy(this.state);
+		if (this.awaitingReseat) this.early.push(operation);
 	}
 
 	snapshot() {
@@ -97,22 +102,53 @@ export class RollSync {
 	}
 
 	/**
+	 * The owner's client came back after a reload and has asked the viewers for
+	 * the draft they still hold. Until one answers, or the wait is abandoned,
+	 * this sync is still entitled to {@link adopt} even though same-session edits
+	 * (the Narrator's, say) may have reached it first and moved its revision.
+	 * Those edits are kept so the adopted draft can be rebuilt with them.
+	 */
+	expectReseat() {
+		this.awaitingReseat = true;
+		this.early = [];
+	}
+
+	/** Nobody answered in time: carry on with the draft as it stands. */
+	abandonReseat() {
+		this.awaitingReseat = false;
+		this.early = [];
+	}
+
+	/**
 	 * Take over a draft from a peer's canonical view, keeping its session and
 	 * revision. Used when the owner's client comes back after a reload with an
 	 * empty dialog while the rest of the table still holds the roll.
+	 *
+	 * Without a pending {@link expectReseat} only an untouched sync adopts. With
+	 * one, the first valid view wins whatever revision this sync has reached: it
+	 * is replayed under the edits accepted since the wait began, and the
+	 * revision is moved past the adopted one by as many edits, so viewers
+	 * already at the adopted revision do not drop the next snapshot as stale.
 	 * @param {{state: object, revision: number, session: string}} message
 	 * @returns {boolean} Whether the draft was adopted
 	 */
 	adopt(message) {
-		if (this.revision > 0 || !message?.state) return false;
+		if (!message?.state) return false;
+		if (this.revision > 0 && !this.awaitingReseat) return false;
 		if (this.session && message.session && this.session !== message.session)
 			return false;
+		const early = this.early;
 		this.session = message.session ?? this.session;
-		this.revision = message.revision ?? 0;
-		this.state = copy(message.state);
-		this.view = copy(message.state);
-		this.ack = {};
+		this.revision = (message.revision ?? 0) + early.length;
+		this.state = early.reduce(
+			(state, operation) => this.apply(state, operation),
+			copy(message.state),
+		);
+		this.view = copy(this.state);
+		// `ack` keeps what the early edits earned, so their senders stop replaying
+		// them once the next snapshot lands. It is empty when there were none.
 		this.pending = [];
+		this.abandonReseat();
 		return true;
 	}
 

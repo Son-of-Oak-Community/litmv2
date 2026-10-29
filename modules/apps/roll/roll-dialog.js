@@ -52,6 +52,9 @@ export { resolveRollDialogOwnership };
 /** Dialogs with a submit in flight; see `LitmRollDialog._onSubmit`. */
 const submitting = new WeakSet();
 
+/** How long a reloaded owner waits for a viewer's answer to its reseat request. */
+const RESEAT_WINDOW_MS = 5000;
+
 export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
 ) {
@@ -2024,6 +2027,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	 */
 	requestReseat() {
 		if (this.localOnly || !this.isOwner) return;
+		// Same-session edits can reach this fresh sync before any viewer answers,
+		// and would otherwise make it refuse every answer. Armed on this exact
+		// instance, so a replaced sync is never touched by the timer.
+		const sync = this.#sync;
+		sync.expectReseat();
+		setTimeout(() => sync.abandonReseat(), RESEAT_WINDOW_MS);
 		Sockets.dispatch("requestRollDialogSync", {
 			actorId: this.actorId,
 			reseat: true,

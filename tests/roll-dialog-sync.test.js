@@ -201,3 +201,84 @@ describe("LitmRollDialog sync integration", () => {
 		expect(viewer.getSelection("draft").state).toBe("positive");
 	});
 });
+
+describe("LitmRollDialog reseat after the owner reloads", () => {
+	const SESSION = "call-1";
+
+	/**
+	 * The table mid-call: the roller built a draft, the Narrator saw it, then the
+	 * roller's client reloaded. `fresh` is the empty dialog that comes back and
+	 * has already asked the viewers for the draft.
+	 */
+	const reloadedMidCall = async () => {
+		const before = make("player", { ownerId: "player" });
+		const gm = make("gm", { ownerId: "player" });
+		before.activateSync(SESSION);
+		gm.activateSync(SESSION);
+		for (const id of ["t1", "t2"]) {
+			as("player", () => {
+				before.setSelection(id, "positive", "player");
+				before.dispatchSync();
+			});
+			await as("gm", () => gm.receiveUpdate(last()));
+		}
+		const fresh = make("player", { ownerId: "player" });
+		fresh.activateSync(SESSION);
+		as("player", () => fresh.requestReseat());
+		return { gm, fresh };
+	};
+
+	/** The Narrator's edit reaches the owner before any reply does. */
+	const narratorSetsMight = async (gm, fresh) => {
+		const gmChange = controls(gm);
+		as("gm", () => gmChange("might", 3));
+		await as("player", () => fresh.receiveUpdate(last()));
+		// The owner's revision-1 snapshot is stale to a viewer at revision 2.
+		await as("gm", () => gm.receiveUpdate(last()));
+	};
+
+	it("takes the table's draft and keeps the Narrator's early edit", async () => {
+		const { gm, fresh } = await reloadedMidCall();
+		await narratorSetsMight(gm, fresh);
+
+		as("gm", () => gm.dispatchReseat());
+		await as("player", () => fresh.receiveUpdate(last()));
+
+		expect(fresh.getSelection("t1").state).toBe("positive");
+		expect(fresh.getSelection("t2").state).toBe("positive");
+		expect(fresh.extractRollData().might).toBe(3);
+	});
+
+	it("publishes a snapshot the viewers accept", async () => {
+		const { gm, fresh } = await reloadedMidCall();
+		await narratorSetsMight(gm, fresh);
+		as("gm", () => gm.dispatchReseat());
+		const reply = last();
+		await as("player", () => fresh.receiveUpdate(reply));
+
+		// Not older than the revision the viewers already hold, or they drop it.
+		expect(last().sync.kind).toBe("snapshot");
+		expect(last().sync.revision).toBeGreaterThan(reply.sync.revision);
+		await as("gm", () => gm.receiveUpdate(last()));
+
+		expect(gm.getSelection("t2").state).toBe("positive");
+		expect(gm.extractRollData().might).toBe(3);
+	});
+
+	it("carries on with what it has when nobody answers in time", async () => {
+		vi.useFakeTimers();
+		try {
+			const { gm, fresh } = await reloadedMidCall();
+			await narratorSetsMight(gm, fresh);
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			as("gm", () => gm.dispatchReseat());
+			await as("player", () => fresh.receiveUpdate(last()));
+
+			expect(fresh.getSelection("t1")?.state).toBeFalsy();
+			expect(fresh.extractRollData().might).toBe(3);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});
