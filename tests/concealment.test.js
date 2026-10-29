@@ -70,4 +70,29 @@ describe("maskConcealedTags", () => {
 		expect(mask([], ["hidden"])).toEqual([]);
 		expect(maskConcealedTags(undefined, {})).toEqual([]);
 	});
+
+	describe("an individually hidden effect", () => {
+		const maskHidden = (tags, hidden) =>
+			maskConcealedTags(tags, {
+				concealedActorIds: new Set(),
+				resolveActorId: () => "challenge",
+				isEffectHidden: (tag) => hidden[tag.uuid],
+				maskName: MASK,
+			});
+
+		it("is masked even when its actor's column is visible", () => {
+			const tags = [{ uuid: "e1", name: "sharp claws", value: 0 }];
+			expect(maskHidden(tags, { e1: true })[0].name).toBe(MASK);
+		});
+
+		it("unmasks once the Narrator reveals it", () => {
+			const tags = [{ uuid: "e1", name: "sharp claws", effectHiddenAtRoll: true }];
+			expect(maskHidden(tags, { e1: false })[0].name).toBe("sharp claws");
+		});
+
+		it("keeps the hiding it had when rolled after the effect is gone", () => {
+			const tags = [{ uuid: "e1", name: "sharp claws", effectHiddenAtRoll: true }];
+			expect(maskHidden(tags, {})[0].name).toBe(MASK);
+		});
+	});
 });

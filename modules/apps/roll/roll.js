@@ -270,7 +270,16 @@ export class LitmRoll extends foundry.dice.Roll {
 				concealedActorIds,
 				resolveActorId: (entry) => this.resolveConcealmentActorId(entry),
 			}),
+			effectHiddenAtRoll: !!this.isConcealmentEffectHidden(tag),
 		}));
+	}
+
+	/** The tag's own `isHidden`, or undefined once its effect is gone. */
+	static isConcealmentEffectHidden(tag) {
+		if (!tag.uuid) return undefined;
+		const effect = foundry.utils.fromUuidSync(tag.uuid, { strict: false });
+		if (!effect) return undefined;
+		return !!effect.system?.isHidden;
 	}
 
 	/** Effects may be consumed after a roll while their owning actor lives on. */
@@ -304,6 +313,7 @@ export class LitmRoll extends foundry.dice.Roll {
 				isGM,
 				concealedActorIds: StoryTagsStore.hiddenActorIds,
 				resolveActorId: (tag) => this.resolveConcealmentActorId(tag),
+				isEffectHidden: (tag) => this.isConcealmentEffectHidden(tag),
 				maskName: t("LITM.Ui.roll_concealed_tag"),
 			});
 		}
