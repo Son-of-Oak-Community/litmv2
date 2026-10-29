@@ -13,6 +13,7 @@ import {
 } from "../../active-effects/status-tag-data.js";
 import {
 	classifyTagStringMatch,
+	effectDragState,
 	isStatusDescriptor,
 	parseTagString,
 	tagDragData,
@@ -411,7 +412,6 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						.map(() => null),
 			isScratched: false,
 			isSingleUse: false,
-			hidden: game.user.isGM,
 			id: foundry.utils.randomID(),
 		};
 		this._editOnRender = tag.id;
@@ -817,11 +817,32 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const match = [...`[${text}]`.matchAll(CONFIG.litmv2.tagStringRe)][0];
 		if (!match) return;
 
+		// The label names only the highest tier and the single-use mark, so the
+		// rest of the tag's state comes from the effect the row stands for.
+		const effect = this.#resolveDragSource(
+			target.dataset.type,
+			target.dataset.id,
+		);
 		const data = tagDragData(classifyTagStringMatch(match), {
 			sourceId: target.dataset.id,
 			sourceContainer: target.dataset.type,
+			...effectDragState(effect),
 		});
 		event.dataTransfer.setData("text/plain", JSON.stringify(data));
+	}
+
+	/**
+	 * The effect a sidebar row stands for.
+	 * @param {string} container  An actor id / UUID, or "story"
+	 * @param {string} id  The effect id
+	 * @returns {ActiveEffect|null}
+	 */
+	#resolveDragSource(container, id) {
+		if (container === "story") {
+			return this.#packStoryTags.find((e) => e._id === id) ?? null;
+		}
+		const actor = this.#resolveActor(container);
+		return actor ? resolveEffect(id, actor) : null;
 	}
 
 	async _onDrop(dragEvent) {
@@ -1280,14 +1301,16 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			type: isStatus ? "status_tag" : "story_tag",
 			isScratched: false,
 			isSingleUse: parsed.isSingleUse ?? false,
-			hidden: game.user.isGM,
 			id: foundry.utils.randomID(),
 		};
 
 		input.value = "";
 
 		if (sectionId === "story") {
-			const effectData = ContentSources.legacyTagToEffectData(tag);
+			const effectData = ContentSources.legacyTagToEffectData({
+				...tag,
+				hidden: game.user.isGM,
+			});
 			await this.#storyTagOp("createTags", [effectData]);
 		} else {
 			await this.#addTagToActor({ id: sectionId, tag });
@@ -1777,11 +1800,13 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 
 		// Statuses go through the canonical entry so same-name statuses stack
 		// (case-insensitively) instead of duplicating; story tags go through
-		// addStoryTag so heroes route them into the backpack.
+		// addStoryTag so heroes route them into the backpack. A moved tag brings
+		// its own hidden flag; one with none (a chip from prose, a fresh add)
+		// starts the way the column's owner would expect.
 		const created = isStatus
 			? await actor.system.addStatus(tag.name, {
 					tiers: toTiers(tag.values),
-					isHidden: startsHiddenOn(actor),
+					isHidden: tag.hidden ?? startsHiddenOn(actor),
 					limitId: tag.limitId,
 				})
 			: await actor.system.addStoryTag(
@@ -1789,7 +1814,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						name: tag.name,
 						isScratched: tag.isScratched ?? false,
 						isSingleUse: tag.isSingleUse ?? false,
-						isHidden: startsHiddenOn(actor),
+						isHidden: tag.hidden ?? startsHiddenOn(actor),
 						limitId: tag.limitId,
 					}),
 				);

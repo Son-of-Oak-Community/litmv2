@@ -354,3 +354,250 @@ describe("dropping a tag onto a limit header", () => {
 		expect(ContentSources.createStoryTags).not.toHaveBeenCalled();
 	});
 });
+
+// A move rebuilt the tag from its row label, which names the highest tier and
+// none of the flags: a scratched tag came back whole, a hidden one visible.
+// These drag from the real row and drop the real payload.
+
+/** Start a drag on a sidebar row and return the payload it writes. */
+const dragFrom = (row) => {
+	const setData = vi.fn();
+	sidebar._onDragStart({
+		currentTarget: { closest: () => ({ dataset: row }) },
+		dataTransfer: { setData },
+	});
+	return JSON.parse(setData.mock.calls[0][1]);
+};
+
+/** A story tag in the Story section's pack. */
+const packTag = (over = {}) => {
+	const { system, ...rest } = over;
+	const effect = fakeEffect({
+		id: "pack-tag",
+		name: "fog",
+		type: "story_tag",
+		system: {
+			isScratched: false,
+			isSingleUse: false,
+			isHidden: false,
+			...system,
+		},
+		...rest,
+	});
+	packTags.push(effect);
+	return effect;
+};
+
+describe("a moved tag keeps its state", () => {
+	beforeEach(() => {
+		game.user = { isGM: true, id: "gm" };
+	});
+
+	it("stays scratched on its way into the Story section", async () => {
+		const source = makeHero({ name: "Source" });
+		actors = { [source.actor.id]: source.actor };
+		const { effect } = placeTag(source.actor, source.pack, "lantern");
+		effect.system.isScratched = true;
+		const payload = dragFrom({
+			text: "lantern",
+			id: effect.id,
+			type: source.actor.id,
+		});
+
+		await sidebar._onDrop(dropEvent(payload, { column: "story" }));
+
+		const [[[created]]] = ContentSources.createStoryTags.mock.calls;
+		expect(created.system.isScratched).toBe(true);
+	});
+
+	it("stays scratched on its way back out of the Story section", async () => {
+		const target = makeHero({ name: "Target" });
+		actors = { [target.actor.id]: target.actor };
+		const effect = packTag({ system: { isScratched: true } });
+		const payload = dragFrom({ text: "fog", id: effect.id, type: "story" });
+
+		await sidebar._onDrop(dropEvent(payload, { column: target.actor.id }));
+
+		const [created] = target.pack.createEmbeddedDocuments.mock.calls[0][1];
+		expect(created.system.isScratched).toBe(true);
+	});
+
+	it("keeps a single-use tag single-use", async () => {
+		const source = makeHero({ name: "Source" });
+		actors = { [source.actor.id]: source.actor };
+		const { effect } = placeTag(source.actor, source.pack, "torch");
+		effect.system.isSingleUse = true;
+		const payload = dragFrom({
+			text: "torch!",
+			id: effect.id,
+			type: source.actor.id,
+		});
+
+		await sidebar._onDrop(dropEvent(payload, { column: "story" }));
+
+		const [[[created]]] = ContentSources.createStoryTags.mock.calls;
+		expect(created.system.isSingleUse).toBe(true);
+	});
+
+	it("stays hidden when a Challenge's secret moves into the Story section", async () => {
+		const challenge = makeChallenge();
+		actors = { [challenge.id]: challenge };
+		const secret = fakeEffect({
+			name: "trapdoor",
+			type: "story_tag",
+			system: { isScratched: false, isSingleUse: false, isHidden: true },
+		});
+		secret.parent = challenge;
+		challenge.effects.push(secret);
+		const payload = dragFrom({
+			text: "trapdoor",
+			id: secret.id,
+			type: challenge.id,
+		});
+		game.user = { isGM: false, id: "player" };
+		game.users.activeGM = { id: "gm" };
+
+		await sidebar._onDrop(dropEvent(payload, { column: "story" }));
+
+		const [[, relay]] = Sockets.dispatch.mock.calls;
+		expect(relay.data[0].system.isHidden).toBe(true);
+	});
+
+	it("stays hidden when a hidden Story tag moves onto a Hero", async () => {
+		const target = makeHero({ name: "Target" });
+		// A player's Hero would otherwise start visible for the Narrator.
+		target.actor.hasPlayerOwner = true;
+		actors = { [target.actor.id]: target.actor };
+		const effect = packTag({ system: { isHidden: true } });
+		const payload = dragFrom({ text: "fog", id: effect.id, type: "story" });
+
+		await sidebar._onDrop(dropEvent(payload, { column: target.actor.id }));
+
+		const [created] = target.pack.createEmbeddedDocuments.mock.calls[0][1];
+		expect(created.system.isHidden).toBe(true);
+	});
+
+	it("stays visible when a visible tag moves onto a Challenge", async () => {
+		const source = makeHero({ name: "Source" });
+		const challenge = makeChallenge();
+		actors = { [source.actor.id]: source.actor, [challenge.id]: challenge };
+		const { effect } = placeTag(source.actor, source.pack, "lantern");
+		const payload = dragFrom({
+			text: "lantern",
+			id: effect.id,
+			type: source.actor.id,
+		});
+
+		await sidebar._onDrop(dropEvent(payload, { column: challenge.id }));
+
+		const [created] = challenge.createEmbeddedDocuments.mock.calls[0][1];
+		expect(created.system.isHidden).toBe(false);
+	});
+
+	it("starts hidden on a Challenge when the tag carries no state, as a chip from prose does", async () => {
+		const challenge = makeChallenge();
+		actors = { [challenge.id]: challenge };
+		const chip = {
+			id: "chip",
+			name: "ambush",
+			type: "story_tag",
+			values: [],
+			isScratched: false,
+			isSingleUse: false,
+		};
+
+		await sidebar._onDrop(dropEvent(chip, { column: challenge.id }));
+
+		const [created] = challenge.createEmbeddedDocuments.mock.calls[0][1];
+		expect(created.system.isHidden).toBe(true);
+	});
+
+	it("keeps every marked tier of a stacked status", async () => {
+		const source = makeChallenge();
+		const target = makeChallenge();
+		target.system.addStatus = vi.fn(async () => [{ id: "created" }]);
+		actors = { [source.id]: source, [target.id]: target };
+		const stacked = fakeEffect({
+			name: "wounded",
+			type: "status_tag",
+			system: {
+				isHidden: false,
+				tiers: [true, false, true, false, false, false],
+				limitId: null,
+			},
+		});
+		stacked.parent = source;
+		source.effects.push(stacked);
+		const payload = dragFrom({
+			text: "wounded-3",
+			id: stacked.id,
+			type: source.id,
+		});
+
+		await sidebar._onDrop(dropEvent(payload, { column: target.id }));
+
+		const [, options] = target.system.addStatus.mock.calls[0];
+		expect(options.tiers.slice(0, 4)).toEqual([true, false, true, false]);
+		expect(source.deleteEmbeddedDocuments).toHaveBeenCalledWith(
+			"ActiveEffect",
+			[stacked.id],
+		);
+	});
+
+	it("does not carry the source's limit link to a column that has no such limit", async () => {
+		const source = makeChallenge();
+		const target = makeChallenge();
+		target.system.addStatus = vi.fn(async () => [{ id: "created" }]);
+		actors = { [source.id]: source, [target.id]: target };
+		const linked = fakeEffect({
+			name: "wounded",
+			type: "status_tag",
+			system: {
+				isHidden: false,
+				tiers: [false, true, false, false, false, false],
+				limitId: "source-limit",
+			},
+		});
+		linked.parent = source;
+		source.effects.push(linked);
+		const payload = dragFrom({
+			text: "wounded-2",
+			id: linked.id,
+			type: source.id,
+		});
+
+		await sidebar._onDrop(dropEvent(payload, { column: target.id }));
+
+		const [, options] = target.system.addStatus.mock.calls[0];
+		expect(options.limitId).toBeUndefined();
+	});
+});
+
+// New tags are not moves: they carry no hidden flag of their own, so the
+// column's owner decides, as before.
+describe("a tag the Narrator adds", () => {
+	beforeEach(() => {
+		game.user = { isGM: true, id: "gm" };
+	});
+
+	it("starts visible on a player's Hero", async () => {
+		const hero = makeHero({ name: "Hero" });
+		hero.actor.hasPlayerOwner = true;
+		actors = { [hero.actor.id]: hero.actor };
+
+		await sidebar.addTag(hero.actor.id);
+
+		const [created] = hero.pack.createEmbeddedDocuments.mock.calls[0][1];
+		expect(created.system.isHidden).toBe(false);
+	});
+
+	it("starts hidden on a Challenge", async () => {
+		const challenge = makeChallenge();
+		actors = { [challenge.id]: challenge };
+
+		await sidebar.addTag(challenge.id);
+
+		const [created] = challenge.createEmbeddedDocuments.mock.calls[0][1];
+		expect(created.system.isHidden).toBe(true);
+	});
+});
