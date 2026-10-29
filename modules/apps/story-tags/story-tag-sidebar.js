@@ -31,7 +31,7 @@ import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import {
 	confirmDelete,
-	enrichHTML,
+	enrichPlainText,
 	getStoryTagSidebar,
 	localize as t,
 	viewLinkedRefAction,
@@ -516,7 +516,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 						continue;
 					}
 					limit.enrichedOutcome = limit.outcome
-						? await enrichHTML(limit.outcome, actorDoc)
+						? await enrichPlainText(limit.outcome, actorDoc)
 						: "";
 				}
 			}

@@ -5,6 +5,7 @@ import { syncAddonEffects } from "../../system/hooks/item-hooks.js";
 import {
 	confirmDelete,
 	enrichHTML,
+	enrichPlainText,
 	keepUnrenderedArrayKeys,
 	removeAtIndex,
 } from "../../utils.js";
@@ -94,7 +95,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 		if (limitedView) return this.#prepareLimitedContext(context);
 
 		const enriched = await this._enrichFields("description", "specialFeatures");
-		const enrichedTags = await enrichHTML(
+		const enrichedTags = await enrichPlainText(
 			isPlay ? sys.derivedTags || sys.tags || "" : sys.tags || "",
 			this.document,
 		);
@@ -214,9 +215,9 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 		const addonThreats = await Promise.all(
 			(sys.addonThreats || []).map(async (t) => ({
 				...t,
-				threat: await enrichHTML(t.threat, this.document),
+				threat: await enrichPlainText(t.threat, this.document),
 				consequences: await Promise.all(
-					t.consequences.map((c) => enrichHTML(c, this.document)),
+					t.consequences.map((c) => enrichPlainText(c, this.document)),
 				),
 			})),
 		);
@@ -234,7 +235,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 						? await enrichHTML(item?.system.description, this.document)
 						: "",
 					enrichedTags: expanded
-						? await enrichHTML(item?.system.tags, this.document)
+						? await enrichPlainText(item?.system.tags, this.document)
 						: "",
 					enrichedSpecialFeatures: expanded
 						? await enrichHTML(item?.system.specialFeatures, this.document)
@@ -266,7 +267,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 				);
 				return {
 					...limit,
-					enrichedOutcome: await enrichHTML(limit.outcome, this.document),
+					enrichedOutcome: await enrichPlainText(limit.outcome, this.document),
 					isImpossible: limit.max === 0,
 					isOwn: canonicalIds.has(limit.id),
 					isAutoManaged: hasGroupedStatuses || !canonicalIds.has(limit.id),
@@ -277,7 +278,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 			(isPlay ? sys.derivedMight || sys.might : sys.might || []).map(
 				async (entry) => ({
 					...entry,
-					enrichedDescription: await enrichHTML(
+					enrichedDescription: await enrichPlainText(
 						entry.description,
 						this.document,
 					),

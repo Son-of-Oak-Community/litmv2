@@ -5,7 +5,11 @@ import {
 import { error, warn } from "../../logger.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { Sockets } from "../../system/sockets.js";
-import { enrichHTML, getStoryTagSidebar, localize as t } from "../../utils.js";
+import {
+	enrichPlainText,
+	getStoryTagSidebar,
+	localize as t,
+} from "../../utils.js";
 import {
 	applyOperations,
 	buildOperations,
@@ -169,9 +173,9 @@ export function enrichThreats(threats) {
 			const item = game.items.get(entry.id);
 			return {
 				...entry,
-				threat: await enrichHTML(entry.threat, item),
+				threat: await enrichPlainText(entry.threat, item),
 				consequences: await Promise.all(
-					entry.consequences.map((c) => enrichHTML(c, item)),
+					entry.consequences.map((c) => enrichPlainText(c, item)),
 				),
 			};
 		}),

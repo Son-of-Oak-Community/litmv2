@@ -1,4 +1,9 @@
-import { enrichHTML, findThemebookByName, localize } from "../utils.js";
+import {
+	enrichHTML,
+	enrichPlainText,
+	findThemebookByName,
+	localize,
+} from "../utils.js";
 import { bindActionPresubmit } from "./action-presubmit.js";
 
 const WEAKNESS_DROP_TYPES = new Set(["theme", "story_theme"]);
@@ -222,7 +227,14 @@ export function LitmSheetMixin(Base) {
 			const enriched = {};
 			for (const field of fields) {
 				const value = foundry.utils.getProperty(this.document.system, field);
-				enriched[field] = value ? await enrichHTML(value, this.document) : "";
+				// Only an HTMLField is sanitized by the server; any other field is
+				// plain text and must not become markup.
+				const isHTML =
+					this.document.system.schema?.getField?.(field) instanceof
+					foundry.data.fields.HTMLField;
+				enriched[field] = isHTML
+					? await enrichHTML(value, this.document)
+					: await enrichPlainText(value, this.document);
 			}
 			return enriched;
 		}

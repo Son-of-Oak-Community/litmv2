@@ -1,4 +1,4 @@
-import { enrichHTML } from "../../utils.js";
+import { enrichPlainText } from "../../utils.js";
 
 /**
  * Build the vignette-card fieldset shape. Used by both `renderVignette` and
@@ -35,7 +35,7 @@ export async function vignetteCard({
 	if (!isConsequenceOnly && threat) {
 		const div = document.createElement("div");
 		div.classList.add("threat-text");
-		div.innerHTML = await enrichHTML(threat, relativeTo);
+		div.innerHTML = await enrichPlainText(threat, relativeTo);
 		container.appendChild(div);
 	}
 
@@ -45,7 +45,7 @@ export async function vignetteCard({
 		for (const c of consequences) {
 			const li = document.createElement("li");
 			li.classList.add("consequence-item");
-			li.innerHTML = await enrichHTML(c, relativeTo);
+			li.innerHTML = await enrichPlainText(c, relativeTo);
 			ul.appendChild(li);
 		}
 		container.appendChild(ul);
