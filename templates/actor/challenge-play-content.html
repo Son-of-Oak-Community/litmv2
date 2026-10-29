@@ -11,12 +11,7 @@
 							src="systems/litmv2/assets/media/icons/limit.svg" height="25" width="25" class="limit-icon" alt="" aria-hidden="true" />
 						<span class="limit-max">{{#if limit.isImpossible}}~{{else}}{{limit.max}}{{/if}}</span>
 					</span>
-					{{#if (and @root.isOwner limit.isOwn)}}
-					<button type="button" data-action="toggleLimitHidden" data-limit-id="{{limit.id}}"
-						data-tooltip="{{localize 'LITM.Ui.toggle_vignette_hidden'}}" aria-label="{{localize 'LITM.Ui.toggle_vignette_hidden'}}">
-						<i class="fa-solid {{ifThen (eq limit.hidden false) 'fa-eye' 'fa-eye-slash'}}" aria-hidden="true"></i>
-					</button>
-					{{/if}}
+					<div class="limit-actions">
 					{{#if limit.isImpossible}}
 					<div class="limit-controls">
 						<span class="limit-impossible" data-tooltip="{{localize 'LITM.Ui.limit_immune'}}">~</span>
@@ -48,6 +43,13 @@
 						</button>
 					</div>
 					{{/if}}
+					{{#if (and @root.isOwner limit.isOwn)}}
+					<button type="button" data-action="toggleLimitHidden" data-limit-id="{{limit.id}}"
+						data-tooltip="{{localize 'LITM.Ui.toggle_vignette_hidden'}}" aria-label="{{localize 'LITM.Ui.toggle_vignette_hidden'}}">
+						<i class="fa-solid {{ifThen (eq limit.hidden false) 'fa-eye' 'fa-eye-slash'}}" aria-hidden="true"></i>
+					</button>
+					{{/if}}
+					</div>
 				</div>
 				{{#if limit.outcome}}
 				<div class="limit-outcome">
