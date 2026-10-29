@@ -2690,17 +2690,32 @@ section.standard-form.litm-actions-app {
    Limit labels, might display, shields, outcomes, rating stars.
 ======================================== */
 
-/* Challenge limit label overrides */
+/* Challenge limit label overrides. A name too long for a line of its own
+   wraps rather than run off the card. The stroked ::before copy wraps at
+   the width it is given, so the max sits in the end padding: the copy then
+   gets the same width as the name it outlines. */
 .litm-challenge-sheet .limit-header .litm-limit {
 	font-size: var(--font-size-18);
+	white-space: normal;
+	padding-inline-end: 0.8em;
+
+	&::before {
+		right: 0.8em;
+	}
+}
+
+/* Badge and max share one centred box, so they stay together when the name wraps. */
+.litm-challenge-sheet :is(.limit-icon, .limit-max) {
+	position: absolute;
+	right: -7px;
+	width: 24px;
+	top: 50%;
+	translate: 0 -50%;
+	text-align: center;
 }
 
 .litm-challenge-sheet .limit-icon {
-	position: absolute;
-	width: 24px;
 	height: 24px;
-	right: -7px;
-	top: 1px;
 	z-index: -1;
 }
 
@@ -2709,9 +2724,6 @@ section.standard-form.litm-actions-app {
 	font-size: var(--font-size-20);
 	font-weight: 600;
 	color: var(--color-light-2);
-	position: relative;
-	top: 0px;
-	left: -1px;
 }
 
 /* --- Challenge meta, category, play sections --- */
