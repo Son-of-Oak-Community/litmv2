@@ -179,13 +179,19 @@ export class ContentSources {
 	 * Called once at ready time after seedStatuses.
 	 */
 	static async loadStatusCompendium() {
-		const packs = ContentSources.getPacks("statuses");
-		if (!packs.length) return;
-		const configs = await ContentSources.getStatusEffectConfigs(packs);
-		CONFIG.statusEffects = configs;
-		info(
-			`Loaded ${configs.length} statuses from ${packs.length} compendium pack(s)`,
-		);
+		// Awaited in the ready hook ahead of socket registration, so it must not
+		// reject: a client that fails here would never register its listeners.
+		try {
+			const packs = ContentSources.getPacks("statuses");
+			if (!packs.length) return;
+			const configs = await ContentSources.getStatusEffectConfigs(packs);
+			CONFIG.statusEffects = configs;
+			info(
+				`Loaded ${configs.length} statuses from ${packs.length} compendium pack(s)`,
+			);
+		} catch (err) {
+			error("Failed to load statuses from compendium packs", err);
+		}
 	}
 
 	/**
@@ -193,7 +199,8 @@ export class ContentSources {
 	 * deduplicated by slugified id. The v14 `CONFIG.statusEffects` Proxy keys
 	 * on `id` and its `ownKeys` trap throws on duplicate keys, so two docs that
 	 * slugify to the same id (within or across packs) would otherwise corrupt
-	 * the global — last one wins here.
+	 * the global — last one wins here. A pack that fails to load is logged and
+	 * skipped so it cannot take the other packs' statuses down with it.
 	 * @param {CompendiumCollection[]} [packs] - Defaults to the status packs.
 	 * @returns {Promise<object[]>}
 	 */
@@ -202,7 +209,13 @@ export class ContentSources {
 	) {
 		const byId = new Map();
 		for (const pack of packs) {
-			const docs = await pack.getDocuments();
+			let docs;
+			try {
+				docs = await pack.getDocuments();
+			} catch (err) {
+				error(`Failed to load statuses from ${pack.collection}`, err);
+				continue;
+			}
 			for (const doc of docs) {
 				const id = doc.name.slugify({ strict: true });
 				byId.set(id, { id, _id: doc.id, name: doc.name, img: doc.img });
