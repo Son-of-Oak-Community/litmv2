@@ -517,22 +517,38 @@ function _applyCounter(opt) {
 	return { power: opt.cost * opt.count };
 }
 
+/**
+ * Recover (un-scratch) the selected tags. The list comes from
+ * `HeroData#scratchedTags`, which spans the Fellowship as well as the hero, so
+ * resolution looks there too. The Fellowship is usually GM-owned: a write the
+ * player can't make goes through the active GM, same as `_applyScratchPicker`.
+ * Charged per recovery that lands — an unresolved tag, or one with no GM to
+ * write it, is skipped and not billed.
+ */
 async function _applyPicker(actor, opt, charge) {
 	const { chips, cost } = opt;
-	const power = cost * chips.length;
 	const tags = [];
+	let recovered = 0;
 	for (const { tagId, tagName } of chips) {
-		const effect = resolveEffect(tagId, actor);
-		if (effect) await effect.update({ "system.isScratched": false });
+		const effect = resolveEffect(tagId, actor, { fellowship: true });
+		if (!effect) {
+			warn(`Recover skipped — tag "${tagName}" could not be resolved.`);
+			continue;
+		}
+		if (effect.isOwner || game.user.isGM) {
+			await effect.update({ "system.isScratched": false });
+		} else if (game.users.activeGM) {
+			Sockets.dispatch("recoverEffect", { uuid: effect.uuid });
+		} else {
+			warn(`Recover dropped — no active GM to apply "${tagName}".`);
+			continue;
+		}
+		recovered++;
 		charge(cost);
 		// Recovered tags render as live (un-scratched) chips of their real type.
-		tags.push({
-			name: tagName,
-			type: effect?.type ?? "story_tag",
-			isScratched: false,
-		});
+		tags.push({ name: tagName, type: effect.type, isScratched: false });
 	}
-	return { power, tags };
+	return { power: cost * recovered, tags };
 }
 
 /**

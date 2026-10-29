@@ -34,6 +34,17 @@ export function fakeEffect({
 		update: vi.fn().mockResolvedValue(undefined),
 		delete: vi.fn().mockResolvedValue(undefined),
 	};
+	// An embedded document defers to its parent's ownership; a test can still
+	// pin it (`effect.isOwner = false`) to stand in for a direct permission.
+	let pinned;
+	Object.defineProperty(effect, "isOwner", {
+		get: () => pinned ?? !!effect.parent?.isOwner,
+		set: (value) => {
+			pinned = value;
+		},
+		enumerable: true,
+		configurable: true,
+	});
 	return effect;
 }
 
