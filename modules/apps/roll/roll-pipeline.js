@@ -1,4 +1,5 @@
 import { resolveEffect } from "../../active-effects/effect-queries.js";
+import { scratchOnce } from "../../active-effects/scratchable-mixin.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { warn } from "../../logger.js";
 import { FLAGS, IMPROVE_MARKING_TAG_TYPES } from "../../system/config.js";
@@ -234,23 +235,6 @@ function relayScratch(tag, event, data) {
 	ui.notifications.warn(
 		game.i18n.format("LITM.Ui.scratch_needs_narrator", { tag: name }),
 	);
-}
-
-/**
- * Scratch as a post-roll consequence: an absolute set, never a toggle. A roll
- * that runs twice (a double press, a retried submit, two approvals) must not
- * un-burn the tag the first run burned.
- * @param {ActiveEffect} effect
- */
-async function scratchOnce(effect) {
-	if (effect.system?.isScratched) return;
-	const owner =
-		effect.parent?.documentName === "Item"
-			? effect.parent.parent
-			: effect.parent;
-	if (Hooks.call("litm.preTagScratched", owner, effect) === false) return;
-	await effect.system.setScratched(true);
-	Hooks.callAll("litm.tagScratched", owner, effect);
 }
 
 /**
