@@ -2,6 +2,7 @@ import { LitmActiveEffectSheet } from "../active-effects/active-effect-sheet.js"
 import { ChallengeSheet } from "../actor/challenge/challenge-sheet.js";
 import { FellowshipSheet } from "../actor/fellowship/fellowship-sheet.js";
 import { HeroSheet } from "../actor/hero/hero-sheet.js";
+import { HeroSheetCards } from "../actor/hero/hero-sheet-cards.js";
 import { JourneySheet } from "../actor/journey/journey-sheet.js";
 import { StoryThemeActorSheet } from "../actor/story-theme/story-theme-actor-sheet.js";
 import { ActionSheet } from "../item/action/action-sheet.js";
@@ -17,7 +18,6 @@ import { LitmJournalSheet } from "../sheets/journal-sheet.js";
 import {
 	ChallengeSheetLandscape,
 	FellowshipSheetLandscape,
-	HeroSheetCards,
 	HeroSheetLandscape,
 	JourneySheetLandscape,
 } from "../sheets/landscape-sheets.js";
