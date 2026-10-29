@@ -898,13 +898,15 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (touchesStory && !this.#canWriteStoryPack()) return;
 
 		if (source === "story") {
-			// Same container — update limitId on existing pack AE
-			if (data.sourceId) {
+			// Same container — update limitId on existing pack AE. A `sourceId`
+			// from an actor column is no pack id, so only the Story's own tags
+			// take this path.
+			if (data.sourceContainer === "story") {
 				return this.#storyTagOp("updateTags", [
 					{ _id: data.sourceId, "system.limitId": limitId },
 				]);
 			}
-			// External — create new pack AE with limitId
+			// External, or moved in from an actor — create new pack AE with limitId
 			const effectData = ContentSources.legacyTagToEffectData({
 				...data,
 				limitId,

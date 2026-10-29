@@ -296,6 +296,27 @@ describe("dropping a tag onto a limit header", () => {
 		expect(source.pack.deleteEmbeddedDocuments).not.toHaveBeenCalled();
 	});
 
+	// A pack tag is re-limited in place; an actor's tag has no pack id to update.
+	it("moves an actor's tag into a Story limit by creating it there, not by updating a pack tag", async () => {
+		game.user = { isGM: true, id: "gm" };
+		const source = makeHero({ name: "Source" });
+		actors = { [source.actor.id]: source.actor };
+		const { effect, payload } = placeTag(source.actor, source.pack);
+
+		await sidebar._onDrop(
+			dropEvent(payload, { limitId: "story-lim", limitSource: "story" }),
+		);
+
+		expect(ContentSources.updateStoryTags).not.toHaveBeenCalled();
+		expect(ContentSources.createStoryTags).toHaveBeenCalledTimes(1);
+		const [[[created]]] = ContentSources.createStoryTags.mock.calls;
+		expect(created.system.limitId).toBe("story-lim");
+		expect(source.pack.deleteEmbeddedDocuments).toHaveBeenCalledWith(
+			"ActiveEffect",
+			[effect.id],
+		);
+	});
+
 	it("keeps an actor's tag where it was when no Narrator is online for a Story limit", async () => {
 		const source = makeHero({ name: "Source" });
 		actors = { [source.actor.id]: source.actor };
