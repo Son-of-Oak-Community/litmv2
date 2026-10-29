@@ -36,6 +36,7 @@ import {
 } from "../../active-effects/effect-factories.js";
 import {
 	maxStatusTier,
+	padTiers,
 	StatusTagData,
 } from "../../active-effects/status-tag-data.js";
 import { ACTOR_TAG_TYPES, makeTagStringRe } from "../../system/config.js";
@@ -221,6 +222,37 @@ export function descriptorToEffectData(tag) {
 		img: "systems/litmv2/assets/media/icons/consequences.svg",
 		disabled: false,
 	};
+}
+
+/**
+ * The state of an existing tag effect that a drag payload carries, so a move
+ * rebuilds the tag as it was instead of from its label (which names the
+ * highest tier and none of the flags). Spread it over {@link tagDragData}'s
+ * `extras`. Nothing is returned for a missing effect, so a chip dragged out of
+ * prose, which has no effect behind it, keeps the defaults.
+ *
+ * `limitId` is left out on purpose: a limit belongs to the column the tag
+ * leaves, so the destination has no limit with that id. A drop onto a limit
+ * header supplies its own.
+ * @param {ActiveEffect|null|undefined} effect  A story_tag or status_tag
+ * @returns {{ hidden?: boolean, isScratched?: boolean, isSingleUse?: boolean, values?: (string|null)[] }}
+ */
+export function effectDragState(effect) {
+	const system = effect?.system;
+	if (!system) return {};
+	const state = { hidden: system.isHidden ?? false };
+	if (effect.type === "status_tag") {
+		// Tier strings with null between, the shape the label payload and the
+		// sidebar form already use. Raw booleans would read back as an empty
+		// track once every box is marked (see `toTiers`).
+		state.values = padTiers(system.tiers).map((marked, i) =>
+			marked ? String(i + 1) : null,
+		);
+	} else {
+		state.isScratched = system.isScratched ?? false;
+		state.isSingleUse = system.isSingleUse ?? false;
+	}
+	return state;
 }
 
 /**
