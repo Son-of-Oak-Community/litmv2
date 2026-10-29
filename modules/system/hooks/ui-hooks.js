@@ -277,18 +277,37 @@ function _refreshRollDialogOnActorContentChange() {
 		const dialog = sheet.rollDialogInstance;
 		return dialog.rendered ? dialog : null;
 	};
+	// A re-render while someone types in the dialog (the Sacrifice status name)
+	// takes their focus, and the rest of what they type goes nowhere. Wait for
+	// them to leave the field; one deferred render covers every edit meanwhile.
+	const deferred = new WeakSet();
+	const rerender = (dialog) => {
+		if (!dialog || deferred.has(dialog)) return;
+		const active = document.activeElement;
+		if (active?.matches?.("input[type=text], textarea") && dialog.element?.contains(active)) {
+			deferred.add(dialog);
+			active.addEventListener(
+				"blur",
+				() => {
+					deferred.delete(dialog);
+					if (dialog.rendered) dialog.render().catch(console.error);
+				},
+				{ once: true },
+			);
+			return;
+		}
+		dialog.render().catch(console.error);
+	};
 	const refresh = (doc) => {
 		const actor =
 			doc.parent?.documentName === "Actor" ? doc.parent : doc.parent?.parent;
 		if (!actor) return;
-		openDialogOf(actor)?.render().catch(console.error);
+		rerender(openDialogOf(actor));
 		// Acting Together rides the Fellowship's dialog, with a tab per Hero.
 		const fellowship = game.litmv2.fellowship;
 		if (!fellowship || fellowship === actor) return;
 		const group = openDialogOf(fellowship);
-		if (group?.participantIds.includes(actor.id)) {
-			group.render().catch(console.error);
-		}
+		if (group?.participantIds.includes(actor.id)) rerender(group);
 	};
 	for (const hook of [
 		"createItem",
