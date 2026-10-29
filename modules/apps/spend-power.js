@@ -22,7 +22,7 @@ import { localize as t } from "../utils.js";
 import { adjustCounter, readVariableTiers } from "./counter-controls.js";
 import { mitigationPreselect } from "./mitigation.js";
 import { collectScratchableTags } from "./scratch-sources.js";
-import { applySpendIntent } from "./spend-power-service.js";
+import { applySpendIntent, scratchCost } from "./spend-power-service.js";
 import { collectReducibleStatuses } from "./status-sources.js";
 import { parseQuickAddInput } from "./story-tags/story-tag-helpers.js";
 import { StoryTagsStore } from "./story-tags/story-tags-store.js";
@@ -61,8 +61,20 @@ const COST_CALCULATORS = {
 	},
 };
 
-// Scratch reuses the picker calculator — both price one unit per selected chip.
-COST_CALCULATORS.scratchPicker = COST_CALCULATORS.picker;
+/**
+ * Scratch prices one unit per selected chip like the picker, except a
+ * single-use story tag, which costs 1 (p.165).
+ */
+export function scratchPickerCostCalculator(_li, cost, entriesSection) {
+	let total = 0;
+	entriesSection
+		.querySelectorAll(".litm-spend-power__tag-chip.is-selected")
+		.forEach((chip) => {
+			total += scratchCost(cost, chip.dataset.singleUse === "true");
+		});
+	return total;
+}
+COST_CALCULATORS.scratchPicker = scratchPickerCostCalculator;
 
 export function defaultCostCalculator(li, cost, _entriesSection, hasTier) {
 	const entries = li.querySelectorAll(".litm-spend-power__entry");
@@ -253,7 +265,11 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 					!e.disabled &&
 					isEffectVisible(e),
 			)
-			.map((e) => ({ id: e._id ?? e.id, name: e.name }));
+			.map((e) => ({
+				id: e._id ?? e.id,
+				name: e.name,
+				isSingleUse: !!e.system?.isSingleUse,
+			}));
 		// Candidate owners for scratch/reduce/inflict are the actors in play —
 		// scene tokens plus the story-tag sidebar's tracked actors, not every
 		// actor in the world directory. Same list the Apply Consequences menu
@@ -943,6 +959,7 @@ export function parseSpendIntent(form, dialog) {
 				tagName: chip.dataset.tagName,
 				actorId: chip.dataset.actorId,
 				isScene: chip.dataset.sceneTag === "true",
+				isSingleUse: chip.dataset.singleUse === "true",
 			}));
 			if (chips.length === 0) continue;
 			options.push({

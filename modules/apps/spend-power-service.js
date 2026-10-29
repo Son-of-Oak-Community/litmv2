@@ -21,6 +21,17 @@ function _inflictTier(tier) {
 }
 
 /**
+ * Power to scratch one tag: the option's cost, or 1 for a single-use story tag
+ * (Core Book p.165). One definition for the dialog's live total and the charge.
+ * @param {number} cost            The scratch option's per-tag cost
+ * @param {boolean} [isSingleUse]  Whether the tag is a single-use story tag
+ * @returns {number}
+ */
+export function scratchCost(cost, isSingleUse) {
+	return isSingleUse ? 1 : cost;
+}
+
+/**
  * Apply a parsed spend intent to an actor, executing all document mutations.
  *
  * @param {Actor} actor         The acting character
@@ -566,11 +577,11 @@ async function _applyScratchPicker(opt, charge) {
 	// vanished, or a scene write that can't be routed (no sidebar / no active
 	// GM), is skipped and not billed — Power is scarce, so a silent drop must
 	// not cost the player anything or show a false "scratched" chip.
-	let scratched = 0;
+	let power = 0;
 
 	// Actor-owned story/backpack tags: scratch directly on their owner. Scene
 	// tags carry no actor effect (handled via the fork below).
-	for (const { tagId, tagName, actorId, isScene } of chips) {
+	for (const { tagId, tagName, actorId, isScene, isSingleUse } of chips) {
 		if (isScene) continue;
 		const owner = actorId ? game.actors.get(actorId) : null;
 		const effect = owner ? resolveEffect(tagId, owner) : null;
@@ -589,8 +600,9 @@ async function _applyScratchPicker(opt, charge) {
 			continue;
 		}
 		tags.push({ name: tagName, type: effect.type, isScratched: true });
-		scratched++;
-		charge(cost);
+		const price = scratchCost(cost, isSingleUse);
+		power += price;
+		charge(price);
 	}
 
 	// Scene story tags live in the world pack, which players can't write
@@ -629,12 +641,16 @@ async function _applyScratchPicker(opt, charge) {
 			for (const c of sceneChips) {
 				tags.push({ name: c.tagName, type: "story_tag", isScratched: true });
 			}
-			scratched += sceneChips.length;
-			charge(cost * sceneChips.length);
+			const scenePower = sceneChips.reduce(
+				(sum, c) => sum + scratchCost(cost, c.isSingleUse),
+				0,
+			);
+			power += scenePower;
+			charge(scenePower);
 		}
 	}
 
-	return { power: cost * scratched, tags };
+	return { power, tags };
 }
 
 function _applyDefault(opt) {

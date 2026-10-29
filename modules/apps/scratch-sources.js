@@ -17,7 +17,7 @@ function unscratchedStoryTags(actor) {
  * rolling actor by id.
  * @param {Actor} actor                          The rolling actor.
  * @param {{id:string,label:string,actor:Actor}[]} candidates  Target candidates.
- * @param {{id:string,name:string}[]} sceneTags   Pre-filtered scene story tags
+ * @param {{id:string,name:string,isSingleUse?:boolean}[]} sceneTags Pre-filtered scene story tags
  *        (unscratched, visible) from the world story-tag pack.
  * @param {object} [options]
  * @param {(effect: object) => boolean} [options.tagFilter]  Extra filter for
@@ -25,7 +25,7 @@ function unscratchedStoryTags(actor) {
  *        free of game/user globals. Applies to every group, the rolling actor's
  *        included: a Narrator-hidden tag is already invisible on the hero's own
  *        sheet, so this picker must not be the surface that leaks it.
- * @returns {{ownerId:string,ownerName:string,isOwn:boolean,isScene?:boolean,tags:{id:string,name:string}[]}[]}
+ * @returns {{ownerId:string,ownerName:string,isOwn:boolean,isScene?:boolean,tags:{id:string,name:string,isSingleUse:boolean}[]}[]}
  */
 export function collectScratchableTags(
 	actor,
@@ -35,6 +35,12 @@ export function collectScratchableTags(
 ) {
 	const groups = [];
 	const seen = new Set();
+	// Single-use rides along on every chip: scratching one costs 1 Power, not 2.
+	const toChip = (e) => ({
+		id: e.id,
+		name: e.name,
+		isSingleUse: !!(e.system?.isSingleUse ?? e.isSingleUse),
+	});
 
 	const own = unscratchedStoryTags(actor).filter(
 		(e) => !tagFilter || tagFilter(e),
@@ -44,7 +50,7 @@ export function collectScratchableTags(
 			ownerId: actor.id,
 			ownerName: actor.name,
 			isOwn: true,
-			tags: own.map((e) => ({ id: e.id, name: e.name })),
+			tags: own.map(toChip),
 		});
 	}
 	if (actor) seen.add(actor.id);
@@ -60,7 +66,7 @@ export function collectScratchableTags(
 			ownerId: cand.id,
 			ownerName: cand.label,
 			isOwn: false,
-			tags: tags.map((e) => ({ id: e.id, name: e.name })),
+			tags: tags.map(toChip),
 		});
 	}
 
@@ -73,7 +79,7 @@ export function collectScratchableTags(
 			ownerName: "",
 			isOwn: false,
 			isScene: true,
-			tags: sceneTags.map((t) => ({ id: t.id, name: t.name })),
+			tags: sceneTags.map(toChip),
 		});
 	}
 	return groups;

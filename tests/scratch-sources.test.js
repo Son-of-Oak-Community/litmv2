@@ -21,7 +21,7 @@ describe("collectScratchableTags", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				tags: [{ id: "e1", name: "tonic" }],
+				tags: [{ id: "e1", name: "tonic", isSingleUse: false }],
 			},
 		]);
 	});
@@ -40,13 +40,13 @@ describe("collectScratchableTags", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				tags: [{ id: "e1", name: "tonic" }],
+				tags: [{ id: "e1", name: "tonic", isSingleUse: false }],
 			},
 			{
 				ownerId: "c1",
 				ownerName: "Bandit",
 				isOwn: false,
-				tags: [{ id: "e3", name: "reinforcements" }],
+				tags: [{ id: "e3", name: "reinforcements", isSingleUse: false }],
 			},
 		]);
 	});
@@ -60,8 +60,33 @@ describe("collectScratchableTags", () => {
 				ownerId: "c1",
 				ownerName: "Bandit",
 				isOwn: false,
-				tags: [{ id: "e3", name: "reinforcements" }],
+				tags: [{ id: "e3", name: "reinforcements", isSingleUse: false }],
 			},
+		]);
+	});
+
+	// Scratching a single-use story tag costs 1 Power (p.165), so the picker has
+	// to know which chips are single-use.
+	it("flags single-use tags on actor and scene groups", () => {
+		const single = (id, name) => ({
+			id,
+			name,
+			system: { isScratched: false, isSingleUse: true },
+		});
+		const hero = actor("h1", "Gerrin", [tag("e1", "tonic"), single("e2", "torch")]);
+		const foe = actor("c1", "Bandit", [single("e3", "flare")]);
+		const groups = collectScratchableTags(
+			hero,
+			[candidate(foe)],
+			[{ id: "s1", name: "fog", isSingleUse: true }],
+		);
+		expect(groups.map((g) => g.tags)).toEqual([
+			[
+				{ id: "e1", name: "tonic", isSingleUse: false },
+				{ id: "e2", name: "torch", isSingleUse: true },
+			],
+			[{ id: "e3", name: "flare", isSingleUse: true }],
+			[{ id: "s1", name: "fog", isSingleUse: true }],
 		]);
 	});
 
@@ -73,8 +98,8 @@ describe("collectScratchableTags", () => {
 	it("appends a flagged scene group (isScene) when scene story tags are given", () => {
 		const hero = actor("h1", "Gerrin", [tag("e1", "tonic")]);
 		const sceneTags = [
-			{ id: "s1", name: "alarm raised" },
-			{ id: "s2", name: "burning bridge" },
+			{ id: "s1", name: "alarm raised", isSingleUse: false },
+			{ id: "s2", name: "burning bridge", isSingleUse: false },
 		];
 		const groups = collectScratchableTags(hero, [], sceneTags);
 		expect(groups).toEqual([
@@ -82,7 +107,7 @@ describe("collectScratchableTags", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				tags: [{ id: "e1", name: "tonic" }],
+				tags: [{ id: "e1", name: "tonic", isSingleUse: false }],
 			},
 			{
 				ownerId: "",
@@ -90,8 +115,8 @@ describe("collectScratchableTags", () => {
 				isOwn: false,
 				isScene: true,
 				tags: [
-					{ id: "s1", name: "alarm raised" },
-					{ id: "s2", name: "burning bridge" },
+					{ id: "s1", name: "alarm raised", isSingleUse: false },
+					{ id: "s2", name: "burning bridge", isSingleUse: false },
 				],
 			},
 		]);
@@ -108,7 +133,7 @@ describe("collectScratchableTags", () => {
 		const groups = collectScratchableTags(
 			hero,
 			[],
-			[{ id: "s1", name: "fog" }],
+			[{ id: "s1", name: "fog", isSingleUse: false }],
 		);
 		expect(groups).toEqual([
 			{
@@ -116,7 +141,7 @@ describe("collectScratchableTags", () => {
 				ownerName: "",
 				isOwn: false,
 				isScene: true,
-				tags: [{ id: "s1", name: "fog" }],
+				tags: [{ id: "s1", name: "fog", isSingleUse: false }],
 			},
 		]);
 	});
@@ -145,13 +170,13 @@ describe("collectScratchableTags", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				tags: [{ id: "e0", name: "tonic" }],
+				tags: [{ id: "e0", name: "tonic", isSingleUse: false }],
 			},
 			{
 				ownerId: "c1",
 				ownerName: "Bandit",
 				isOwn: false,
-				tags: [{ id: "e3", name: "reinforcements" }],
+				tags: [{ id: "e3", name: "reinforcements", isSingleUse: false }],
 			},
 		]);
 	});
