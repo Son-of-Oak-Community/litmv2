@@ -27,10 +27,13 @@ const MIGRATIONS = [
 
 /**
  * Run all pending world-level migrations.
- * Called once during the "ready" hook, GM-only.
+ * Called once during the "ready" hook, on the active GM only: `ready` fires on
+ * every client, and a second GM running the same migration would race its
+ * deletes and creates. Any GM runs it when Foundry reports no active GM.
  */
 export async function migrateWorld() {
-	if (!game.user.isGM) return;
+	const activeGM = game.users.activeGM;
+	if (!game.user.isGM || (activeGM && activeGM !== game.user)) return;
 
 	const storedVersion = LitmSettings.systemMigrationVersion;
 

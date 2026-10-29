@@ -187,7 +187,9 @@ export class LitmItem extends foundry.documents.Item {
 	static async #doEnsureTitleTag(item) {
 		const titleTags = [...item.effects].filter((e) => e.system?.isTitleTag);
 		if (titleTags.length > 1) {
-			const toDelete = titleTags.slice(1).map((e) => e.id);
+			// Keep a scratched copy if there is one, so a burn is not undone.
+			const keep = titleTags.find((e) => e.system?.isScratched) ?? titleTags[0];
+			const toDelete = titleTags.filter((e) => e !== keep).map((e) => e.id);
 			await item.deleteEmbeddedDocuments("ActiveEffect", toDelete);
 			return;
 		}
