@@ -26,7 +26,8 @@
    20.  Active Effect Sheet ..... Simplified tag/status editing
    24.  Narrator's Call ......... GM-initiated roll: move, target, invocations
    25.  Hero Sheet — Cards ...... Opt-in printed-card hero sheet variant
-                                  (a: hero panel, b: theme cards, c: kit sections)
+                                  (a: hero panel, b: printed theme cards — shared
+                                  via .litm--printed-cards, c: kit sections)
    (Welcome Overlay styles are in litmv2-welcome.css)
 ======================================== */
 
@@ -1788,6 +1789,7 @@ section.standard-form.litm-actions-app {
    5. Theme Cards
    Card layout, header, floating book label, tracks,
    HR separator, and container query for the 2-column grid.
+   The printed-card face, opted into with .litm--printed-cards, is §25b.
 ======================================== */
 
 /* .litm.theme-card: the @render embed carries both classes on one element. */
@@ -8145,9 +8147,10 @@ body.litm--colorblind .themed.theme-dark,
    25. Hero Sheet — Cards
    The opt-in "Hero Sheet (Cards)" variant (HeroSheetCards): theme cards
    read like the printed ones — tags lead, quest and tracks recede, the
-   portrait is always framed. Everything is scoped to .litm-hero-cards so
-   the classic and landscape sheets are untouched; the two neutral rules
-   first keep shared markup looking classic everywhere else.
+   portrait is always framed. The hero panel and kit are scoped to
+   .litm-hero-cards; the card face (25b) to .litm--printed-cards, which
+   only sheets using PrintedCardsMixin carry. The two neutral rules first
+   keep shared markup looking classic everywhere else.
    ======================================== */
 
 /* Shared markup, classic look: weaknesses flow inline with power tags,
@@ -8710,12 +8713,15 @@ body.litm--colorblind .application.litm-hero-cards {
 /* @hero-panel:end */
 
 /* ----------------------------------------
-   25b. Cards — Theme cards (printed-card face)
+   25b. Printed theme cards (shared)
+   Any actor sheet opts in with the .litm--printed-cards root class
+   (PrintedCardsMixin), which also brings the flip to the note. Kept here,
+   after 25a, so the cascade order against the Cards sheet is unchanged.
    ---------------------------------------- */
 /* A theme card is a printed card: a coloured banner strip across the top,
    the title centred under it, tags on ruled lines, a Quest band, and the
    three tracks pinned along the bottom edge. */
-.litm-hero-cards .theme-card {
+.litm--printed-cards .theme-card {
 	--litm-card-pad: var(--spacer-12);
 	--litm-level: var(--color-litm-might-origin);
 	--litm-banner-bg: color-mix(in srgb, var(--litm-level) 85%, black);
@@ -8756,24 +8762,24 @@ body.litm--colorblind .application.litm-hero-cards {
 
 /* The might colours turn pastel in the dark theme; darken them so the
    banner ink keeps its contrast. */
-body.theme-dark .litm-hero-cards:not(.theme-light) .theme-card,
-.litm-hero-cards.theme-dark .theme-card {
+body.theme-dark .litm--printed-cards:not(.theme-light) .theme-card,
+.litm--printed-cards.theme-dark .theme-card {
 	--litm-banner-bg: color-mix(in srgb, var(--litm-level) 45%, black);
 }
 
 /* The colour-blind hues are already dark; 45% would sink them together. */
-body.theme-dark.litm--colorblind .litm-hero-cards:not(.theme-light)
+body.theme-dark.litm--colorblind .litm--printed-cards:not(.theme-light)
 	.theme-card:not([data-banner="fellowship"]),
 body.litm--colorblind
-	.litm-hero-cards.theme-dark
+	.litm--printed-cards.theme-dark
 	.theme-card:not([data-banner="fellowship"]) {
 	--litm-banner-bg: color-mix(in srgb, var(--litm-level) 70%, black);
 }
 
 body.theme-dark
-	.litm-hero-cards:not(.theme-light)
+	.litm--printed-cards:not(.theme-light)
 	.theme-card[data-banner="fellowship"],
-.litm-hero-cards.theme-dark .theme-card[data-banner="fellowship"] {
+.litm--printed-cards.theme-dark .theme-card[data-banner="fellowship"] {
 	--litm-banner-bg: var(--litm-level);
 }
 
@@ -8783,7 +8789,7 @@ body.theme-dark
    a float would too in Chrome, but Safari ignores float on a legend. It
    stays a <legend>, so the themebook name is still read as the card's label.
    The mask clips outer shadows, so the dark rim is an inset one. */
-.litm-hero-cards .theme-card > legend {
+.litm--printed-cards .theme-card > legend {
 	position: absolute;
 	inset-block-start: calc(-1 * var(--litm-banner-overhang));
 	inset-inline: var(--litm-card-pad);
@@ -8810,7 +8816,7 @@ body.theme-dark
 }
 
 /* The banner is the card's drag handle (Play and Edit mode). */
-.litm-hero-cards .theme-card > legend.draggable {
+.litm--printed-cards .theme-card > legend.draggable {
 	cursor: grab;
 }
 
@@ -8818,14 +8824,14 @@ body.theme-dark
    under them (one button, or edit + remove). Only the button end is
    reserved, and the tracking tightens: a centred title with both ends
    reserved left too little room for one long themebook word. */
-.litm-hero-cards .theme-card > legend:has(button:not(.litm--banner-icon)) {
+.litm--printed-cards .theme-card > legend:has(button:not(.litm--banner-icon)) {
 	padding-inline-end: calc(2 * var(--spacer-8) + 1.6em);
 	letter-spacing: 0.1em;
 	white-space: normal;
 	overflow-wrap: anywhere;
 }
 
-.litm-hero-cards
+.litm--printed-cards
 	.theme-card
 	> legend:has(
 		button:not(.litm--banner-icon) + button:not(.litm--banner-icon)
@@ -8833,7 +8839,7 @@ body.theme-dark
 	padding-inline-end: calc(2 * var(--spacer-8) + 3.2em + var(--spacer-4));
 }
 
-.litm-hero-cards
+.litm--printed-cards
 	.theme-card
 	> legend:has(
 		button:not(.litm--banner-icon)
@@ -8846,7 +8852,7 @@ body.theme-dark
 /* Story cards and Edit mode wrap the title in its own banner span: strip
    that chrome, and let it shrink and wrap (mid-word only as a last resort)
    so it never runs under the strip buttons. */
-.litm-hero-cards .theme-card > legend .litm-banner {
+.litm--printed-cards .theme-card > legend .litm-banner {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -8864,7 +8870,7 @@ body.theme-dark
 	color: inherit;
 }
 
-.litm-hero-cards .litm--banner-icon {
+.litm--printed-cards .litm--banner-icon {
 	flex: none;
 	display: inline-flex;
 	align-items: center;
@@ -8875,13 +8881,13 @@ body.theme-dark
 }
 
 /* Level icons are coloured; on the banner they read as ink. */
-.litm-hero-cards :is(img.litm--banner-icon, .litm--banner-icon > img) {
+.litm--printed-cards :is(img.litm--banner-icon, .litm--banner-icon > img) {
 	filter: brightness(0) invert(1);
 }
 
 /* For an owner the icon is the banner's action (edit, open, add): no
    chrome of its own, just a highlight on hover. */
-.litm-hero-cards legend button.litm--banner-icon {
+.litm--printed-cards legend button.litm--banner-icon {
 	width: 1.6em;
 	height: 1.6em;
 	min-width: 0;
@@ -8911,7 +8917,7 @@ body.theme-dark
 	}
 }
 
-.litm-hero-cards .theme-card > legend button:not(.litm--banner-icon) {
+.litm--printed-cards .theme-card > legend button:not(.litm--banner-icon) {
 	position: absolute;
 	inset-block: 0;
 	inset-inline-end: var(--spacer-8);
@@ -8948,13 +8954,13 @@ body.theme-dark
    left so they sit side by side instead of stacked.
    shortcut: handles three buttons; a fourth would need a flex group at the
    strip's end. */
-.litm-hero-cards .theme-card
+.litm--printed-cards .theme-card
 	> legend
 	button:not(.litm--banner-icon):has(+ button:not(.litm--banner-icon)) {
 	inset-inline-end: calc(var(--spacer-8) + 1.6em + var(--spacer-4));
 }
 
-.litm-hero-cards
+.litm--printed-cards
 	.theme-card
 	> legend
 	button:not(.litm--banner-icon):has(
@@ -8965,7 +8971,7 @@ body.theme-dark
 
 /* Title: centred under the banner. The chip stays interactive; long names
    wrap (the stroked ::before copy has to wrap with it). */
-.litm-hero-cards .theme-card-header {
+.litm--printed-cards .theme-card-header {
 	justify-content: center;
 	padding: var(--spacer-8) 0 var(--spacer-4);
 	text-align: center;
@@ -8973,12 +8979,12 @@ body.theme-dark
 
 /* The title sizes against the card's width (cqi). The container is the
    header, not the card, so long track rows still widen the card. */
-.litm-hero-cards :is(.theme-card-header, .story-theme-card__header) {
+.litm--printed-cards :is(.theme-card-header, .story-theme-card__header) {
 	container-type: inline-size;
 }
 
-.litm-hero-cards .theme-card-header > .flexrow,
-.litm-hero-cards .story-theme-card__header .flexrow {
+.litm--printed-cards .theme-card-header > .flexrow,
+.litm--printed-cards .story-theme-card__header .flexrow {
 	flex: 0 1 auto;
 	justify-content: center;
 	flex-wrap: wrap;
@@ -8986,7 +8992,7 @@ body.theme-dark
 }
 
 /* Layout only: the title keeps the full chip colour, as in the roll dialog. */
-.litm-hero-cards .theme-card
+.litm--printed-cards .theme-card
 	:is(.theme-card-header, .story-theme-card__header)
 	.litm-title_tag {
 	flex: 0 1 auto;
@@ -9002,7 +9008,7 @@ body.theme-dark
 /* Board chips are lighter than the roll dialog's — no stroked halo, a
    partial tint in the same hues (--litm-chip-mix) — so a card of tags reads as print,
    not a wall of blocks. The big title tag is lighter still. */
-.litm-hero-cards .litm-hero-board
+.litm--printed-cards .litm-hero-board
 	:is(
 		.litm-power_tag,
 		.litm-fellowship_tag,
@@ -9037,15 +9043,15 @@ body.theme-dark
 	}
 }
 
-.litm-hero-cards .litm-hero-board .litm-title_tag::after {
+.litm--printed-cards .litm-hero-board .litm-title_tag::after {
 	background: color-mix(in srgb, var(--tag-color) 30%, transparent);
 }
 
-.litm-hero-cards .litm-hero-board .litm-title_tag:hover::after {
+.litm--printed-cards .litm-hero-board .litm-title_tag:hover::after {
 	background: color-mix(in srgb, var(--tag-color) 50%, transparent);
 }
 
-.litm-hero-cards .story-theme-card__header > .flexcol {
+.litm--printed-cards .story-theme-card__header > .flexcol {
 	flex: 1 1 0;
 	min-width: 0;
 }
@@ -9053,13 +9059,13 @@ body.theme-dark
 /* Tags: one per ruled line, centred. The row is a wrapper the Cards branch
    of play-theme-tags.html adds, so the rule spans the card while the chip
    keeps its own width. */
-.litm-hero-cards .theme-card-tags {
+.litm--printed-cards .theme-card-tags {
 	flex-direction: column;
 	flex-wrap: nowrap;
 	gap: 0;
 }
 
-.litm-hero-cards .theme-card-tag-row {
+.litm--printed-cards .theme-card-tag-row {
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -9068,14 +9074,14 @@ body.theme-dark
 }
 
 /* Weaknesses follow after a small gap, on the same ruled lines. */
-.litm-hero-cards .theme-card-tags__weaknesses {
+.litm--printed-cards .theme-card-tags__weaknesses {
 	display: flex;
 	flex-direction: column;
 	margin-top: var(--spacer-8);
 }
 
 /* Quest band: a small-caps label strip, then the quote, centred. */
-.litm-hero-cards .theme-card .theme-card__quest {
+.litm--printed-cards .theme-card .theme-card__quest {
 	margin: 0;
 	padding: 0;
 	border: none;
@@ -9086,7 +9092,7 @@ body.theme-dark
 	color: var(--color-text-primary);
 }
 
-.litm-hero-cards .theme-card__quest-label {
+.litm--printed-cards .theme-card__quest-label {
 	display: block;
 	margin: 0 calc(-1 * var(--litm-card-pad)) var(--spacer-4);
 	padding: 1px var(--spacer-12);
@@ -9100,7 +9106,7 @@ body.theme-dark
 	color: var(--color-text-secondary);
 }
 
-.litm-hero-cards .theme-card__quest q {
+.litm--printed-cards .theme-card__quest q {
 	quotes: "\201C" "\201D";
 }
 
@@ -9109,7 +9115,7 @@ body.theme-dark
    free, so a short card shows its whole note instead of three lines over a
    blank gap. The fade lives on this box, so it only bites when text actually
    reaches the bottom; a click still expands the rest. */
-.litm-hero-cards .theme-card .theme-card__description {
+.litm--printed-cards .theme-card .theme-card__description {
 	flex: 1 1 0;
 	min-height: calc(3 * 1.5em);
 	overflow: hidden;
@@ -9131,32 +9137,32 @@ body.theme-dark
    into --litm-back-top, and scrolls if long. The face is hidden with
    opacity, not visibility, which descendants (track pips, buttons) would
    override; the sheet also makes it inert, so it takes no clicks or focus. */
-.litm-hero-cards .theme-card[data-flip-key] {
+.litm--printed-cards .theme-card[data-flip-key] {
 	position: relative;
 }
 
-.litm-hero-cards .theme-card__back {
+.litm--printed-cards .theme-card__back {
 	display: none;
 }
 
 /* The title headers are size containers, and Chrome skips relayout of a
    container that comes back from opacity 0 (the title vanished after a flip):
    fade their contents instead. */
-.litm-hero-cards .theme-card.is-flipped:has(> .theme-card__back)
+.litm--printed-cards .theme-card.is-flipped:has(> .theme-card__back)
 	> :not(
 		legend,
 		.theme-card__back,
 		.theme-card-header,
 		.story-theme-card__header
 	),
-.litm-hero-cards
+.litm--printed-cards
 	.theme-card.is-flipped:has(> .theme-card__back)
 	> :is(.theme-card-header, .story-theme-card__header)
 	> * {
 	opacity: 0;
 }
 
-.litm-hero-cards .theme-card.is-flipped > .theme-card__back {
+.litm--printed-cards .theme-card.is-flipped > .theme-card__back {
 	display: block;
 	position: absolute;
 	inset: var(--litm-back-top, 3rem) var(--litm-card-pad) var(--litm-card-pad);
@@ -9170,7 +9176,7 @@ body.theme-dark
 	color: var(--color-text-secondary);
 }
 
-.litm-hero-cards .theme-card__back-title {
+.litm--printed-cards .theme-card__back-title {
 	margin: 0 0 var(--spacer-8);
 	border: none;
 	font-size: var(--font-size-14);
@@ -9181,7 +9187,7 @@ body.theme-dark
 	color: var(--color-text-primary);
 }
 
-.litm-hero-cards .theme-card .theme-card__description-body {
+.litm--printed-cards .theme-card .theme-card__description-body {
 	max-height: none;
 	mask-image: none;
 	transition: none;
@@ -9190,7 +9196,7 @@ body.theme-dark
 
 /* Special improvements: name-only rows (the description is a tooltip),
    ruled like the tags. */
-.litm-hero-cards .theme-card .special-improvements-list li {
+.litm--printed-cards .theme-card .special-improvements-list li {
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacer-4);
@@ -9198,11 +9204,11 @@ body.theme-dark
 }
 
 /* The row centres the check; the base nudge would drop it below the text. */
-.litm-hero-cards .theme-card .special-improvements-list .litm-tag-check {
+.litm--printed-cards .theme-card .special-improvements-list .litm-tag-check {
 	margin-top: 0;
 }
 
-.litm-hero-cards .theme-card .special-improvements-list h5 {
+.litm--printed-cards .theme-card .special-improvements-list h5 {
 	margin: 0;
 	font-family: var(--font-serif);
 	font-size: var(--font-size-14);
@@ -9213,8 +9219,8 @@ body.theme-dark
 /* The fellowship card wraps its theme in a div (and, in Edit mode, a second
    .item div): make them columns too, so the lower panel fills the theme, not
    the relationship list. */
-.litm-hero-cards .theme-card > [data-fellowship-actor-id],
-.litm-hero-cards .theme-card > [data-fellowship-actor-id] > .item {
+.litm--printed-cards .theme-card > [data-fellowship-actor-id],
+.litm--printed-cards .theme-card > [data-fellowship-actor-id] > .item {
 	display: flex;
 	flex-direction: column;
 	flex: 1;
@@ -9225,7 +9231,7 @@ body.theme-dark
    over the card's colour wash. It follows the tags rather than pinning to
    the foot: pinned, a short card in a row of tall ones opened a blank gap
    under its tags. */
-.litm-hero-cards .theme-card__lower {
+.litm--printed-cards .theme-card__lower {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacer-8);
@@ -9235,43 +9241,43 @@ body.theme-dark
    card's edges at their natural width; Improve, whose length is the world's
    threshold, takes the middle and wraps rather than pushing them off the
    card. Pips centred, small-caps label beneath. */
-.litm-hero-cards .theme-card-tracks {
+.litm--printed-cards .theme-card-tracks {
 	display: grid;
 	grid-template-columns: auto minmax(0, 1fr) auto;
 	gap: var(--spacer-8) var(--spacer-12);
 }
 
-.litm-hero-cards .theme-card-track {
+.litm--printed-cards .theme-card-track {
 	flex-direction: column;
 	align-items: center;
 	gap: var(--spacer-2);
 }
 
 /* Pips keep full size; only a long Improve track wraps to a second row. */
-.litm-hero-cards .theme-card-track .progress-display {
+.litm--printed-cards .theme-card-track .progress-display {
 	flex-wrap: nowrap;
 	gap: 0;
 }
 
-.litm-hero-cards .theme-card-track:nth-child(2) .progress-display {
+.litm--printed-cards .theme-card-track:nth-child(2) .progress-display {
 	flex-wrap: wrap;
 }
 
 /* Foundry sizes only a button's height. Left to its 100%-wide image, Safari
    sized pips wrong: track pips wrapped and collapsed the Improve column,
    Promise and status pips spread across their row. */
-.litm-hero-cards .progress-box {
+.litm--printed-cards .progress-box {
 	width: var(--button-size);
 }
 
-.litm-hero-cards .theme-card-track .progress-box {
+.litm--printed-cards .theme-card-track .progress-box {
 	--button-size: 18px;
 	flex: none;
 	min-width: 16px;
 	padding: 2px;
 }
 
-.litm-hero-cards .theme-card-track label {
+.litm--printed-cards .theme-card-track label {
 	font-family: var(--font-serif);
 	max-width: 100%;
 	overflow: hidden;
@@ -9285,7 +9291,7 @@ body.theme-dark
 	color: var(--color-text-secondary);
 }
 
-.litm-hero-cards .theme-card-track .litm--track-action {
+.litm--printed-cards .theme-card-track .litm--track-action {
 	margin-top: var(--spacer-2);
 }
 /* @theme-cards:end */

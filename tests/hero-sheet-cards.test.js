@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HeroSheet } from "../modules/actor/hero/hero-sheet.js";
+import { HeroSheetCards } from "../modules/actor/hero/hero-sheet-cards.js";
 import { LitmActorSheet } from "../modules/sheets/base-actor-sheet.js";
-import { HeroSheetCards } from "../modules/sheets/landscape-sheets.js";
 
 globalThis.CSS = { escape: String };
 
@@ -81,9 +81,9 @@ describe("HeroSheetCards toggleHeroPanel", () => {
 		const { sheet, element } = makeCardsSheet();
 		await toggle.call(sheet);
 		await Promise.resolve();
-		expect(
-			element._classes.has(HeroSheetCards.PANEL_ANIMATING_CLASS),
-		).toBe(false);
+		expect(element._classes.has(HeroSheetCards.PANEL_ANIMATING_CLASS)).toBe(
+			false,
+		);
 	});
 
 	it("does not apply the class without the art layout, but still persists", async () => {
@@ -346,7 +346,7 @@ describe("HeroSheetCards view-only controls", () => {
 		const flip = { disabled: false };
 		const roll = { disabled: false };
 		// Stand-in for Foundry's pass, which disables every control in the form.
-		HeroSheet.prototype._toggleDisabled = function (disabled) {
+		HeroSheet.prototype._toggleDisabled = (disabled) => {
 			for (const b of [toggle, flip, roll]) b.disabled = disabled;
 		};
 		const sheet = new HeroSheetCards();
