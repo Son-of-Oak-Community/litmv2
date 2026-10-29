@@ -84,6 +84,8 @@ export class ContentSources {
 	 * An empty setting means no filter: all packs of the matching document
 	 * type plus world items. A non-empty setting selects exactly the checked
 	 * sources; world items are included only via the `WORLD_SOURCE_ID` sentinel.
+	 * Selected ids that no longer exist are dropped; if none remain the setting
+	 * counts as empty.
 	 * Note: `includeWorld` has no meaning for the "statuses" category (statuses live only in compendium packs).
 	 * @param {string} category - One of: "themebooks", "themekits", "tropes", "statuses"
 	 * @returns {{ packs: CompendiumCollection[], includeWorld: boolean }}
@@ -99,13 +101,22 @@ export class ContentSources {
 		// any client that asks. Filtering on `visible` here is what actually
 		// keeps GM-only pack content out of player-facing pickers, so each
 		// client resolves its own view of the configured sources.
-		const allPacks = ContentSources.getCandidatePacks(category).filter(
-			(p) => p.visible,
+		const candidates = ContentSources.getCandidatePacks(category);
+		const allPacks = candidates.filter((p) => p.visible);
+
+		// A selected pack can vanish (its module was disabled). Ids that no longer
+		// exist are ignored, and with none left the selection is empty — the same
+		// reading the config app takes ("No sources selected. All … are included"),
+		// rather than filtering everything out. Existence, not visibility: a
+		// player whose only selected packs are GM-only must not get everything.
+		// Statuses have no World row, so the sentinel is not a source there.
+		const known = new Set(candidates.map((p) => p.collection));
+		const live = (selected ?? []).filter((id) =>
+			id === WORLD_SOURCE_ID ? category !== "statuses" : known.has(id),
 		);
+		if (!live.length) return { packs: allPacks, includeWorld: true };
 
-		if (!selected?.length) return { packs: allPacks, includeWorld: true };
-
-		const idSet = new Set(selected);
+		const idSet = new Set(live);
 		return {
 			packs: allPacks.filter((p) => idSet.has(p.collection)),
 			includeWorld: idSet.has(WORLD_SOURCE_ID),
