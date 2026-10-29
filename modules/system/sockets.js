@@ -1,4 +1,4 @@
-import { scratchTag } from "../active-effects/scratchable-mixin.js";
+import { scratchOnce } from "../active-effects/scratchable-mixin.js";
 import { gainImprovement } from "../actor/hero/hero-data.js";
 import { resolveApprovedRoll } from "../apps/roll/moderation.js";
 import { LitmRollDialog } from "../apps/roll/roll-dialog.js";
@@ -21,14 +21,8 @@ export class Sockets {
 			);
 		}
 
-		const senderId = game.user.id;
 		const id = foundry.utils.randomID();
-		game.socket.emit("system.litmv2", {
-			id,
-			data,
-			event,
-			senderId,
-		});
+		game.socket.emit("system.litmv2", { id, data, event });
 	}
 
 	static #bound = false;
@@ -37,11 +31,16 @@ export class Sockets {
 		Hooks.on(`litm.socket.${event}`, cb);
 		if (this.#bound) return;
 		this.#bound = true;
-		game.socket.on("system.litmv2", (data) => {
-			const { event: e, senderId, ...d } = data;
+		// The server appends the real sending user's id as the second argument
+		// and drops any extra arguments a client emits; that, not anything in
+		// the payload, is who sent the packet. Undocumented: it is
+		// `handleCustomSocket` in foundry/dist/server/sockets.mjs (v14.369) —
+		// recheck it on a core bump.
+		game.socket.on("system.litmv2", (data, senderId) => {
+			if (!game.users.get(senderId))
+				return warn("Dropped a system socket packet with no attested sender");
 			if (senderId === game.userId) return;
-			// senderId is client-authored and so never trustworthy on its own,
-			// but handlers can't even raise the bar without seeing it.
+			const { event: e, senderId: _claimed, ...d } = data ?? {};
 			Hooks.callAll(`litm.socket.${e}`, { ...d, senderId });
 		});
 	}
@@ -135,12 +134,8 @@ export class Sockets {
 			if (game.user !== game.users.activeGM) return;
 			try {
 				const effect = await foundry.utils.fromUuid(uuid);
-				if (!effect || effect.system?.isScratched) return;
-				const targetActor =
-					effect.parent?.documentName === "Item"
-						? effect.parent.parent
-						: effect.parent;
-				await scratchTag(targetActor, effect);
+				// Set, never toggle: a replayed request must not un-burn the tag.
+				if (effect) await scratchOnce(effect);
 			} catch (err) {
 				error("scratchEffect relay failed", err);
 			}
@@ -198,36 +193,32 @@ export class Sockets {
 	// Players without the core ACTOR_CREATE permission can't run Actor.create
 	// themselves. When a GM is online, the hero-creation wizard dispatches the
 	// assembled actor data here and the active GM creates it on their behalf,
-	// granting the requesting player ownership. Mirrors the scratchEffect /
+	// granting the attested sender ownership. Only the sender may own or be
+	// assigned the hero: ownership in the payload is dropped. Mirrors the scratchEffect /
 	// storyTagsUpdate GM-proxy pattern. The player learns of success via the
 	// createActor hook (the actor carries a correlation flag), not a return
 	// channel — the socket layer is fire-and-forget.
 	static #registerHeroCreationListener() {
-		Sockets.on(
-			"createHeroAsGM",
-			async ({ data: { actorData, userId, assignToUser } }) => {
-				if (game.user !== game.users.activeGM) return;
-				try {
-					const data = foundry.utils.deepClone(actorData);
-					foundry.utils.setProperty(
-						data,
-						`ownership.${userId}`,
-						foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
-					);
-					const actor = await foundry.documents.Actor.create(data, {
-						renderSheet: false,
-						fromSidebar: false,
-						litm: { skipHeroWizard: true, skipAutoSetup: true },
-					});
-					if (!actor) return;
-					const user = game.users.get(assignToUser || userId);
-					if (user && !user.character)
-						await user.update({ character: actor.id });
-				} catch (err) {
-					error("createHeroAsGM relay failed", err);
-				}
-			},
-		);
+		Sockets.on("createHeroAsGM", async ({ senderId, data: { actorData } }) => {
+			if (game.user !== game.users.activeGM) return;
+			try {
+				const { ownership: _ignored, ...data } =
+					foundry.utils.deepClone(actorData);
+				data.ownership = {
+					[senderId]: foundry.CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+				};
+				const actor = await foundry.documents.Actor.create(data, {
+					renderSheet: false,
+					fromSidebar: false,
+					litm: { skipHeroWizard: true, skipAutoSetup: true },
+				});
+				if (!actor) return;
+				const user = game.users.get(senderId);
+				if (user && !user.character) await user.update({ character: actor.id });
+			} catch (err) {
+				error("createHeroAsGM relay failed", err);
+			}
+		});
 	}
 
 	// Players can't mutate actors they don't own; when a Spend Power action

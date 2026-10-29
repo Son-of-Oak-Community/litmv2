@@ -724,7 +724,7 @@ export class HeroCreationData {
 				ui.notifications.error(t("LITM.Ui.hero_create_no_gm"));
 				return null;
 			}
-			return this.#requestHeroFromGM(actorData, assignToUser);
+			return this.#requestHeroFromGM(actorData);
 		}
 
 		const actor = await foundry.documents.Actor.create(actorData, {
@@ -754,22 +754,18 @@ export class HeroCreationData {
 	 * hook fires locally with an owned, renderable document. Correlation is by a
 	 * one-shot flag baked into the actor data.
 	 * @param {object} actorData
-	 * @param {string|null} assignToUser
 	 * @returns {Promise<Actor|null>}
 	 */
-	async #requestHeroFromGM(actorData, assignToUser) {
+	async #requestHeroFromGM(actorData) {
 		const requestId = foundry.utils.randomID();
 		foundry.utils.setProperty(
 			actorData,
 			"flags.litmv2.heroWizardRequestId",
 			requestId,
 		);
-		Sockets.dispatch("createHeroAsGM", {
-			actorData,
-			userId: game.user.id,
-			assignToUser,
-			requestId,
-		});
+		// The GM makes the attested sender owner and assigned user, so neither
+		// is sent.
+		Sockets.dispatch("createHeroAsGM", { actorData, requestId });
 
 		const actor = await this.#awaitGMCreatedHero(requestId);
 		if (!actor) ui.notifications.error(t("LITM.Ui.hero_create_timeout"));
