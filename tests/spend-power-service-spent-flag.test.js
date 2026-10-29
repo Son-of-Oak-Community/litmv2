@@ -64,8 +64,18 @@ describe("applySpendIntent — spentPower flag", () => {
 		await applySpendIntent(hero, counterIntent(0, 2));
 		await applySpendIntent(hero, counterIntent(0, 1));
 
-		expect(message.setFlag).toHaveBeenNthCalledWith(1, "litmv2", "spentPower", 2);
-		expect(message.setFlag).toHaveBeenNthCalledWith(2, "litmv2", "spentPower", 3);
+		expect(message.setFlag).toHaveBeenNthCalledWith(
+			1,
+			"litmv2",
+			"spentPower",
+			2,
+		);
+		expect(message.setFlag).toHaveBeenNthCalledWith(
+			2,
+			"litmv2",
+			"spentPower",
+			3,
+		);
 	});
 
 	it("treats a roll that never spent anything as 0", async () => {

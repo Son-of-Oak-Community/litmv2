@@ -28,7 +28,13 @@ beforeEach(() => {
 });
 
 /** A selected scratch chip reduced to what the spend-power code reads off it. */
-function chip({ tagId, tagName, actorId = "h1", scene = false, singleUse = false }) {
+function chip({
+	tagId,
+	tagName,
+	actorId = "h1",
+	scene = false,
+	singleUse = false,
+}) {
 	return {
 		dataset: {
 			tagId,
@@ -82,7 +88,13 @@ describe("parseSpendIntent — scratch chips", () => {
 		const li = scratchRow([
 			chip({ tagId: "a", tagName: "rope" }),
 			chip({ tagId: "b", tagName: "torch", singleUse: true }),
-			chip({ tagId: "s1", tagName: "fog", actorId: "", scene: true, singleUse: true }),
+			chip({
+				tagId: "s1",
+				tagName: "fog",
+				actorId: "",
+				scene: true,
+				singleUse: true,
+			}),
 		]);
 		const form = {
 			querySelectorAll: (selector) =>
@@ -100,7 +112,11 @@ describe("parseSpendIntent — scratch chips", () => {
 		expect(options[0].chips).toEqual([
 			expect.objectContaining({ tagId: "a", isSingleUse: false }),
 			expect.objectContaining({ tagId: "b", isSingleUse: true }),
-			expect.objectContaining({ tagId: "s1", isScene: true, isSingleUse: true }),
+			expect.objectContaining({
+				tagId: "s1",
+				isScene: true,
+				isSingleUse: true,
+			}),
 		]);
 	});
 });
@@ -150,8 +166,20 @@ describe("applySpendIntent — scratch of single-use tags", () => {
 		const { results, totalSpent } = await applySpendIntent(
 			hero,
 			scratchIntent([
-				{ tagId: "s1", tagName: "fog", actorId: "", isScene: true, isSingleUse: true },
-				{ tagId: "s2", tagName: "rain", actorId: "", isScene: true, isSingleUse: false },
+				{
+					tagId: "s1",
+					tagName: "fog",
+					actorId: "",
+					isScene: true,
+					isSingleUse: true,
+				},
+				{
+					tagId: "s2",
+					tagName: "rain",
+					actorId: "",
+					isScene: true,
+					isSingleUse: false,
+				},
 			]),
 		);
 

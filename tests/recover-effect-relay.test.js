@@ -83,7 +83,10 @@ describe("recoverEffect relay", () => {
 
 	it("tolerates a vanished effect", async () => {
 		foundry.utils.fromUuid.mockResolvedValue(null);
-		onPacket({ event: "recoverEffect", data: { uuid: "Effect.gone" } }, "alice");
+		onPacket(
+			{ event: "recoverEffect", data: { uuid: "Effect.gone" } },
+			"alice",
+		);
 		await vi.waitFor(() => expect(foundry.utils.fromUuid).toHaveBeenCalled());
 	});
 });

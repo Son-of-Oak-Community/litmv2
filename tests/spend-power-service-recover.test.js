@@ -77,7 +77,9 @@ describe("applySpendIntent — recover picker", () => {
 			recoverIntent([{ tagId: "ht1", tagName: "rope" }]),
 		);
 
-		expect(heroTag.update).toHaveBeenCalledWith({ "system.isScratched": false });
+		expect(heroTag.update).toHaveBeenCalledWith({
+			"system.isScratched": false,
+		});
 		expect(Sockets.dispatch).not.toHaveBeenCalled();
 		expect(results[0]).toMatchObject({
 			kind: "picker",
@@ -104,7 +106,9 @@ describe("applySpendIntent — recover picker", () => {
 		expect(results[0]).toMatchObject({
 			kind: "picker",
 			power: 2,
-			tags: [{ name: "shared campfire", type: "fellowship_tag", isScratched: false }],
+			tags: [
+				{ name: "shared campfire", type: "fellowship_tag", isScratched: false },
+			],
 		});
 		expect(totalSpent).toBe(2);
 	});
