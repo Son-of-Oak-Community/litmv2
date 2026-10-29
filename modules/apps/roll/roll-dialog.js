@@ -681,12 +681,46 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// Keep the session: a seat assigned by the Narrator arrives with the
 		// call's session already activated, and dropping it here made every
 		// Narrator edit to that roll look like it belonged to another one.
+		// Keep the revision for the same reason: a player taking over a roll the
+		// table already follows restarted at 0, and every viewer dropped its
+		// snapshots as older than the last one they had seen.
 		if (becomingOwner && this.#sync)
 			this.#sync = new RollSync(
 				this.#syncState(),
 				foundry.utils.randomID(),
 				this.#sync.session,
+				this.#sync.revision,
 			);
+	}
+
+	/**
+	 * The seat of a roll this client was watching, or holding, passed to someone
+	 * else (a player took over a roll the GM had open). Follow the new owner:
+	 * snapshots are only accepted from the owner a dialog knows about, so a
+	 * viewer that kept the old one rejected everything the new owner published.
+	 *
+	 * A viewer also starts unbound, the way the setter leaves an owner that steps
+	 * down: it follows its own session only, and the new owner's snapshot names
+	 * its own. Edits still pending were addressed to the old owner, who no longer
+	 * takes them. Not done in the setter, which also runs right after
+	 * `activateSync(session)` on a late join and must keep that session.
+	 *
+	 * @param {string} ownerId The user who now holds the seat.
+	 * @returns {boolean} Whether this dialog changed owner and wants the new
+	 *   owner's draft.
+	 */
+	followSeat(ownerId) {
+		// A dialog nobody claimed has not joined the roll; the sheet sets its
+		// owner when it opens. The new owner's own client claims through the
+		// setter, never through here.
+		if (this.localOnly || !this.#ownerId) return false;
+		if (!ownerId || ownerId === this.#ownerId || ownerId === game.user.id)
+			return false;
+		const wasOwner = this.isOwner;
+		this.ownerId = ownerId;
+		if (!wasOwner)
+			this.#sync = new RollSync(this.#syncState(), foundry.utils.randomID());
+		return true;
 	}
 
 	get isOwner() {

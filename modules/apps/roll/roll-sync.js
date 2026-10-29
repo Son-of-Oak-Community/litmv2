@@ -14,12 +14,12 @@ const copy = (value) => structuredClone(value);
  * caps against the merged state, not the contributor's stale local view.
  */
 export class RollSync {
-	constructor(state, peerId, session = null) {
+	constructor(state, peerId, session = null, revision = 0) {
 		this.peerId = peerId;
 		this.state = copy(state);
 		this.view = copy(state);
 		this.sequence = 0;
-		this.revision = 0;
+		this.revision = revision;
 		this.ack = {};
 		this.pending = [];
 		this.session = session;
