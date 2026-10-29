@@ -199,6 +199,9 @@ export function executeRoll({
 		.then(async (res) => {
 			Hooks.callAll("litm.roll", roll, res);
 			const actor = game.actors.get(actorId);
+			// The card is already posted. A bookkeeping failure (a scratch the
+			// roller can't write, say) must not skip the reset below, or the dialog
+			// stays open and armed and Roll posts a second card for the same roll.
 			await processPostRollEffects({
 				actor,
 				roll,
@@ -206,7 +209,7 @@ export function executeRoll({
 				scratchedTags,
 				powerTags,
 				weaknessTags,
-			});
+			}).catch(console.error);
 			const sheet = res.rolls[0]?.actor?.sheet;
 			// An approval may finish after the actor has started another roll.
 			// Its bookkeeping belongs to this result, not that newer draft.
