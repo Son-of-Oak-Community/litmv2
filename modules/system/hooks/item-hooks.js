@@ -156,6 +156,12 @@ export async function syncAddonEffects(actor, addonItem) {
 }
 
 /**
+ * The last queued resync per addon item.
+ * @type {WeakMap<Item, Promise>}
+ */
+const resyncQueues = new WeakMap();
+
+/**
  * Converge an addon's synced effects onto its current tags. Tags that are
  * still there keep their play state — revealed, scratched — so editing an
  * addon never re-hides what the Narrator already showed.
@@ -163,7 +169,17 @@ export async function syncAddonEffects(actor, addonItem) {
  * @param {Item} addonItem    The updated addon item
  */
 export async function resyncAddonEffects(actor, addonItem) {
-	return reconcileTagEffects(actor, addonEffectData(addonItem), {
-		filter: (e) => e.getFlag("litmv2", "addonId") === addonItem.id,
-	});
+	// Each run reads the effects, then creates the missing ones. Two quick edits
+	// would both see a new tag missing and both create it, so runs take turns,
+	// and each reads the addon's tags when its turn comes.
+	const turn = (resyncQueues.get(addonItem) ?? Promise.resolve()).then(() =>
+		reconcileTagEffects(actor, addonEffectData(addonItem), {
+			filter: (e) => e.getFlag("litmv2", "addonId") === addonItem.id,
+		}),
+	);
+	resyncQueues.set(
+		addonItem,
+		turn.catch(() => {}),
+	);
+	return turn;
 }

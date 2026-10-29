@@ -95,3 +95,38 @@ describe("resyncAddonEffects", () => {
 		expect(actor.deleteEmbeddedDocuments).not.toHaveBeenCalled();
 	});
 });
+
+describe("resyncAddonEffects queue", () => {
+	it("lets a second quick edit see what the first created", async () => {
+		game.user.isGM = true;
+		const effects = [];
+		const actor = {
+			effects,
+			createEmbeddedDocuments: vi.fn(async (_type, data) => {
+				// The server round trip: the first run is still awaiting here
+				// when the second edit arrives.
+				await new Promise((res) => setTimeout(res, 5));
+				const created = data.map((d, i) =>
+					fakeEffect({
+						id: `new-${effects.length + i}`,
+						name: d.name,
+						system: d.system,
+						addonId: d.flags.litmv2.addonId,
+					}),
+				);
+				effects.push(...created);
+				return created;
+			}),
+			updateEmbeddedDocuments: vi.fn().mockResolvedValue([]),
+			deleteEmbeddedDocuments: vi.fn().mockResolvedValue([]),
+		};
+		const item = addon("[bramble]");
+
+		await Promise.all([
+			resyncAddonEffects(actor, item),
+			resyncAddonEffects(actor, item),
+		]);
+
+		expect(effects.map((e) => e.name)).toEqual(["bramble"]);
+	});
+});
