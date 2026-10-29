@@ -38,6 +38,23 @@ function world({
 	return { heroes, sceneEffects, fellowshipActor, threatItems };
 }
 
+// A theme's `system` in the real schema shape: Improve at the top level,
+// Abandon / Milestone nested under `quest.tracks` (theme-data.js).
+function questSystem({
+	improve = 0,
+	abandon = 0,
+	milestone = 0,
+	...rest
+} = {}) {
+	return {
+		improve: { value: improve },
+		quest: {
+			tracks: { abandon: { value: abandon }, milestone: { value: milestone } },
+		},
+		...rest,
+	};
+}
+
 // The recap is stage-ordered (periods → quality time → pack up); these
 // helpers navigate to a stage's hero entries.
 const stage = (recap, key) => recap.stages.find((s) => s.key === key);
@@ -327,11 +344,7 @@ describe("buildOperations — camp-mode reflect", () => {
 describe("buildOperations — reflect Quest marks", () => {
 	it("queues an abandon mark when reflectAbandonItemId is set", () => {
 		const theme = fakeItem({ type: "theme", effects: [] });
-		theme.system = {
-			abandon: { value: 0 },
-			milestone: { value: 0 },
-			improve: { value: 0 },
-		};
+		theme.system = questSystem();
 		const hero = fakeActor({ items: [theme] });
 		hero.system = { themes: [{ theme, tags: [] }] };
 
@@ -348,6 +361,7 @@ describe("buildOperations — reflect Quest marks", () => {
 			theme,
 			owner: hero,
 			track: "abandon",
+			path: "system.quest.tracks.abandon.value",
 			newValue: 1,
 			sourceHero: hero,
 		});
@@ -362,11 +376,7 @@ describe("buildOperations — reflect Quest marks", () => {
 
 	it("queues a milestone mark when reflectMilestoneItemId is set", () => {
 		const theme = fakeItem({ type: "theme", effects: [] });
-		theme.system = {
-			abandon: { value: 0 },
-			milestone: { value: 1 },
-			improve: { value: 0 },
-		};
+		theme.system = questSystem({ milestone: 1 });
 		const hero = fakeActor({ items: [theme] });
 		hero.system = { themes: [{ theme, tags: [] }] };
 
@@ -380,6 +390,7 @@ describe("buildOperations — reflect Quest marks", () => {
 			theme,
 			owner: hero,
 			track: "milestone",
+			path: "system.quest.tracks.milestone.value",
 			newValue: 2,
 			sourceHero: hero,
 		});
@@ -387,17 +398,9 @@ describe("buildOperations — reflect Quest marks", () => {
 
 	it("Improve, Abandon, and Milestone can all be set in the same Reflect (different or same themes)", () => {
 		const themeA = fakeItem({ type: "theme", effects: [] });
-		themeA.system = {
-			improve: { value: 0 },
-			abandon: { value: 0 },
-			milestone: { value: 0 },
-		};
+		themeA.system = questSystem();
 		const themeB = fakeItem({ type: "theme", effects: [] });
-		themeB.system = {
-			improve: { value: 0 },
-			abandon: { value: 0 },
-			milestone: { value: 0 },
-		};
+		themeB.system = questSystem();
 		const hero = fakeActor({ items: [themeA, themeB] });
 		hero.system = {
 			themes: [
@@ -423,6 +426,7 @@ describe("buildOperations — reflect Quest marks", () => {
 			theme: themeB,
 			owner: hero,
 			track: "abandon",
+			path: "system.quest.tracks.abandon.value",
 			newValue: 1,
 			sourceHero: hero,
 		});
@@ -430,6 +434,7 @@ describe("buildOperations — reflect Quest marks", () => {
 			theme: themeA,
 			owner: hero,
 			track: "milestone",
+			path: "system.quest.tracks.milestone.value",
 			newValue: 1,
 			sourceHero: hero,
 		});
@@ -437,12 +442,7 @@ describe("buildOperations — reflect Quest marks", () => {
 
 	it("two heroes both marking Abandon on the same fellowship theme stack into one update", () => {
 		const fwTheme = fakeItem({ type: "theme", effects: [] });
-		fwTheme.system = {
-			isFellowship: true,
-			abandon: { value: 0 },
-			milestone: { value: 0 },
-			improve: { value: 0 },
-		};
+		fwTheme.system = questSystem({ isFellowship: true });
 		const fellowshipActor = fakeActor({ type: "fellowship", items: [fwTheme] });
 		const heroA = fakeActor();
 		heroA.system = { themes: [], fellowshipActor };
@@ -472,12 +472,7 @@ describe("buildOperations — reflect Quest marks", () => {
 		// Without clamping, newValue would land at 4 and detectTrackCompletion
 		// (exact-match at 3) would never fire.
 		const fwTheme = fakeItem({ type: "theme", effects: [] });
-		fwTheme.system = {
-			isFellowship: true,
-			abandon: { value: 0 },
-			milestone: { value: 0 },
-			improve: { value: 2 },
-		};
+		fwTheme.system = questSystem({ improve: 2, isFellowship: true });
 		const fellowshipActor = fakeActor({ type: "fellowship", items: [fwTheme] });
 		const heroA = fakeActor();
 		heroA.system = { themes: [], fellowshipActor };
@@ -504,11 +499,7 @@ describe("buildOperations — reflect Quest marks", () => {
 		// (improve.value sitting at 3). Bumping again must not silently
 		// write 4.
 		const theme = fakeItem({ type: "theme", effects: [] });
-		theme.system = {
-			improve: { value: 3 },
-			abandon: { value: 0 },
-			milestone: { value: 0 },
-		};
+		theme.system = questSystem({ improve: 3 });
 		const hero = fakeActor({ items: [theme] });
 		hero.system = { themes: [{ theme, tags: [] }] };
 
@@ -522,11 +513,7 @@ describe("buildOperations — reflect Quest marks", () => {
 
 	it("sojourn-mode Reflect with Quest marks still does +1 on the Quest tracks (sojourn only accelerates Improve)", () => {
 		const theme = fakeItem({ type: "theme", effects: [] });
-		theme.system = {
-			improve: { value: 0 },
-			abandon: { value: 0 },
-			milestone: { value: 2 },
-		};
+		theme.system = questSystem({ milestone: 2 });
 		const hero = fakeActor({ items: [theme] });
 		hero.system = { themes: [{ theme, tags: [] }] };
 
@@ -543,9 +530,96 @@ describe("buildOperations — reflect Quest marks", () => {
 			theme,
 			owner: hero,
 			track: "milestone",
+			path: "system.quest.tracks.milestone.value",
 			newValue: 3,
 			sourceHero: hero,
 		});
+	});
+});
+
+describe("applyOperations — reflect Quest marks", () => {
+	beforeEach(() => {
+		vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
+		Hooks.callAll.mockClear();
+	});
+
+	function reflectMark(setMark, system, type = "sojourn") {
+		const theme = fakeItem({ type: "theme", effects: [] });
+		theme.system = system;
+		const hero = fakeActor({ items: [theme] });
+		hero.system = { themes: [{ theme, tags: [] }] };
+		const state = defaultCampingState();
+		setType(state, type);
+		setActivity(state, hero.id, 0, "reflect");
+		setMark(state, hero.id, 0, theme.id);
+		const { operations } = buildOperations(state, world({ heroes: [hero] }));
+		return { theme, hero, operations };
+	}
+
+	it("writes a Milestone mark to the theme's quest track, not a top-level path", async () => {
+		const { theme, operations } = reflectMark(
+			setReflectMilestone,
+			questSystem({ milestone: 1 }),
+		);
+		await applyOperations(operations);
+
+		expect(theme.update).toHaveBeenCalledTimes(1);
+		expect(theme.update).toHaveBeenCalledWith({
+			"system.quest.tracks.milestone.value": 2,
+		});
+		expect(Hooks.callAll).not.toHaveBeenCalled();
+	});
+
+	it("writes an Abandon mark to the theme's quest track", async () => {
+		const { theme, operations } = reflectMark(
+			setReflectAbandon,
+			questSystem({ abandon: 0 }),
+		);
+		await applyOperations(operations);
+
+		expect(theme.update).toHaveBeenCalledWith({
+			"system.quest.tracks.abandon.value": 1,
+		});
+	});
+
+	it("the third Milestone mark fires the track-complete hook", async () => {
+		const { theme, hero, operations } = reflectMark(
+			setReflectMilestone,
+			questSystem({ milestone: 2 }),
+		);
+		await applyOperations(operations);
+
+		expect(theme.update).toHaveBeenCalledWith({
+			"system.quest.tracks.milestone.value": 3,
+		});
+		expect(Hooks.callAll).toHaveBeenCalledWith(
+			"litm.trackCompleted",
+			expect.objectContaining({
+				actor: hero,
+				trackInfo: expect.objectContaining({
+					type: "milestone",
+					themeId: theme.id,
+				}),
+			}),
+		);
+	});
+
+	it("the third Abandon mark fires the track-complete hook", async () => {
+		const { theme, operations } = reflectMark(
+			setReflectAbandon,
+			questSystem({ abandon: 2 }),
+		);
+		await applyOperations(operations);
+
+		expect(Hooks.callAll).toHaveBeenCalledWith(
+			"litm.trackCompleted",
+			expect.objectContaining({
+				trackInfo: expect.objectContaining({
+					type: "abandon",
+					themeId: theme.id,
+				}),
+			}),
+		);
 	});
 });
 
