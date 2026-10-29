@@ -466,38 +466,13 @@ async function _handleTakeRollRequest(_target, app) {
 
 /**
  * The Narrator picking up a player's "I'd like to roll" (see
- * `requestRollFromNarrator`). Turning the ask into a call is the whole action,
- * so the card goes as soon as it is answered — same claim-by-delete the
- * moderation cards use, which keeps a second Narrator from calling it twice.
+ * `requestRollFromNarrator`). The claim, the check for a roll that opened in
+ * the meantime and the restore of a call that did not open all live in
+ * `answerRollRequest`, which is where they can be tested.
  */
-const _requestsInFlight = new Set();
-
 async function _handleCallRequestedRoll(_target, app) {
-	if (!game.user.isGM) return;
-	// Claim-by-delete alone settles the race correctly — the loser finds the
-	// card gone and stops. This is for the console: a second click on the same
-	// client makes Foundry log its own "ChatMessage does not exist" before the
-	// delete rejects, and two red errors for a double-click is a bad look for
-	// a working outcome. Same guard, same reason, as the moderation handlers.
-	if (_requestsInFlight.has(app.id)) return;
-	_requestsInFlight.add(app.id);
-	try {
-		const actorId = app.getFlag("litmv2", "rollRequestFrom")?.actorId;
-		const actor = actorId ? game.actors.get(actorId) : null;
-		if (!actor) {
-			ui.notifications.warn(t("LITM.Actions.apply_no_actor"));
-			return;
-		}
-		const claimed = await app.delete().catch(() => null);
-		if (!claimed) {
-			warn(`Roll request ${app.id} was already answered elsewhere.`);
-			return;
-		}
-		const { openSharedRoll } = await import("../../apps/roll/roll-request.js");
-		await openSharedRoll({ actorId: actor.id });
-	} finally {
-		_requestsInFlight.delete(app.id);
-	}
+	const { answerRollRequest } = await import("../../apps/roll/roll-request.js");
+	await answerRollRequest(app);
 }
 
 const CLICK_HANDLERS = {
