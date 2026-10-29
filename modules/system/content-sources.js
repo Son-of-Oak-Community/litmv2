@@ -161,7 +161,10 @@ export class ContentSources {
 	 * Idempotent — skips if already seeded.
 	 */
 	static async seedStatuses() {
-		if (!game.user.isGM) return;
+		// Active GM only, like migrateWorld: two GMs on a first load would both
+		// create the status pack.
+		const activeGM = game.users.activeGM;
+		if (!game.user.isGM || (activeGM && activeGM !== game.user)) return;
 		if (LitmSettings.statusesSeeded) return;
 
 		try {
