@@ -1,9 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+	buildContext,
 	buildSteps,
 	partitionCampingEffects,
 	stepIsComplete,
 } from "../modules/apps/camping/camping-context.js";
+import {
+	defaultCampingState,
+	setActivity,
+	setReflectAbandon,
+	setReflectMilestone,
+	setType,
+} from "../modules/apps/camping/camping-state.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
 // Minimal hero shape — just the fields buildSteps / stepIsComplete read.
@@ -231,5 +239,50 @@ describe("stepIsComplete", () => {
 
 	it("returns false for an empty hero list", () => {
 		expect(stepIsComplete("period1", [])).toBe(false);
+	});
+});
+
+describe("buildContext — Reflect rows", () => {
+	// Core Book p.181 puts the Quest marks (Abandon / Milestone) in the Reflect
+	// activity's own text, so a camp and a sojourn offer the same selects. Only
+	// the Improve reward differs, and that is decided at apply time.
+	const original = {
+		actors: globalThis.game.actors,
+		packs: globalThis.game.packs,
+		isGM: globalThis.game.user.isGM,
+	};
+
+	afterEach(() => {
+		globalThis.game.actors = original.actors;
+		globalThis.game.packs = original.packs;
+		globalThis.game.user.isGM = original.isGM;
+	});
+
+	function reflectRow(type) {
+		// Fixed ids so the camp and sojourn rows can be compared whole.
+		const theme = fakeItem({ id: "theme-1", type: "theme", name: "Wanderer" });
+		const actor = fakeActor({ type: "hero", id: "hero-1", items: [theme] });
+		actor.system = { themes: [{ theme, tags: [] }], fellowshipActor: null };
+		globalThis.game.actors = { filter: (fn) => [actor].filter(fn) };
+		globalThis.game.packs = { get: () => undefined };
+		globalThis.game.user.isGM = true;
+
+		const state = defaultCampingState();
+		setType(state, type);
+		setActivity(state, actor.id, 0, "reflect");
+		setReflectMilestone(state, actor.id, 0, theme.id);
+		setReflectAbandon(state, actor.id, 0, theme.id);
+		return buildContext(state).heroes[0].activities[0];
+	}
+
+	it("carries the chosen Milestone and Abandon themes on a camp", () => {
+		const row = reflectRow("camp");
+
+		expect(row.reflectMilestoneName).toBe("Wanderer");
+		expect(row.reflectAbandonName).toBe("Wanderer");
+	});
+
+	it("builds the same row for a camp as for a sojourn", () => {
+		expect(reflectRow("camp")).toEqual(reflectRow("sojourn"));
 	});
 });

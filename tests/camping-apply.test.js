@@ -537,6 +537,88 @@ describe("buildOperations — reflect Quest marks", () => {
 	});
 });
 
+describe("buildOperations — camp-mode Quest marks", () => {
+	// Core Book p.181: Reflect is "also a good time to reflect on each theme's
+	// Quest and mark Abandon or Milestone", for a camp and a sojourn alike. Only
+	// the Improve reward differs between the two.
+	it("a camp Reflect marks Milestone and Abandon alongside Improve", () => {
+		const themeA = fakeItem({ type: "theme", effects: [] });
+		themeA.system = questSystem({ improve: 1, milestone: 1 });
+		const themeB = fakeItem({ type: "theme", effects: [] });
+		themeB.system = questSystem({ abandon: 2 });
+		const hero = fakeActor({ items: [themeA, themeB] });
+		hero.system = {
+			themes: [
+				{ theme: themeA, tags: [] },
+				{ theme: themeB, tags: [] },
+			],
+		};
+
+		const state = defaultCampingState();
+		setType(state, "camp");
+		setActivity(state, hero.id, 0, "reflect");
+		setReflectTarget(state, hero.id, 0, themeA.id);
+		setReflectMilestone(state, hero.id, 0, themeA.id);
+		setReflectAbandon(state, hero.id, 0, themeB.id);
+
+		const { operations, recap } = buildOperations(
+			state,
+			world({ heroes: [hero] }),
+		);
+
+		expect(operations.improves).toContainEqual({
+			theme: themeA,
+			owner: hero,
+			newValue: 2,
+		});
+		expect(operations.improvements).toEqual([]);
+		expect(operations.questMarks).toContainEqual({
+			theme: themeA,
+			owner: hero,
+			track: "milestone",
+			path: "system.quest.tracks.milestone.value",
+			newValue: 2,
+			sourceHero: hero,
+		});
+		expect(operations.questMarks).toContainEqual({
+			theme: themeB,
+			owner: hero,
+			track: "abandon",
+			path: "system.quest.tracks.abandon.value",
+			newValue: 3,
+			sourceHero: hero,
+		});
+		expect(stageLines(recap, "period1")).toContainEqual(
+			expect.objectContaining({
+				kind: "reflect-quest-mark",
+				track: "milestone",
+				themeName: themeA.name,
+			}),
+		);
+	});
+
+	it("a camp Reflect with only a Quest mark still marks it", () => {
+		const theme = fakeItem({ type: "theme", effects: [] });
+		theme.system = questSystem();
+		const hero = fakeActor({ items: [theme] });
+		hero.system = { themes: [{ theme, tags: [] }] };
+
+		const state = defaultCampingState();
+		setType(state, "camp");
+		setActivity(state, hero.id, 0, "reflect");
+		setReflectAbandon(state, hero.id, 0, theme.id);
+
+		const { operations } = buildOperations(state, world({ heroes: [hero] }));
+
+		expect(operations.improves).toEqual([]);
+		expect(operations.questMarks).toHaveLength(1);
+		expect(operations.questMarks[0]).toMatchObject({
+			track: "abandon",
+			newValue: 1,
+		});
+	});
+});
+
 describe("applyOperations — reflect Quest marks", () => {
 	beforeEach(() => {
 		vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});

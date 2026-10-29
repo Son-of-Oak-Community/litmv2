@@ -391,11 +391,9 @@ function buildReflectOps(act, hero, state, world, trackAccum, ops, lines) {
 		}
 	}
 
-	// Quest marks — Sojourn Reflect lets players also mark Abandon /
-	// Milestone "if the player sees fit to do so" (Core Book p.181).
-	// Camp Reflect grants only Improve, so we skip the picker on camp
-	// and gate the apply path here too in case a stale state slips through.
-	if (state.type === "camp") return;
+	// Quest marks — Reflect, camp or sojourn, is also a good time to mark
+	// Abandon / Milestone "if the player sees fit to do so" (Core Book p.181).
+	// Only the Improve reward above differs between the two.
 	for (const track of ["abandon", "milestone"]) {
 		const targetId =
 			track === "abandon"
