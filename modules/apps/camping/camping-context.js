@@ -265,7 +265,10 @@ function buildHeroContext(actor, heroState, allHeroes) {
 		id: actor.id,
 		name: actor.name,
 		img: actor.img,
-		canEdit: canEditHero(actor),
+		// A Ready hero is read-only for their player until they unpress it.
+		canEdit: canEditHero(actor) && (game.user.isGM || !heroState.ready),
+		ready: !!heroState.ready,
+		canToggleReady: !game.user.isGM && canEditHero(actor),
 		canView: actor.testUserPermission?.(game.user, "OBSERVER") ?? false,
 		thirdPeriodActive: !!heroState.thirdPeriodActive,
 		backpackTags,

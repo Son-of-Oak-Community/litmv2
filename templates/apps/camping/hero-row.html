@@ -10,7 +10,20 @@
 	<img class="litm-camping-scene__hero-portrait" src="{{img}}" alt="{{name}}">
 	<span class="litm-camping-scene__hero-name">{{name}}</span>
 	{{/if}}
-	{{#unless canEdit}}
+	{{#unless canEdit}}{{#unless ready}}
 	<span class="litm-camping-scene__readonly-tag">{{localize "LITM.Ui.camping_read_only"}}</span>
-	{{/unless}}
+	{{/unless}}{{/unless}}
+	{{#if canToggleReady}}
+	<button type="button" class="litm-camping-scene__ready{{#if ready}} active{{/if}}"
+		data-action="toggle-ready" data-hero-id="{{id}}"
+		data-tooltip="{{#if ready}}{{localize 'LITM.Ui.camping_ready_undo_hint'}}{{else}}{{localize 'LITM.Ui.camping_ready_hint'}}{{/if}}"
+		aria-pressed="{{#if ready}}true{{else}}false{{/if}}">
+		<i class="fa-solid fa-check" aria-hidden="true"></i> {{localize "LITM.Ui.camping_ready"}}
+	</button>
+	{{else if ready}}
+	<span class="litm-camping-scene__ready active"
+		data-tooltip="{{localize 'LITM.Ui.camping_ready_gm_hint'}}">
+		<i class="fa-solid fa-check" aria-hidden="true"></i> {{localize "LITM.Ui.camping_ready"}}
+	</span>
+	{{/if}}
 </header>

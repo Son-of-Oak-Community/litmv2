@@ -7559,6 +7559,39 @@ button.litm-camping-scene__hero-link {
 	color: var(--color-warm-1);
 }
 
+/* Ready sits on its own line under the portrait: a toggle for the hero's
+   player, a read-only marker for everyone else once pressed. */
+.litm-camping-scene__ready {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	width: auto;
+	min-height: 0;
+	padding: 2px var(--spacer-8);
+	border-radius: var(--radius-pill);
+	border: 1px solid var(--color-text-primary-15);
+	background: transparent;
+	font-family: var(--font-serif);
+	font-style: italic;
+	font-size: var(--font-size-13);
+	color: var(--color-text-secondary);
+}
+
+.litm-camping-scene__ready > i {
+	display: none;
+}
+
+.litm-camping-scene__ready.active {
+	background: var(--color-litm-status-10, var(--color-overlay-white-5));
+	border-color: var(--color-litm-status);
+	color: var(--color-text-emphatic);
+}
+
+.litm-camping-scene__ready.active > i {
+	display: inline;
+}
+
 .litm-camping-scene__readonly-tag {
 	margin-left: auto;
 	padding: 0 var(--spacer-8);
@@ -7852,6 +7885,7 @@ button.litm-camping-scene__hero-link {
 
 .litm-camping-scene__row-header {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacer-4);
 	min-height: 32px;
