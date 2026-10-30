@@ -10,7 +10,7 @@ Story/status tags carrying system.isHidden get the GM-only dim. --}}
 	data-tag-id="{{_id}}"
 	{{#if @root.isOwner}}data-tooltip="{{#if tooltip}}{{tooltip}}{{else}}{{#if (or (eq type 'weakness_tag') (eq type 'status_tag'))}}{{localize 'LITM.Ui.click_to_add_tag_only'}}{{else if (or (eq type 'power_tag') (eq type 'fellowship_tag'))}}{{#if noBurn}}{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}{{else}}{{localize 'LITM.Ui.click_to_add_tag'}}{{/if}}{{else}}{{localize 'LITM.Ui.click_to_add_tag_no_burn'}}{{/if}}{{/if}}"{{/if}}
 	data-text="{{name}}"
-	>{{name}} {{#if system.linkedRefUuid}}
+	>{{name}}{{#if (and system.isSingleUse (or (eq type 'backpack') (eq type 'story_tag')))}} ✱{{/if}} {{#if system.linkedRefUuid}}
 	<a class="litm--ref-link"
 		data-action="viewLinkedRef"
 		data-linked-ref-uuid="{{system.linkedRefUuid}}"
