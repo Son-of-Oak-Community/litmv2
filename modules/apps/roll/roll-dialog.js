@@ -79,6 +79,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		},
 		actions: {
 			sendToNarrator: LitmRollDialog.#onSendToNarrator,
+			narratorCommand: LitmRollDialog.#onNarratorCommand,
 			"spend-half": LitmRollDialog.#onSpendHalf,
 			viewLinkedRef: viewLinkedRefAction,
 			viewActionCard: LitmRollDialog.#onViewActionCard,
@@ -109,7 +110,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		return executeRoll(data);
 	}
 
-	static async _onSubmit(_event, _form, formData) {
+	static async _onSubmit(_event, _form, formData, { narrator = false } = {}) {
 		if (!this.isOwner || this.localOnly) return;
 		if (this.painfulSacrificeHasNoTarget()) return;
 		// A double press would post two cards and run post-roll bookkeeping
@@ -122,7 +123,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// every player roll through the moderation card they already had as an
 			// opt-in button. Same hardened path: approval reads the roll back off
 			// the ChatMessage the roller authored rather than trusting a socket.
-			if (this.requiresApproval) {
+			// A roll the Narrator pressed for needs no Narrator's approval.
+			if (this.requiresApproval && !narrator) {
 				await this._createModerationRequest(rollData);
 				this.suspendForModeration();
 				ui.notifications?.info(t("LITM.Ui.roll_sent_for_approval"));
@@ -145,6 +147,38 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		await this._createModerationRequest(rollData);
 		this.suspendForModeration();
 		this.close();
+	}
+
+	/**
+	 * The Narrator watching a player's roll rolls it or cancels it. The owner's
+	 * client does either, so the card stays the player's and the roll ends for
+	 * the whole table the way the owner's own Roll or close would end it.
+	 */
+	static #onNarratorCommand(_event, target) {
+		return this.#narratorCommand(target.dataset.command);
+	}
+
+	async #narratorCommand(command) {
+		if (!game.user.isGM || this.localOnly) return;
+		// The Narrator holding the roll ends it the way the window's close does.
+		if (this.isOwner) return command === "cancel" ? this.close() : undefined;
+		if (!game.users.get(this.#ownerId)?.active) {
+			// Nobody is there to roll it; a cancel still clears the stale call.
+			if (command !== "cancel")
+				return ui.notifications?.warn(t("LITM.Ui.roll_owner_away"));
+			Sockets.dispatch("closeRollDialog", {
+				actorId: this.actorId,
+				syncSession: this.syncSession,
+				cancelled: true,
+			});
+			await this.actor?.unsetFlag("litmv2", FLAGS.rollDialogOwner);
+			return this.close();
+		}
+		Sockets.dispatch("narratorRollCommand", {
+			actorId: this.actorId,
+			syncSession: this.syncSession,
+			command,
+		});
 	}
 
 	/**
@@ -1249,6 +1283,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			}),
 			canSetNarratorFields: this.canSetNarratorFields,
 			requiresApproval: this.requiresApproval,
+			narratorCommands: isGMViewer && !!this.#ownerId && !this.localOnly,
 			canTradePower: canEditTradePower({
 				isOwner,
 				isGroupRoll: this.isGroupRoll,
@@ -1306,6 +1341,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	_onFirstRender(context, options) {
 		super._onFirstRender(context, options);
+
+		// The Narrator's X ends a player's roll for the whole table, like
+		// Cancel roll; their own roll already ends on close.
+		this.window?.close?.addEventListener("click", (event) => {
+			if (event.button === 0 && !this.isOwner && this.#ownerId)
+				this.#narratorCommand("cancel");
+		});
 
 		// Delegated change handler — routes to the appropriate handler based on target
 		this.element.addEventListener("change", (event) => {
@@ -1744,6 +1786,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const syncSession = this.syncSession;
 		const wasOwner = this.isOwner;
 		const preserveAuthority = this.#preserveAuthorityOnClose;
+		// The Narrator closing a roll they hold without rolling it cancels it.
+		const cancelled =
+			wasOwner && game.user.isGM && !options?.submitted && !preserveAuthority;
 		this.#preserveAuthorityOnClose = false;
 		// Release local authority immediately; closing an abandoned call must
 		// not depend on the latency or success of its presence flag update.
@@ -1760,11 +1805,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 						actorId: this.actorId,
 						syncSession,
 						preserveAuthority,
+						cancelled,
 					});
 			}
 		}
-		// A viewer (including the Narrator) closing a window only leaves that
-		// view. The owner's live roll must remain discoverable in the HUD.
+		// A viewer closing a window only leaves that view (the Narrator's X
+		// cancels through the listener in `_onFirstRender`). The owner's live roll must remain discoverable in the HUD.
 		if (wasRendered) Hooks.callAll("litm.rollDialogClosed", this.actor);
 		return result;
 	}

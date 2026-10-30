@@ -11,7 +11,7 @@ import {
 	handleApplySuccessAsGM,
 } from "../apps/spend-power-service.js";
 import { error, warn } from "../logger.js";
-import { getStoryTagSidebar } from "../utils.js";
+import { getStoryTagSidebar, localize as t } from "../utils.js";
 
 export class Sockets {
 	static dispatch(event, data) {
@@ -113,13 +113,36 @@ export class Sockets {
 			actor.sheet.resetRollDialog();
 		});
 
+		// The Narrator pressed Roll or Cancel on a player's roll; only that
+		// roll's owner acts on it.
+		Sockets.on(
+			"narratorRollCommand",
+			({ senderId, data: { actorId, syncSession, command } }) => {
+				if (!game.users.get(senderId)?.isGM) return;
+				const dialog = game.actors.get(actorId)?.sheet?.rollDialogInstance;
+				if (!dialog?.rendered || !dialog.isOwner) return;
+				if (!dialog.matchesSyncSession(syncSession)) return;
+				if (command === "cancel") {
+					ui.notifications?.info(t("LITM.Ui.roll_cancelled_by_narrator"));
+					dialog.close();
+				}
+				else if (command === "roll")
+					dialog.submit({ narrator: true })?.catch(console.error);
+			},
+		);
+
 		Sockets.on(
 			"closeRollDialog",
-			({ data: { actorId, syncSession, preserveAuthority = false } }) => {
+			({
+				senderId,
+				data: { actorId, syncSession, preserveAuthority = false, cancelled },
+			}) => {
 				const actor = game.actors.get(actorId);
 				if (!actor?.sheet?.hasRollDialog) return;
 				const dialog = actor.sheet.rollDialogInstance;
 				if (!dialog.matchesSyncSession(syncSession)) return;
+				if (cancelled && dialog.rendered && game.users.get(senderId)?.isGM)
+					ui.notifications?.info(t("LITM.Ui.roll_cancelled_by_narrator"));
 				dialog.endSharedRoll({ preserveAuthority });
 				if (dialog?.rendered) dialog.close();
 			},

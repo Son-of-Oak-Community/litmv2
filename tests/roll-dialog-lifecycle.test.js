@@ -61,6 +61,7 @@ describe("called-roll lifecycle", () => {
 			actorId: actor.id,
 			syncSession,
 			preserveAuthority: false,
+			cancelled: false,
 		});
 		dialog.setType("sacrifice");
 		expect(dialog.type).toBe("sacrifice");

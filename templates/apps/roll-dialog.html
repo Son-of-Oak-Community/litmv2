@@ -671,12 +671,17 @@
 			      The label says where the press goes. A Narrator holding the
 			      roll — an Acting Together roll, a call they took over — has
 			      nobody to send it to. --}}
-			{{#unless (or requiresApproval isGM)}}
+			{{#if isGM}}
+			<button type="button" class="flex1" data-action="narratorCommand" data-command="cancel">
+				<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				{{localize "LITM.Ui.roll_cancel"}}
+			</button>
+			{{else unless requiresApproval}}
 			<button type="button" class="flex1" data-action="sendToNarrator">
 				<i class="fa-solid fa-envelope" aria-hidden="true"></i>
 				{{localize "LITM.Ui.send_to_narrator"}}
 			</button>
-			{{/unless}}
+			{{/if}}
 			<button type="submit" class="flex1 bright">
 				{{#if requiresApproval}}
 				<i class="fa-solid fa-envelope" aria-hidden="true"></i>
@@ -692,6 +697,15 @@
 				{{localize "LITM.Ui.camping_spend_half"}}
 			</button>
 			{{/if}}
+			{{else if narratorCommands}}
+			<button type="button" class="flex1" data-action="narratorCommand" data-command="cancel">
+				<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				{{localize "LITM.Ui.roll_cancel"}}
+			</button>
+			<button type="button" class="flex1 bright" data-action="narratorCommand" data-command="roll">
+				<i class="fa-solid fa-dice" aria-hidden="true"></i>
+				{{localize "LITM.Ui.roll"}}
+			</button>
 			{{/if}}
 		</div>
 	</div>
