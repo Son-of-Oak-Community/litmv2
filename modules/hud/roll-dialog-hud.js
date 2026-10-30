@@ -6,15 +6,14 @@ import { mountPlayersHud } from "./players-hud.js";
  * Pickup is for a live shared roll that this client is not already viewing.
  * Do not gate on actor ownership: helpers and Fellowship participants need
  * to be able to reopen rolls on actors they do not own.
+ *
+ * The seat's own owner sees it only for a called roll: that one survives a
+ * reload, so this is their way back. Their own uncalled roll ends on close.
  */
 export function shouldShowRollPickup({ flag, userId, ownerActive, rendered }) {
-	return !!(
-		flag &&
-		flag.ownerId !== userId &&
-		flag.type !== "sacrifice" &&
-		ownerActive &&
-		!rendered
-	);
+	if (!flag || rendered || flag.type === "sacrifice") return false;
+	if (flag.ownerId === userId) return !!flag.narrator;
+	return !!ownerActive;
 }
 
 /**
@@ -62,14 +61,19 @@ export class RollDialogHud {
 				.map((a) => {
 					const flag = a.getFlag("litmv2", FLAGS.rollDialogOwner);
 					const owner = game.users.get(flag.ownerId);
+					const isOwn = flag.ownerId === game.user.id;
 					return {
 						actorId: a.id,
 						actorName: a.name || t("LITM.Ui.unknown_hero"),
 						img: a.img || CONFIG.litmv2.assets.icons.defaultActor,
-						openedBy: game.i18n.format("LITM.Ui.opened_by", {
-							name: owner?.name || t("LITM.Ui.unknown_user"),
-						}),
-						clickLabel: t("LITM.Ui.click_to_join_roll"),
+						openedBy: isOwn
+							? t("LITM.Ui.roll_unfinished")
+							: game.i18n.format("LITM.Ui.opened_by", {
+									name: owner?.name || t("LITM.Ui.unknown_user"),
+								}),
+						clickLabel: t(
+							isOwn ? "LITM.Ui.back_to_roll" : "LITM.Ui.click_to_join_roll",
+						),
 					};
 				}) || [];
 

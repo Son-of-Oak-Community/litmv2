@@ -265,6 +265,48 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 		expect(gm.extractRollData().might).toBe(3);
 	});
 
+	it("gets no answer from a blank viewer, and then publishes its own draft", async () => {
+		// Everyone reloaded and the Narrator reopened first: their window is
+		// blank, and answering would wipe the call's stamp and Might.
+		vi.useFakeTimers();
+		try {
+			const gm = make("gm", { ownerId: "player" });
+			gm.activateSync(SESSION);
+			const fresh = make("player", { ownerId: "player" });
+			fresh.activateSync(SESSION);
+			as("player", () => {
+				fresh.requestReseat();
+				fresh.setSelection("t1", "positive", "player");
+				fresh.dispatchSync();
+			});
+			const sent = messages.length;
+			as("gm", () => gm.dispatchReseat());
+			expect(messages.length).toBe(sent);
+
+			await as("player", () => vi.advanceTimersByTimeAsync(60_000));
+			expect(last().sync.kind).toBe("snapshot");
+			await as("gm", () => gm.receiveUpdate(last()));
+			expect(gm.getSelection("t1").state).toBe("positive");
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("doesn't publish an ended roll when the wait runs out", async () => {
+		vi.useFakeTimers();
+		try {
+			const fresh = make("player", { ownerId: "player" });
+			fresh.activateSync(SESSION);
+			as("player", () => fresh.requestReseat());
+			as("player", () => fresh.endSharedRoll());
+			const sent = messages.length;
+			await as("player", () => vi.advanceTimersByTimeAsync(60_000));
+			expect(messages.length).toBe(sent);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("is not rolled back by a stray reply when a live owner re-renders", async () => {
 		// The sheet asks for a reseat whenever the assigned owner renders the
 		// dialog, mid-roll included (a reaction, the HUD strip, the keybinding).

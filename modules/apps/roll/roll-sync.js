@@ -27,6 +27,10 @@ export class RollSync {
 		// `expectReseat`. `early` holds the edits accepted in the meantime.
 		this.awaitingReseat = false;
 		this.early = [];
+		// Whether this peer holds the owner's draft, from a snapshot or a
+		// reseat. A viewer that never heard from an owner must not answer a
+		// reseat: its blank view would wipe the Narrator's call.
+		this.heard = false;
 	}
 
 	apply(state, operation) {
@@ -154,6 +158,7 @@ export class RollSync {
 		// them once the next snapshot lands. It is empty when there were none.
 		this.pending = [];
 		this.abandonReseat();
+		this.heard = true;
 		return true;
 	}
 
@@ -175,6 +180,7 @@ export class RollSync {
 		this.session = message.session;
 		this.revision = message.revision;
 		this.state = copy(message.state);
+		this.heard = true;
 		this.pending = this.pending.filter(
 			(op) => op.sequence > (message.ack[this.peerId] ?? 0),
 		);

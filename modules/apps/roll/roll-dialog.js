@@ -405,6 +405,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#sync;
 	#syncActive = true;
 	#endedSyncSessions = new Set();
+	/** Bumped by every applied sync; compared against the last render's. */
+	#syncVersion = 0;
+	#renderedSyncVersion = 0;
 
 	constructor(options = {}) {
 		if (options.actorId)
@@ -1038,6 +1041,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// A re-render can follow a change made elsewhere (a status tier in the
 		// sidebar): rows read live effects, so the total must too.
 		this.#cachedTotalPower = null;
+		this.#renderedSyncVersion = this.#syncVersion;
 		await StoryTagsStore.loadStoryTags();
 		await this.#resolveAction();
 
@@ -1241,6 +1245,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	_onRender(context, options) {
 		super._onRender(context, options);
+		// A sync that landed while this render was being prepared — the usual
+		// case for a first render after a join or reload, which asks peers for
+		// the draft and renders without waiting — is not on screen yet, and
+		// `receiveUpdate` skipped re-rendering a dialog that was not rendered.
+		if (this.#renderedSyncVersion !== this.#syncVersion) this.render();
 		this.#totalPowerEl = null;
 		this.#hedgeRadioEl = null;
 		this.#cautionRadioEl = null;
@@ -1588,7 +1597,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				// Keep the seat marked as assigned. Without this a re-assert
 				// would drop the marker `renderRollDialog` reads, and a reload
 				// would recompute ownership on a roll that already has an owner.
-				...(isNarratorControlled(this.#narratorCall) ? { narrator: true } : {}),
+				// The call rides along too: an owner reloading rebuilds it from here.
+				...(isNarratorControlled(this.#narratorCall)
+					? {
+							narrator: true,
+							call: {
+								participantIds: [...this.#participantIds],
+								actionUuid: this.#actionUuid,
+								title: this.rollName ?? "",
+								...this.#narratorCall,
+							},
+						}
+					: {}),
 				syncSession: this.syncSession,
 			});
 		} else {
@@ -2066,7 +2086,14 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// instance, so a replaced sync is never touched by the timer.
 		const sync = this.#sync;
 		sync.expectReseat();
-		setTimeout(() => sync.abandonReseat(), RESEAT_WINDOW_MS);
+		setTimeout(() => {
+			if (!sync.awaitingReseat) return;
+			sync.abandonReseat();
+			// Nobody held the draft, the whole table reloaded say: publish the
+			// one rebuilt from the flag, so viewers that opened blank get the call.
+			if (this.#sync === sync && this.#syncActive && this.isOwner)
+				this.#sendSync(sync.snapshot());
+		}, RESEAT_WINDOW_MS);
 		Sockets.dispatch("requestRollDialogSync", {
 			actorId: this.actorId,
 			reseat: true,
@@ -2075,7 +2102,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	/** A viewer's answer to {@link requestReseat}: its last canonical view. */
 	dispatchReseat() {
-		if (this.localOnly || this.isOwner || !this.#syncActive) return;
+		if (
+			this.localOnly ||
+			this.isOwner ||
+			!this.#syncActive ||
+			!this.#sync.heard
+		)
+			return;
 		this.#sendSync({
 			kind: "reseat",
 			revision: this.#sync.revision,
@@ -2169,6 +2202,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		title,
 	}) {
 		this.#cachedTotalPower = null;
+		this.#syncVersion++;
 		if (narratorCall !== undefined) this.#narratorCall = narratorCall;
 		if (participantIds !== undefined)
 			this.#participantIds = [...participantIds];
