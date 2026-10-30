@@ -181,6 +181,11 @@ export class LitmRoll extends foundry.dice.Roll {
 		);
 	}
 
+	/** A status's tier as it counts for Power; one rule for the total and the tabs. */
+	static statusTier(t) {
+		return t.system?.currentTier ?? (Number.parseInt(t.value, 10) || 0);
+	}
+
 	static calculatePower(tags) {
 		const scratchedTags = tags.scratchedTags ?? [];
 		// Only one tag may be burned per roll (Core Book p.158).
@@ -190,8 +195,7 @@ export class LitmRoll extends foundry.dice.Roll {
 
 		const weaknessValue = tags.weaknessTags.length;
 
-		const statusValue = (t) =>
-			t.system?.currentTier ?? Number.parseInt(t.value, 10) ?? 0;
+		const statusValue = LitmRoll.statusTier;
 		const positiveStatusValue = tags.positiveStatuses.reduce(
 			(max, t) => Math.max(max, statusValue(t)),
 			0,
@@ -226,6 +230,41 @@ export class LitmRoll extends foundry.dice.Roll {
 			modifier,
 			mightOffset,
 		};
+	}
+
+	/**
+	 * Split the tags' share of {@link calculatePower} by where each tag came
+	 * from, so a roller can see what each source adds without hunting for it.
+	 * Same rules: one burn, and only the strongest positive and negative status
+	 * count — a weaker status contributes nothing to its source.
+	 * @param {object[]} tags Roll tags with `state`, as for {@link filterTags}.
+	 * @param {(tag: object) => string|null|undefined} sourceOf Source key, or none.
+	 * @returns {Record<string, number>} Power per source key that has a counted tag.
+	 */
+	static powerBySource(tags, sourceOf) {
+		const filtered = LitmRoll.filterTags(tags);
+		const tier = LitmRoll.statusTier;
+		const strongest = (list) =>
+			list.reduce(
+				(best, t) => (tier(t) > (best ? tier(best) : 0) ? t : best),
+				null,
+			);
+		const parts = [
+			...filtered.scratchedTags.slice(0, 1).map((t) => [t, BURN_POWER]),
+			...filtered.powerTags.map((t) => [t, 1]),
+			...filtered.weaknessTags.map((t) => [t, -1]),
+		];
+		const positive = strongest(filtered.positiveStatuses);
+		if (positive) parts.push([positive, tier(positive)]);
+		const negative = strongest(filtered.negativeStatuses);
+		if (negative) parts.push([negative, -tier(negative)]);
+		const bySource = {};
+		for (const [tag, power] of parts) {
+			const source = sourceOf(tag);
+			if (source == null) continue;
+			bySource[source] = (bySource[source] ?? 0) + power;
+		}
+		return bySource;
 	}
 
 	static filterTags(tags) {

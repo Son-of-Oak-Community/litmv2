@@ -679,6 +679,7 @@
 			"hero_description_placeholder": "Describe your hero...",
 			"hero_name": "Hero Name",
 			"hero_name_placeholder": "Name your Hero...",
+			"hidden_from_players": "Hidden from players",
 			"hide": "Hide",
 			"improve": "Improve",
 			"improve_complete": "{actor}'s theme \"{theme}\" is ready for an Improvement!",

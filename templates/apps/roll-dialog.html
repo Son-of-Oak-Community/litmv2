@@ -1,3 +1,10 @@
+{{#*inline "roll-tab"}}
+<a class="item {{tab.cssClass}}" data-action="tab" data-group="{{group}}" data-tab="{{tab.id}}">
+	{{#if tab.actorImg}}<img src="{{tab.actorImg}}" alt="" />{{else if tab.icon}}<i class="{{tab.icon}}" aria-hidden="true"></i>{{/if}}
+	<span>{{tab.label}}</span>
+	<span class="litm--roll-dialog-tab-power" data-tab-power="{{tab.id}}">{{tab.power}}</span>
+</a>
+{{/inline}}
 <div class="standard-form litm--roll-dialog-body">
 	<input type="hidden" name="actorId" value="{{actorId}}">
 
@@ -65,19 +72,6 @@
 		</div>
 		{{/if}}
 
-		{{!-- Per-actor tabs: the Narrator watching a player's roll, and everyone
-		     in an Acting Together roll. --}}
-		{{#if gmViewerTabs.length}}
-		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">
-			{{#each gmViewerTabs as |tab|}}
-			<a class="item {{tab.cssClass}}" data-action="tab" data-group="gm-viewer" data-tab="{{tab.id}}">
-				{{#if tab.actorImg}}<img src="{{tab.actorImg}}" alt="{{tab.label}}" />{{/if}}
-				{{#if tab.icon}}<i class="{{tab.icon}}" aria-hidden="true"></i>{{/if}}
-				<span>{{tab.label}}</span>
-			</a>
-			{{/each}}
-		</nav>
-		{{/if}}
 
 		<!-- Settings + Tags grid -->
 		<div class="litm--roll-dialog-grid">
@@ -300,22 +294,29 @@
 		</div>
 		{{/if}}
 
-		{{!-- Tag column: owner-view category tabs (Hero / Fellowship / Story)
-		     sit above the tags fieldset and share a single grid cell so the
-		     two travel together — beside the settings column when wide,
-		     stacked below when narrow. Foundry's tab system links nav and
-		     sections by data-group, so they don't need to be siblings. --}}
+		{{!-- Tag column: the tabs sit above the tags fieldset and share a single
+		     grid cell so the two travel together — beside the settings column
+		     when wide, stacked below it when narrow. That holds for both tab
+		     sets: the owner's categories (Hero / Fellowship / Story) and the
+		     per-actor tabs of the Narrator watching a roll and of an Acting
+		     Together roll, so Modifiers sit in the same place for everyone.
+		     Foundry's tab system links nav and sections by data-group, so they
+		     don't need to be siblings. --}}
 		<div class="litm--roll-dialog-tags-column">
-		{{#if isOwner}}
-		{{#unless useTabbedPicker}}
-		<nav class="tabs litm--roll-dialog-tabs" data-group="roll-tags">
-			{{#each ownerTabs as |tab|}}
-			<a class="item {{tab.cssClass}}" data-action="tab" data-group="roll-tags" data-tab="{{tab.id}}">
-				<span>{{tab.label}}</span>
-			</a>
+		{{#if useTabbedPicker}}
+		{{#if gmViewerTabs.length}}
+		<nav class="tabs litm--roll-dialog-tabs" data-group="gm-viewer">
+			{{#each gmViewerTabs as |tab|}}
+			{{> roll-tab tab=tab group="gm-viewer"}}
 			{{/each}}
 		</nav>
-		{{/unless}}
+		{{/if}}
+		{{else if isOwner}}
+		<nav class="tabs litm--roll-dialog-tabs" data-group="roll-tags">
+			{{#each ownerTabs as |tab|}}
+			{{> roll-tab tab=tab group="roll-tags"}}
+			{{/each}}
+		</nav>
 		{{/if}}
 
 		<!-- Tags Summary -->
@@ -667,8 +668,10 @@
 			{{#if isOwner}}
 			{{!-- With mandatory approval on, Roll *is* "send to the Narrator",
 			      so the opt-in button beside it would be the same button twice.
-			      The label says where the press goes. --}}
-			{{#unless requiresApproval}}
+			      The label says where the press goes. A Narrator holding the
+			      roll — an Acting Together roll, a call they took over — has
+			      nobody to send it to. --}}
+			{{#unless (or requiresApproval isGM)}}
 			<button type="button" class="flex1" data-action="sendToNarrator">
 				<i class="fa-solid fa-envelope" aria-hidden="true"></i>
 				{{localize "LITM.Ui.send_to_narrator"}}

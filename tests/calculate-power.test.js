@@ -67,3 +67,39 @@ describe("LitmRoll.calculatePower", () => {
 		expect(totalPower).toBe(-1);
 	});
 });
+
+describe("LitmRoll.powerBySource", () => {
+	const tag = (src, state, extra = {}) => ({ src, state, ...extra });
+	const st = (src, state, tier) =>
+		tag(src, state, { type: "status_tag", system: { currentTier: tier } });
+	const sourceOf = (t) => t.src;
+
+	it("credits each source with what its tags add, matching the total", () => {
+		const tags = [
+			tag("hero", "positive"),
+			tag("hero", "positive"),
+			tag("hero", "negative"),
+			tag("allies", "scratched"),
+			st("scene", "positive", 2),
+			st("hero", "positive", 3),
+			st("scene", "negative", 2),
+			tag("scene", ""),
+		];
+		const bySource = LitmRoll.powerBySource(tags, sourceOf);
+		// Only the strongest positive status (hero, 3) counts; scene's 2 does not.
+		expect(bySource).toEqual({ hero: 4, allies: BURN_POWER, scene: -2 });
+		const { totalPower } = LitmRoll.calculatePower({
+			...LitmRoll.filterTags(tags),
+			modifier: 0,
+			might: 0,
+		});
+		const sum = Object.values(bySource).reduce((a, b) => a + b, 0);
+		expect(sum).toBe(totalPower);
+	});
+
+	it("skips tags with no source", () => {
+		expect(LitmRoll.powerBySource([tag(null, "positive")], sourceOf)).toEqual(
+			{},
+		);
+	});
+});

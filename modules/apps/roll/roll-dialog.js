@@ -861,6 +861,36 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	/**
+	 * Mark each tab with the Power its selected tags add, so the roller can see
+	 * where the total comes from without switching tabs. A tag listed on two
+	 * tabs counts for the first. Tabs with nothing counted get no figure.
+	 * @param {{tab: object, groups: {tags: object[]}[]}[]} tabs
+	 */
+	#labelTabPower(tabs) {
+		this.#tabOfTag = new Map();
+		for (const { tab, groups } of tabs)
+			for (const group of groups)
+				for (const tag of group.tags ?? [])
+					if (tag.uuid && !this.#tabOfTag.has(tag.uuid))
+						this.#tabOfTag.set(tag.uuid, tab.id);
+		const powers = this.#tabPowers();
+		for (const { tab } of tabs) tab.power = powers[tab.id] ?? "";
+	}
+
+	/** @type {Map<string, string>} Tag uuid → tab id, from the last render. */
+	#tabOfTag = new Map();
+
+	/** Signed Power per tab id, for tabs with a counted tag. */
+	#tabPowers() {
+		const bySource = LitmRoll.powerBySource(this.#buildTagsFromMap(), (tag) =>
+			this.#tabOfTag.get(tag.uuid),
+		);
+		return Object.fromEntries(
+			Object.entries(bySource).map(([id, p]) => [id, p > 0 ? `+${p}` : `${p}`]),
+		);
+	}
+
+	/**
 	 * Resolve an ActiveEffect by ID, searching the rolling actor, fellowship, and contributor actors.
 	 * Caches the result on the selection entry for subsequent calls.
 	 * @param {string} effectId
@@ -1122,15 +1152,64 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		let ownerTabs = [];
 		if (isOwner && !this.isGroupRoll) {
 			this.tabGroups["roll-tags"] ??= "hero";
+			// Same faces as the Narrator's per-actor tabs: token art, and the
+			// tags icon for Story.
+			const tokenImg = (actor) =>
+				actor ? actor.prototypeToken?.texture?.src || actor.img : null;
 			ownerTabs = [
-				{ id: "hero", label: t("LITM.Ui.roll_tab_hero") },
-				{ id: "allies", label: t("LITM.Ui.roll_tab_allies") },
-				{ id: "scene", label: t("LITM.Ui.roll_tab_scene") },
+				{
+					id: "hero",
+					label: t("LITM.Ui.roll_tab_hero"),
+					actorImg: tokenImg(this.actor),
+				},
+				{
+					id: "allies",
+					label: t("LITM.Ui.roll_tab_allies"),
+					actorImg: tokenImg(game.litmv2?.fellowship),
+					icon: "fa-solid fa-people-group",
+				},
+				{
+					id: "scene",
+					label: t("LITM.Ui.roll_tab_scene"),
+					icon: "fa-solid fa-tags",
+				},
 			];
 			for (const tab of ownerTabs) {
 				tab.cssClass = this.tabGroups["roll-tags"] === tab.id ? "active" : "";
 			}
 		}
+
+		// Masked rows count toward the Story tab, so the tab figures still add
+		// up to the total without saying whose the hidden tags are.
+		const concealedGroup = {
+			tags: concealedTags.map((row) => ({ uuid: row.key })),
+		};
+		this.#labelTabPower([
+			...ownerTabs.map((tab) => ({
+				tab,
+				groups: {
+					hero: characterTagGroups,
+					allies: [
+						...fellowshipTagGroups,
+						...allyTagGroups,
+						...contributedTagGroups.flatMap((c) => c.themeGroups ?? []),
+					],
+					scene: [
+						...storyTagGroups,
+						...sceneActorTagGroups,
+						...gmTagGroups,
+						concealedGroup,
+					],
+				}[tab.id],
+			})),
+			...gmViewerTabs.map((tab) => ({
+				tab,
+				groups: [
+					...(tab.groups ?? []),
+					...(tab.id === "__story" ? [concealedGroup] : []),
+				],
+			})),
+		]);
 
 		const sacrificeThemes = this.#ensureSacrificeThemeSelected();
 
@@ -1163,7 +1242,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// The settings column carries both halves of the roll now, so it
 			// renders for the Narrator too — they set the move and the Might on
 			// a called roll even while the player owns the dialog.
-			showSettings: showsRollSettings({ isOwner, isGM: game.user.isGM }),
+			showSettings: showsRollSettings({
+				isOwner,
+				isGM: game.user.isGM,
+				isParticipant: this.isGroupRoll && !groupRollSpectator,
+			}),
 			canSetNarratorFields: this.canSetNarratorFields,
 			requiresApproval: this.requiresApproval,
 			canTradePower: canEditTradePower({
@@ -1886,6 +1969,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#updateTotalPower() {
 		if (!this.element) return;
 		const totalPower = this.totalPower;
+		const tabPowers = this.#tabPowers();
+		for (const el of this.element.querySelectorAll("[data-tab-power]"))
+			el.textContent = tabPowers[el.dataset.tabPower] ?? "";
 		this.#totalPowerEl ??= this.element.querySelector(
 			"[data-update='totalPower']",
 		);

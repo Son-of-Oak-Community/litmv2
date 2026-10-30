@@ -44,6 +44,8 @@ export function makeTagDecorator({
 }) {
 	const currentUserId = game.user.id;
 	const isGM = game.user.isGM;
+	// Only the Narrator sees hidden rows, so only they need telling which.
+	const hiddenActorIds = isGM ? StoryTagsStore.hiddenActorIds : new Set();
 	return (tag) => {
 		const contributorId = tag.contributorId || null;
 		// A tag the Narrator invoked when they called for this roll (Core Book
@@ -92,6 +94,8 @@ export function makeTagDecorator({
 				(!isOwner && contributorId && contributorId !== currentUserId),
 			isUnavailable,
 			isNarrator,
+			// Marked with the ✱ every other tag surface uses.
+			isSingleUse: !!(tag.isSingleUse ?? tag.system?.isSingleUse),
 			states,
 			value:
 				tag.type === "status_tag"
@@ -99,6 +103,13 @@ export function makeTagDecorator({
 					: undefined,
 			isPositiveSuggestion: positiveSuggestedIds.has(tagId),
 			isNegativeSuggestion: negativeSuggestedIds.has(tagId),
+			// Hidden by itself, or with its actor's sidebar column.
+			hiddenFromPlayers:
+				isGM &&
+				(!!tag.system?.isHidden ||
+					hiddenActorIds.has(
+						tag.tagActorId ?? /^Actor\.([^.]+)\./.exec(tag.uuid ?? "")?.[1],
+					)),
 		};
 	};
 }
@@ -739,13 +750,6 @@ export function buildGroupRollTabs(dialog, shared) {
 		});
 	};
 
-	// The Fellowship rolls, so it leads.
-	pushActor(dialog.actor);
-	for (const id of dialog.participantIds) {
-		if (id === dialog.actorId) continue;
-		pushActor(game.actors.get(id));
-	}
-
 	// Story tab: the scene, plus the opposition tracked in the sidebar. Read-only
 	// for players — invoking the opposition is the Narrator's move (p.272).
 	const storyGroups = [];
@@ -771,6 +775,10 @@ export function buildGroupRollTabs(dialog, shared) {
 	const sceneItems = actable
 		? sceneStoryItems.filter((tag) => tag.state)
 		: sceneStoryItems;
+
+	// The Fellowship rolls, so it leads; the Story the whole group faces comes
+	// next. Then the viewer's own Hero, then everyone else's, in roster order.
+	pushActor(dialog.actor);
 	if (sceneItems.length || storyGroups.length) {
 		tabs.push({
 			id: "__story",
@@ -782,6 +790,13 @@ export function buildGroupRollTabs(dialog, shared) {
 			],
 		});
 	}
+	const heroIds = dialog.participantIds.filter((id) => id !== dialog.actorId);
+	const isMine = (id) => !!actable?.has(id);
+	for (const id of [
+		...heroIds.filter(isMine),
+		...heroIds.filter((id) => !isMine(id)),
+	])
+		pushActor(game.actors.get(id));
 
 	seedTabGroup(dialog, tabs);
 	return tabs;

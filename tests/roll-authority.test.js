@@ -103,6 +103,12 @@ describe("showsRollSettings", () => {
 	it("stays hidden for a player watching someone else's roll", () => {
 		expect(showsRollSettings({ isOwner: false, isGM: false })).toBe(false);
 	});
+
+	it("renders for an Acting Together participant, so they see the Might", () => {
+		expect(
+			showsRollSettings({ isOwner: false, isGM: false, isParticipant: true }),
+		).toBe(true);
+	});
 });
 
 describe("resolveSharedRollOwner", () => {
