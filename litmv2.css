@@ -7152,27 +7152,29 @@ body.litm--colorblind .themed.theme-dark,
 	text-overflow: ellipsis;
 }
 
-.litm-camping-scene__hero-open {
-	flex: 0 0 auto;
-	width: 26px;
-	height: 26px;
-	min-height: 0;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0;
-	background: transparent;
-	border: none;
-	border-radius: var(--radius-circle);
-	color: var(--color-text-subtle);
+.litm-camping-scene__hero-link {
 	cursor: pointer;
-	transition:
-		color var(--transition-fast),
-		background var(--transition-fast);
 }
 
-.litm-camping-scene__hero-open:hover {
-	background: var(--color-overlay-white-5);
+/* The name is a <button> for keyboard access; strip Foundry's button chrome
+   so it reads as the plain name it was. */
+button.litm-camping-scene__hero-link {
+	display: block;
+	width: auto;
+	min-width: 0;
+	height: auto;
+	min-height: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	justify-content: flex-start;
+	text-align: start;
+	white-space: nowrap;
+}
+
+.litm-camping-scene__hero-link:hover,
+.litm-camping-scene__hero-link:focus-visible {
 	color: var(--color-text-primary);
 }
 

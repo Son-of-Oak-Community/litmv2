@@ -266,6 +266,7 @@ function buildHeroContext(actor, heroState, allHeroes) {
 		name: actor.name,
 		img: actor.img,
 		canEdit: canEditHero(actor),
+		canView: actor.testUserPermission?.(game.user, "OBSERVER") ?? false,
 		thirdPeriodActive: !!heroState.thirdPeriodActive,
 		backpackTags,
 		hasBackpack: backpackTags.length > 0,

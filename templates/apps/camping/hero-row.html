@@ -1,12 +1,15 @@
 <header class="litm-camping-scene__row-header">
+	{{#if canView}}
+	<img class="litm-camping-scene__hero-portrait litm-camping-scene__hero-link" src="{{img}}" alt=""
+		data-action="open-sheet" data-hero-id="{{id}}">
+	{{!-- A real button so the keyboard can open the sheet too. --}}
+	<button type="button" class="litm-camping-scene__hero-name litm-camping-scene__hero-link"
+		data-action="open-sheet" data-hero-id="{{id}}"
+		data-tooltip="{{localize 'LITM.Ui.camping_open_sheet'}}">{{name}}</button>
+	{{else}}
 	<img class="litm-camping-scene__hero-portrait" src="{{img}}" alt="{{name}}">
 	<span class="litm-camping-scene__hero-name">{{name}}</span>
-	<button type="button" class="litm-camping-scene__hero-open"
-		data-action="open-sheet" data-hero-id="{{id}}"
-		aria-label="{{localize 'LITM.Ui.camping_open_sheet'}}"
-		data-tooltip="{{localize 'LITM.Ui.camping_open_sheet'}}">
-		<i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-	</button>
+	{{/if}}
 	{{#unless canEdit}}
 	<span class="litm-camping-scene__readonly-tag">{{localize "LITM.Ui.camping_read_only"}}</span>
 	{{/unless}}
