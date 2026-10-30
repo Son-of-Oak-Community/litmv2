@@ -609,6 +609,7 @@
 			"gm_welcome_message": "Set up these options before your players join.",
 			"group_roll_no_character": "You don't control a Hero participating in this roll.",
 			"group_tag_cap_warning": "Each Hero can contribute only one tag when Acting Together.",
+			"helper_tag_cap_warning": "A helping Hero contributes only one of their tags, and can't burn it.",
 			"hero_create_no_gm": "A Narrator must be online to create your Hero. Ask a Narrator to connect or allow players to create Heroes.",
 			"hero_create_timeout": "Hero creation timed out. Check that a Narrator is connected and try again.",
 			"hero_created_dismiss": "Start Playing",

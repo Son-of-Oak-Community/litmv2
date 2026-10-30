@@ -121,3 +121,30 @@ export function findHeroTagConflict(
 	}
 	return null;
 }
+
+/**
+ * The Helping Each Other cap. A Hero helping another Hero's action or reaction
+ * contributes exactly one of their own tags, and that tag can't be burned.
+ *
+ * Only entries marked `helper` count — a tag on a Hero other than the roller,
+ * whoever picked it, the Narrator included — and only a positive or burned
+ * pick is the help: the helper's weakness invoked on the action doesn't use
+ * up their one tag. Acting Together has its own cap (`findHeroTagConflict`) and
+ * callers skip this there.
+ *
+ * @param {Iterable<[string, object]>} entries  The roll's selections.
+ * @param {string} uuid  The tag being set.
+ * @param {{state?: string, helper?: boolean, tagActorId?: string|null}} entry
+ * @returns {boolean} True when the change must be refused.
+ */
+export function refusesHelperTag(entries, uuid, entry) {
+	if (!entry?.helper || !entry.state) return false;
+	if (entry.state === "scratched") return true;
+	if (entry.state !== "positive") return false;
+	for (const [id, other] of entries) {
+		if (id === uuid || !other?.helper || other.tagActorId !== entry.tagActorId)
+			continue;
+		if (other.state === "positive" || other.state === "scratched") return true;
+	}
+	return false;
+}

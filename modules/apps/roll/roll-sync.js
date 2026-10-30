@@ -1,5 +1,5 @@
 import { findBurnedSelection } from "./burn-cap.js";
-import { findHeroTagConflict } from "./group-roll.js";
+import { findHeroTagConflict, refusesHelperTag } from "./group-roll.js";
 
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const copy = (value) => structuredClone(value);
@@ -44,7 +44,10 @@ export class RollSync {
 					tagActorId: entry.tagActorId,
 					participantIds: next.participantIds,
 				}) ||
-					(entry.state === "scratched" && findBurnedSelection(selections, id)))
+					(entry.state === "scratched" &&
+						findBurnedSelection(selections, id)) ||
+					(!next.participantIds?.length &&
+						refusesHelperTag(selections, id, entry)))
 			)
 				continue;
 			if (entry === null) selections.delete(id);

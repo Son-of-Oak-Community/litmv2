@@ -7,6 +7,7 @@
 import {
 	effectToPlain,
 	isEffectVisible,
+	resolveTagActorId,
 } from "../../active-effects/effect-queries.js";
 import { StatusTagData } from "../../active-effects/status-tag-data.js";
 import { ACTOR_TAG_TYPES, EFFECT_GROUP_LABELS } from "../../system/config.js";
@@ -67,18 +68,24 @@ export function makeTagDecorator({
 			!isGM && tag.system?.playerAllowedStates
 				? tag.system.playerAllowedStates
 				: (tag.system?.allowedStates ?? tag.states ?? ",positive,negative");
-		const states = isUnavailable
+		const cycle = isUnavailable
 			? ""
 			: isOpposition
 				? ",negative,positive"
 				: baseStates;
+		// The Narrator's inversion (p.76) is outside a player's cycle; without
+		// it the checkbox can't show the state and the row looks unselected.
+		const states =
+			tag.state && !cycle.split(",").includes(tag.state)
+				? `${cycle},${tag.state}`
+				: cycle;
 		const tagId = tag.id ?? tag._id;
 		// Acting Together: a participant may move their own Hero's tags and
 		// nobody else's. Without this an unclaimed tag on another Hero would be
 		// anyone's to cycle, because contributor-based locking only bites once
 		// someone has already claimed it.
 		const outOfReach = actableActorIds
-			? !actableActorIds.has(tag.tagActorId)
+			? !actableActorIds.has(tag.tagActorId ?? resolveTagActorId(tag.uuid))
 			: false;
 		return {
 			...tag,
@@ -87,11 +94,14 @@ export function makeTagDecorator({
 			key: tag.uuid ?? tag.id ?? tag._id,
 			contributorId,
 			displayName: tag.displayName || tag.name,
+			// The Narrator is the judge: nothing is locked for them but a tag
+			// that is already scratched and so has nowhere to cycle.
 			locked:
 				isUnavailable ||
-				(isNarrator && !isGM) ||
-				outOfReach ||
-				(!isOwner && contributorId && contributorId !== currentUserId),
+				(!isGM &&
+					(isNarrator ||
+						outOfReach ||
+						(!isOwner && contributorId && contributorId !== currentUserId))),
 			isUnavailable,
 			isNarrator,
 			// Marked with the ✱ every other tag surface uses.
@@ -169,15 +179,45 @@ export function buildSceneStoryTagItems(getSelection) {
 }
 
 /**
- * Insert a decorated tag into a theme-group map keyed by
- * `themeId ?? '__' + type` — the grouping shape shared by the contributed
- * panel and the GM viewer tabs.
+ * Which group an actor's tag is listed under. Theme tags group by their
+ * theme. Tags on the actor itself, and story tags and statuses wherever they
+ * live, group by type: keyed by parent, they would form a catch-all group
+ * named after the actor, repeating the actor heading above it.
+ * @param {object} rawTag  From `effectToPlain`.
+ * @param {Actor} actor  The actor the tag belongs to.
+ * @param {string|null} parentImg  Image of the tag's parent item.
+ * @returns {{key: string, label: string, img: string|null}}
  */
-function pushThemeGroup(themeMap, rawTag, themeImg, tag) {
-	const key = rawTag.themeId ?? `__${rawTag.type}`;
-	const label = rawTag.themeName ?? rawTag.type;
+function effectGroup(rawTag, actor, parentImg) {
+	if (rawTag.themeId !== actor.id && !ACTOR_TAG_TYPES.has(rawTag.type)) {
+		return {
+			key: rawTag.themeId ?? `__${rawTag.type}`,
+			label: rawTag.themeName ?? rawTag.type,
+			img: parentImg,
+		};
+	}
+	const labelKey = EFFECT_GROUP_LABELS[rawTag.type];
+	const isStoryTag = rawTag.type === "story_tag";
+	return {
+		key: `__${rawTag.type}`,
+		label: labelKey
+			? t(labelKey)
+			: isStoryTag
+				? (actor.system.backpackItem?.name ?? t("LITM.Terms.backpack"))
+				: rawTag.type,
+		img: isStoryTag ? (actor.system.backpackItem?.img ?? null) : null,
+	};
+}
+
+/**
+ * Insert a decorated tag into a theme-group map, grouped by
+ * {@link effectGroup} — the shape shared by the contributed panel and the
+ * GM viewer tabs.
+ */
+function pushThemeGroup(themeMap, rawTag, actor, parentImg, tag) {
+	const { key, label, img } = effectGroup(rawTag, actor, parentImg);
 	if (!themeMap.has(key)) {
-		themeMap.set(key, { themeName: label, themeImg, tags: [] });
+		themeMap.set(key, { themeName: label, themeImg: img, tags: [] });
 	}
 	themeMap.get(key).tags.push(tag);
 }
@@ -234,7 +274,7 @@ export function buildContributedTagGroups(
 			const themeImg = rawTag.themeId
 				? (actor.items.get(rawTag.themeId)?.img ?? null)
 				: null;
-			pushThemeGroup(themeMap, rawTag, themeImg, tag);
+			pushThemeGroup(themeMap, rawTag, actor, themeImg, tag);
 		}
 	}
 
@@ -248,8 +288,8 @@ export function buildContributedTagGroups(
 				ownCharacter.prototypeToken?.texture?.src || ownCharacter.img,
 			);
 			for (const e of ownCharacter.appliedEffects) {
-				// A status the Narrator hid on this Hero stays hidden here too.
-				if (!isEffectVisible(e)) continue;
+				// Helping is one of the Hero's tags, never a status (p.157).
+				if (e.type === "status_tag" || !isEffectVisible(e)) continue;
 				if (isLostRelationship(e)) continue;
 				const rawTag = effectToPlain(e);
 				const sel = dialog.getSelection(rawTag.uuid);
@@ -259,7 +299,19 @@ export function buildContributedTagGroups(
 					contributorId: sel.contributorId,
 					narrator: sel.narrator,
 				});
-				pushThemeGroup(themeMap, rawTag, e.parent?.img ?? null, tag);
+				// A helper's tag can't be burned (`refusesHelperTag`), so the
+				// cycle doesn't offer it.
+				tag.states = tag.states
+					.split(",")
+					.filter((s) => s !== "scratched")
+					.join(",");
+				pushThemeGroup(
+					themeMap,
+					rawTag,
+					ownCharacter,
+					e.parent?.img ?? null,
+					tag,
+				);
 			}
 		}
 	}
@@ -556,38 +608,7 @@ function buildActorEffectGroups(
 			contributorId: sel.contributorId,
 			narrator: sel.narrator,
 		});
-		// story_tag and status_tag effects always group by type so that
-		// backpack-item tags and actor-level tags share one section.
-		// Theme tags (power_tag, etc.) group by parent item.
-		const groupByType = e.parent === actor || ACTOR_TAG_TYPES.has(e.type);
-		let groupKey;
-		let groupLabel;
-		let groupImg;
-		if (groupByType) {
-			groupKey = `__${e.type}`;
-			const labelKey = EFFECT_GROUP_LABELS[e.type];
-			groupLabel = labelKey
-				? t(labelKey)
-				: e.type === "story_tag"
-					? (actor.system.backpackItem?.name ?? t("LITM.Terms.backpack"))
-					: e.type;
-			groupImg =
-				e.type === "story_tag"
-					? (actor.system.backpackItem?.img ?? null)
-					: null;
-		} else {
-			groupKey = rawTag.themeId ?? `__${rawTag.type}`;
-			groupLabel = rawTag.themeName ?? rawTag.type;
-			groupImg = e.parent?.img ?? null;
-		}
-		if (!themeMap.has(groupKey)) {
-			themeMap.set(groupKey, {
-				themeName: groupLabel,
-				themeImg: groupImg,
-				tags: [],
-			});
-		}
-		themeMap.get(groupKey).tags.push(tag);
+		pushThemeGroup(themeMap, rawTag, actor, e.parent?.img ?? null, tag);
 	}
 	// Add actor story items to this tab
 	const actorStory = allStoryItems
@@ -764,9 +785,7 @@ export function buildGroupRollTabs(dialog, shared) {
 		for (const group of groups) {
 			storyGroups.push({
 				...group,
-				themeName: group.themeName
-					? `${label} — ${group.themeName}`
-					: label,
+				themeName: group.themeName ? `${label} — ${group.themeName}` : label,
 				themeImg:
 					group.themeImg ?? (actor.prototypeToken?.texture?.src || actor.img),
 			});
@@ -829,6 +848,13 @@ export function buildGroupRollTabs(dialog, shared) {
  */
 export function actableActorIds(dialog) {
 	const ids = new Set();
+	// Helping Each Other: a helper offers one of their own Hero's tags, not
+	// the scene's or anyone else's.
+	if (!dialog.isGroupRoll) {
+		const own = game.user.character;
+		if (own && own.id !== dialog.actorId) ids.add(own.id);
+		return ids;
+	}
 	for (const id of dialog.participantIds) {
 		const hero = game.actors.get(id);
 		if (hero?.testUserPermission(game.user, "OWNER")) ids.add(id);

@@ -72,6 +72,32 @@ describe("owner-authoritative shared-roll synchronization", () => {
 		expect(b.pending).toEqual([]);
 	});
 
+	it("enforces the helper cap on a single-Hero roll when merging", () => {
+		const solo = () => ({
+			...initial(),
+			actorId: "hero-a",
+			participantIds: [],
+		});
+		const owner = new RollSync(solo(), "owner");
+		const helper = new RollSync(solo(), "helper");
+		const help = (id, state) =>
+			helper.edit(
+				{
+					...helper.view,
+					selections: [
+						...helper.view.selections,
+						[id, { state, helper: true, tagActorId: "hero-b" }],
+					],
+				},
+				false,
+			);
+		helper.receive(owner.receive(help("t1", "positive"), true), false);
+		helper.receive(owner.receive(help("t2", "positive"), true), false);
+		helper.receive(owner.receive(help("t3", "scratched"), true), false);
+		expect(owner.view.selections.map(([id]) => id)).toEqual(["t1"]);
+		expect(helper.view).toEqual(owner.view);
+	});
+
 	it("synchronizes removals, replacements and late-join action/title state", () => {
 		const owner = new RollSync(initial(), "owner");
 		const peer = new RollSync(initial(), "peer");
