@@ -4,6 +4,7 @@ import {
 } from "../../active-effects/effect-factories.js";
 import { error, warn } from "../../logger.js";
 import { ContentSources } from "../../system/content-sources.js";
+import { ACTOR_TYPES } from "../../system/config.js";
 import { Sockets } from "../../system/sockets.js";
 import {
 	enrichPlainText,
@@ -942,5 +943,26 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			if (!ids.includes(item.id)) return;
 			LitmCampingScene.#instance.render();
 		});
+		// Re-render when a hero's or the Fellowship's tags, statuses or themes
+		// change mid-camp (scratched, recovered, renamed elsewhere) — the camp
+		// reads them live but nothing else tells it to redraw. Debounced: one
+		// roll or Rest touches many effects at once.
+		const refresh = foundry.utils.debounce(
+			() => LitmCampingScene.#instance?.render(),
+			100,
+		);
+		const campActor = (doc) => {
+			const actor = doc?.documentName === "Actor" ? doc : doc?.parent;
+			if (actor?.documentName === "Item") return campActor(actor);
+			return [ACTOR_TYPES.hero, ACTOR_TYPES.fellowship].includes(actor?.type);
+		};
+		for (const event of ["create", "update", "delete"]) {
+			Hooks.on(`${event}ActiveEffect`, (effect) => {
+				if (LitmCampingScene.#instance && campActor(effect.parent)) refresh();
+			});
+			Hooks.on(`${event}Item`, (item) => {
+				if (LitmCampingScene.#instance && campActor(item.parent)) refresh();
+			});
+		}
 	}
 }
