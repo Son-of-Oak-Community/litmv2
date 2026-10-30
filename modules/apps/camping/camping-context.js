@@ -78,6 +78,7 @@ function buildBackpackPills(actor, heroState) {
 		.map((e) => ({
 			id: e.id,
 			name: e.name,
+			isSingleUse: !!e.system?.isSingleUse,
 			disabled: !!e.disabled,
 			kept: keptSet.has(e.id),
 		}));
@@ -441,6 +442,7 @@ export function buildPlaceOfStayContext(state) {
 	const sceneTags = StoryTagsStore.sceneStoryEffects.map((e) => ({
 		id: e.id,
 		name: e.name,
+		isSingleUse: !!e.system?.isSingleUse,
 		markedForExpiry: placeOfStay.sceneTagsToExpire.includes(e.id),
 	}));
 	return {
