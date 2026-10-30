@@ -7188,6 +7188,14 @@ body.litm--colorblind .themed.theme-dark,
 	color: var(--color-text-secondary);
 }
 
+/* Rest's "Recover scratched tags" heads its own block of theme groups, so
+   it reads as a heading rather than a whisper. */
+.litm-camping-scene__sub-label--prominent {
+	margin-block-start: var(--spacer-8);
+	font-size: var(--font-size-16);
+	color: var(--color-text-primary);
+}
+
 .litm-camping-scene__pills {
 	display: flex;
 	flex-wrap: wrap;

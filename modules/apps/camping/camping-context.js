@@ -55,7 +55,8 @@ export function partitionCampingEffects(actor) {
 	for (const e of actor.allApplicableEffects?.() ?? []) {
 		if (e.type === "status_tag") buckets.statusEffects.push(e);
 		else if (e.type === "relationship_tag") buckets.relationshipEffects.push(e);
-		else if (e.type === "power_tag" && e.system?.isScratched) {
+		// A disabled power tag hasn't been gained yet; there is nothing to recover.
+		else if (e.type === "power_tag" && e.system?.isScratched && !e.disabled) {
 			buckets.scratchedRecoverable.push(e);
 		}
 	}
@@ -168,10 +169,17 @@ function buildActivityRows(
 					canIncrease: decrement > 0,
 				};
 			}),
-			restRecoverableTags: scratchedRecoverable.map((e) => ({
-				id: e.id,
-				name: e.name,
-				checked: recoverSet.has(e.id),
+			// One group per source theme / backpack, in effect order.
+			restRecoverGroups: Object.values(
+				Object.groupBy(scratchedRecoverable, (e) => e.parent?.id ?? ""),
+			).map((effects) => ({
+				source: effects[0].parent?.name ?? "",
+				img: effects[0].parent?.img ?? null,
+				tags: effects.map((e) => ({
+					id: e.id,
+					name: e.name,
+					checked: recoverSet.has(e.id),
+				})),
 			})),
 			reflectTargets,
 		};
