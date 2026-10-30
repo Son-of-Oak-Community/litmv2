@@ -7,6 +7,7 @@ import {
 	defaultHeroState,
 	defaultQualityTime,
 	ensureHeroState,
+	isLockedByReady,
 	removeThreatVignette,
 	SETTERS,
 	setActiveStep,
@@ -576,6 +577,26 @@ describe("setActiveStep", () => {
 		const s = defaultCampingState();
 		SETTERS["active-step"](s, { value: "packUp" });
 		expect(s.activeStep).toBe("packUp");
+	});
+});
+
+describe("Ready", () => {
+	it("locks a ready hero's edits, but not the Ready toggle or other heroes", () => {
+		const s = defaultCampingState();
+		SETTERS.ready(s, { heroId: "a", on: true });
+		expect(isLockedByReady(s, "rest-recover", { heroId: "a" })).toBe(true);
+		expect(isLockedByReady(s, "ready", { heroId: "a" })).toBe(false);
+		expect(isLockedByReady(s, "rest-recover", { heroId: "b" })).toBe(false);
+		expect(isLockedByReady(s, "active-step", { value: "period2" })).toBe(false);
+	});
+
+	it("clears every hero's Ready when the step changes, not on a no-op", () => {
+		const s = defaultCampingState();
+		SETTERS.ready(s, { heroId: "a", on: true });
+		setActiveStep(s, "period1");
+		expect(s.heroStates.a.ready).toBe(true);
+		setActiveStep(s, "period2");
+		expect(s.heroStates.a.ready).toBe(false);
 	});
 });
 

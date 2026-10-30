@@ -45,24 +45,31 @@
 		</tbody>
 	</table>
 	{{/if}}
-	{{#if activity.restRecoverableTags.length}}
-	<h4 class="litm-camping-scene__sub-label">{{localize "LITM.Ui.camping_recover_power_tags"}}</h4>
-	<ul class="litm-camping-scene__pills plain">
-		{{#each activity.restRecoverableTags}}
-		<li>
-			<label class="litm-camping-scene__pill{{#if checked}} marked{{/if}}">
-				{{#if ../hero.canEdit}}
-				<input type="checkbox" data-update="rest-recover"
-					data-hero-id="{{../hero.id}}" data-period="{{../activity.index}}" data-effect-id="{{id}}"
-					{{#if checked}}checked{{/if}}>
-				{{/if}}
-				<span class="litm-tag">{{name}}</span>
-			</label>
-		</li>
-		{{/each}}
-	</ul>
+	{{#if activity.restRecoverGroups.length}}
+	<h4 class="litm-camping-scene__sub-label litm-camping-scene__sub-label--prominent">{{localize "LITM.Ui.camping_recover_power_tags"}}</h4>
+	<div>
+	{{#each activity.restRecoverGroups}}
+	<div class="litm--roll-dialog-theme-group">
+		<p class="litm--roll-dialog-theme-label">{{#if img}}<img src="{{img}}" alt="" />{{/if}}{{source}}</p>
+		<ul class="litm-camping-scene__pills plain">
+			{{#each tags}}
+			<li>
+				<label class="litm-camping-scene__pill">
+					{{#if ../../hero.canEdit}}
+					<input type="checkbox" data-update="rest-recover"
+						data-hero-id="{{../../hero.id}}" data-period="{{../../activity.index}}" data-effect-id="{{id}}"
+						{{#if checked}}checked{{/if}}>
+					{{/if}}
+					<span class="litm-tag{{#unless checked}} scratched{{/unless}}">{{name}}</span>
+				</label>
+			</li>
+			{{/each}}
+		</ul>
+	</div>
+	{{/each}}
+	</div>
 	{{/if}}
-	{{#unless activity.restStatuses.length}}{{#unless activity.restRecoverableTags.length}}
+	{{#unless activity.restStatuses.length}}{{#unless activity.restRecoverGroups.length}}
 	<p class="hint">{{localize "LITM.Ui.camping_rest_nothing"}}</p>
 	{{/unless}}{{/unless}}
 </div>

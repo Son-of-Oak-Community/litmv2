@@ -66,6 +66,9 @@ export function defaultCampingState() {
 export function defaultHeroState() {
 	return {
 		thirdPeriodActive: false,
+		// The player has finished this step's choices. Locks the hero's edits
+		// until they unpress it; cleared whenever the step changes.
+		ready: false,
 		// Effect ids of backpack story tags the player has chosen to keep.
 		// Default empty: the book treats camp/sojourn as the moment to expire
 		// most story tags ("the hero is only supposed to select 1 before
@@ -325,7 +328,19 @@ export function setPhase(state, phase) {
  * the template doesn't know how to render.
  */
 export function setActiveStep(state, step) {
-	if (VALID_ACTIVE_STEPS.has(step)) state.activeStep = step;
+	if (!VALID_ACTIVE_STEPS.has(step) || step === state.activeStep) return;
+	state.activeStep = step;
+	for (const h of Object.values(state.heroStates ?? {})) h.ready = false;
+}
+
+export function setReady(state, heroId, on) {
+	ensureHeroState(state, heroId).ready = !!on;
+}
+
+/** True when an op would edit a hero who has pressed Ready. */
+export function isLockedByReady(state, key, payload) {
+	if (key === "ready" || !payload?.heroId) return false;
+	return !!state.heroStates?.[payload.heroId]?.ready;
 }
 
 /**
@@ -445,6 +460,7 @@ export const SETTERS = {
 	"backpack-kept": (s, { heroId, effectId, kept }) =>
 		setBackpackKept(s, heroId, effectId, kept),
 	"third-period": (s, { heroId, on }) => setThirdPeriod(s, heroId, on),
+	ready: (s, { heroId, on }) => setReady(s, heroId, on),
 	activity: (s, { heroId, period, activity }) =>
 		setActivity(s, heroId, period, activity),
 	"activity-detail": (s, { heroId, period, value }) =>
