@@ -1725,15 +1725,19 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	/**
-	 * Release a finished or cancelled call without discarding its draft.
+	 * Release a finished or cancelled call without discarding its tags.
 	 * Rejected moderation requests can still reopen those selections, but an
-	 * abandoned call must not keep a subsequent independent roll GM-locked.
+	 * abandoned call must not keep a subsequent independent roll GM-locked,
+	 * nor carry its Might into it: the next roll starts from 0.
 	 * Viewers closing their own window do not end the shared roll.
 	 */
 	endSharedRoll({ preserveAuthority = false } = {}) {
 		if (!preserveAuthority) {
 			this.#narratorCall = null;
 			for (const entry of this.#selectionMap.values()) entry.narrator = false;
+			// Might judged this action; the next roll starts from Equal.
+			this.#might = 0;
+			this.#cachedTotalPower = null;
 		}
 		this.invalidateSync();
 	}

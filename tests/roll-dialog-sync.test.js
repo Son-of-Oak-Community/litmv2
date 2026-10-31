@@ -48,6 +48,24 @@ const controls = (dialog) => {
 		});
 };
 
+describe("ending a roll", () => {
+	// Might is the Narrator's judgement of this one action. A new roll starts
+	// from 0; only a roll suspended for approval comes back with it.
+	it("starts the next roll from Might 0 once an unrolled roll is closed", () => {
+		const roller = make("player", { ownerId: "player" });
+		as("player", () => controls(roller)("might", 3));
+		as("player", () => roller.endSharedRoll());
+		expect(roller.extractRollData()).toMatchObject({ might: 0 });
+	});
+
+	it("keeps the Might of a roll waiting for the Narrator's approval", () => {
+		const roller = make("player", { ownerId: "player" });
+		as("player", () => controls(roller)("might", 3));
+		as("player", () => roller.endSharedRoll({ preserveAuthority: true }));
+		expect(roller.extractRollData()).toMatchObject({ might: 3 });
+	});
+});
+
 describe("LitmRollDialog sync integration", () => {
 	it("keeps the first sheet selection made before the owner is claimed", async () => {
 		const roller = make("player", { ownerId: null });
