@@ -58,6 +58,7 @@ export class HandlebarsPartials {
 		"systems/litmv2/templates/partials/play-tag.html",
 		"systems/litmv2/templates/partials/lost-relationship.html",
 		"systems/litmv2/templates/partials/roll-tag.html",
+		"systems/litmv2/templates/partials/roll-plaque.html",
 		"systems/litmv2/templates/partials/play-theme-tags.html",
 		"systems/litmv2/templates/partials/play-theme-tracks.html",
 		"systems/litmv2/templates/partials/theme-special-improvements.html",

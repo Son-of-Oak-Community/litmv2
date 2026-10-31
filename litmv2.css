@@ -28,6 +28,7 @@
    25.  Hero Sheet — Cards ...... Opt-in printed-card hero sheet variant
                                   (a: hero panel, b: printed theme cards — shared
                                   via .litm--printed-cards, c: kit sections)
+   26.  Roll dialog — Cards look  Per-player Cards look for the roll window
    (Welcome Overlay styles are in litmv2-welcome.css)
 ======================================== */
 
@@ -10109,3 +10110,794 @@ body.theme-dark
 	}
 }
 /* @kit-sections:end */
+
+/* ========================================
+   26. Roll dialog — Cards look
+   The per-player "Roll window look: Cards" (`roll_window_look`): the same
+   dialog and markup, shown like the Cards hero sheet. Tag groups become
+   parchment cards with a banner strip — the theme's Might colour, gold for
+   the Fellowship, sienna for everything else — tags sit one per ruled line,
+   the settings column becomes a band across the top, and the footer lists
+   the chosen tags as chips. Everything is scoped under .litm--roll-cards, so
+   the Classic look cannot change. Token names follow the Cards sheet's
+   (--litm-card-*, --litm-banner-*) so the two can share them later.
+   ======================================== */
+
+.litm--roll-cards {
+	--litm-card-surface: url("assets/journal/parchment.webp") center / 100% 100%;
+	--litm-card-border: color-mix(in srgb, var(--color-litm-banner) 70%, transparent);
+	--litm-card-radius: var(--radius-md);
+	--litm-card-rule: color-mix(in srgb, var(--color-litm-banner) 35%, transparent);
+	--litm-card-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+	--litm-card-ink: var(--color-dark-1);
+	/* Turns a coloured icon into the ink colour. */
+	--litm-card-ink-filter: brightness(0);
+	--litm-banner-ink: #f6efe4;
+	--litm-banner-kit: #a0522d;
+	--litm-banner-fellowship: var(--color-litm-track-milestone);
+	/* How far the might colour is pushed toward black under the cream ink. */
+	--litm-banner-mix: 85%;
+	/* The Cards sheet's plaque: notched corners, and half its height above
+	   the card's top edge, which each card makes room for. */
+	--litm-banner-overhang: calc(0.8 * var(--font-size-14) + var(--spacer-4));
+	--litm-banner-mask:
+		radial-gradient(circle at 0 0, transparent 6px, black 6.5px) top left /
+		51% 51% no-repeat,
+		radial-gradient(circle at 100% 0, transparent 6px, black 6.5px) top right /
+		51% 51% no-repeat,
+		radial-gradient(circle at 0 100%, transparent 6px, black 6.5px) bottom left /
+		51% 51% no-repeat,
+		radial-gradient(circle at 100% 100%, transparent 6px, black 6.5px) bottom
+		right / 51% 51% no-repeat;
+}
+
+/* Dark parchment, lighter ink, and deeper banners: the might colours turn
+   pastel in the dark theme. */
+body.theme-dark .litm--roll-cards:not(.theme-light),
+.themed.theme-dark .litm--roll-cards:not(.theme-light),
+.litm--roll-cards.theme-dark {
+	--litm-card-surface: url("assets/journal/parchment-dark.webp") center / cover;
+	--litm-card-ink: var(--color-light-1);
+	--litm-card-ink-filter: brightness(0) invert(1);
+	--litm-banner-mix: 45%;
+}
+
+/* Colour-blind mode: the Cards sheet's Okabe-Ito banner hues, already dark.
+   `.application` matches the dark-theme token block's specificity; being
+   later in the file, this one wins in both themes. */
+body.litm--colorblind .application.litm--roll-cards {
+	--color-litm-might-origin: #00785a;
+	--color-litm-might-adventure: #b34700;
+	--color-litm-might-greatness: #1f5f99;
+	--litm-banner-fellowship: #8a4d78;
+	--litm-banner-mix: 85%;
+}
+
+/* Settings become a band across the top; the board takes the full width. */
+@container (min-width: 720px) {
+	.litm--roll-cards
+		.litm--roll-dialog-grid:has(.litm--roll-dialog-tags-fieldset:not(.hidden)) {
+		grid-template-columns: 1fr;
+	}
+}
+
+.litm--roll-cards .litm--roll-dialog-settings {
+	flex-flow: row wrap;
+	align-items: stretch;
+
+	& > * {
+		flex: 1 1 18rem;
+	}
+}
+
+/* The board: whatever holds cards lays them out in wrapping columns. A
+   section that only groups cards (a helper's themes, the watcher's view)
+   dissolves into the board, its actor heading spanning the row. */
+.litm--roll-cards .litm--roll-dialog-tags-fieldset > section.tab,
+.litm--roll-cards
+	.litm--roll-dialog-tags-fieldset
+	> div:has(> .litm--roll-dialog-theme-group),
+.litm--roll-cards
+	.litm--roll-dialog-tags-fieldset
+	> section.tab
+	> .litm--roll-dialog-section-break:has(> .litm--roll-dialog-theme-group) {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+	gap: var(--spacer-12);
+	align-items: start;
+}
+
+.litm--roll-cards .litm--roll-dialog-tags-fieldset > section.tab:not(.active) {
+	display: none;
+}
+
+.litm--roll-cards
+	.litm--roll-dialog-section-break:has(> .litm--roll-dialog-theme-group) {
+	grid-column: 1 / -1;
+	margin: 0;
+	padding: 0;
+	border: none;
+
+	& > .litm--roll-dialog-actor-label {
+		grid-column: 1 / -1;
+		margin: 0;
+	}
+}
+
+/* A card: a theme group, or a section that lists tags itself. */
+.litm--roll-cards
+	:is(
+		.litm--roll-dialog-theme-group,
+		.litm--roll-dialog-section-break:not(:has(> .litm--roll-dialog-theme-group))
+	) {
+	--litm-banner-bg: color-mix(
+		in srgb,
+		var(--litm-banner-kit) var(--litm-banner-mix),
+		black
+	);
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	margin: var(--litm-banner-overhang) 0 0;
+	padding: 0 0 var(--spacer-4);
+	color: var(--litm-card-ink);
+	background: var(--litm-card-surface);
+	border: 1px solid var(--litm-card-border);
+	border-radius: var(--litm-card-radius);
+	box-shadow: var(--litm-card-shadow);
+
+	/* A theme card's colour washes up from its foot, as on the Cards sheet. */
+	&:is([data-level], [data-banner]) {
+		background:
+			linear-gradient(
+				to bottom,
+				transparent 30%,
+				color-mix(in srgb, var(--litm-banner-bg) 40%, transparent)
+			),
+			var(--litm-card-surface);
+	}
+
+	&[data-level="origin"] {
+		--litm-banner-bg: color-mix(
+			in srgb,
+			var(--color-litm-might-origin) var(--litm-banner-mix),
+			black
+		);
+	}
+
+	&[data-level="adventure"] {
+		--litm-banner-bg: color-mix(
+			in srgb,
+			var(--color-litm-might-adventure) var(--litm-banner-mix),
+			black
+		);
+	}
+
+	&[data-level="greatness"] {
+		--litm-banner-bg: color-mix(
+			in srgb,
+			var(--color-litm-might-greatness) var(--litm-banner-mix),
+			black
+		);
+	}
+
+	&[data-banner="fellowship"] {
+		--litm-banner-bg: var(--litm-banner-fellowship);
+	}
+
+}
+
+/* The first card in a tab keeps its room for the plaque: the shared reset
+   that strips a tab's first group of its spacing is more specific. */
+.litm.litm--roll-cards
+	.litm--roll-dialog-tags-fieldset
+	section.tab
+	> :is(.litm--roll-dialog-theme-group, .litm--roll-dialog-section-break):is(
+		:first-child,
+		:first-of-type
+	):not(:has(> .litm--roll-dialog-theme-group)) {
+	margin-top: var(--litm-banner-overhang);
+	padding-top: 0;
+	border-top: 1px solid var(--litm-card-border);
+}
+
+/* Banner: the group heading as the Cards sheet's notched plaque, inset
+   across the card and straddling its top edge. It stays in the flow, pulled
+   up by the overhang, so a long name wraps onto more lines and the tags
+   start below it. The mask clips outer shadows, so the dark rim is an inset
+   one. */
+.litm--roll-cards
+	:is(
+		.litm--roll-dialog-theme-group,
+		.litm--roll-dialog-section-break:not(:has(> .litm--roll-dialog-theme-group))
+	)
+	> :is(.litm--roll-dialog-actor-label, .litm--roll-dialog-theme-label) {
+	position: relative;
+	box-sizing: border-box;
+	justify-content: center;
+	gap: var(--spacer-8);
+	min-height: calc(1.6em + 2 * var(--spacer-4));
+	margin: calc(-1 * var(--litm-banner-overhang)) var(--spacer-12) var(--spacer-4);
+	padding: var(--spacer-4) var(--spacer-12);
+	font-size: var(--font-size-14);
+	font-style: normal;
+	font-variant-caps: small-caps;
+	letter-spacing: 0.2em;
+	text-transform: none;
+	text-align: center;
+	color: var(--litm-banner-ink);
+	text-shadow: 0 1px 0 rgb(0 0 0 / 0.4);
+	background: var(--litm-banner-bg);
+	mask: var(--litm-banner-mask);
+	box-shadow:
+		inset 0 2px 0 rgb(0 0 0 / 0.4),
+		inset 0 -2px 0 rgb(0 0 0 / 0.4);
+
+	& i,
+	& img {
+		color: inherit;
+	}
+
+	/* Level icons are coloured; on the banner they read as ink, as on the
+	   Cards sheet, rather than vanishing into a banner of the same colour. */
+	& img {
+		width: 1.4em;
+		height: 1.4em;
+		border-radius: 0;
+		filter: brightness(0) invert(1);
+	}
+}
+
+/* Tags: one per ruled line, as on a printed card. */
+.litm.litm--roll-cards fieldset ul.litm--roll-dialog-tags-summary {
+	flex-flow: column nowrap;
+	align-items: stretch;
+	gap: 0;
+	padding: 0 var(--spacer-8);
+}
+
+.litm--roll-cards .litm--roll-dialog-tags-summary > li {
+	border-bottom: 1px solid var(--litm-card-rule);
+
+	&:last-child {
+		border-bottom: none;
+	}
+}
+
+/* Kit cards (statuses, backpack, story tags) run their tags inline, as on
+   the Cards sheet; only theme cards and relationships keep ruled lines. */
+.litm.litm--roll-cards
+	:is(.litm--roll-dialog-theme-group, .litm--roll-dialog-section-break):not(
+		[data-level],
+		[data-banner],
+		:has(.litm--relationship_tag)
+	)
+	ul.litm--roll-dialog-tags-summary {
+	flex-flow: row wrap;
+	align-items: center;
+	gap: var(--spacer-4) var(--spacer-8);
+	padding: var(--spacer-4) var(--spacer-8);
+
+	& > li {
+		border-bottom: none;
+	}
+}
+
+/* Kit cards are strips across the board, as on the Cards sheet, so their
+   inline tags have the width to run in one line. */
+.litm.litm--roll-cards
+	:is(.litm--roll-dialog-theme-group, .litm--roll-dialog-section-break):not(
+		[data-level],
+		[data-banner],
+		:has(.litm--relationship_tag),
+		:has(> .litm--roll-dialog-theme-group)
+	) {
+	grid-column: 1 / -1;
+}
+
+/* The settings column is often empty in the Cards look (the Might lives
+   in the caption); the grid's row gap then left a blank band above the
+   tabs. The gap moves onto whatever the column shows. */
+.litm--roll-cards .litm--roll-dialog-grid {
+	row-gap: 0;
+}
+
+.litm--roll-cards .litm--roll-dialog-settings > * {
+	margin-block-end: var(--spacer-8);
+}
+
+/* The tab bar sits right on the board; the first card's plaque already
+   keeps its own room above. */
+.litm--roll-cards .litm--roll-dialog-tabs {
+	margin-block-end: 0;
+
+	/* Portraits large enough to tell the heroes apart. */
+	& img {
+		width: 28px;
+		height: 28px;
+	}
+}
+
+.litm--roll-cards .litm--roll-dialog-tags-fieldset > section.tab {
+	padding-block-start: 0;
+}
+
+/* Long names fit their card: a plaque wraps onto more lines, and a tag
+   wraps inside its line. */
+.litm--roll-cards
+	:is(.litm--roll-dialog-actor-label, .litm--roll-dialog-theme-label)
+	> span {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.litm--roll-cards .litm--roll-dialog-tag {
+	min-width: 0;
+
+	& > .litm--roll-dialog-badge {
+		min-width: 0;
+		white-space: normal;
+		overflow-wrap: anywhere;
+		box-decoration-break: clone;
+	}
+}
+
+/* The theme's title tag heads its card, a size up from the rest. */
+.litm--roll-cards .litm--roll-dialog-tag.is-title > .litm--roll-dialog-badge {
+	font-size: 1.2em;
+}
+
+/* A scratched tag stays on its card, dimmed and struck through; on the
+   plaque too, when it is the theme's main tag. */
+.litm--roll-cards .litm--roll-dialog-tag.is-scratched {
+	opacity: 0.55;
+
+	& > .litm--roll-dialog-badge {
+		text-decoration: line-through;
+	}
+}
+
+/* The plaque is its theme's main tag: the tag's row sits on it in the
+   plaque's lettering, and the name it would repeat is not shown. */
+.litm--roll-cards
+	:is(.litm--roll-dialog-actor-label, .litm--roll-dialog-theme-label):has(
+		> .litm--roll-plaque-tag
+	)
+	> .litm--roll-plaque-name {
+	display: none;
+}
+
+.litm.litm--roll-cards ul.litm--roll-plaque-tag {
+	display: flex;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+
+	& > li {
+		min-width: 0;
+		margin: 0;
+	}
+
+	& .litm--roll-dialog-tag {
+		gap: var(--spacer-8);
+		padding: 0 var(--spacer-4);
+
+		/* The banner's own colour, lifted a little, instead of the line tints
+		   that would vanish into it. */
+		&:not(.is-locked):hover,
+		&:has(litm-super-checkbox[value]:not([value=""])) {
+			background: rgb(255 255 255 / 0.15);
+		}
+	}
+
+	& litm-super-checkbox {
+		color: inherit;
+	}
+
+	& .litm--roll-dialog-badge {
+		padding: 0;
+		font: inherit;
+		letter-spacing: inherit;
+		color: inherit;
+		text-shadow: inherit;
+		background: none;
+		box-shadow: none;
+		transform: none;
+		clip-path: none;
+		min-width: 0;
+		white-space: normal;
+		overflow-wrap: anywhere;
+
+		/* No chip: the outlined text and the skewed bar behind it. */
+		&::before,
+		&::after {
+			display: none;
+		}
+	}
+}
+
+/* The cards frame themselves: no "Tags" box around the board. */
+.litm--roll-cards .litm--roll-dialog-tags-fieldset {
+	padding: 0;
+	border: none;
+	background: none;
+
+	& > legend {
+		display: none;
+	}
+}
+
+.litm--roll-cards .litm--roll-dialog-tag {
+	padding: var(--spacer-4) var(--spacer-4);
+	border-radius: var(--radius-xs, 2px);
+
+	& litm-super-checkbox {
+		color: var(--litm-card-ink);
+	}
+}
+
+/* A chosen line is tinted by what it does to the roll. Read off the live
+   checkbox value, so it follows a click before any re-render. */
+.litm--roll-cards
+	.litm--roll-dialog-tag:has(litm-super-checkbox[value="positive"]) {
+	background: var(--color-litm-might-origin-bg);
+}
+
+.litm--roll-cards
+	.litm--roll-dialog-tag:has(litm-super-checkbox[value="negative"]) {
+	background: var(--color-litm-might-adventure-bg);
+}
+
+.litm--roll-cards
+	.litm--roll-dialog-tag:has(litm-super-checkbox[value="scratched"]) {
+	background: color-mix(in srgb, var(--color-litm-tag) 25%, transparent);
+}
+
+/* A chosen line shows what it adds, as the chips do. Statuses add their tier
+   (`data-tier` on the row); other tags +1 / −1, a burn +3 (BURN_POWER). */
+.litm--roll-cards .litm--roll-dialog-tag:has(litm-super-checkbox[value])::after {
+	margin-inline-start: auto;
+	padding-inline-start: var(--spacer-4);
+	font-size: var(--font-size-12);
+	font-weight: bold;
+}
+
+.litm--roll-cards
+	.litm--roll-dialog-tag:has(litm-super-checkbox[value="positive"])::after {
+	content: "+1";
+}
+
+.litm--roll-cards
+	.litm--roll-dialog-tag:has(litm-super-checkbox[value="negative"])::after {
+	content: "−1";
+}
+
+.litm--roll-cards
+	.litm--roll-dialog-tag:has(litm-super-checkbox[value="scratched"])::after {
+	content: "+3";
+}
+
+.litm--roll-cards
+	.litm--roll-dialog-tag[data-tier]:has(litm-super-checkbox[value="positive"])::after {
+	content: "+" attr(data-tier);
+}
+
+.litm--roll-cards
+	.litm--roll-dialog-tag[data-tier]:has(litm-super-checkbox[value="negative"])::after {
+	content: "−" attr(data-tier);
+}
+
+/* Footer chips: what counts, read-only. */
+.litm--roll-cards .litm--roll-dialog-chips {
+	display: flex;
+	flex-flow: row wrap;
+	gap: var(--spacer-4);
+	margin: 0;
+
+	&:empty {
+		display: none;
+	}
+}
+
+.litm--roll-dialog-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+	padding: 1px var(--spacer-8);
+	font-size: var(--font-size-12);
+	border: 1px solid var(--color-border-light);
+	border-radius: var(--radius-md);
+	background: var(--color-litm-might-origin-bg);
+
+	&.is-negative {
+		background: var(--color-litm-might-adventure-bg);
+	}
+
+	&.is-uncounted {
+		opacity: 0.5;
+	}
+
+	& .litm--roll-dialog-chip-value {
+		font-weight: bold;
+	}
+}
+
+/* Top band. The Narrator's half — move and Might — is the caption: the move
+   as three icons, the Might (stepped with ±, or picked from the book's
+   table), then the call and the group. The Classic Might scale goes. */
+.litm--roll-cards .litm--roll-dialog-might {
+	display: none;
+}
+
+/* No "Modifiers" box, and no box at all when the Might was all it held. */
+.litm--roll-cards .litm--roll-dialog-settings > fieldset:has(> .litm--roll-dialog-might) {
+	padding: 0;
+	border: none;
+	background: none;
+
+	& > legend {
+		display: none;
+	}
+
+	&:not(:has(> :not(legend, .litm--roll-dialog-might, template, .hidden))) {
+		display: none;
+	}
+}
+
+.litm--roll-caption {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	align-items: center;
+	gap: var(--spacer-8);
+	font-size: var(--font-size-12);
+	letter-spacing: 0.08em;
+	font-variant-caps: small-caps;
+	color: var(--color-text-secondary);
+	/* The names under it already leave room; half the board's gap is enough. */
+	margin-block-end: calc(-1 * var(--spacer-4));
+}
+
+/* Both sides line up with the ± row, not with the Might plus its name. The
+   chosen move is named under its icons, as the Might is under its box. */
+.litm--roll-caption-moves {
+	justify-self: start;
+	align-self: start;
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	font-variant-caps: normal;
+	letter-spacing: normal;
+}
+
+/* Three small icon buttons, as tall as the Might's ± beside them; the chosen
+   move is a size up so it reads at a glance. */
+.litm--roll-cards .litm--roll-type-icons {
+	display: inline-flex;
+	box-sizing: border-box;
+	height: 2rem;
+
+	& .litm--roll-type-option {
+		flex: 0 0 auto;
+		width: 1.8rem;
+		height: 100%;
+		padding: 0;
+		font-size: var(--font-size-14);
+	}
+
+	& .litm--roll-type-option.is-active {
+		width: 2.4rem;
+		font-size: var(--font-size-20);
+	}
+}
+
+.litm--roll-caption-info {
+	justify-self: end;
+	align-self: start;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: flex-end;
+	min-height: 2rem;
+	gap: var(--spacer-2);
+	text-align: end;
+}
+
+.litm--might-control {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	font-variant-caps: normal;
+	letter-spacing: normal;
+}
+
+.litm--might-steps {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
+}
+
+/* Its line is kept when empty, so nothing moves as the name comes and goes;
+   the caption centres the call against both lines. */
+.litm--might-name,
+.litm--roll-type-name {
+	/* Halfway between the box and what follows the caption. */
+	margin-block-start: var(--spacer-4);
+	min-block-size: 1lh;
+	white-space: nowrap;
+	font-size: var(--font-size-12);
+	font-style: italic;
+	line-height: 1.3;
+}
+
+.litm--roll-cards button.litm--might-step {
+	width: 1.8rem;
+	min-width: 0;
+	height: 1.8rem;
+	padding: 0;
+	font-size: var(--font-size-16);
+	font-weight: bold;
+	line-height: 1;
+}
+
+.litm--roll-cards button.litm--might-value {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	/* One width for "0" and "+18", so ± stays put. */
+	width: 4em;
+	height: 1.8rem;
+	padding: 0;
+	border-color: var(--color-border);
+	background: none;
+	font-variant-numeric: tabular-nums;
+
+	/* Positive Might favours the Heroes, as a positive line does. */
+	&[data-sign="1"] {
+		border-color: var(--color-litm-might-origin);
+		background: var(--color-litm-might-origin-bg);
+	}
+
+	&[data-sign="-1"] {
+		border-color: var(--color-litm-might-adventure);
+		background: var(--color-litm-might-adventure-bg);
+	}
+
+	& strong {
+		font-size: var(--font-size-18);
+		line-height: 1;
+	}
+
+}
+
+/* A player opens the table to read it; picking is the Narrator's. */
+.litm--might-picker.is-readonly .litm--might-pick {
+	pointer-events: none;
+}
+
+/* The book's Might table, live: one pick per column adds up to the Might. */
+.litm--might-picker {
+	padding: var(--spacer-8) var(--spacer-12);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background: var(--litm-card-surface);
+	box-shadow: var(--litm-card-shadow);
+	color: var(--litm-card-ink);
+
+	/* Bands on the value cells only: a tier cell spans rows that start on
+	   different bands, which left Greatness unlike Origin and Adventure. */
+	& .litm--might-table tbody tr:nth-child(odd) td:not(.litm--might-table-tier) {
+		background: color-mix(in srgb, var(--litm-card-ink) 7%, transparent);
+	}
+
+	/* A picker, not a reference card: the tooltip's roomy cells shrink to
+	   one line each so the table stays a dropdown's size. */
+	& .litm--might-tooltip-title {
+		margin-bottom: var(--spacer-4);
+		font-size: var(--font-size-14);
+	}
+
+	/* As printed: no header bar or table backdrop, reddish column names, and a
+	   rule above each tier. */
+	& .litm--might-table {
+		margin: 0;
+		font-size: var(--font-size-12);
+		background: none;
+		border: none;
+
+		& :is(thead, tbody, tr) {
+			background: none;
+			border: none;
+		}
+
+		& th {
+			background: none;
+			color: var(--litm-banner-kit);
+			font-variant-caps: small-caps;
+		}
+
+		& tbody tr:has(> .litm--might-table-tier) {
+			border-top: 2px solid var(--litm-card-rule);
+		}
+	}
+
+	& .litm--might-table :is(th, td) {
+		padding: var(--spacer-2) var(--spacer-4);
+		white-space: nowrap;
+		line-height: 1.3;
+	}
+
+	& .litm--might-table th {
+		font-size: var(--font-size-10);
+		white-space: normal;
+	}
+
+	& .litm--might-scale-accent {
+		font-size: var(--font-size-14);
+		font-weight: 900;
+	}
+
+	& .litm--might-table-tier {
+		font-size: var(--font-size-11);
+		background: none;
+
+		& img {
+			display: inline-block;
+			width: 1rem;
+			height: 1rem;
+			margin: 0 var(--spacer-2) 0 0;
+			vertical-align: middle;
+		}
+	}
+}
+
+.litm--roll-cards button.litm--might-pick {
+	width: 100%;
+	height: auto;
+	min-height: 0;
+	padding: 0 var(--spacer-4);
+	line-height: 1.5;
+	border: 1px solid transparent;
+	background: none;
+	box-shadow: none;
+	color: inherit;
+	font: inherit;
+
+	/* The cell's fill is the feedback; a border flashing on hover or click
+	   was noise. Keyboard focus keeps its ring. */
+	&:is(:hover, :focus, :active) {
+		border-color: transparent;
+		background: none;
+		color: inherit;
+		box-shadow: none;
+		outline: none;
+	}
+
+	&:focus-visible {
+		outline: 1px solid var(--color-border);
+	}
+
+	&.is-active {
+		font-weight: bold;
+	}
+}
+
+/* A pick fills its whole cell, so a tier and its picked row read as one
+   block. The Heroes' own Might is the plus (green); Area, Size and Group
+   take from it (red). */
+.litm--might-picker .litm--might-table tbody tr td:has(> .litm--might-pick.is-active) {
+	background: color-mix(in srgb, var(--color-litm-might-adventure) 35%, transparent);
+}
+
+.litm--might-picker .litm--might-table tbody tr td:has(> .litm--might-pick.is-own.is-active) {
+	background: color-mix(in srgb, var(--color-litm-might-origin) 35%, transparent);
+}
+
+/* A tier's coloured icon and number vanish into the fill; on it they read
+   as ink. */
+.litm--might-picker .litm--might-pick.is-active img {
+	filter: var(--litm-card-ink-filter);
+}
+
+.litm--roll-cards .litm--might-picker button.litm--might-pick.is-active {
+	color: var(--litm-card-ink);
+}
