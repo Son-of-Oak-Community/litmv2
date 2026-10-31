@@ -62,6 +62,8 @@ export class HandlebarsPartials {
 		"systems/litmv2/templates/partials/theme-special-improvements.html",
 		"systems/litmv2/templates/partials/theme-card-header.html",
 		"systems/litmv2/templates/partials/theme-description.html",
+		"systems/litmv2/templates/partials/flip-button.html",
+		"systems/litmv2/templates/partials/banner-icon.html",
 		"systems/litmv2/templates/partials/play-profile-img.html",
 		"systems/litmv2/templates/partials/rating-star.html",
 		"systems/litmv2/templates/partials/control-legend.html",

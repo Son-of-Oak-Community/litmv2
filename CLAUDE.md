@@ -11,6 +11,7 @@ Foundry source is symlinked at `./foundry/` (client code in `public/`, CSS at `p
 ## Commands
 
 - `npm test` — Vitest unit-test suite
+- `npm run check` / `npm run check:fix` — Biome lint + format (also `lint`, `format`)
 - `npm run i18n:check` — find missing/superfluous localization keys
 - `npm run i18n:diff` — translator diagnostic; diffs each non-English language against `lang/en.json`
 
@@ -107,7 +108,11 @@ Journey --------- Nx vignette (one marked generalConsequences)
 
 Typed sheets inherit through `LitmSheetMixin` → `LitmActorSheet` (items: `LitmItemSheet`); each has a `Landscape` variant. Challenge & Journey also mix in `TagStringSyncMixin`.
 
-All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — sheets switch templates by overriding `_getEditModeTemplate()` and `_configureRenderParts()`. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
+`HeroSheetCards` (`modules/actor/hero/hero-sheet-cards.js`; opt-in via Configure Sheet; root class `.litm-hero-cards`, CSS in `litmv2.css` §25) extends `PrintedCardsMixin(HeroSheet)`, sets `cardsLayout` for the template branches that differ, and owns `toggleHeroPanel` (portrait-panel fold, stored in the client setting `heroPanelCollapsed`) and card drag-reorder: themes by `item.sort`, the Fellowship card (another actor's item) by the hero flag `fellowshipIndex` (`card-order.js`). In both modes a theme's note is on the card's back, never the face.
+
+`PrintedCardsMixin` (`modules/sheets/printed-cards-mixin.js`) is the reusable part: the `.litm--printed-cards` root class (card-face CSS, §25b) and the `flipThemeCard` action (flip state lives on the sheet instance, not in data). Any actor sheet can mix it in; today only `HeroSheetCards` does, so other sheets look unchanged. `editNotes` (DialogV2 + `<prose-mirror>` over `system.notes`, a Play-mode button shown only when the sheet `editable`) lives on the base `HeroSheet`, so both hero sheets have it.
+
+All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — `_isEditMode` drives it; `_configureRenderParts()` swaps in the `PLAY_HEADER_TEMPLATE` / `PLAY_DESCRIPTION_TEMPLATE` / `PLAY_CONTENT_TEMPLATE` statics in play mode. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
 
 `LitmActorSheet` also owns the roll dialog (`hasRollDialog`, `rollDialogInstance`, `renderRollDialog`, `resetRollDialog`, `updateRollDialog`). They live on the base, not on `HeroSheet`, because Acting Together rides the Fellowship actor — and because the roll-dialog HUD and the roll sockets address whatever actor the `rollDialogOwner` flag names, without checking its type.
 
@@ -147,9 +152,7 @@ unit-tested):
   in `setType`, which the hero sheet's Sacrifice button calls directly; the
   markup is not the boundary. **The GM may set the move and the Might on any
   roll, called or not** — judging Might is the Narrator's job (p.272), so the
-  settings column renders for them even as a non-owner viewer. That is a
-  deliberate widening of the pre-branch behaviour, where the column was
-  owner-only.
+  settings column renders for them even as a non-owner viewer.
 - **Nothing that contributes to Power is read from the form.** `extractRollData`
   takes it all from the dialog's own fields, because `FormDataExtended` skips
   `:disabled` controls — reading Might off the form would drop exactly the value
@@ -176,8 +179,7 @@ to match.
 
 There is **no durable chat record** of a call. Pickup is the existing roll-dialog
 HUD strip in `#players`, driven by the same `rollDialogOwner` flag every other
-open roll uses; the roll posts its own card. `litm.narratorCallReceived` is gone
-with the receive step it named.
+open roll uses; the roll posts its own card.
 
 **Closing a view is not ending the roll.** A viewer, including the Narrator,
 can close their window without retracting the owner's presence. The owner
@@ -457,7 +459,7 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits, column hide/reveal), on every client; no payload. Roll dialogs listen to refresh contributed-tag groups.
 - `litm.sacrificePrepared` — `({ actor })` on clients other than the roller's when a Hero's roll turns into a Sacrifice; return `false` to suppress the default banner
 - `litm.campingStepChanged` — `({ from, to })` after camping navigates between steps
-- `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
+- `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it.
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.
 
@@ -468,10 +470,11 @@ New `.webp` assets must be added to the `preloads` array in `LitmConfig`. All im
 ## Design System
 
 The system has a fully-implemented visual identity — **not aspirational**. New UI
-must match it. Full detail (tokens, patterns, composition recipes, anti-references)
-lives in `.claude/rules/design-system.md`, which auto-loads for `templates/**`,
-`*.css`, and the `sheets`/`apps`/`components`/`renderers` modules.
+must match it. The reference is `litmv2.css` itself: its header indexes numbered
+sections (tag system, theme cards, roll dialog, roster §21, …), and §1 Global
+defines the tokens (`--font-*`, `--color-litm-*`, …).
 
-**Read that rule before writing any UI, template, or CSS.** If you catch yourself
+**Before writing any UI, template, or CSS, find the matching section and reuse its
+classes and tokens.** If you catch yourself
 writing inline `style="..."` or `border-radius: 999px`, stop — there is a litm
 token or class for it.

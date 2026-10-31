@@ -83,16 +83,17 @@ function _prepareCharacterOnCreate() {
 		async hero(actor, options) {
 			if (options?.litm?.skipAutoSetup) return;
 			const themeLimit = CONFIG.litmv2?.themeLimit ?? 4;
-			const missingThemes = Math.max(
-				themeLimit - actor.items.filter((it) => it.type === "theme").length,
-				0,
-			);
+			const themes = actor.items.filter((it) => it.type === "theme");
+			const missingThemes = Math.max(themeLimit - themes.length, 0);
 			if (missingThemes > 0) {
+				// Explicit sort: left at 0, the sheet would show them in DB order.
+				const lastSort = Math.max(0, ...themes.map((it) => it.sort ?? 0));
 				const themeItems = Array(missingThemes)
 					.fill()
 					.map((_, i) => ({
 						name: `${t("TYPES.Item.theme")} ${i + 1}`,
 						type: "theme",
+						sort: lastSort + (i + 1) * CONST.SORT_INTEGER_DENSITY,
 					}));
 				await actor.createEmbeddedDocuments("Item", themeItems);
 			}
