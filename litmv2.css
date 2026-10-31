@@ -3553,9 +3553,8 @@ section.standard-form.litm-theme-browser-body {
 }
 
 .litm--roll-dialog-tag-target {
-	color: var(--color-text-subtle);
-	font-style: italic;
-	font-size: var(--font-size-12);
+	align-items: center;
+	white-space: nowrap;
 }
 
 .litm fieldset ul.litm--roll-dialog-tags-summary {
@@ -3599,6 +3598,9 @@ section.standard-form.litm-theme-browser-body {
 }
 
 .litm--roll-dialog-theme-group:first-child,
+.litm--roll-dialog-tags-fieldset
+	> section.tab
+	> .litm--roll-dialog-section-break:first-child,
 .litm--roll-dialog-tags-fieldset
 	> section.tab
 	> .litm--roll-dialog-theme-group:first-of-type,

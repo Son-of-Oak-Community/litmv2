@@ -329,7 +329,14 @@
 				{{#each tab.groups as |group|}}
 				<div class="litm--roll-dialog-theme-group">
 					{{#if group.themeName}}
-					<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{/if}}{{group.themeName}}</p>
+					<p class="litm--roll-dialog-actor-label">
+						{{#if group.themeImg}}
+						<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
+						{{else if group.icon}}
+						<i class="{{group.icon}}" aria-hidden="true"></i>
+						{{/if}}
+						<span>{{group.themeName}}</span>
+					</p>
 					{{/if}}
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
@@ -378,24 +385,24 @@
 			{{!-- Allies tab: fellowship theme + tags, relationships, and
 			     any tags contributed by other heroes for this roll. --}}
 			<section class="tab {{#each ownerTabs}}{{#if (eq id "allies")}}{{cssClass}}{{/if}}{{/each}}" data-group="roll-tags" data-tab="allies">
-				{{#if fellowshipTagGroups.length}}
-				<div>
+				{{!-- Same rows as the Hero tab; the tab itself names the Fellowship. --}}
+				{{#each fellowshipTagGroups as |group|}}
+				<div class="litm--roll-dialog-theme-group">
 					<p class="litm--roll-dialog-actor-label">
-						<img src="systems/litmv2/assets/media/icons/fellowship.svg" alt="{{fellowshipName}}" />
-						<span>{{fellowshipName}}</span>
+						{{#if group.themeImg}}
+						<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
+						{{else if group.icon}}
+						<i class="{{group.icon}}" aria-hidden="true"></i>
+						{{/if}}
+						<span>{{group.themeName}}</span>
 					</p>
-					{{#each fellowshipTagGroups as |group|}}
-					<div class="litm--roll-dialog-theme-group">
-						<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{else if group.icon}}<i class="{{group.icon}}" aria-hidden="true"></i>{{/if}}{{group.themeName}}</p>
-						<ul class="plain litm--roll-dialog-tags-summary">
-							{{#each group.tags as |tag|}}
-							{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
-							{{/each}}
-						</ul>
-					</div>
-					{{/each}}
+					<ul class="plain litm--roll-dialog-tags-summary">
+						{{#each group.tags as |tag|}}
+						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
+						{{/each}}
+					</ul>
 				</div>
-				{{/if}}
+				{{/each}}
 
 				{{!-- Other fellowship heroes' sidebar-visible tags — the roller
 				     can invoke an ally's backpack tag or status directly. --}}
@@ -422,7 +429,7 @@
 					</p>
 					{{#each contributor.themeGroups as |group|}}
 					<div class="litm--roll-dialog-theme-group">
-						<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{/if}}{{group.themeName}}</p>
+						<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{else if group.icon}}<i class="{{group.icon}}" aria-hidden="true"></i>{{/if}}{{group.themeName}}</p>
 						<ul class="plain litm--roll-dialog-tags-summary">
 							{{#each group.tags as |tag|}}
 							{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
