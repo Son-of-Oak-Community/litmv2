@@ -14,6 +14,7 @@ describe("relationships with a deleted Hero", () => {
 			name,
 			type: "relationship_tag",
 			parent: null,
+			active: true,
 			system: { targetHero },
 		});
 		const hero = {
@@ -23,12 +24,15 @@ describe("relationships with a deleted Hero", () => {
 			img: null,
 			system: {},
 			items: { get: () => null },
-			appliedEffects: [
+			effects: [
 				rel("e1", "Old friend", { id: "h1" }),
 				rel("e2", "Lost friend", null),
 			],
+			allApplicableEffects() {
+				return this.effects;
+			},
 		};
-		for (const e of hero.appliedEffects) e.parent = hero;
+		for (const e of hero.effects) e.parent = hero;
 		game.user.character = hero;
 		const [helper] = buildContributedTagGroups(
 			{ actorId: "h1", getSelection: () => ({}) },

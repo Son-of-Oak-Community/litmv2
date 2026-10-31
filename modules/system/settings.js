@@ -14,6 +14,36 @@ const refreshTokenLabels = () =>
 		// unhandled rejection: the toggle would just appear to do nothing.
 		.catch(console.error);
 
+/**
+ * Rebuild every hero sheet whose class no longer matches the look (see
+ * `LitmActor#_getSheetClass`). An open sheet reopens in the new one.
+ */
+async function refreshHeroSheets() {
+	const heroes = new Set(game.actors.filter((a) => a.type === "hero"));
+	// Unlinked tokens' heroes are not in game.actors.
+	for (const app of foundry.applications.instances.values()) {
+		if (
+			app.document?.documentName === "Actor" &&
+			app.document.type === "hero"
+		) {
+			heroes.add(app.document);
+		}
+	}
+	for (const actor of heroes) {
+		const sheet = actor._sheet;
+		if (!sheet || sheet.constructor === actor._getSheetClass()) continue;
+		// The roll window belongs to its sheet instance; swapping the sheet
+		// would orphan a live roll and let a second window open beside it.
+		// shortcut: that sheet keeps its look until reload; hand the dialog to
+		// the new sheet if that turns out to bother anyone.
+		if (sheet.hasRollDialog && sheet.rollDialogInstance.rendered) continue;
+		const open = sheet.rendered;
+		await sheet.close();
+		actor._sheet = null;
+		if (open) actor.sheet.render(true);
+	}
+}
+
 export class LitmSettings {
 	static get popoutTagsSidebar() {
 		return game.settings.get("litmv2", "popout_tags_sidebar");
@@ -53,6 +83,11 @@ export class LitmSettings {
 
 	static get colorblindMode() {
 		return game.settings.get("litmv2", "colorblind_mode");
+	}
+
+	/** This player's look for hero sheets and the roll window: "classic" or "cards". */
+	static get look() {
+		return game.settings.get("litmv2", "look");
 	}
 
 	static get tokenTooltipStatusesOnly() {
@@ -426,6 +461,21 @@ export class LitmSettings {
 			onChange: (v) => {
 				document.body.classList.toggle("litm--colorblind", !!v);
 			},
+		});
+		// Hero sheets switch at once; a roll window takes it the next time it
+		// opens, so an open one keeps its look.
+		game.settings.register("litmv2", "look", {
+			name: "LITM.Settings.look",
+			hint: "LITM.Settings.look_hint",
+			scope: "client",
+			config: true,
+			type: String,
+			choices: {
+				classic: "LITM.Settings.look_classic",
+				cards: "LITM.Settings.look_cards",
+			},
+			default: "classic",
+			onChange: () => refreshHeroSheets().catch(console.error),
 		});
 		game.settings.register("litmv2", "party_overview_show_all", {
 			scope: "client",

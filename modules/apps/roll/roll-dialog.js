@@ -42,8 +42,14 @@ import {
 	buildSceneActorTagGroups,
 	buildSceneStatusItems,
 	buildSceneStoryTagItems,
+	classicMightScale,
 	makeTagDecorator,
+	mightFromPicks,
+	mightName,
+	mightScaleRows,
+	rollLookClass,
 	sortByTypeThenName,
+	summarizeChips,
 } from "./roll-dialog-context.js";
 import {
 	buildRollPreview,
@@ -105,6 +111,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		actions: {
 			sendToNarrator: LitmRollDialog.#onSendToNarrator,
 			narratorCommand: LitmRollDialog.#onNarratorCommand,
+			mightStep: LitmRollDialog.#onMightStep,
+			toggleMightPicker: LitmRollDialog.#onToggleMightPicker,
+			pickMight: LitmRollDialog.#onPickMight,
 			"spend-half": LitmRollDialog.#onSpendHalf,
 			viewLinkedRef: viewLinkedRefAction,
 			viewActionCard: LitmRollDialog.#onViewActionCard,
@@ -125,6 +134,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			],
 		},
 	};
+
+	/** Whether this window opened in the per-player Cards look. */
+	get isCardsLook() {
+		return this.#lookClass === "litm--roll-cards";
+	}
 
 	static create(options) {
 		return new LitmRollDialog(options);
@@ -214,6 +228,35 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			syncSession: this.syncSession,
 			command,
 		});
+	}
+
+	static #onMightStep(_event, target) {
+		this.#setMight(this.#might + Number(target.dataset.step));
+	}
+
+	/** Anyone may open the table; only whoever sets the Might picks in it. */
+	static #onToggleMightPicker() {
+		this.#mightPicker.open = !this.#mightPicker.open;
+		this.render();
+	}
+
+	/** One cell per column; the same cell again clears that column. */
+	static #onPickMight(_event, target) {
+		if (!this.canSetNarratorFields) return;
+		this.#alignMightPicker();
+		const { column } = target.dataset;
+		const value = Number(target.dataset.value);
+		const picks = this.#mightPicker.picks;
+		picks[column] = picks[column] === value ? null : value;
+		this.#setMight(mightFromPicks(picks));
+		this.render();
+	}
+
+	/** The picks describe the Might only until ±, the Classic scale or a sync
+	 * changes it; then they are dropped. */
+	#alignMightPicker() {
+		const picker = this.#mightPicker;
+		if (mightFromPicks(picker.picks) !== this.#might) picker.picks = {};
 	}
 
 	/**
@@ -575,6 +618,14 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#sacrificeStatusName = "";
 	#ownerId = null;
 	#localOnly = false;
+	// The look this window opened with. Picked on each open, not at
+	// construction: the sheet keeps one dialog for every roll, so a look frozen
+	// in its options would ignore the setting until a reload.
+	#lookClass = null;
+	// The Cards Might picker's own state: open or not, the cell picked in each
+	// column, and which side that Might is on. Local to this window; only the
+	// Might it adds up to is shared.
+	#mightPicker = { open: false, picks: {} };
 	#preserveAuthorityOnClose = false;
 	#cachedTotalPower = null;
 	#actionUuid = null;
@@ -825,6 +876,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#actionDoc = null;
 		this.#might = 0;
 		this.#sacrificeBonus = 0;
+		this.#mightPicker = { open: false, picks: {} };
 		this.#modifier = 0;
 		this.#tradePower = 0;
 		this.#sojournBonus = 0;
@@ -1309,7 +1361,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		return rows;
 	}
 
-	async _prepareContext(_options) {
+	async _prepareContext(options) {
+		// The tour preview keeps the classic look it was written against.
+		if (options.isFirstRender)
+			this.#lookClass = this.localOnly
+				? null
+				: rollLookClass(LitmSettings.look);
 		// A re-render can follow a change made elsewhere (a status tier in the
 		// sidebar): rows read live effects, so the total must too.
 		this.#cachedTotalPower = null;
@@ -1458,6 +1515,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		]);
 
 		const sacrificeThemes = this.#ensureSacrificeThemeSelected();
+		this.#alignMightPicker();
 
 		return {
 			actorId: this.actorId,
@@ -1502,6 +1560,20 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			}),
 			canSetNarratorFields: this.canSetNarratorFields,
 			requiresApproval: this.requiresApproval,
+			isCardsLook: this.isCardsLook,
+			mightValue: this.#might > 0 ? `+${this.#might}` : `${this.#might}`,
+			mightName: mightName(this.#might),
+			mightSign: Math.sign(this.#might),
+			mightPicker: {
+				...this.#mightPicker,
+				// A tier is lit by any pick in its rows, not only its own value.
+				rows: mightScaleRows().map((row) => {
+					const own = this.#mightPicker.picks.might;
+					if (row.tier && own != null)
+						row.tier.active = own >= row.tier.first && own <= row.tier.last;
+					return row;
+				}),
+			},
 			narratorCommands: isGMViewer && !!this.#ownerId && !this.localOnly,
 			canTradePower: canEditTradePower({
 				isOwner,
@@ -1535,6 +1607,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			modifier: this.#modifier,
 			might: this.#might,
 			mightRange: Array.from({ length: 13 }, (_, i) => i - 6),
+			mightScale: classicMightScale(this.#might),
 			tradePower: this.#tradePower,
 			canHedge: this.totalPower >= 2,
 			canCaution: this.totalPower <= 2,
@@ -1619,6 +1692,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	_onRender(context, options) {
 		super._onRender(context, options);
+		this.element.classList.toggle("litm--roll-cards", this.isCardsLook);
+		this.#refreshChips();
 		// A sync that landed while this render was being prepared — the usual
 		// case for a first render after a join or reload, which asks peers for
 		// the draft and renders without waiting — is not on screen yet, and
@@ -2133,6 +2208,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#might = 0;
 		this.#sacrificeBonus = 0;
 		this.#moveBeforeSacrifice = null;
+		this.#mightPicker = { open: false, picks: {} };
 		this.#tradePower = 0;
 		this.#sacrificeLevel = "painful";
 		this.#sacrificeThemeId = null;
@@ -2165,6 +2241,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	 * Viewers closing their own window do not end the shared roll.
 	 */
 	endSharedRoll({ preserveAuthority = false } = {}) {
+		// The Cards Might picker is this window's own; a roll that ends closes it.
+		this.#mightPicker = { open: false, picks: {} };
 		if (!preserveAuthority) {
 			this.#narratorCall = null;
 			for (const entry of this.#selectionMap.values()) entry.narrator = false;
@@ -2302,6 +2380,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		toggle(
 			".litm--roll-dialog-tags-column",
 			isSacrifice && !root.querySelector(".litm--sacrifice-theme-fieldset"),
+		);
+		// The Cards caption's Might control and picker sit outside that fieldset.
+		toggle(
+			".litm--roll-dialog-chips, .litm--might-control, .litm--might-picker",
+			isSacrifice,
 		);
 		// Toggle level-specific subfields (theme selector + grave status input)
 		this.#toggleSacrificeSubfields(isSacrifice ? this.#sacrificeLevel : null);
@@ -2537,12 +2620,29 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			this.#restoreRadio("might", this.#might);
 			return;
 		}
+		this.#setMight(Number(target.value) || 0);
+	}
+
+	/**
+	 * The one way the Might changes on this client: the Classic scale, the
+	 * Cards caption's ± and its picker. A group's Might adds up past ±6
+	 * (Core Book "Groups"), so the bound is three full columns of the table.
+	 * @param {number} value
+	 */
+	#setMight(value) {
+		if (!this.canSetNarratorFields) return;
 		this.#cachedTotalPower = null;
-		this.#might = Number(target.value) || 0;
-		this.element.querySelectorAll(".litm--might-option").forEach((label) => {
+		this.#might = Math.max(-18, Math.min(18, Math.trunc(value) || 0));
+		// Past ±6 the Classic scale lights its end, which reads the real value.
+		const scale = classicMightScale(this.#might);
+		this.element?.querySelectorAll(".litm--might-option").forEach((label) => {
 			const radio = label.querySelector("input[type='radio']");
-			label.classList.toggle("is-active", radio?.value === String(this.#might));
+			const on = radio?.value === String(scale.radio);
+			label.classList.toggle("is-active", on);
+			if (radio && radio.name === "might") radio.checked = on;
 		});
+		for (const el of this.element?.querySelectorAll("[data-might-end]") ?? [])
+			el.textContent = el.dataset.mightEnd === "low" ? scale.low : scale.high;
 		this.#updateTotalPower();
 		this.#dispatchUpdate();
 	}
@@ -2554,8 +2654,67 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	/** @type {HTMLInputElement|null} Cached by _onRender. */
 	#cautionRadioEl = null;
 
+	/**
+	 * Fill the Cards footer's read-only chips from every chosen row on this
+	 * client, masked rows included, so they follow each click without a
+	 * re-render. Classic has no chip list and skips this.
+	 */
+	#refreshChips() {
+		const list = this.element?.querySelector(".litm--roll-dialog-chips");
+		if (!list) return;
+		const rows = [
+			...this.element.querySelectorAll(
+				".litm--roll-dialog-tags-fieldset litm-super-checkbox",
+			),
+		]
+			.filter((box) => box.getAttribute("value"))
+			.map((box) => ({
+				key: box.getAttribute("name"),
+				name: box.getAttribute("aria-label"),
+				type: box.dataset.type,
+				state: box.getAttribute("value"),
+				tier: Number(box.dataset.tier) || 0,
+				narrator: !!box.closest(".is-narrator"),
+			}));
+		list.replaceChildren(
+			...summarizeChips(rows).map((chip) => {
+				const li = document.createElement("li");
+				li.className = `litm--roll-dialog-chip ${chip.value < 0 ? "is-negative" : "is-positive"}`;
+				if (!chip.counted) {
+					li.classList.add("is-uncounted");
+					li.dataset.tooltip = t("LITM.Ui.roll_chip_not_counted");
+				}
+				if (chip.narrator) {
+					const feather = document.createElement("i");
+					feather.className = "fa-solid fa-feather";
+					feather.setAttribute("aria-hidden", "true");
+					li.append(feather);
+				}
+				const label = document.createElement("span");
+				label.textContent = chip.label;
+				const value = document.createElement("span");
+				value.className = "litm--roll-dialog-chip-value";
+				value.textContent = chip.value > 0 ? `+${chip.value}` : `${chip.value}`;
+				li.append(label, value);
+				return li;
+			}),
+		);
+	}
+
 	#updateTotalPower() {
 		if (!this.element) return;
+		this.#refreshChips();
+		for (const el of this.element.querySelectorAll(
+			"[data-update='mightValue']",
+		))
+			el.textContent = this.#might > 0 ? `+${this.#might}` : `${this.#might}`;
+		for (const el of this.element.querySelectorAll("[data-update='mightName']"))
+			el.textContent = mightName(this.#might);
+		const mightButton = this.element.querySelector(".litm--might-value[data-sign]");
+		if (mightButton) {
+			mightButton.dataset.sign = Math.sign(this.#might);
+			mightButton.ariaLabel = `${t("LITM.Terms.might")}: ${mightButton.textContent.trim()} ${mightName(this.#might)}`.trim();
+		}
 		const totalPower = this.totalPower;
 		const tabPowers = this.#tabPowers();
 		for (const el of this.element.querySelectorAll("[data-tab-power]"))

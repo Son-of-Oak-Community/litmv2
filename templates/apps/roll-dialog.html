@@ -5,6 +5,26 @@
 	<span class="litm--roll-dialog-tab-power" data-tab-power="{{tab.id}}">{{tab.power}}</span>
 </a>
 {{/inline}}
+{{!-- Trade Power. The Cards look shows it in the footer, by Total Power;
+     Classic keeps it under Might. --}}
+{{#*inline "tradePower"}}
+<div class="litm--trade-power-fieldset hidden">
+	<div class="litm--roll-type-bar litm--trade-power-bar">
+		<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower -1)}}is-active{{/if}} {{#unless canCaution}}is-disabled{{/unless}}" data-tooltip="{{localize 'LITM.Ui.trade_caution_hint'}}">
+			<input type="radio" name="tradePower" value="-1" {{checked (eq tradePower -1)}} {{#unless canCaution}}disabled{{/unless}} />
+			<span>{{localize "LITM.Ui.trade_caution"}}</span>
+		</label>
+		<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower 0)}}is-active{{/if}}">
+			<input type="radio" name="tradePower" value="0" {{checked (eq tradePower 0)}} />
+			<span>{{localize "LITM.Ui.trade_none"}}</span>
+		</label>
+		<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower 1)}}is-active{{/if}} {{#unless canHedge}}is-disabled{{/unless}}" data-tooltip="{{localize 'LITM.Ui.trade_hedge_hint'}}">
+			<input type="radio" name="tradePower" value="1" {{checked (eq tradePower 1)}} {{#unless canHedge}}disabled{{/unless}} />
+			<span>{{localize "LITM.Ui.trade_hedge"}}</span>
+		</label>
+	</div>
+</div>
+{{/inline}}
 <div class="standard-form litm--roll-dialog-body">
 	<input type="hidden" name="actorId" value="{{actorId}}">
 
@@ -39,7 +59,7 @@
 		     Narrator alike: on a called roll the move is the Narrator's to set
 		     even though the player owns the dialog, so this can't be gated on
 		     ownership. `canSetNarratorFields` is the actual authority. --}}
-		{{#if showSettings}}
+		{{#if (and showSettings (not isCardsLook))}}
 		<div class="litm--roll-type-bar litm--move-bar">
 			{{#each rollTypes as |opt|}}
 			<label class="litm--segmented-option litm--roll-type-option {{#if (eq opt.key ../type)}}is-active{{/if}} {{#if opt.disabled}}is-disabled{{/if}} {{#if (eq opt.key 'sacrifice')}}litm--sacrifice-switch{{/if}}"
@@ -52,6 +72,110 @@
 		</div>
 		{{/if}}
 
+		{{#if isCardsLook}}
+		{{!-- Cards: one caption for the call, the Might and the group. Whoever
+		      may set the Might steps it here or opens the book's table below;
+		      a player on a called roll reads it. The Classic scale is hidden. --}}
+		<div class="litm--roll-caption">
+			{{!-- The move, as three icons: the same radios as the Classic bar,
+			      read-only (only the chosen one lit) for a player on a call. --}}
+			<span class="litm--roll-caption-moves">
+				{{#if showSettings}}
+				<span class="litm--roll-type-bar litm--roll-type-icons" role="radiogroup">
+					{{#each rollTypes as |opt|}}
+					<label class="litm--segmented-option litm--roll-type-option {{#if (eq opt.key ../type)}}is-active{{/if}} {{#if opt.disabled}}is-disabled{{/if}} {{#if (eq opt.key 'sacrifice')}}litm--sacrifice-switch{{/if}}"
+						data-tooltip="{{#if (eq opt.key 'sacrifice')}}{{localize 'LITM.Ui.sacrifice_propose_hint'}}{{else}}{{localize opt.label}}{{/if}}" aria-label="{{localize opt.label}}">
+						<input type="radio" name="type" value="{{opt.key}}" {{checked (eq opt.key ../type)}}
+							{{#if opt.disabled}}disabled aria-disabled="true"{{/if}} />
+						<i class="fa-solid {{#if (eq opt.key "sacrifice")}}fa-skull{{else if (eq opt.key "quick")}}fa-rabbit-running{{else if (eq opt.key "tracked")}}fa-chess-knight{{else}}fa-user-shield{{/if}}" aria-hidden="true"></i>
+					</label>
+					{{/each}}
+				</span>
+				<small class="litm--roll-type-name" aria-hidden="true">{{localize (concat "LITM.Ui.roll_" type)}}</small>
+				{{/if}}
+			</span>
+			<span class="litm--might-control">
+				<span class="litm--might-steps">
+					{{#if canSetNarratorFields}}
+					<button type="button" class="litm--might-step" data-action="mightStep" data-step="-1"
+						aria-label="{{localize 'LITM.Ui.might_step_down'}}">−</button>
+					{{/if}}
+					<button type="button" class="litm--might-value" data-action="toggleMightPicker"
+						data-sign="{{mightSign}}"
+						aria-label="{{localize 'LITM.Terms.might'}}: {{mightValue}} {{mightName}}"
+						aria-expanded="{{#if mightPicker.open}}true{{else}}false{{/if}}">
+						<strong data-update="mightValue">{{mightValue}}</strong>
+					</button>
+					{{#if canSetNarratorFields}}
+					<button type="button" class="litm--might-step" data-action="mightStep" data-step="1"
+						aria-label="{{localize 'LITM.Ui.might_step_up'}}">+</button>
+					{{/if}}
+				</span>
+				<small class="litm--might-name" data-update="mightName" aria-hidden="true">{{mightName}}</small>
+			</span>
+			<span class="litm--roll-caption-info">
+				{{#if narratorCall}}
+				<span class="litm--roll-caption-call">
+					<i class="fa-solid fa-feather" aria-hidden="true"></i>
+					{{!-- The move is named only where its icons aren't shown. --}}
+					{{#if showSettings}}
+					{{localize "LITM.Ui.narrator_call_by" name=narratorCall.narratorName}}
+					{{else}}
+					{{localize "LITM.Ui.narrator_call_banner" name=narratorCall.narratorName type=narratorCall.typeLabel}}
+					{{/if}}
+				</span>
+				{{/if}}
+				{{#if isGroupRoll}}
+				<span class="litm--roll-caption-group">
+					<i class="fa-solid fa-people-group" aria-hidden="true"></i>
+					{{localize "LITM.Ui.acting_together"}}
+				</span>
+				{{/if}}
+			</span>
+		</div>
+		{{!-- A player opens it too, as the book's reference: read-only. --}}
+		{{#if mightPicker.open}}
+		<div class="litm--might-picker {{#unless canSetNarratorFields}}is-readonly{{/unless}}">
+			<h3 class="litm--might-tooltip-title">{{localize "LITM.Ui.might_scale_title"}}</h3>
+			<table class="litm--might-table">
+				<thead>
+					<tr>
+						<th>{{localize "LITM.Terms.might"}}</th>
+						<th>{{localize "LITM.Ui.might_scale_header_scale"}}</th>
+						<th>{{localize "LITM.Ui.might_scale_header_area"}}</th>
+						<th>{{localize "LITM.Ui.might_scale_header_size"}}</th>
+						<th>{{localize "LITM.Ui.might_scale_header_group"}}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{{#each mightPicker.rows as |row|}}
+					<tr>
+						{{#if row.tier}}
+						<td rowspan="{{row.tier.rowspan}}" class="litm--might-table-tier">
+							<button type="button" class="litm--might-pick is-own {{#if row.tier.active}}is-active{{/if}}"
+								data-action="pickMight" data-column="might" data-value="{{row.tier.might}}">
+								<img src="systems/litmv2/assets/media/icons/{{row.tier.level}}.svg" alt="" />
+								<span>{{row.tier.label}}</span>
+							</button>
+						</td>
+						{{/if}}
+						<td class="{{#if row.accent}}litm--might-scale-accent litm--might-scale-{{row.accent}}{{/if}}">
+							<button type="button" class="litm--might-pick is-own {{#if (eq ../mightPicker.picks.might row.value)}}is-active{{/if}}"
+								data-action="pickMight" data-column="might" data-value="{{row.value}}">{{row.value}}</button>
+						</td>
+						<td><button type="button" class="litm--might-pick {{#if (eq ../mightPicker.picks.area row.value)}}is-active{{/if}}"
+							data-action="pickMight" data-column="area" data-value="{{row.value}}">{{row.area}}</button></td>
+						<td><button type="button" class="litm--might-pick {{#if (eq ../mightPicker.picks.size row.value)}}is-active{{/if}}"
+							data-action="pickMight" data-column="size" data-value="{{row.value}}">{{row.size}}</button></td>
+						<td><button type="button" class="litm--might-pick {{#if (eq ../mightPicker.picks.group row.value)}}is-active{{/if}}"
+							data-action="pickMight" data-column="group" data-value="{{row.value}}">{{row.group}}</button></td>
+					</tr>
+					{{/each}}
+				</tbody>
+			</table>
+		</div>
+		{{/if}}
+		{{else}}
 		{{#if narratorCall}}
 		<div class="litm-banner litm--narrator-call-banner">
 			<i class="fa-solid fa-feather" aria-hidden="true"></i>
@@ -64,6 +188,7 @@
 			<i class="fa-solid fa-people-group" aria-hidden="true"></i>
 			<span>{{localize "LITM.Ui.acting_together_banner"}}</span>
 		</div>
+		{{/if}}
 		{{/if}}
 
 		{{#if mitigationBanner}}
@@ -93,23 +218,25 @@
 						{{localize "LITM.Terms.might"}}
 						<i class="fa-solid fa-circle-info" aria-hidden="true"></i>
 					</span>
+					{{!-- The scale stops at ±6; a group's Might adds up past it. --}}
+					<strong class="litm--might-value" data-update="mightValue">{{mightValue}}</strong>
 				</div>
 				<div class="litm--might-radio-row {{#unless canSetNarratorFields}}is-locked{{/unless}}">
 					{{#each mightRange}}
-					<label class="litm--segmented-option litm--might-option {{#if (eq ../might this)}}is-active{{/if}}"
+					<label class="litm--segmented-option litm--might-option {{#if (eq ../mightScale.radio this)}}is-active{{/if}}"
 						{{#if (eq this -6)}}data-tooltip="{{localize 'LITM.Ui.might_extremely_imperiled_short'}}"
 						{{else if (eq this -3)}}data-tooltip="{{localize 'LITM.Ui.might_imperiled_short'}}"
 						{{else if (eq this 0)}}data-tooltip="{{localize 'LITM.Ui.might_equal_short'}}"
 						{{else if (eq this 3)}}data-tooltip="{{localize 'LITM.Ui.might_favored_short'}}"
 						{{else if (eq this 6)}}data-tooltip="{{localize 'LITM.Ui.might_extremely_favored_short'}}"
 						{{/if}}>
-						<input type="radio" name="might" value="{{this}}" {{checked (eq ../might this)}}
+						<input type="radio" name="might" value="{{this}}" {{checked (eq ../mightScale.radio this)}}
 							{{#unless ../canSetNarratorFields}}disabled aria-disabled="true"{{/unless}} />
-						{{#if (eq this -6)}}<span class="litm--might-scale-greatness">-6</span>
+						{{#if (eq this -6)}}<span class="litm--might-scale-greatness" data-might-end="low">{{../mightScale.low}}</span>
 						{{else if (eq this -3)}}<span class="litm--might-scale-adventure">-3</span>
 						{{else if (eq this 0)}}<span class="litm--might-scale-origin">0</span>
 						{{else if (eq this 3)}}<span class="litm--might-scale-adventure">+3</span>
-						{{else if (eq this 6)}}<span class="litm--might-scale-greatness">+6</span>
+						{{else if (eq this 6)}}<span class="litm--might-scale-greatness" data-might-end="high">{{../mightScale.high}}</span>
 						{{else if (gt this 0)}}<span>+{{this}}</span>
 						{{else}}<span>{{this}}</span>
 						{{/if}}
@@ -221,24 +348,7 @@
 					</table>
 				</div>
 			</template>
-			{{#if canTradePower}}
-			<div class="litm--trade-power-fieldset hidden">
-				<div class="litm--roll-type-bar litm--trade-power-bar">
-					<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower -1)}}is-active{{/if}} {{#unless canCaution}}is-disabled{{/unless}}" data-tooltip="{{localize 'LITM.Ui.trade_caution_hint'}}">
-						<input type="radio" name="tradePower" value="-1" {{checked (eq tradePower -1)}} {{#unless canCaution}}disabled{{/unless}} />
-						<span>{{localize "LITM.Ui.trade_caution"}}</span>
-					</label>
-					<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower 0)}}is-active{{/if}}">
-						<input type="radio" name="tradePower" value="0" {{checked (eq tradePower 0)}} />
-						<span>{{localize "LITM.Ui.trade_none"}}</span>
-					</label>
-					<label class="litm--segmented-option litm--roll-type-option {{#if (eq tradePower 1)}}is-active{{/if}} {{#unless canHedge}}is-disabled{{/unless}}" data-tooltip="{{localize 'LITM.Ui.trade_hedge_hint'}}">
-						<input type="radio" name="tradePower" value="1" {{checked (eq tradePower 1)}} {{#unless canHedge}}disabled{{/unless}} />
-						<span>{{localize "LITM.Ui.trade_hedge"}}</span>
-					</label>
-				</div>
-			</div>
-			{{/if}}
+			{{#if (and canTradePower (not isCardsLook))}}{{> tradePower}}{{/if}}
 		</fieldset>
 
 		{{#if showSacrifice}}
@@ -374,20 +484,13 @@
 			{{#each gmViewerTabs as |tab|}}
 			<section class="tab {{tab.cssClass}}" data-group="gm-viewer" data-tab="{{tab.id}}">
 				{{#each tab.groups as |group|}}
-				<div class="litm--roll-dialog-theme-group">
+				<div class="litm--roll-dialog-theme-group"{{#if group.level}} data-level="{{group.level}}"{{/if}}{{#if group.banner}} data-banner="{{group.banner}}"{{/if}}>
 					{{#if group.themeName}}
-					<p class="litm--roll-dialog-actor-label">
-						{{#if group.themeImg}}
-						<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
-						{{else if group.icon}}
-						<i class="{{group.icon}}" aria-hidden="true"></i>
-						{{/if}}
-						<span>{{group.themeName}}</span>
-					</p>
+					{{> "systems/litmv2/templates/partials/roll-plaque.html" group=group label="litm--roll-dialog-actor-label"}}
 					{{/if}}
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
+						{{#unless (or (and @root.isCardsLook tag.system.isTitleTag) (and (not @root.isCardsLook) tag.isUnavailable))}}{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}{{/unless}}
 						{{/each}}
 					</ul>
 				</div>
@@ -408,18 +511,11 @@
 			<section class="tab {{#each ownerTabs}}{{#if (eq id "hero")}}{{cssClass}}{{/if}}{{/each}}" data-group="roll-tags" data-tab="hero">
 				{{#if characterTagGroups.length}}
 				{{#each characterTagGroups as |group|}}
-				<div class="litm--roll-dialog-theme-group">
-					<p class="litm--roll-dialog-actor-label">
-						{{#if group.themeImg}}
-						<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
-						{{else if group.icon}}
-						<i class="{{group.icon}}" aria-hidden="true"></i>
-						{{/if}}
-						<span>{{group.themeName}}</span>
-					</p>
+				<div class="litm--roll-dialog-theme-group"{{#if group.level}} data-level="{{group.level}}"{{/if}}{{#if group.banner}} data-banner="{{group.banner}}"{{/if}}>
+					{{> "systems/litmv2/templates/partials/roll-plaque.html" group=group label="litm--roll-dialog-actor-label"}}
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
+						{{#unless (or (and @root.isCardsLook tag.system.isTitleTag) (and (not @root.isCardsLook) tag.isUnavailable))}}{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}{{/unless}}
 						{{/each}}
 					</ul>
 				</div>
@@ -434,18 +530,11 @@
 			<section class="tab {{#each ownerTabs}}{{#if (eq id "allies")}}{{cssClass}}{{/if}}{{/each}}" data-group="roll-tags" data-tab="allies">
 				{{!-- Same rows as the Hero tab; the tab itself names the Fellowship. --}}
 				{{#each fellowshipTagGroups as |group|}}
-				<div class="litm--roll-dialog-theme-group">
-					<p class="litm--roll-dialog-actor-label">
-						{{#if group.themeImg}}
-						<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
-						{{else if group.icon}}
-						<i class="{{group.icon}}" aria-hidden="true"></i>
-						{{/if}}
-						<span>{{group.themeName}}</span>
-					</p>
+				<div class="litm--roll-dialog-theme-group"{{#if group.level}} data-level="{{group.level}}"{{/if}}{{#if group.banner}} data-banner="{{group.banner}}"{{/if}}>
+					{{> "systems/litmv2/templates/partials/roll-plaque.html" group=group label="litm--roll-dialog-actor-label"}}
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
+						{{#unless (or (and @root.isCardsLook tag.system.isTitleTag) (and (not @root.isCardsLook) tag.isUnavailable))}}{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}{{/unless}}
 						{{/each}}
 					</ul>
 				</div>
@@ -475,11 +564,11 @@
 						<span>{{contributor.actorName}}</span>
 					</p>
 					{{#each contributor.themeGroups as |group|}}
-					<div class="litm--roll-dialog-theme-group">
-						<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{else if group.icon}}<i class="{{group.icon}}" aria-hidden="true"></i>{{/if}}{{group.themeName}}</p>
+					<div class="litm--roll-dialog-theme-group"{{#if group.level}} data-level="{{group.level}}"{{/if}}{{#if group.banner}} data-banner="{{group.banner}}"{{/if}}>
+						{{> "systems/litmv2/templates/partials/roll-plaque.html" group=group label="litm--roll-dialog-theme-label"}}
 						<ul class="plain litm--roll-dialog-tags-summary">
 							{{#each group.tags as |tag|}}
-							{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
+							{{#unless (or (and @root.isCardsLook tag.system.isTitleTag) (and (not @root.isCardsLook) tag.isUnavailable))}}{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}{{/unless}}
 							{{/each}}
 						</ul>
 					</div>
@@ -562,11 +651,11 @@
 					<span>{{fellowshipName}}</span>
 				</p>
 				{{#each fellowshipTagGroups as |group|}}
-				<div class="litm--roll-dialog-theme-group">
-					<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{else if group.icon}}<i class="{{group.icon}}" aria-hidden="true"></i>{{/if}}{{group.themeName}}</p>
+				<div class="litm--roll-dialog-theme-group"{{#if group.level}} data-level="{{group.level}}"{{/if}}{{#if group.banner}} data-banner="{{group.banner}}"{{/if}}>
+					{{> "systems/litmv2/templates/partials/roll-plaque.html" group=group label="litm--roll-dialog-theme-label"}}
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
+						{{#unless (or (and @root.isCardsLook tag.system.isTitleTag) (and (not @root.isCardsLook) tag.isUnavailable))}}{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}{{/unless}}
 						{{/each}}
 					</ul>
 				</div>
@@ -577,18 +666,11 @@
 			{{#if characterTagGroups.length}}
 			<div class="litm--roll-dialog-section-break">
 			{{#each characterTagGroups as |group|}}
-			<div class="litm--roll-dialog-theme-group">
-				<p class="litm--roll-dialog-actor-label">
-					{{#if group.themeImg}}
-					<img src="{{group.themeImg}}" alt="{{group.themeName}}" />
-					{{else if group.icon}}
-					<i class="{{group.icon}}" aria-hidden="true"></i>
-					{{/if}}
-					<span>{{group.themeName}}</span>
-				</p>
+			<div class="litm--roll-dialog-theme-group"{{#if group.level}} data-level="{{group.level}}"{{/if}}{{#if group.banner}} data-banner="{{group.banner}}"{{/if}}>
+				{{> "systems/litmv2/templates/partials/roll-plaque.html" group=group label="litm--roll-dialog-actor-label"}}
 				<ul class="plain litm--roll-dialog-tags-summary">
 					{{#each group.tags as |tag|}}
-					{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
+					{{#unless (or (and @root.isCardsLook tag.system.isTitleTag) (and (not @root.isCardsLook) tag.isUnavailable))}}{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}{{/unless}}
 					{{/each}}
 				</ul>
 			</div>
@@ -604,11 +686,11 @@
 					<span>{{contributor.actorName}}</span>
 				</p>
 				{{#each contributor.themeGroups as |group|}}
-				<div class="litm--roll-dialog-theme-group">
-					<p class="litm--roll-dialog-theme-label">{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{/if}}{{group.themeName}}</p>
+				<div class="litm--roll-dialog-theme-group"{{#if group.level}} data-level="{{group.level}}"{{/if}}{{#if group.banner}} data-banner="{{group.banner}}"{{/if}}>
+					{{> "systems/litmv2/templates/partials/roll-plaque.html" group=group label="litm--roll-dialog-theme-label"}}
 					<ul class="plain litm--roll-dialog-tags-summary">
 						{{#each group.tags as |tag|}}
-						{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}
+						{{#unless (or (and @root.isCardsLook tag.system.isTitleTag) (and (not @root.isCardsLook) tag.isUnavailable))}}{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}{{/unless}}
 						{{/each}}
 					</ul>
 				</div>
@@ -711,6 +793,10 @@
 	</div>
 
 	<div class="litm--roll-dialog-footer">
+		{{#if isCardsLook}}
+		<ul class="plain litm--roll-dialog-chips" aria-label="{{localize 'LITM.Ui.roll_chips_label'}}"></ul>
+		{{/if}}
+		{{#if (and canTradePower isCardsLook)}}{{> tradePower}}{{/if}}
 		<!-- Total Power -->
 		<div class="litm--roll-dialog-total-power">
 			<span class="flex1">{{localize "LITM.Ui.total_power"}}</span>

@@ -155,7 +155,9 @@ export class HeroSheetCards extends PrintedCardsMixin(HeroSheet) {
 	 * @protected
 	 */
 	_onBannerDblClick(event) {
-		if (!this.isEditable || event.target.closest("button")) return;
+		// A tag chip (the title is one) acts on its first click; do not also open a sheet.
+		if (!this.isEditable || event.target.closest("button, a, [data-tag-id]"))
+			return;
 		const kit = event.target.closest(".litm-kit-card > legend")?.parentElement;
 		if (kit?.matches(".litm-kit-card--backpack"))
 			return this.document.system.backpackItem?.sheet.render(true);

@@ -231,6 +231,17 @@ describe("HeroSheetCards banner double-click", () => {
 		expect(render).toHaveBeenCalledWith(true);
 	});
 
+	it("leaves a double-click on a tag chip to the chip", () => {
+		render.mockClear();
+		dblclick.call(makeSheet(true), {
+			target: {
+				closest: (sel) =>
+					sel.includes("[data-tag-id]") ? {} : event.target.closest(sel),
+			},
+		});
+		expect(render).not.toHaveBeenCalled();
+	});
+
 	it("does nothing for a viewer who cannot edit the hero", () => {
 		render.mockClear();
 		dblclick.call(makeSheet(false), event);
