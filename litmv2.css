@@ -8870,6 +8870,44 @@ body.theme-dark
 	color: inherit;
 }
 
+/* The main tag titles the banner: banner ink, no chip. */
+.litm--printed-cards .litm-hero-board
+	.theme-card
+	> legend
+	.theme-card__banner-tag {
+	/* One line: the card only reserves room for a one-line banner. */
+	flex: 0 1 auto;
+	display: block;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	padding: 0;
+
+	/* Struck through and dimmed instead; the glyph would sit past the ellipsis. */
+	.litm-tag-scratch-glyph {
+		display: none;
+	}
+	font: inherit;
+	letter-spacing: inherit;
+	text-transform: none;
+	color: inherit;
+
+	&::before,
+	&::after {
+		content: none;
+	}
+
+	&:hover {
+		text-decoration: underline;
+	}
+
+	&.scratched {
+		text-decoration: line-through;
+		opacity: 0.7;
+	}
+}
+
 .litm--printed-cards .litm--banner-icon {
 	flex: none;
 	display: inline-flex;
