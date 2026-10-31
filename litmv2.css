@@ -9362,6 +9362,12 @@ body.theme-dark
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
 }
 
+/* Story cards keep a theme card's width: empty tracks stay, so one story
+   theme does not stretch across the row. */
+.litm-hero-cards .litm-hero-board__story-grid {
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+}
+
 .litm-hero-cards .litm-hero-board__inventory {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));

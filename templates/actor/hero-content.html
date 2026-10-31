@@ -230,9 +230,10 @@
 		{{#if storyThemes.length}}
 		<div class="litm-hero-board__story-grid">
 		{{#each storyThemes as |theme|}}
-		<fieldset class="theme-card story-theme-card item{{#unless @root.cardsLayout}} draggable{{/unless}}" data-item-id="{{theme._id}}">
+		<fieldset class="theme-card story-theme-card item{{#unless @root.cardsLayout}} draggable{{/unless}}" data-item-id="{{theme._id}}"{{#if @root.cardsLayout}} data-flip-key="{{theme._id}}" data-level="{{theme.system.level}}"{{/if}}>
 			<legend class="flexrow gap-xs{{#if @root.cardsLayout}} draggable{{/if}}">
-				<span class="litm-banner theme-card__book">{{localize "LITM.Terms.story"}}</span>
+				<span class="litm-banner theme-card__book">{{#if @root.cardsLayout}}{{#if theme.isFellowship}}<img class="litm--banner-icon" src="{{theme.levelIcon}}" alt="" data-tooltip="{{theme.levelLabel}}" />{{else}}{{> "systems/litmv2/templates/partials/banner-icon.html" src=theme.levelIcon action="editItem" itemId=theme._id label=(localize "LITM.Ui.click_to_edit_story_theme") tooltip=theme.levelLabel}}{{/if}}{{> bannerTag theme}}{{else}}{{localize "LITM.Terms.story"}}{{/if}}</span>
+				{{#if (and @root.cardsLayout theme.system.description)}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}
 				{{#unless theme.isFellowship}}
 				{{#unless @root.cardsLayout}}
 				<button type="button" data-action="editItem" data-item-id="{{theme._id}}"
@@ -248,12 +249,14 @@
 				</button>
 				{{/unless}}
 			</legend>
+			{{#if (and @root.cardsLayout theme.system.description)}}<div class="theme-card__back"><h4 class="theme-card__back-title">{{localize "LITM.Terms.story"}}</h4>{{{ theme.system.description }}}</div>{{/if}}
 
 			<div class="story-theme-card__header">
 				{{#if theme.hasCustomImage}}
 				<img class="story-theme-card__portrait" src="{{theme.img}}" alt="{{theme.name}}" />
 				{{/if}}
 				<div class="flexcol gap-xs">
+					{{#unless @root.cardsLayout}}
 					<div class="flexrow noflex gap-sm">
 						<img class="noflex icon-md" src="{{theme.levelIcon}}" alt="{{theme.levelLabel}}"
 							data-tooltip="{{theme.levelLabel}}" />
@@ -263,13 +266,16 @@
 						extraClass="litm-title_tag"
 						}}
 					</div>
+					{{/unless}}
 					{{> systems/litmv2/templates/partials/edit-theme-tags-activatable.html theme}}
 				</div>
 			</div>
 
+			{{#unless @root.cardsLayout}}
 			<div>
 				{{{ theme.system.description }}}
 			</div>
+			{{/unless}}
 		</fieldset>
 		{{/each}}
 		</div>
