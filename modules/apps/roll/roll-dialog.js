@@ -172,6 +172,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				cancelled: true,
 			});
 			await this.actor?.unsetFlag("litmv2", FLAGS.rollDialogOwner);
+			// No socket echoes back here, and close() only ends an owner's roll.
+			this.endSharedRoll();
 			return this.close();
 		}
 		Sockets.dispatch("narratorRollCommand", {
@@ -279,7 +281,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// The camp action is spent; the next ordinary roll must not reopen in
 		// camp mode or keep the sojourn bonus.
 		this.reset();
-		await this.close();
+		await this.close({ submitted: true });
 		const { SpendPowerApp } = await import("../spend-power.js");
 		new SpendPowerApp({ actorId: actor.id, power: half }).render(true);
 	}
@@ -819,7 +821,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 							contributorActorImg: existing?.contributorActorImg ?? null,
 						}),
 			};
-			entry.helper = this.#isHelpTag(entry.tagActorId);
+			entry.helper = this.#isHelpTag(entry.tagActorId, effectId);
 			this.#selectionMap.set(effectId, entry);
 		}
 	}
@@ -1499,9 +1501,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	 * Together has its own cap.
 	 * @param {string|null} tagActorId
 	 */
-	#isHelpTag(tagActorId) {
+	#isHelpTag(tagActorId, uuid) {
 		if (this.isGroupRoll || !tagActorId || tagActorId === this.actorId)
 			return false;
+		// Helping is one of the Hero's tags, never a status (p.157).
+		if (foundry.utils.fromUuidSync(uuid)?.type === "status_tag") return false;
 		return game.actors.get(tagActorId)?.type === "hero";
 	}
 
@@ -1564,7 +1568,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const tagActorId = existingSel.tagActorId ?? resolveTagActorId(id);
 		const helperEntry = {
 			state: value,
-			helper: this.#isHelpTag(tagActorId),
+			helper: this.#isHelpTag(tagActorId, id),
 			tagActorId,
 		};
 		const refusesHelp = refusesHelperTag(this.#selectionMap, id, helperEntry);

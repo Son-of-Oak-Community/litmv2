@@ -12,6 +12,7 @@ import {
 } from "../apps/spend-power-service.js";
 import { error, warn } from "../logger.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
+import { FLAGS } from "./config.js";
 
 export class Sockets {
 	static dispatch(event, data) {
@@ -117,19 +118,57 @@ export class Sockets {
 		// roll's owner acts on it.
 		Sockets.on(
 			"narratorRollCommand",
-			({ senderId, data: { actorId, syncSession, command } }) => {
+			async ({ senderId, data: { actorId, syncSession, command } }) => {
 				if (!game.users.get(senderId)?.isGM) return;
-				const dialog = game.actors.get(actorId)?.sheet?.rollDialogInstance;
-				if (!dialog?.rendered || !dialog.isOwner) return;
-				if (!dialog.matchesSyncSession(syncSession)) return;
-				if (command === "cancel") {
-					ui.notifications?.info(t("LITM.Ui.roll_cancelled_by_narrator"));
-					dialog.close();
+				const actor = game.actors.get(actorId);
+				const sheet = actor?.sheet;
+				const dialog = sheet?.hasRollDialog ? sheet.rollDialogInstance : null;
+				const refuse = (reason) =>
+					Sockets.dispatch("narratorRollCommandRefused", {
+						userId: senderId,
+						reason,
+					});
+				if (dialog?.rendered) {
+					if (!dialog.isOwner || !dialog.matchesSyncSession(syncSession))
+						return;
+					if (command === "cancel") {
+						ui.notifications?.info(t("LITM.Ui.roll_cancelled_by_narrator"));
+						dialog.close();
+					} else if (command === "roll") {
+						if (dialog.painfulSacrificeHasNoTarget())
+							return refuse("sacrifice");
+						dialog.submit({ narrator: true })?.catch(console.error);
+					}
+					return;
 				}
-				else if (command === "roll")
-					dialog.submit({ narrator: true })?.catch(console.error);
+				// No window open: the owner reloaded mid-call and hasn't gone back
+				// to it yet. The call lives on in the flag, so end it from there.
+				const flag = actor?.getFlag("litmv2", FLAGS.rollDialogOwner);
+				if (flag?.ownerId !== game.user.id) return;
+				if (syncSession && flag.syncSession && flag.syncSession !== syncSession)
+					return;
+				if (command !== "cancel") return refuse("closed");
+				ui.notifications?.info(t("LITM.Ui.roll_cancelled_by_narrator"));
+				dialog?.endSharedRoll();
+				Sockets.dispatch("closeRollDialog", {
+					actorId,
+					syncSession,
+					cancelled: true,
+				});
+				await actor.unsetFlag("litmv2", FLAGS.rollDialogOwner);
 			},
 		);
+
+		Sockets.on("narratorRollCommandRefused", ({ data: { userId, reason } }) => {
+			if (userId !== game.userId) return;
+			ui.notifications?.warn(
+				t(
+					reason === "sacrifice"
+						? "LITM.Ui.sacrifice_all_spent_warning"
+						: "LITM.Ui.roll_window_closed",
+				),
+			);
+		});
 
 		Sockets.on(
 			"closeRollDialog",

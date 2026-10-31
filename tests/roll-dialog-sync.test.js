@@ -362,3 +362,32 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 		}
 	});
 });
+
+describe("Helping Each Other", () => {
+	// p.157: the help is one of the helper's tags, never a status.
+	const allyEffect = (type) => {
+		foundry.utils.fromUuidSync.mockImplementation(() => ({
+			type,
+			parent: { documentName: "Actor", id: "ally" },
+		}));
+		game.actors.get.mockImplementation((id) =>
+			id === "ally" ? { type: "hero" } : null,
+		);
+	};
+
+	it("does not count an ally's status as their help", () => {
+		allyEffect("status_tag");
+		const dialog = make("player", { ownerId: "player" });
+		as("player", () =>
+			dialog.setSelection("ally-status", "positive", "player"),
+		);
+		expect(dialog.getSelection("ally-status").helper).toBe(false);
+	});
+
+	it("counts an ally's power tag as their help", () => {
+		allyEffect("power_tag");
+		const dialog = make("player", { ownerId: "player" });
+		as("player", () => dialog.setSelection("ally-tag", "positive", "player"));
+		expect(dialog.getSelection("ally-tag").helper).toBe(true);
+	});
+});

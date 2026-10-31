@@ -839,6 +839,7 @@
 			"roll_concealed_group": "Unseen",
 			"roll_concealed_tag": "Something unseen",
 			"roll_owner_away": "The roller is not connected, so the roll can't be made.",
+			"roll_window_closed": "The roller hasn't reopened their roll window, so the roll can't be made yet.",
 			"roll_consequence": "The action Succeeds, <br /> but there are Consequences.",
 			"roll_failure": "The action fails or has severe Consequences.",
 			"roll_great_snc": "Great Success &<br /> Consequences",

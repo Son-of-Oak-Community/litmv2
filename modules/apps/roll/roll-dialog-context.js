@@ -125,7 +125,7 @@ export function makeTagDecorator({
 				isGM &&
 				(!!tag.system?.isHidden ||
 					hiddenActorIds.has(
-						tag.tagActorId ?? /^Actor\.([^.]+)\./.exec(tag.uuid ?? "")?.[1],
+						tag.tagActorId ?? resolveTagActorId(tag.uuid),
 					)),
 		};
 	};
