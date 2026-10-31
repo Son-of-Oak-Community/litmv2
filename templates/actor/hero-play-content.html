@@ -5,11 +5,11 @@
 	<fieldset class="theme-card item"{{#if @root.cardsLayout}} data-fellowship-card data-flip-key="{{fellowship._id}}"{{else}}
 		data-action="toggleThemeDescription"
 		data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}"{{/if}} data-tour="fellowship-section" data-banner="fellowship">
-		<legend class="litm-banner theme-card__book{{#if (and @root.cardsLayout @root.editable)}} draggable{{/if}}">{{#if (and @root.cardsLayout fellowship.hasTheme)}}{{> "systems/litmv2/templates/partials/banner-icon.html" src="systems/litmv2/assets/media/icons/fellowship.svg" action="viewActor" actorId=fellowship.actorId label=(localize "LITM.Ui.click_to_edit_fellowship") tooltip=fellowship.levelLabel}}{{/if}}{{localize "LITM.Terms.fellowship"}}{{#if (and @root.cardsLayout fellowship.hasTheme fellowship.system.description)}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}</legend>
-		{{#if (and @root.cardsLayout fellowship.hasTheme fellowship.system.description)}}<div class="theme-card__back"><h4 class="theme-card__back-title">{{#if fellowship.themeTag.name}}{{fellowship.themeTag.name}}{{else}}{{fellowship.name}}{{/if}}</h4>{{{ fellowship.system.description }}}</div>{{/if}}
+		<legend class="litm-banner theme-card__book{{#if (and @root.cardsLayout @root.editable)}} draggable{{/if}}">{{#if (and @root.cardsLayout fellowship.hasTheme)}}{{> "systems/litmv2/templates/partials/banner-icon.html" src="systems/litmv2/assets/media/icons/fellowship.svg" action="viewActor" actorId=fellowship.actorId label=(localize "LITM.Ui.click_to_edit_fellowship") tooltip=fellowship.levelLabel}}{{> systems/litmv2/templates/partials/play-tag.html fellowship.themeTag noBurn=true extraClass="theme-card__banner-tag"}}{{else}}{{localize "LITM.Terms.fellowship"}}{{/if}}{{#if (and @root.cardsLayout fellowship.hasTheme fellowship.system.description)}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}</legend>
+		{{#if (and @root.cardsLayout fellowship.hasTheme fellowship.system.description)}}<div class="theme-card__back"><h4 class="theme-card__back-title">{{localize "LITM.Terms.fellowship"}}</h4>{{{ fellowship.system.description }}}</div>{{/if}}
 		{{#if fellowship.hasTheme}}
 		<div data-fellowship-actor-id="{{fellowship.actorId}}" data-item-id="{{fellowship._id}}">
-			{{> systems/litmv2/templates/partials/theme-card-header.html fellowship noBurn=true}}
+			{{#unless @root.cardsLayout}}{{> systems/litmv2/templates/partials/theme-card-header.html fellowship noBurn=true}}{{/unless}}
 
 			{{> systems/litmv2/templates/partials/play-theme-tags.html fellowship
 			noBurn=true
@@ -57,9 +57,9 @@
 		<fieldset class="theme-card item"{{#if @root.cardsLayout}} data-item-id="{{theme._id}}" data-flip-key="{{theme._id}}"{{else}}
 			data-action="toggleThemeDescription"
 			data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}"{{/if}} data-id="{{theme._id}}" data-level="{{theme.system.level}}">
-			<legend class="litm-banner theme-card__book{{#if (and @root.cardsLayout @root.editable)}} draggable{{/if}}">{{#if @root.cardsLayout}}{{> "systems/litmv2/templates/partials/banner-icon.html" src=theme.img action="editItem" itemId=theme._id label=(localize "LITM.Ui.click_to_edit_theme") tooltip=theme.levelLabel}}{{/if}}{{theme.system.themebook}}{{#if (and @root.cardsLayout theme.system.description)}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}</legend>
-			{{#if (and @root.cardsLayout theme.system.description)}}<div class="theme-card__back"><h4 class="theme-card__back-title">{{#if theme.themeTag.name}}{{theme.themeTag.name}}{{else}}{{theme.name}}{{/if}}</h4>{{{ theme.system.description }}}</div>{{/if}}
-			{{> systems/litmv2/templates/partials/theme-card-header.html theme}}
+			<legend class="litm-banner theme-card__book{{#if (and @root.cardsLayout @root.editable)}} draggable{{/if}}">{{#if @root.cardsLayout}}{{> "systems/litmv2/templates/partials/banner-icon.html" src=theme.img action="editItem" itemId=theme._id label=(localize "LITM.Ui.click_to_edit_theme") tooltip=theme.levelLabel}}{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag extraClass="theme-card__banner-tag"}}{{else}}{{theme.system.themebook}}{{/if}}{{#if (and @root.cardsLayout theme.system.description)}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}</legend>
+			{{#if (and @root.cardsLayout theme.system.description)}}<div class="theme-card__back"><h4 class="theme-card__back-title">{{theme.system.themebook}}</h4>{{{ theme.system.description }}}</div>{{/if}}
+			{{#unless @root.cardsLayout}}{{> systems/litmv2/templates/partials/theme-card-header.html theme}}{{/unless}}
 
 			{{> systems/litmv2/templates/partials/play-theme-tags.html theme}}
 
