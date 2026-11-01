@@ -560,6 +560,7 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
    with the existing tag chrome. */
 .litm-power_tag.litm--single-use,
 .litm-story_tag.litm--single-use,
+.litm-backpack.litm--single-use,
 .litm-tag.litm--single-use {
 	font-weight: 400;
 }
