@@ -160,7 +160,7 @@ describe("HeroData.relationships", () => {
 		const rel = fakeEffect({
 			type: "relationship_tag",
 			name: "Bond",
-			system: {},
+			system: { targetHero: { id: "friend" } },
 		});
 		const status = fakeEffect({
 			type: "status_tag",
@@ -175,6 +175,19 @@ describe("HeroData.relationships", () => {
 		model.prepareDerivedData();
 
 		expect(model.relationships).toEqual([rel]);
+	});
+
+	// As on the Hero sheet: a relationship with a deleted Hero is not offered.
+	it("leaves out a relationship whose Hero is gone", () => {
+		const lost = fakeEffect({
+			type: "relationship_tag",
+			name: "Old friend",
+			system: { targetHero: null },
+		});
+		const { model } = makeHero({ effects: [lost] });
+		model.prepareDerivedData();
+		expect(model.relationships).toEqual([]);
+		expect(model.lostRelationships).toEqual([lost]);
 	});
 
 	it("partitions story_tag and status_tag into the mixin's caches in one pass", () => {

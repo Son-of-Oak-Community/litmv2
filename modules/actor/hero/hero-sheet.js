@@ -202,6 +202,13 @@ export class HeroSheet extends LitmActorSheet {
 		const relationshipVisible = relationshipEntries.filter((entry) =>
 			entry.tag.trim(),
 		);
+		// Their Hero was deleted: listed so they can be removed, never rolled.
+		const lostRelationships = hasFellowship
+			? this.system.lostRelationships.map((e) => ({
+					effectId: e.id,
+					tag: e.name,
+				}))
+			: [];
 
 		const fields = this.document.schema.getField("system");
 
@@ -233,6 +240,7 @@ export class HeroSheet extends LitmActorSheet {
 			statuses,
 			relationshipEntries,
 			relationshipVisible,
+			lostRelationships,
 			...mofContext,
 			limit: this.system.limit,
 			showCamping: game.user.isGM && !LitmSettings.useFellowship,

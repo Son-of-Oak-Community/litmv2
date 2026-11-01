@@ -94,7 +94,7 @@
 	</div>
 
 	<!-- Fellowship + Relationships -->
-	{{#if (and hasFellowship (or relationshipVisible.length fellowship.hasTheme fellowshipActorId))}}
+	{{#if (and hasFellowship (or relationshipVisible.length lostRelationships.length fellowship.hasTheme fellowshipActorId))}}
 	<div class="litm-hero-board__fellowship">
 		<fieldset class="theme-card item" data-tour="fellowship-section"
 			data-action="toggleThemeDescription"
@@ -123,7 +123,7 @@
 				</button>
 			</p>
 			{{/if}}
-			{{#if relationshipVisible.length}}
+			{{#if (or relationshipVisible.length lostRelationships.length)}}
 			<hr />
 			<ul class="plain">
 				{{#each relationshipVisible as |relationship|}}
@@ -142,6 +142,9 @@
 					isScratched=relationship.isScratched
 					}}
 				</li>
+				{{/each}}
+				{{#each lostRelationships as |relationship|}}
+				{{> "systems/litmv2/templates/partials/lost-relationship.html" relationship=relationship}}
 				{{/each}}
 			</ul>
 			{{/if}}

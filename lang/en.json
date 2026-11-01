@@ -807,6 +807,8 @@
 			"quick_add_placeholder": "tag, tag!, status-3, or limit:3…",
 			"quick_add_tooltip": "Add (<span class='reference'>Enter</span>). -N for status, :N for limit, ! for single-use.",
 			"reject": "Reject",
+			"relationship_lost": "Hero gone",
+			"relationship_lost_hint": "This Hero is no longer in the world, so the relationship can't be used in rolls or at camp. Remove it, or bring the Hero back.",
 			"remaining_power": "Remaining Power",
 			"remove": "Remove",
 			"remove_addon": "Remove Challenge Add-On",
