@@ -451,8 +451,11 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	border: none;
 }
 
+/* Explicit width: the img inside is width:100%, which Safari otherwise
+   resolves against the SVG's 128px intrinsic size and stacks the pips. */
 :is(.litm .progress-box) {
 	--button-size: 24px;
+	width: var(--button-size);
 	min-width: 20px;
 	background: none;
 	border: none;
@@ -559,6 +562,13 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 .litm-story_tag.litm--single-use,
 .litm-tag.litm--single-use {
 	font-weight: 400;
+}
+
+/* A flex legend (banner + edit/add buttons) hugs its content. Chrome does
+   that by default; Safari stretches a display:flex legend to the fieldset
+   width, and the .flexrow children grow into the space. */
+.litm legend.flexrow {
+	width: fit-content;
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -1900,10 +1910,12 @@ section.standard-form.litm-actions-app {
 }
 
 /* Tighter vertical envelope (20px box, 2px block padding) so wrapped
-   rows sit close together; the glyph stays 16px either way. */
+   rows sit close together; the glyph stays 16px either way, so the box
+   keeps the 24px width its 4px inline padding needs. */
 .litm .theme-card-track .progress-box {
 	flex: none;
 	--button-size: 20px;
+	width: 24px;
 	padding-block: 2px;
 }
 
@@ -2076,8 +2088,12 @@ section.standard-form.litm-actions-app {
 	margin: 0px;
 }
 
+/* Foundry gives images max-width: 100%, which makes a replaced element
+   compressible: Firefox and Safari then count it as ~0 in a min-content
+   column, and the hero header ran its name under the description. */
 .litm-actor .profile-img {
 	width: 100px;
+	max-width: none;
 	height: 100px;
 	border-radius: var(--radius-circle);
 	object-fit: cover;
@@ -2283,6 +2299,12 @@ section.standard-form.litm-actions-app {
 .litm-hero-sheet .litm--play-header > .flexcol {
 	flex: 0;
 	min-width: 25ch;
+}
+
+.litm-hero-sheet .litm--play-header > .flexcol > .flexrow {
+	/* The Promise row is exactly as wide as its content; Firefox and Safari
+	   measure the title a few px wider and wrapped the diamonds below it. */
+	flex-wrap: nowrap;
 }
 
 .litm-hero-sheet .litm--play-header > .flexcol:first-child {
@@ -2668,17 +2690,32 @@ section.standard-form.litm-actions-app {
    Limit labels, might display, shields, outcomes, rating stars.
 ======================================== */
 
-/* Challenge limit label overrides */
+/* Challenge limit label overrides. A name too long for a line of its own
+   wraps rather than run off the card. The stroked ::before copy wraps at
+   the width it is given, so the max sits in the end padding: the copy then
+   gets the same width as the name it outlines. */
 .litm-challenge-sheet .limit-header .litm-limit {
 	font-size: var(--font-size-18);
+	white-space: normal;
+	padding-inline-end: 0.8em;
+
+	&::before {
+		right: 0.8em;
+	}
+}
+
+/* Badge and max share one centred box, so they stay together when the name wraps. */
+.litm-challenge-sheet :is(.limit-icon, .limit-max) {
+	position: absolute;
+	right: -7px;
+	width: 24px;
+	top: 50%;
+	translate: 0 -50%;
+	text-align: center;
 }
 
 .litm-challenge-sheet .limit-icon {
-	position: absolute;
-	width: 24px;
 	height: 24px;
-	right: -7px;
-	top: 1px;
 	z-index: -1;
 }
 
@@ -2687,9 +2724,6 @@ section.standard-form.litm-actions-app {
 	font-size: var(--font-size-20);
 	font-weight: 600;
 	color: var(--color-light-2);
-	position: relative;
-	top: 0px;
-	left: -1px;
 }
 
 /* --- Challenge meta, category, play sections --- */
@@ -6273,7 +6307,9 @@ fieldset.litm-party-overview > legend {
 	font-family: var(--font-serif);
 	font-style: italic;
 	font-size: var(--font-size-13);
-	opacity: 0.7;
+	/* Dimmed by colour, not opacity: opacity makes a stacking context that
+	   paints over the floated portrait and swallows its clicks. */
+	color: color-mix(in srgb, currentColor 70%, transparent);
 	margin: 2px 0 0;
 }
 
