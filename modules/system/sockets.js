@@ -260,8 +260,8 @@ export class Sockets {
 		Sockets.on("campingOpen", ({ data }) => {
 			Hooks.callAll("litm.camping.open", { sceneId: data?.sceneId });
 		});
-		Sockets.on("campingSaveOp", ({ data: { key, payload, sceneId } }) => {
-			Hooks.callAll("litm.camping.saveOp", { key, payload, sceneId });
+		Sockets.on("campingSaveOp", ({ data: { key, payload, sceneId }, senderId }) => {
+			Hooks.callAll("litm.camping.saveOp", { key, payload, sceneId, senderId });
 		});
 		// A second GM's Begin Camp / Pack Up / Cancel, run by the active GM.
 		Sockets.on("campingLifecycle", ({ data }) => {

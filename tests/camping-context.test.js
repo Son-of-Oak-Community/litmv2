@@ -110,6 +110,18 @@ describe("partitionCampingEffects — Quality Time fellowship tags", () => {
 		expect(buckets.scratchedRecoverable).toEqual([power]);
 		expect(buckets.relationshipEffects).toEqual([rel]);
 	});
+
+	it("skips a scratched power tag the hero hasn't gained (disabled)", () => {
+		const locked = fakeEffect({
+			type: "power_tag",
+			disabled: true,
+			system: { isScratched: true },
+		});
+		const hero = fakeActor({ effects: [locked] });
+		hero.system = { fellowshipActor: null };
+
+		expect(partitionCampingEffects(hero).scratchedRecoverable).toEqual([]);
+	});
 });
 
 describe("buildSteps", () => {

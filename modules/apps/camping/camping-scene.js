@@ -4,6 +4,7 @@ import {
 } from "../../active-effects/effect-factories.js";
 import { error, warn } from "../../logger.js";
 import { ContentSources } from "../../system/content-sources.js";
+import { ACTOR_TYPES } from "../../system/config.js";
 import { Sockets } from "../../system/sockets.js";
 import {
 	enrichPlainText,
@@ -23,7 +24,9 @@ import {
 import {
 	adjacentStep,
 	defaultCampingState,
+	isLockedByReady,
 	SETTERS,
+	stepOrder,
 	sojournPowerBonus,
 } from "./camping-state.js";
 
@@ -126,12 +129,14 @@ function enqueueApply(work) {
  * camping session. Also dropped once Pack Up has started: the results are
  * being applied from a snapshot, so later edits could only be lost.
  */
-async function applyOpOnGM(key, payload, scene = campScene()) {
+async function applyOpOnGM(key, payload, scene = campScene(), byGM = true) {
 	const setter = SETTERS[key];
 	if (!setter || !scene) return;
 	return enqueueApply(async () => {
 		const state = readState(scene);
 		if (!state || state.packingUp) return;
+		// Ready locks the player, not the Narrator.
+		if (!byGM && isLockedByReady(state, key, payload)) return;
 		setter(state, payload);
 		await scene.setFlag(FLAG_SCOPE, FLAG_PATH, state);
 	});
@@ -153,6 +158,30 @@ function ownsApplyQueue() {
  * `campingSaveOp` socket naming the camp's scene; the active GM applies on
  * receipt, sharing the same queue so remote and local edits compose cleanly.
  */
+/**
+ * Before the GM moves the camp on, ask for confirmation when a hero with a
+ * player owner has not pressed Ready. Resolves true to proceed.
+ */
+async function confirmUnready(state) {
+	const notice = unreadyNotice(state);
+	if (!notice) return true;
+	return foundry.applications.api.DialogV2.confirm({
+		window: { title: t("LITM.Ui.camping_not_ready_title") },
+		content: notice,
+	});
+}
+
+/** "Not ready" paragraphs naming the waiting heroes, or "" when all are. */
+function unreadyNotice(state) {
+	const waiting = getCampingHeroes().filter(
+		(a) => a.hasPlayerOwner && !state?.heroStates?.[a.id]?.ready,
+	);
+	if (!waiting.length) return "";
+	return `<p>${t("LITM.Ui.camping_not_ready_body")}</p><p>${waiting
+		.map((a) => foundry.utils.escapeHTML(a.name))
+		.join(", ")}</p>`;
+}
+
 export function enqueueOp(key, payload) {
 	const scene = campScene();
 	if (ownsApplyQueue()) {
@@ -240,6 +269,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			"edit-threat": LitmCampingScene.#onEditThreat,
 			"remove-threat": LitmCampingScene.#onRemoveThreat,
 			"open-sheet": LitmCampingScene.#onOpenSheet,
+			"toggle-ready": LitmCampingScene.#onToggleReady,
 			"rest-tier-delta": LitmCampingScene.#onRestTierDelta,
 			"set-active-step": LitmCampingScene.#onSetActiveStep,
 			"next-step": LitmCampingScene.#onNextStep,
@@ -551,7 +581,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		if (!game.user.isGM) return;
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
 			window: { title: t("LITM.Ui.camping_pack_up") },
-			content: `<p>${t("LITM.Ui.camping_pack_up_confirm")}</p>`,
+			content: `${unreadyNotice(readState())}<p>${t("LITM.Ui.camping_pack_up_confirm")}</p>`,
 			modal: true,
 		});
 		if (!confirmed) return;
@@ -755,6 +785,9 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		const state = readState();
 		const from = state?.activeStep ?? null;
 		if (!next || next === from) return;
+		const order = stepOrder(state);
+		const forward = order.indexOf(next) > order.indexOf(from);
+		if (forward && !(await confirmUnready(state))) return;
 		await enqueueOp("active-step", { value: next });
 		Hooks.callAll("litm.campingStepChanged", { from, to: next });
 	}
@@ -771,6 +804,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		const from = state.activeStep;
 		const to = adjacentStep(state, "next");
 		if (to === from) return;
+		if (!(await confirmUnready(state))) return;
 		await enqueueOp("active-step", { value: to });
 		Hooks.callAll("litm.campingStepChanged", { from, to });
 	}
@@ -785,6 +819,12 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		if (to === from) return;
 		await enqueueOp("active-step", { value: to });
 		Hooks.callAll("litm.campingStepChanged", { from, to });
+	}
+
+	static async #onToggleReady(_event, target) {
+		const heroId = target.dataset.heroId;
+		const ready = readState()?.heroStates?.[heroId]?.ready ?? false;
+		await enqueueOp("ready", { heroId, on: !ready });
 	}
 
 	static async #onToggleThirdPeriod(_event, target) {
@@ -891,7 +931,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		Hooks.on("litm.camping.open", ({ sceneId } = {}) => {
 			LitmCampingScene.open({ sceneId });
 		});
-		Hooks.on("litm.camping.saveOp", async ({ key, payload, sceneId }) => {
+		Hooks.on("litm.camping.saveOp", async ({ key, payload, sceneId, senderId }) => {
 			// Exactly one GM applies the op, matching scratchEffect /
 			// storyTagsUpdate. With every GM applying it, `rest-tier-delta`
 			// (which computes from the persisted value) double-applies.
@@ -902,7 +942,8 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			// (`null`, not `undefined`: a default parameter would swap it for
 			// the viewed scene.)
 			const scene = sceneId ? (game.scenes?.get(sceneId) ?? null) : campScene();
-			await applyOpOnGM(key, payload, scene);
+			const byGM = !!game.users.get(senderId)?.isGM;
+			await applyOpOnGM(key, payload, scene, byGM);
 		});
 		Hooks.on("litm.camping.lifecycle", async ({ action, sceneId } = {}) => {
 			// A second GM relays Begin Camp / Pack Up / Cancel here so they run
@@ -942,5 +983,26 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			if (!ids.includes(item.id)) return;
 			LitmCampingScene.#instance.render();
 		});
+		// Re-render when a hero's or the Fellowship's tags, statuses or themes
+		// change mid-camp (scratched, recovered, renamed elsewhere) — the camp
+		// reads them live but nothing else tells it to redraw. Debounced: one
+		// roll or Rest touches many effects at once.
+		const refresh = foundry.utils.debounce(
+			() => LitmCampingScene.#instance?.render(),
+			100,
+		);
+		const campActor = (doc) => {
+			const actor = doc?.documentName === "Actor" ? doc : doc?.parent;
+			if (actor?.documentName === "Item") return campActor(actor);
+			return [ACTOR_TYPES.hero, ACTOR_TYPES.fellowship].includes(actor?.type);
+		};
+		for (const event of ["create", "update", "delete"]) {
+			Hooks.on(`${event}ActiveEffect`, (effect) => {
+				if (LitmCampingScene.#instance && campActor(effect.parent)) refresh();
+			});
+			Hooks.on(`${event}Item`, (item) => {
+				if (LitmCampingScene.#instance && campActor(item.parent)) refresh();
+			});
+		}
 	}
 }

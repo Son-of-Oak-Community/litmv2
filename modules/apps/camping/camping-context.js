@@ -55,7 +55,8 @@ export function partitionCampingEffects(actor) {
 	for (const e of actor.allApplicableEffects?.() ?? []) {
 		if (e.type === "status_tag") buckets.statusEffects.push(e);
 		else if (e.type === "relationship_tag") buckets.relationshipEffects.push(e);
-		else if (e.type === "power_tag" && e.system?.isScratched) {
+		// A disabled power tag hasn't been gained yet; there is nothing to recover.
+		else if (e.type === "power_tag" && e.system?.isScratched && !e.disabled) {
 			buckets.scratchedRecoverable.push(e);
 		}
 	}
@@ -77,6 +78,7 @@ function buildBackpackPills(actor, heroState) {
 		.map((e) => ({
 			id: e.id,
 			name: e.name,
+			isSingleUse: !!e.system?.isSingleUse,
 			disabled: !!e.disabled,
 			kept: keptSet.has(e.id),
 		}));
@@ -168,10 +170,17 @@ function buildActivityRows(
 					canIncrease: decrement > 0,
 				};
 			}),
-			restRecoverableTags: scratchedRecoverable.map((e) => ({
-				id: e.id,
-				name: e.name,
-				checked: recoverSet.has(e.id),
+			// One group per source theme / backpack, in effect order.
+			restRecoverGroups: Object.values(
+				Object.groupBy(scratchedRecoverable, (e) => e.parent?.id ?? ""),
+			).map((effects) => ({
+				source: effects[0].parent?.name ?? "",
+				img: effects[0].parent?.img ?? null,
+				tags: effects.map((e) => ({
+					id: e.id,
+					name: e.name,
+					checked: recoverSet.has(e.id),
+				})),
 			})),
 			reflectTargets,
 		};
@@ -257,7 +266,11 @@ function buildHeroContext(actor, heroState, allHeroes) {
 		id: actor.id,
 		name: actor.name,
 		img: actor.img,
-		canEdit: canEditHero(actor),
+		// A Ready hero is read-only for their player until they unpress it.
+		canEdit: canEditHero(actor) && (game.user.isGM || !heroState.ready),
+		ready: !!heroState.ready,
+		canToggleReady: !game.user.isGM && canEditHero(actor),
+		canView: actor.testUserPermission?.(game.user, "OBSERVER") ?? false,
 		thirdPeriodActive: !!heroState.thirdPeriodActive,
 		backpackTags,
 		hasBackpack: backpackTags.length > 0,
@@ -429,6 +442,7 @@ export function buildPlaceOfStayContext(state) {
 	const sceneTags = StoryTagsStore.sceneStoryEffects.map((e) => ({
 		id: e.id,
 		name: e.name,
+		isSingleUse: !!e.system?.isSingleUse,
 		markedForExpiry: placeOfStay.sceneTagsToExpire.includes(e.id),
 	}));
 	return {

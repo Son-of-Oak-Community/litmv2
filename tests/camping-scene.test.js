@@ -88,6 +88,7 @@ beforeAll(() => {
 		/\[([^[\]!:-]+)(!)?(?:([-:])(\d+)?)?\]/g;
 	foundry.utils.hasProperty ??= (obj, path) =>
 		foundry.utils.getProperty(obj, path) !== undefined;
+	foundry.utils.debounce ??= (fn) => fn;
 	// The window itself is out of scope; keep render/close observable.
 	LitmCampingScene.prototype.render = vi.fn();
 	foundry.applications.api.ApplicationV2.prototype.close = vi.fn(
