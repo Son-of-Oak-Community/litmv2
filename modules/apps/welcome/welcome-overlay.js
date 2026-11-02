@@ -2,7 +2,8 @@ import { error, warn } from "../../logger.js";
 import { getDefaultThemeLevel, getThemeLevels } from "../../system/config.js";
 import { createSampleHero } from "../../system/sample-hero.js";
 import { LitmSettings } from "../../system/settings.js";
-import { localize as t, toQuestionOptions } from "../../utils.js";
+import { levelIcon, localize as t, toQuestionOptions } from "../../utils.js";
+import { catalogLevels, filterThemeCatalog } from "../theme-catalog.js";
 import { cleanQuestions, HeroCreationData } from "./hero-creation-data.js";
 import {
 	animateEnter,
@@ -108,7 +109,7 @@ export class WelcomeOverlay {
 	_appState = {
 		mode: "",
 		actorName: "",
-		search: { tropes: "", themekits: "", themebooks: "" },
+		search: { tropes: "", themekits: "", themebooks: "", themeLevel: "" },
 		trope: {
 			selectedUuid: "",
 			optionalUuid: "",
@@ -389,6 +390,16 @@ export class WelcomeOverlay {
 			scrollPositions.set(key, el.scrollTop);
 		}
 
+		// A search box re-renders the slide on every keystroke, which replaces
+		// the focused input. Remember which bound field had focus, and where
+		// its caret was, so typing carries on in the new one.
+		const active = container.contains(document.activeElement)
+			? document.activeElement
+			: null;
+		const focusBind = active?.dataset?.bind ?? "";
+		const caret =
+			typeof active?.selectionStart === "number" ? active.selectionStart : null;
+
 		container.innerHTML = html;
 
 		// Restore scroll positions
@@ -401,6 +412,18 @@ export class WelcomeOverlay {
 
 		const slideEl = container.firstElementChild;
 		if (slideEl) this.#bindSlideListeners(slideEl);
+
+		if (focusBind) {
+			const next = container.querySelector(
+				`[data-bind="${CSS.escape(focusBind)}"]`,
+			);
+			if (next) {
+				next.focus();
+				if (caret !== null && typeof next.setSelectionRange === "function") {
+					next.setSelectionRange(caret, caret);
+				}
+			}
+		}
 	}
 
 	/**
@@ -635,14 +658,26 @@ export class WelcomeOverlay {
 			themeNumber: index + 1,
 			currentTheme,
 			hasThemekits: this._cache.themekits.length > 0,
-			themekits: this._data.filterBySearch(
-				this._cache.themekits,
-				this._appState.search.themekits,
-			),
-			themebooks: this._data.filterBySearch(
-				this._cache.themebooks,
-				this._appState.search.themebooks,
-			),
+			// The same filter the theme browser uses: text matches the name, a
+			// kit's themebook and the source; the Might filter is shared.
+			themekits: filterThemeCatalog(this._cache.themekits, {
+				text: this._appState.search.themekits,
+				level: this._appState.search.themeLevel,
+			}),
+			themebooks: filterThemeCatalog(this._cache.themebooks, {
+				text: this._appState.search.themebooks,
+				level: this._appState.search.themeLevel,
+			}).map((book) => ({ ...book, levelImg: levelIcon(book.themeLevel) })),
+			themeLevelFilter: [
+				{ value: "", label: t("LITM.Ui.theme_browser_all") },
+				...catalogLevels([
+					...this._cache.themekits,
+					...this._cache.themebooks,
+				]).map((value) => ({ value, label: t(`LITM.Terms.${value}`) })),
+			].map((o) => ({
+				...o,
+				selected: o.value === this._appState.search.themeLevel,
+			})),
 			isVariableLevel,
 			levelOptions,
 			powerQuestionOptions,

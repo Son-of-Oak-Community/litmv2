@@ -81,3 +81,50 @@ describe("HeroCreationData index loading respects world-item setting", () => {
 		expect(await loadTropeNames()).toEqual(["World Trope"]);
 	});
 });
+
+// Kits and books come from the theme catalog, the theme browser's source:
+// same content-source rules, and never a Fellowship theme.
+describe("HeroCreationData kit and book indexes", () => {
+	const kitPack = {
+		collection: "modA.kits",
+		documentName: "Item",
+		visible: true,
+		metadata: { label: "Mod A Kits" },
+		index: {
+			contents: [
+				{ _id: "k1", name: "Hardened Warrior", type: "theme", system: { level: "origin", themebook: "Skill or Trade" } },
+				{ _id: "k2", name: "Bound by Oath", type: "theme", system: { level: "origin", isFellowship: true } },
+				{ _id: "b1", name: "Destiny", type: "themebook", system: { theme_level: "greatness" } },
+				{ _id: "b2", name: "Fellowship", type: "themebook", system: { isFellowship: true } },
+			],
+		},
+		getIndex: vi.fn(async () => {}),
+	};
+
+	beforeEach(() => {
+		game.packs = [kitPack];
+		game.items = [];
+		setSetting([]);
+	});
+
+	it("lists Hero kits and books with the fields the wizard reads, and no Fellowship theme", async () => {
+		const data = new HeroCreationData();
+		await data.ensureIndexes();
+		expect(data._cache.themekits.map((e) => e.name)).toEqual(["Hardened Warrior"]);
+		expect(data._cache.themebooks.map((e) => e.name)).toEqual(["Destiny"]);
+		expect(data._cache.themekits[0]).toMatchObject({
+			uuid: "Compendium.modA.kits.Item.k1",
+			themeLevel: "origin",
+			sourceLabel: "Mod A Kits",
+		});
+		expect(data._cache.themebooks[0].themeLevel).toBe("greatness");
+	});
+
+	it("respects a world-only content-source setting", async () => {
+		setSetting(["world"]);
+		const data = new HeroCreationData();
+		await data.ensureIndexes();
+		expect(data._cache.themekits).toEqual([]);
+		expect(data._cache.themebooks).toEqual([]);
+	});
+});

@@ -62,6 +62,16 @@
 					<p>{{localize "LITM.Ui.hero_creation_no_themekits"}}</p>
 				</div>
 				{{else}}
+				<div class="flexrow gap-sm hero-creation__theme-filters">
+					<input type="search" class="flex1" data-bind="search.themekits" data-render="true"
+						value="{{state.search.themekits}}"
+						placeholder="{{localize 'LITM.Ui.theme_browser_search'}}"
+						aria-label="{{localize 'LITM.Ui.theme_browser_search'}}" />
+					<select class="noflex" data-bind="search.themeLevel" data-render="true" aria-label="{{localize 'LITM.Terms.might'}}">
+						{{#each themeLevelFilter}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+					</select>
+				</div>
+				{{#unless themekits.length}}<p class="hint">{{localize "LITM.Ui.theme_browser_empty_filtered"}}</p>{{/unless}}
 				<div class="custom-themekit-list">
 					{{#each themekits as |kit|}}
 					<button type="button" class="themekit-link {{#if (eq kit.uuid ../currentTheme.themekitUuid)}}active{{/if}}"
@@ -77,15 +87,24 @@
 
 				{{!-- Themebook method --}}
 				{{#if (eq currentTheme.method "themebook")}}
-				<div class="litm-field-stacked">
-					<select data-bind="custom.themes.{{themeIndex}}.themebookUuid" data-render="true">
-						<option value="">{{localize "LITM.Ui.select_themebook"}}</option>
-						{{#each themebooks as |book|}}
-						<option value="{{book.uuid}}" {{#if (eq book.uuid ../currentTheme.themebookUuid)}}selected{{/if}}>
-							{{book.name}} ({{book.themeLevel}})
-						</option>
-						{{/each}}
+				<div class="flexrow gap-sm hero-creation__theme-filters">
+					<input type="search" class="flex1" data-bind="search.themebooks" data-render="true"
+						value="{{state.search.themebooks}}"
+						placeholder="{{localize 'LITM.Ui.theme_browser_search'}}"
+						aria-label="{{localize 'LITM.Ui.theme_browser_search'}}" />
+					<select class="noflex" data-bind="search.themeLevel" data-render="true" aria-label="{{localize 'LITM.Terms.might'}}">
+						{{#each themeLevelFilter}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
 					</select>
+				</div>
+				{{#unless themebooks.length}}<p class="hint">{{localize "LITM.Ui.theme_browser_empty_filtered"}}</p>{{/unless}}
+				<div class="custom-themekit-list">
+					{{#each themebooks as |book|}}
+					<button type="button" class="themekit-link {{#if (eq book.uuid ../currentTheme.themebookUuid)}}active{{/if}}"
+						data-action="selectThemebook" data-uuid="{{book.uuid}}">
+						<img class="noflex icon-sm" src="{{book.levelImg}}" alt="" aria-hidden="true" />
+						{{book.name}}
+					</button>
+					{{/each}}
 				</div>
 
 				{{#if currentTheme.themebookUuid}}
