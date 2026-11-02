@@ -36,6 +36,11 @@ import { dialogContent } from "../system/renderers/renderer-utils.js";
 import { localize as t } from "../utils.js";
 import { ThemeBrowser } from "./theme-browser.js";
 import {
+	kitTagEffects,
+	kitThemeUpdate,
+	wipeNonTitleTagEffects,
+} from "./theme-template.js";
+import {
 	applyPromiseGain,
 	availableModes,
 	getRevisableParts,
@@ -303,35 +308,6 @@ async function applyEvolveKeptTagUpdates(
 	}
 	if (updates.length) {
 		await theme.updateEmbeddedDocuments("ActiveEffect", updates);
-	}
-}
-
-/**
- * Delete every non-title power tag and every weakness tag from the theme.
- * Used in Replace mode where the whole theme is wiped.
- */
-async function wipeNonTitleTagEffects(theme) {
-	const wipeIds = [...theme.effects]
-		.filter(
-			(e) =>
-				(POWER_TAG_TYPES.has(e.type) && !e.system.isTitleTag) ||
-				e.type === "weakness_tag",
-		)
-		.map((e) => e.id);
-	if (wipeIds.length) {
-		await theme.deleteEmbeddedDocuments("ActiveEffect", wipeIds);
-	}
-	// The surviving title tag still carries the OLD themebook's question
-	// index — reset it so the new theme starts with a clean slot. The
-	// title tag's name is updated by the item-hooks rename-sync; only its
-	// question pointer needs zeroing.
-	const titleTag = [...theme.effects].find(
-		(e) => POWER_TAG_TYPES.has(e.type) && e.system?.isTitleTag,
-	);
-	if (titleTag && titleTag.system?.question != null) {
-		await theme.updateEmbeddedDocuments("ActiveEffect", [
-			{ _id: titleTag.id, "system.question": null },
-		]);
 	}
 }
 
@@ -673,31 +649,14 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 	// Power/weakness tag effects to copy from the source. Title tag stays
 	// on the current theme (it auto-renames to the new theme's name via
 	// the item-hooks rename sync); only revisable tags are duplicated.
-	const toCreate = [];
-	for (const eff of dropped.effects) {
-		const isPower = POWER_TAG_TYPES.has(eff.type) && !eff.system?.isTitleTag;
-		const isWeakness = eff.type === "weakness_tag";
-		if (!isPower && !isWeakness) continue;
-		const obj = eff.toObject();
-		delete obj._id;
-		toCreate.push(obj);
-	}
+	const toCreate = kitTagEffects(dropped);
 	const replacedCaps = getTradeCaps(getRevisableParts(theme));
 
 	const newName = dropped.name;
 	const update = {
-		name: newName,
-		"system.themebook": dropped.system?.themebook ?? "",
-		"system.level": dropped.system?.level || getDefaultThemeLevel(),
-		"system.description": dropped.system?.description ?? "",
-		"system.quest.description": dropped.system?.quest?.description ?? "",
-		"system.quest.tracks.milestone.value": 0,
-		"system.quest.tracks.abandon.value": 0,
+		...kitThemeUpdate(dropped),
 		"system.improve.value": 0,
 		"system.nascentImprovements": 2,
-		"system.specialImprovements": foundry.utils.deepClone(
-			dropped.system?.specialImprovements ?? [],
-		),
 	};
 	// Fellowship themes never mark Promise (Core Book p.193).
 	const promiseGained = isFellowship ? 0 : 1 + totalTradeCap(replacedCaps);
