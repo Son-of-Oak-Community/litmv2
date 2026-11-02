@@ -7,6 +7,7 @@ import {
 } from "../item/action/action-rules.js";
 import { applySuccess } from "../item/action/chat-actions.js";
 import { error, warn } from "../logger.js";
+import { StoryTagsStore } from "./story-tags/story-tags-store.js";
 import { FLAGS } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
@@ -487,7 +488,7 @@ async function _applyStatusPicker(actor, opt, messageId, charge) {
 		// ({{{body}}} in chat/spend-power.html) to every client — escape both,
 		// as the sibling _applyDefault path already does.
 		const esc = foundry.utils.escapeHTML;
-		const safeName = esc(name);
+		const safeName = esc(_publicEffectName(effect, name));
 		const label =
 			owner === actor
 				? safeName
@@ -581,7 +582,11 @@ async function _applyPicker(actor, opt, charge) {
 		recovered++;
 		charge(cost);
 		// Recovered tags render as live (un-scratched) chips of their real type.
-		tags.push({ name: tagName, type: effect.type, isScratched: false });
+		tags.push({
+			name: _publicEffectName(effect, tagName),
+			type: effect.type,
+			isScratched: false,
+		});
 	}
 	return { power: cost * recovered, tags };
 }
@@ -629,7 +634,11 @@ async function _applyScratchPicker(opt, charge) {
 			warn(`Scratch dropped — no active GM to apply "${tagName}".`);
 			continue;
 		}
-		tags.push({ name: tagName, type: effect.type, isScratched: true });
+		tags.push({
+			name: _publicEffectName(effect, tagName),
+			type: effect.type,
+			isScratched: true,
+		});
 		const price = scratchCost(cost, isSingleUse);
 		power += price;
 		charge(price);
@@ -669,7 +678,14 @@ async function _applyScratchPicker(opt, charge) {
 		}
 		if (applied) {
 			for (const c of sceneChips) {
-				tags.push({ name: c.tagName, type: "story_tag", isScratched: true });
+				const effect = StoryTagsStore.packStoryTags.find(
+					(e) => (e._id ?? e.id) === c.tagId,
+				);
+				tags.push({
+					name: _publicEffectName(effect, c.tagName),
+					type: "story_tag",
+					isScratched: true,
+				});
 			}
 			const scenePower = sceneChips.reduce(
 				(sum, c) => sum + scratchCost(cost, c.isSingleUse),
@@ -681,6 +697,19 @@ async function _applyScratchPicker(opt, charge) {
 	}
 
 	return { power, tags };
+}
+
+/**
+ * The name a public Spend Power card may show for an effect. A Narrator can
+ * spend on an effect they hid; the card goes to every player, so it says
+ * "Something unseen" — the same mask the roll card uses — and keeps the tier.
+ * Decided by the effect, not the viewer: the card is rendered once for all.
+ * @param {ActiveEffect|object|null|undefined} effect
+ * @param {string} name
+ * @returns {string}
+ */
+function _publicEffectName(effect, name) {
+	return effect?.system?.isHidden ? t("LITM.Ui.roll_concealed_tag") : name;
 }
 
 function _applyDefault(opt) {

@@ -341,16 +341,37 @@ async function _applyScratchToggle(
 		}
 		await tag.system.setScratched(targetScratched);
 		summaries.push(
-			game.i18n.format(tagSummaryKey, {
-				actor: publicName(actor),
-				name: tok.name,
-			}),
+			tag.system?.isHidden
+				? HIDDEN_SUMMARY
+				: game.i18n.format(tagSummaryKey, {
+						actor: publicName(actor),
+						name: tok.name,
+					}),
 		);
 		appliedAny = true;
 	}
 
 	if (!appliedAny) return null;
-	return { appliedSummary: summaries.join(" · ") };
+	return { appliedSummary: publicSummary(summaries, success.text || "") };
+}
+
+/**
+ * Stands in for a summary line about an effect the Narrator hid. The change
+ * applies; the public card just doesn't name it or its tier.
+ */
+const HIDDEN_SUMMARY = Symbol("hidden");
+
+/**
+ * Join summary lines for the public card, leaving hidden ones out. When every
+ * line was hidden, the Action's own success text stands in: it is public
+ * already, and an empty card would itself say something happened.
+ * @param {(string|symbol)[]} summaries
+ * @param {string} fallback
+ * @returns {string}
+ */
+function publicSummary(summaries, fallback) {
+	const shown = summaries.filter((s) => s !== HIDDEN_SUMMARY);
+	return shown.length ? shown.join(" · ") : fallback;
 }
 
 const SCRATCH_TARGET_TYPES = new Set([
@@ -395,8 +416,10 @@ async function _reduceStatusOnActor(
 	const shouldDelete = restoreThreshold
 		? highestIdx <= 0 || tier > highestIdx
 		: highestIdx < 0 || tier >= highestIdx + 1;
+	const hidden = !!status.system?.isHidden;
 	if (shouldDelete) {
 		await status.delete();
+		if (hidden) return HIDDEN_SUMMARY;
 		return game.i18n.format(removedKey, {
 			name,
 			actor: publicName(actor),
@@ -404,6 +427,7 @@ async function _reduceStatusOnActor(
 	}
 	const newTiers = status.system.calculateReduction(tier);
 	await status.update({ "system.tiers": newTiers });
+	if (hidden) return HIDDEN_SUMMARY;
 	return game.i18n.format("LITM.Actions.applied_reduced", {
 		name,
 		tier: highestIdx + 1 - tier,

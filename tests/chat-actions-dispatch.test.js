@@ -461,6 +461,31 @@ describe("applySuccess — weaken (opponent target, mocked picker)", () => {
 		);
 	});
 
+	it("weakens a hidden status without naming it or its tier on the card", async () => {
+		const { pickTargetActor } = await import(
+			"../modules/apps/target-picker.js"
+		);
+		const status = fakeEffect({
+			id: "s1",
+			type: "status_tag",
+			name: "Blessed",
+			system: {
+				isHidden: true,
+				tiers: [false, false, true, false, false, false],
+			},
+		});
+		const opponent = fakeActor({ name: "Beast", effects: [status] });
+		pickTargetActor.mockResolvedValue(opponent);
+
+		const result = await applySuccess({
+			success: { verb: "weaken", text: "Strip [Blessed-3]" },
+			actor: heroActor(),
+		});
+
+		expect(status.delete).toHaveBeenCalled();
+		expect(result.appliedSummary).toBe("Strip [Blessed-3]");
+	});
+
 	it("returns null when the picker is cancelled", async () => {
 		const { pickTargetActor } = await import(
 			"../modules/apps/target-picker.js"
