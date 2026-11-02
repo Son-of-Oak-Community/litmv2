@@ -15,7 +15,7 @@
 			{{/if}}></litm-super-checkbox>
 		<span class="litm--roll-dialog-badge litm-{{tag.type}}{{#if (and (eq tag.type "story_tag") (or tag.system.isSingleUse tag.isSingleUse))}} litm--single-use{{/if}}"
 			data-text="{{tag.displayName}}{{ifThen (eq tag.type 'status_tag') (ifThen tag.value (concat '-' tag.value) '') ''}}">{{tag.displayName}}{{ifThen
-			(eq tag.type "status_tag") (ifThen tag.value (concat "-" tag.value) "") ""}}{{#if (and (eq tag.type "story_tag") (or tag.system.isSingleUse tag.isSingleUse))}} ✱{{/if}}{{#if (eq tag.type "weakness_tag")}}
+			(eq tag.type "status_tag") (ifThen tag.value (concat "-" tag.value) "") ""}}{{#if (and (eq tag.type "story_tag") (or tag.system.isSingleUse tag.isSingleUse))}}<span class="litm--single-use-mark">✱</span>{{/if}}{{#if (eq tag.type "weakness_tag")}}
 			{{> "systems/litmv2/templates/partials/weakness-chevron.html"}}
 			{{/if}}</span>
 		{{#if tag.isNarrator}}
