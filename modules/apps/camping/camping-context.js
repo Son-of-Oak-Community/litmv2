@@ -1,4 +1,7 @@
-import { fellowshipTagEffects } from "../../active-effects/effect-queries.js";
+import {
+	fellowshipTagEffects,
+	isEffectVisible,
+} from "../../active-effects/effect-queries.js";
 import { ACTOR_TYPES } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
 import { findFellowshipTheme, localize as t } from "../../utils.js";
@@ -53,6 +56,8 @@ export function partitionCampingEffects(actor) {
 		),
 	};
 	for (const e of actor.allApplicableEffects?.() ?? []) {
+		// A status the Narrator hid on this Hero stays hidden at camp too.
+		if (!isEffectVisible(e)) continue;
 		if (e.type === "status_tag") buckets.statusEffects.push(e);
 		else if (e.type === "relationship_tag") buckets.relationshipEffects.push(e);
 		// A disabled power tag hasn't been gained yet; there is nothing to recover.
@@ -74,7 +79,7 @@ function buildBackpackPills(actor, heroState) {
 	// active = kept (won't be scratched), disabled = not-kept (won't be
 	// re-enabled). The user only toggles when they want the opposite.
 	return [...backpackItem.effects]
-		.filter((e) => e.type === "story_tag")
+		.filter((e) => e.type === "story_tag" && isEffectVisible(e))
 		.map((e) => ({
 			id: e.id,
 			name: e.name,

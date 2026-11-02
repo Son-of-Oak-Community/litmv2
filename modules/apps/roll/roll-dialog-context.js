@@ -370,7 +370,7 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 			});
 		}
 	}
-	const fellowshipNonTheme = fellowship.tags.filter((e) => e.active);
+	const fellowshipNonTheme = fellowship.tags.filter(isVisibleTag);
 	const fellowshipStoryTags = fellowshipNonTheme
 		.filter((e) => e.type === "story_tag")
 		.map(withSelection);

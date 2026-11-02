@@ -1,6 +1,7 @@
 import {
 	effectToPlain,
 	findApplicableEffect,
+	isEffectVisible,
 	resolveEffect,
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
@@ -55,7 +56,8 @@ function buildPartyOverview(fellowshipActor) {
 			(e) => e.active && !e.system?.isHidden,
 		);
 		const statuses = hero.system.statusEffects.filter(
-			(e) => e.active && (e.system?.currentTier ?? 0) > 0,
+			(e) =>
+				e.active && isEffectVisible(e) && (e.system?.currentTier ?? 0) > 0,
 		);
 		return {
 			id: hero.id,

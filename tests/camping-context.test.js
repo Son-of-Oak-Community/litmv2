@@ -31,6 +31,40 @@ function act(activity = null) {
 	return { activity };
 }
 
+describe("partitionCampingEffects — hidden statuses", () => {
+	afterEach(() => {
+		game.user.isGM = false;
+	});
+
+	const hiddenStatus = () =>
+		fakeEffect({
+			name: "secret grace",
+			type: "status_tag",
+			system: { currentTier: 2, isHidden: true },
+		});
+
+	it("keeps a status the Narrator hid out of the player's Rest list", () => {
+		const shown = fakeEffect({
+			name: "tired",
+			type: "status_tag",
+			system: { currentTier: 1 },
+		});
+		const hero = fakeActor({ effects: [shown, hiddenStatus()] });
+		hero.system = { fellowshipActor: null };
+
+		expect(partitionCampingEffects(hero).statusEffects).toEqual([shown]);
+	});
+
+	it("still lists it for the Narrator", () => {
+		game.user.isGM = true;
+		const hidden = hiddenStatus();
+		const hero = fakeActor({ effects: [hidden] });
+		hero.system = { fellowshipActor: null };
+
+		expect(partitionCampingEffects(hero).statusEffects).toEqual([hidden]);
+	});
+});
+
 describe("partitionCampingEffects — Quality Time fellowship tags", () => {
 	// Fellowship tags sit on the Fellowship actor's theme item. A hero reaches
 	// them only through `system.fellowshipActor`.
