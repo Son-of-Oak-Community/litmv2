@@ -1,4 +1,5 @@
 import { storyTagEffect } from "../../active-effects/effect-factories.js";
+import { isEffectVisible } from "../../active-effects/effect-queries.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
 import { confirmDelete, localize as t } from "../../utils.js";
 
@@ -50,7 +51,8 @@ export class BackpackSheet extends LitmItemSheet {
 		const context = await super._prepareContext(options);
 
 		return foundry.utils.mergeObject(context, {
-			tags: this.system.tags,
+			// A tag the Narrator hid stays hidden from the player who owns it.
+			tags: this.system.tags.filter(isEffectVisible),
 			name: this.document.name,
 		});
 	}
