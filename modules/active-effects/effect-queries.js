@@ -20,20 +20,23 @@ export function isEffectVisible(e) {
  * Whether a tag or status the current user adds to `actor` starts hidden.
  * The GM's additions start hidden so a scene can be prepped in secret — but
  * not on an actor a player owns: `isHidden` hides it from that owner too, so a
- * status dropped on a Hero would never reach its player.
+ * status dropped on a Hero would never reach its player. Nor on any Hero: a
+ * hidden status doesn't count toward a Hero's limits (countsTowardLimit), so
+ * one that started hidden on a Hero nobody plays yet would never count.
  * @param {Actor|null|undefined} actor
  * @returns {boolean}
  */
 export function startsHiddenOn(actor) {
-	return game.user.isGM && !actor?.hasPlayerOwner;
+	return game.user.isGM && !actor?.hasPlayerOwner && actor?.type !== "hero";
 }
 
 /**
- * Whether a status counts toward its actor's limits. On an actor a player
- * owns, a hidden status is hidden from that player, so it must not move what
- * they can see. Elsewhere hidden is how the Narrator's statuses start (see
- * {@link startsHiddenOn}), so they count. The Hero's limit readout, the limit
- * recalc and the story-tag sidebar all use this one rule.
+ * Whether a status counts toward its actor's limits. A hidden status never
+ * counts on a Hero, nor on any actor a player owns: it is hidden from that
+ * player, so it must not move what they can see. On a Challenge, hidden is how
+ * the Narrator's statuses start (see {@link startsHiddenOn}), so they count.
+ * The Hero's limit readout, the limit recalc and the story-tag sidebar all use
+ * this one rule.
  * @param {{system?: {isHidden?: boolean}, hidden?: boolean}} effect
  *   An ActiveEffect, or a UI descriptor carrying `hidden`
  * @param {Actor|null|undefined} actor
@@ -41,7 +44,8 @@ export function startsHiddenOn(actor) {
  */
 export function countsTowardLimit(effect, actor) {
 	const hidden = effect?.system?.isHidden ?? effect?.hidden ?? false;
-	return !(hidden && actor?.hasPlayerOwner);
+	if (!hidden) return true;
+	return !(actor?.type === "hero" || actor?.hasPlayerOwner);
 }
 
 /**

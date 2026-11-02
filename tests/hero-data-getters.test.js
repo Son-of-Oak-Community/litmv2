@@ -306,7 +306,7 @@ describe("HeroData limit readout", () => {
 });
 
 describe("HeroData limit readout, Narrator-run Hero", () => {
-	it("still counts a hidden status when no player owns the Hero", () => {
+	it("ignores a hidden status on a Hero no player owns too", () => {
 		const hidden = fakeEffect({
 			type: "status_tag",
 			name: "wounded",
@@ -316,6 +316,6 @@ describe("HeroData limit readout, Narrator-run Hero", () => {
 		const { model } = makeHero({ effects: [hidden] });
 		model.parent.hasPlayerOwner = false;
 		model.prepareDerivedData();
-		expect(model.limit.value).toBe(model.limit.max - 3);
+		expect(model.limit.value).toBe(model.limit.max);
 	});
 });

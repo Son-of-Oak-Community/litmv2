@@ -633,6 +633,16 @@ describe("recalculateLimitValues: hidden statuses", () => {
 		expect(reachedCalls()).toHaveLength(0);
 	});
 
+	it("leaves it out on a Hero no player owns too", async () => {
+		const { actor, model } = buildActor({ effects: [hiddenStatus(3)] });
+		actor.type = "hero";
+		actor.hasPlayerOwner = false;
+
+		await model.recalculateLimitValues();
+
+		expect(actor.stored[0].value).toBe(0);
+	});
+
 	it("counts it on an actor no player owns", async () => {
 		const { actor, model } = buildActor({ effects: [hiddenStatus(3)] });
 		actor.hasPlayerOwner = false;
