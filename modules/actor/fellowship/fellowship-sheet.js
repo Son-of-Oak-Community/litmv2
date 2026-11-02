@@ -4,6 +4,7 @@ import {
 	resolveEffect,
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
+import { ThemeBrowser } from "../../apps/theme-browser.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import {
 	ACTOR_TYPES,
@@ -15,7 +16,6 @@ import { LitmSettings } from "../../system/settings.js";
 import {
 	findFellowshipTheme,
 	levelIcon,
-	queryItemsFromPacks,
 } from "../../utils.js";
 
 /**
@@ -389,92 +389,29 @@ export class FellowshipSheet extends LitmActorSheet {
 	}
 
 	/**
-	 * Open a dialog to browse and pick a fellowship themebook or themekit
+	 * Open the theme browser on Fellowship themes. A picked themebook becomes
+	 * a new Fellowship theme; a picked kit is copied in. Cards also drag onto
+	 * the sheet, which takes the same two paths in _onDropItem.
 	 * @private
 	 */
 	static async #onBrowseThemes() {
 		if (this.#hasReachedThemeLimit()) return;
-
-		// Gather fellowship themebooks and themekits from all Item compendiums and world items
-		const fellowshipMapper = (entry, { pack }) => {
-			const uuid = pack
-				? entry.uuid || `Compendium.${pack.collection}.${entry._id}`
-				: entry.uuid;
-			const img = entry.img || "icons/svg/book.svg";
-			return { uuid, name: entry.name, img };
-		};
-		const isFellowship = (entry) => !!entry.system?.isFellowship;
-
-		const themebooks = await queryItemsFromPacks({
-			type: "themebook",
-			category: "themebooks",
-			filter: isFellowship,
-			indexFields: [
-				"img",
-				"system.theme_level",
-				"system.level",
-				"system.isFellowship",
-			],
-			map: fellowshipMapper,
-		});
-		const themekits = await queryItemsFromPacks({
-			type: "theme",
-			category: "themekits",
-			filter: isFellowship,
-			indexFields: [
-				"img",
-				"system.theme_level",
-				"system.level",
-				"system.isFellowship",
-			],
-			map: fellowshipMapper,
-		});
-
-		themebooks.sort((a, b) => a.name.localeCompare(b.name));
-		themekits.sort((a, b) => a.name.localeCompare(b.name));
-
-		// Mark the first themekit as default-checked only when no themebooks exist
-		if (!themebooks.length && themekits.length) {
-			themekits[0].firstKit = true;
-		}
-
-		const content = await foundry.applications.handlebars.renderTemplate(
-			"systems/litmv2/templates/apps/fellowship-theme-picker.html",
-			{
-				themebooks,
-				themekits,
-				hasAny: themebooks.length || themekits.length,
+		const Browser = game.litmv2?.ThemeBrowser ?? ThemeBrowser;
+		new Browser({
+			isFellowship: true,
+			window: { title: "LITM.Ui.fellowship_browse_title" },
+			pickLabel: game.i18n.localize("LITM.Terms.select"),
+			onPick: async (entry) => {
+				if (this.#hasReachedThemeLimit()) return;
+				const doc = await foundry.utils.fromUuid(entry.uuid);
+				if (!doc) return false;
+				if (doc.type === "themebook") {
+					await this.#createThemeFromThemebook(doc);
+				} else {
+					await this.document.createEmbeddedDocuments("Item", [doc.toObject()]);
+				}
 			},
-		);
-
-		const result = await foundry.applications.api.DialogV2.prompt({
-			window: {
-				title: game.i18n.localize("LITM.Ui.fellowship_browse_title"),
-			},
-			content,
-			ok: {
-				icon: "fas fa-check",
-				label: game.i18n.localize("LITM.Terms.select"),
-				callback: (_event, button) => {
-					const checked = button.form.querySelector(
-						"input[name=choice]:checked",
-					);
-					if (!checked) return null;
-					return { uuid: checked.value, type: checked.dataset.type };
-				},
-			},
-		});
-
-		if (!result) return;
-
-		const doc = await foundry.utils.fromUuid(result.uuid);
-		if (!doc) return;
-
-		if (result.type === "themebook") {
-			await this.#createThemeFromThemebook(doc);
-		} else {
-			await this.document.createEmbeddedDocuments("Item", [doc.toObject()]);
-		}
+		}).render(true);
 	}
 
 	/**

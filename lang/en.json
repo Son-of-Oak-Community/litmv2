@@ -597,7 +597,6 @@
 			"expand_theme": "Expand Theme",
 			"fellowship_browse_title": "Choose Fellowship Theme",
 			"fellowship_name": "Fellowship Name",
-			"fellowship_no_options": "No fellowship themebooks or themekits found. Install a content module or create one in the Items directory.",
 			"fellowship_no_theme": "No fellowship theme set up yet. Click here to configure.",
 			"fellowship_no_theme_edit": "No fellowship theme set up yet. Click the edit button to configure.",
 			"fellowship_setup_cta": "Drop a <em><b>Fellowship</b></em> Themebook or Theme here, or click the book icon to browse available options.",
