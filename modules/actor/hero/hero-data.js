@@ -284,7 +284,21 @@ export class HeroData extends LimitsMixin(
 	 * @returns {ActiveEffect[]}
 	 */
 	get relationships() {
-		return this._effectBuckets.relationship_tag ?? [];
+		// A relationship with a deleted Hero stays stored but no longer counts.
+		return (this._effectBuckets.relationship_tag ?? []).filter(
+			(e) => e.system?.targetHero,
+		);
+	}
+
+	/**
+	 * Relationships whose Hero was deleted. Never used in a roll; the Hero
+	 * sheet lists them so they can be removed.
+	 * @returns {ActiveEffect[]}
+	 */
+	get lostRelationships() {
+		return (this._effectBuckets.relationship_tag ?? []).filter(
+			(e) => !e.system?.targetHero,
+		);
 	}
 
 	/**

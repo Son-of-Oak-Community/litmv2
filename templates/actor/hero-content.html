@@ -149,7 +149,7 @@
 			</p>
 			{{/if}}
 			<hr />
-			{{#if relationshipEntries.length}}
+			{{#if (or relationshipEntries.length lostRelationships.length)}}
 			<ul class="plain">
 				{{#each relationshipEntries as |relationship|}}
 				<li class="form-group" style="gap: 8px; align-items: center; justify-content: space-between">
@@ -162,6 +162,9 @@
 						placeholder="{{localize 'LITM.Ui.name_relationship'}}" />
 					{{/if}}
 				</li>
+				{{/each}}
+				{{#each lostRelationships as |relationship|}}
+				{{> "systems/litmv2/templates/partials/lost-relationship.html" relationship=relationship}}
 				{{/each}}
 			</ul>
 			{{else}}

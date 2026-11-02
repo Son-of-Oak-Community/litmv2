@@ -54,7 +54,10 @@ export function partitionCampingEffects(actor) {
 	};
 	for (const e of actor.allApplicableEffects?.() ?? []) {
 		if (e.type === "status_tag") buckets.statusEffects.push(e);
-		else if (e.type === "relationship_tag") buckets.relationshipEffects.push(e);
+		// A relationship with a deleted Hero can't be rephrased, like it can't be rolled.
+		else if (e.type === "relationship_tag") {
+			if (e.system?.targetHero) buckets.relationshipEffects.push(e);
+		}
 		// A disabled power tag hasn't been gained yet; there is nothing to recover.
 		else if (e.type === "power_tag" && e.system?.isScratched && !e.disabled) {
 			buckets.scratchedRecoverable.push(e);

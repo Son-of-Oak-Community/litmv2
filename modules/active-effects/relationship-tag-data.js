@@ -12,6 +12,17 @@ export class RelationshipTagData extends ScratchableMixin(
 		};
 	}
 
+	/**
+	 * The Hero this relationship is with, or null once that Hero is gone. The
+	 * Hero sheet only lists relationships with a Hero in the world, so a roll
+	 * must not offer the others either.
+	 * @returns {Actor|null}
+	 */
+	get targetHero() {
+		const actor = game.actors?.get(this.targetId);
+		return actor?.type === "hero" ? actor : null;
+	}
+
 	get isSingleUse() {
 		return true;
 	}

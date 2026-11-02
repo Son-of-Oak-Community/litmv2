@@ -2413,6 +2413,28 @@ section.standard-form.litm-actions-app {
 	flex-shrink: 0;
 }
 
+/* A relationship whose Hero was deleted: the icon takes the portrait's
+   place, so the row lines up with the live relationships above it. */
+.litm .litm--lost-relationship {
+	align-items: center;
+}
+
+.litm .litm--lost-relationship__who {
+	flex: none;
+	align-items: center;
+	white-space: nowrap;
+}
+
+.litm .litm--lost-relationship__who i {
+	width: 28px;
+	text-align: center;
+}
+
+.litm .litm--lost-relationship__tag {
+	flex: 1;
+	font-style: italic;
+}
+
 /* Special improvements list (theme-special-improvements partial) */
 .litm .special-improvements-list {
 	margin: 0;

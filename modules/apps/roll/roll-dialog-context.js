@@ -171,6 +171,10 @@ function pushThemeGroup(themeMap, rawTag, themeImg, tag) {
 	themeMap.get(key).tags.push(tag);
 }
 
+/** A relationship with a Hero no longer in the world: the Hero sheet hides it. */
+const isLostRelationship = (e) =>
+	e.type === "relationship_tag" && !e.system?.targetHero;
+
 /**
  * Build contributed tag groups from other characters' selections.
  * Owners see every helper's claimed tags grouped per contributor/theme;
@@ -234,6 +238,7 @@ export function buildContributedTagGroups(
 			for (const e of ownCharacter.appliedEffects) {
 				// A status the Narrator hid on this Hero stays hidden here too.
 				if (!isEffectVisible(e)) continue;
+				if (isLostRelationship(e)) continue;
 				const rawTag = effectToPlain(e);
 				const sel = dialog.getSelection(rawTag.uuid);
 				const tag = decorateTag({
@@ -529,7 +534,7 @@ function buildActorEffectGroups(
 	// so non-GMs get the same visibility filter `buildOwnerContext` applies.
 	const isGM = game.user.isGM;
 	for (const e of actor.appliedEffects) {
-		if (!isGM && !isEffectVisible(e)) continue;
+		if ((!isGM && !isEffectVisible(e)) || isLostRelationship(e)) continue;
 		const sel = dialog.getSelection(e.uuid);
 		const rawTag = effectToPlain(e);
 		const tag = decorateTag({

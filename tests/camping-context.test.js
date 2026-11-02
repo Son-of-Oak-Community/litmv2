@@ -101,7 +101,10 @@ describe("partitionCampingEffects — Quality Time fellowship tags", () => {
 			type: "power_tag",
 			system: { isScratched: true },
 		});
-		const rel = fakeEffect({ type: "relationship_tag" });
+		const rel = fakeEffect({
+			type: "relationship_tag",
+			system: { targetHero: { id: "friend" } },
+		});
 		const hero = fakeActor({ effects: [power, rel] });
 		hero.system = { fellowshipActor: fellowshipWith(scratchedTag("x")) };
 
@@ -109,6 +112,17 @@ describe("partitionCampingEffects — Quality Time fellowship tags", () => {
 
 		expect(buckets.scratchedRecoverable).toEqual([power]);
 		expect(buckets.relationshipEffects).toEqual([rel]);
+	});
+
+	it("leaves out a relationship whose Hero was deleted", () => {
+		const lost = fakeEffect({
+			type: "relationship_tag",
+			system: { targetHero: null },
+		});
+		const hero = fakeActor({ effects: [lost] });
+		hero.system = { fellowshipActor: null };
+
+		expect(partitionCampingEffects(hero).relationshipEffects).toEqual([]);
 	});
 
 	it("skips a scratched power tag the hero hasn't gained (disabled)", () => {
