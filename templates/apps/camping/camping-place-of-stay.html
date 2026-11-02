@@ -16,7 +16,7 @@
 					<input type="checkbox" data-update="scene-tag-expiry"
 						data-effect-id="{{id}}"
 						{{#if markedForExpiry}}checked{{/if}}>
-					<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
+					<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}">{{name}}{{#if isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
 				</label>
 			</li>
 			{{/each}}

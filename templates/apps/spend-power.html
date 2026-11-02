@@ -59,7 +59,7 @@
 					{{#each item.tagTokens}}
 					<li class="litm-spend-power__tag-chip is-selected" data-action="toggle-chip"
 						data-tag-idx="{{idx}}" data-tag-cost="{{cost}}">
-						<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}" data-text="{{name}}">{{name}}{{#if isSingleUse}} ✱{{/if}}</span>
+						<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}" data-text="{{name}}">{{name}}{{#if isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
 					</li>
 					{{/each}}
 				</ul>
@@ -127,7 +127,7 @@
 					<ul class="litm-spend-power__tag-chip-list">
 						{{#each group.tags as |tag|}}
 						<li class="litm-spend-power__tag-chip" data-action="toggle-chip" data-tag-id="{{tag.id}}" data-tag-name="{{tag.name}}" data-actor-id="{{group.ownerId}}" data-actor-uuid="{{group.ownerUuid}}"{{#if group.isScene}} data-scene-tag="true"{{/if}}{{#if tag.isSingleUse}} data-single-use="true"{{/if}}>
-							<span class="litm-tag{{#if tag.isSingleUse}} litm--single-use{{/if}}" data-text="{{tag.name}}">{{tag.name}}{{#if tag.isSingleUse}} ✱{{/if}}</span>
+							<span class="litm-tag{{#if tag.isSingleUse}} litm--single-use{{/if}}" data-text="{{tag.name}}">{{tag.name}}{{#if tag.isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
 						</li>
 						{{/each}}
 					</ul>

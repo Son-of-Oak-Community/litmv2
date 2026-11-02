@@ -110,7 +110,7 @@ export function makeActorCard(actor, typeClass) {
  * enricher and `proseChipsHtml` so every surface draws the same chips.
  *
  *   story    → <span class="litm-tag">name</span>
- *   story!   → <span class="litm-tag litm--single-use">name ✱</span>
+ *   story!   → <span class="litm-tag litm--single-use">name<span class="litm--single-use-mark">✱</span></span>
  *   status   → <span class="litm-status">name-N</span>
  *              ([name-] → litm--variable-tier, no tier suffix)
  *   limit    → <span class="litm-limit">name <N badge></span>
@@ -173,7 +173,9 @@ export function tagChipHtml(
 		default: {
 			const base = c.isSingleUse ? "litm-tag litm--single-use" : "litm-tag";
 			const cls = scratched ? `${base} scratched` : base;
-			const label = c.isSingleUse ? `${c.name} ✱` : c.name;
+			const singleUse = c.isSingleUse
+				? `<span class="litm--single-use-mark">✱</span>`
+				: "";
 			// Same scratch glyph the play-tag template draws, but chat-safe: a
 			// CSS-masked span (Foundry strips inline <svg> from chat content).
 			const mark = scratched
@@ -181,7 +183,7 @@ export function tagChipHtml(
 				: "";
 			return `<span class="${cls}" draggable="true"${tip} data-text="${esc(
 				c.name,
-			)}">${esc(label)}${mark}</span>`;
+			)}">${esc(c.name)}${singleUse}${mark}</span>`;
 		}
 	}
 }

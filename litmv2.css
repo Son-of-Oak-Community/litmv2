@@ -570,6 +570,17 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 	font-weight: 400;
 }
 
+/* The ✱ falls back to a symbol font whose glyph sits large and heavy next to
+   the serif label; set it small, upright and centred on the chip. Chips are
+   inline-flex, so the chip's own gap spaces it from the name. */
+.litm--single-use-mark {
+	align-self: center;
+	font-size: 0.7em;
+	font-style: normal;
+	font-weight: 400;
+	line-height: 1;
+}
+
 /* A flex legend (banner + edit/add buttons) hugs its content. Chrome does
    that by default; Safari stretches a display:flex legend to the fieldset
    width, and the .flexrow children grow into the space. */

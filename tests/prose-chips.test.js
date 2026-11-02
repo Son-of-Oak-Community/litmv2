@@ -31,8 +31,10 @@ describe("proseChipsHtml", () => {
 	it("renders [name!] as a single-use tag chip with marker", () => {
 		const html = proseChipsHtml("Stash a [smoke bomb!].");
 		expect(html).toContain('class="litm-tag litm--single-use"');
-		// Display label gets the marker glyph appended.
-		expect(html).toContain("smoke bomb ✱");
+		// Display label gets the marker glyph appended, in its own sized span.
+		expect(html).toContain(
+			'smoke bomb<span class="litm--single-use-mark">✱</span>',
+		);
 		// data-text stays clean (no marker) — it doubles as the CSS stroke
 		// underlay; the dragstart handler reads litm--single-use instead.
 		expect(html).toContain('data-text="smoke bomb"');
