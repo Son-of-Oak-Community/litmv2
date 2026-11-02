@@ -94,6 +94,48 @@ export function classifyTagStringMatch(match) {
 }
 
 /**
+ * A tag string as a player may see it. Tag strings (a Challenge's or a
+ * Journey's `tags`) are a second copy of what the effects hold, so every
+ * story tag or status the Narrator hid on `actor` would otherwise show there
+ * by name. For a non-GM this drops the markup of each hidden effect, and of
+ * each limit in `limits` not revealed to players (`hidden !== false`, the
+ * same rule as the limited view). Weakness markup has no effect behind it and
+ * is kept. A name a visible effect also carries is kept.
+ * @param {string} text
+ * @param {Actor|null} actor  Whose effects decide what is hidden
+ * @param {{limits?: object[]}} [options]
+ * @returns {string}
+ */
+export function playerVisibleTagString(text, actor, { limits = [] } = {}) {
+	if (!text || globalThis.game?.user?.isGM) return text ?? "";
+	const kindOf = { story_tag: "story", status_tag: "status" };
+	const hidden = new Set();
+	const shown = new Set();
+	for (const e of actor?.allApplicableEffects?.() ?? []) {
+		const kind = kindOf[e.type];
+		if (!kind) continue;
+		const key = `${kind}:${e.name.toLowerCase()}`;
+		(e.system?.isHidden ? hidden : shown).add(key);
+	}
+	for (const shownKey of shown) hidden.delete(shownKey);
+	for (const limit of limits) {
+		if (limit?.hidden === false || !limit?.label) continue;
+		hidden.add(`limit:${limit.label.toLowerCase()}`);
+	}
+	if (!hidden.size) return text;
+	const base = tagStringRe();
+	const flags = base.flags.includes("g") ? base.flags : `${base.flags}g`;
+	const re = new RegExp(base.source, flags);
+	return text
+		.replace(re, (...args) => {
+			const c = classifyTagStringMatch(args.slice(0, 5));
+			return hidden.has(`${c.kind}:${c.name.toLowerCase()}`) ? "" : args[0];
+		})
+		.replace(/ {2,}/g, " ")
+		.trim();
+}
+
+/**
  * Convert a tag-string regex match into ActiveEffect creation data.
  * Weakness and limit markup has no effect representation and returns `null`.
  * @param {RegExpMatchArray} match  A match from CONFIG.litmv2.tagStringRe

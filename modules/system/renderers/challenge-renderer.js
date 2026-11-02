@@ -1,3 +1,4 @@
+import { playerVisibleTagString } from "../../item/action/tag-string.js";
 import { enrichHTML, levelIcon, localize as t } from "../../utils.js";
 import { makeActorCard, sectionHeader } from "./renderer-utils.js";
 import { renderVignette } from "./vignette-renderer.js";
@@ -70,12 +71,17 @@ export async function renderChallenge(actor) {
 	}
 
 	// ── Two-column grid: (Limits + Tags/Might) | Vignettes ──
-	const limits =
-		(sys.derivedLimits ?? sys.limits)?.filter((l) => l.label) ?? [];
+	// Built on each viewer's client: a player sees only what was revealed.
+	const allLimits = sys.derivedLimits ?? sys.limits ?? [];
+	const limits = allLimits.filter(
+		(l) => l.label && (game.user.isGM || l.hidden === false),
+	);
 	const vignettes = actor.items.filter((i) => i.type === "vignette");
 	const might =
 		(sys.derivedMight ?? sys.might)?.filter((m) => m.description) ?? [];
-	const displayTags = sys.derivedTags || sys.tags;
+	const displayTags = playerVisibleTagString(sys.derivedTags || sys.tags, actor, {
+		limits: allLimits,
+	});
 	const hasLeft =
 		limits.length || displayTags || might.length || sys.specialFeatures;
 	const addonThreats = sys.addonThreats || [];
