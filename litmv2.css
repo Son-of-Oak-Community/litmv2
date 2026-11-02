@@ -623,6 +623,7 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
    chat action panel). Lets the parchment show through; chrome carries
    the contour. */
 .litm--action-card,
+.litm--theme-browser-card,
 .litm--success-card {
 	display: flex;
 	flex-direction: column;
@@ -743,16 +744,19 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 /* The part's root section sits inside .window-content (flex column, bounded
    height). Without flex: 1 + min-height: 0 it sizes to content and overflows,
    so the scrollable list below has no constrained height to scroll within. */
-section.standard-form.litm-actions-app {
+section.standard-form.litm-actions-app,
+section.standard-form.litm-theme-browser-body {
 	flex: 1 1 auto;
 	min-height: 0;
 }
-.litm-actions-app .litm--actions-list {
+.litm-actions-app .litm--actions-list,
+.litm-theme-browser .litm--theme-browser-list {
 	flex: 1 1 auto;
 	min-height: 0;
 	margin-top: var(--spacer-8);
 }
-.litm-actions-app .litm--action-card {
+.litm-actions-app .litm--action-card,
+.litm-theme-browser .litm--theme-browser-card {
 	margin-bottom: var(--spacer-8);
 }
 /* Rote variant — gold-tinted border so magical actions read at silhouette
@@ -760,7 +764,8 @@ section.standard-form.litm-actions-app {
 .litm-actions-app .litm--action-card[data-rote="true"] {
 	border-color: var(--color-litm-tag-text);
 }
-.litm--action-card-img {
+.litm--action-card-img,
+.litm--theme-browser-card-img {
 	width: 36px;
 	height: 36px;
 	border: none;
@@ -776,7 +781,8 @@ section.standard-form.litm-actions-app {
 	margin-right: var(--spacer-4);
 	color: var(--color-litm-tag-text);
 }
-.litm--action-card-name {
+.litm--action-card-name,
+.litm--theme-browser-card-name {
 	font-family: var(--font-h2);
 	font-size: var(--font-size-16);
 	font-weight: 500;
@@ -788,7 +794,8 @@ section.standard-form.litm-actions-app {
 	font-size: var(--font-size-12);
 }
 /* Roll-from-action: the verb of the card. Labeled, gold accent. */
-.litm-actions-app .litm--action-card-roll {
+.litm-actions-app .litm--action-card-roll,
+.litm-theme-browser .litm--theme-browser-pick {
 	flex: 0 0 auto;
 	gap: var(--spacer-8);
 	padding-inline: var(--spacer-12);
@@ -796,7 +803,8 @@ section.standard-form.litm-actions-app {
 	color: var(--color-litm-tag-text);
 	font-weight: 600;
 }
-.litm-actions-app .litm--action-card-roll:hover {
+.litm-actions-app .litm--action-card-roll:hover,
+.litm-theme-browser .litm--theme-browser-pick:hover {
 	background: var(--color-warm-1-10);
 }
 /* Admin actions cluster — secondary visual weight, only this group reveals on hover */
@@ -899,8 +907,38 @@ section.standard-form.litm-actions-app {
 }
 
 /* Actions browser app — filter row */
-.litm--actions-filter input[type="search"] {
+.litm--actions-filter input[type="search"],
+.litm--theme-browser-filters input[type="search"] {
 	min-height: 1.75rem;
+}
+
+/* Theme browser — kits and themebooks as draggable cards. Shares the
+   action card's surface, image, name and verb-button rules above. */
+.litm--theme-browser-card {
+	cursor: grab;
+}
+.litm--theme-browser-card-meta {
+	gap: var(--spacer-2);
+}
+.litm--theme-browser-card-meta > .hint {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacer-4);
+	font-size: var(--font-size-12);
+}
+.litm--theme-browser-source::before {
+	content: "·";
+	margin-right: var(--spacer-4);
+}
+.litm--theme-browser-level {
+	width: 24px;
+	height: 24px;
+	border: none;
+}
+.litm--theme-browser-preview {
+	margin-top: var(--spacer-4);
+	cursor: auto;
 }
 
 /* Action sheet — give every list under a control-legend room to breathe.

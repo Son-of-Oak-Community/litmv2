@@ -1,0 +1,85 @@
+<section class="standard-form litm-theme-browser-body">
+	<header class="flexcol gap-sm litm--theme-browser-filters">
+		{{#if subtitle}}<p class="hint">{{subtitle}}</p>{{/if}}
+		<input type="search" data-filter="text"
+			placeholder="{{localize 'LITM.Ui.theme_browser_search'}}"
+			aria-label="{{localize 'LITM.Ui.theme_browser_search'}}"
+			value="{{filterText}}" />
+		<div class="flexrow gap-sm">
+			<div class="litm--roll-type-bar flex1" role="radiogroup" aria-label="{{localize 'LITM.Terms.type'}}">
+				{{#each kindOptions as |opt|}}
+				<label class="litm--segmented-option litm--roll-type-option {{#if opt.active}}is-active{{/if}}">
+					<input type="radio" name="kind" value="{{opt.value}}" {{checked opt.active}} />
+					<span>{{opt.label}}</span>
+				</label>
+				{{/each}}
+			</div>
+			<div class="litm--roll-type-bar" role="radiogroup" aria-label="{{localize 'LITM.Terms.might'}}">
+				<label class="litm--segmented-option litm--roll-type-option {{#if @root.anyLevel}}is-active{{/if}}"
+					data-tooltip="{{localize 'LITM.Ui.theme_browser_all'}}">
+					<input type="radio" name="level" value="" {{checked @root.anyLevel}} />
+					<span>{{localize "LITM.Ui.theme_browser_all"}}</span>
+				</label>
+				{{#each levelOptions as |opt|}}
+				<label class="litm--segmented-option litm--segmented-option--icon {{#if opt.active}}is-active{{/if}}"
+					data-tooltip="{{opt.label}}" aria-label="{{opt.label}}">
+					<input type="radio" name="level" value="{{opt.value}}" {{checked opt.active}} />
+					<img src="systems/litmv2/assets/media/icons/{{opt.value}}.svg" alt="" aria-hidden="true" />
+				</label>
+				{{/each}}
+			</div>
+		</div>
+	</header>
+
+	<div class="litm--theme-browser-list scrollable">
+		{{#if entries.length}}
+		<ul class="plain">
+			{{#each entries as |entry|}}
+			<li class="litm--theme-browser-card" data-uuid="{{entry.uuid}}" draggable="true"
+				data-tooltip="{{localize 'LITM.Ui.theme_browser_drag_hint'}}" data-tooltip-direction="LEFT">
+				<header class="flexrow gap-sm litm--theme-browser-card-header">
+					<img class="noflex litm--theme-browser-card-img" src="{{entry.img}}" alt="" aria-hidden="true" />
+					<div class="flexcol flex1 litm--theme-browser-card-meta">
+						<strong class="litm--theme-browser-card-name">{{entry.name}}</strong>
+						<span class="hint">
+							<span class="litm-banner">{{entry.kindLabel}}</span>
+							{{#if entry.themebook}}{{entry.themebook}}{{/if}}
+							{{#if entry.sourceLabel}}<span class="litm--theme-browser-source">{{entry.sourceLabel}}</span>{{/if}}
+						</span>
+					</div>
+					{{#if entry.showLevelIcon}}
+					<img class="noflex litm--theme-browser-level" src="systems/litmv2/assets/media/icons/{{entry.level}}.svg"
+						alt="{{entry.levelLabel}}" data-tooltip="{{entry.levelLabel}}" />
+					{{/if}}
+					<button type="button" class="noflex" data-action="togglePreview"
+						aria-expanded="{{#if entry.expanded}}true{{else}}false{{/if}}"
+						data-tooltip="{{localize 'LITM.Ui.theme_browser_preview'}}"
+						aria-label="{{localize 'LITM.Ui.theme_browser_preview'}}">
+						<i class="fa-solid {{#if entry.expanded}}fa-chevron-up{{else}}fa-chevron-down{{/if}}" aria-hidden="true"></i>
+					</button>
+					{{#if @root.canPick}}
+					<button type="button" class="noflex litm--theme-browser-pick" data-action="pick">
+						<i class="fa-solid fa-check" aria-hidden="true"></i>
+						<span>{{@root.pickLabel}}</span>
+					</button>
+					{{/if}}
+				</header>
+				{{#if entry.expanded}}
+				<div class="litm--theme-browser-preview">
+					{{#if entry.preview}}{{{entry.preview}}}{{else}}<p class="hint"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></p>{{/if}}
+				</div>
+				{{/if}}
+			</li>
+			{{/each}}
+		</ul>
+		{{else}}
+		<div class="litm--actions-empty">
+			<i class="fa-solid fa-book-open" aria-hidden="true"></i>
+			<p class="hint">
+				{{#if totalCount}}{{localize "LITM.Ui.theme_browser_empty_filtered"}}
+				{{else}}{{localize "LITM.Ui.theme_browser_empty"}}{{/if}}
+			</p>
+		</div>
+		{{/if}}
+	</div>
+</section>
