@@ -79,10 +79,16 @@
 	<fieldset class="litm-theme-evolution__new-theme">
 		<legend>{{localize "LITM.Ui.evolution_new_theme"}}</legend>
 
-		<p class="hint litm-theme-evolution__drop-hint" data-role="drop-hint">
-			<i class="fa-solid fa-arrow-down-to-bracket" aria-hidden="true"></i>
-			<span>{{{localize "LITM.Ui.evolution_drop_theme_hint"}}}</span>
-		</p>
+		<div class="flexrow gap-sm" data-role="drop-hint">
+			<p class="hint flex1 litm-theme-evolution__drop-hint">
+				<i class="fa-solid fa-arrow-down-to-bracket" aria-hidden="true"></i>
+				<span>{{{localize "LITM.Ui.evolution_drop_theme_hint"}}}</span>
+			</p>
+			<button type="button" class="noflex" data-action="browseThemes">
+				<i class="fa-solid fa-book-open" aria-hidden="true"></i>
+				<span>{{localize "LITM.Ui.theme_browser_browse"}}</span>
+			</button>
+		</div>
 
 		<div class="form-group stacked">
 			<label>{{localize "LITM.Ui.evolution_new_title_tag"}}</label>
@@ -99,16 +105,8 @@
 
 		<div class="form-group">
 			<label>{{localize "LITM.Ui.themebook_type"}}</label>
-			<select name="themebook">
-				<option value="">—</option>
-				{{#each themebookGroups as |group|}}
-				<optgroup label="{{group.label}}">
-					{{#each group.options as |opt|}}
-					<option value="{{opt.value}}" {{#if (eq opt.value ../../themebookName)}}selected{{/if}}>{{opt.label}}</option>
-					{{/each}}
-				</optgroup>
-				{{/each}}
-			</select>
+			<input type="hidden" name="themebook" value="{{themebookName}}" />
+			<span class="litm-theme-evolution__themebook-name" data-role="themebook-name">{{#if themebookName}}{{themebookName}}{{else}}—{{/if}}</span>
 		</div>
 
 		<div class="form-group">

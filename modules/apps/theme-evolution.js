@@ -33,7 +33,13 @@ import {
 	POWER_TAG_TYPES,
 } from "../system/config.js";
 import { dialogContent } from "../system/renderers/renderer-utils.js";
-import { queryItemsFromPacks, localize as t } from "../utils.js";
+import { localize as t } from "../utils.js";
+import { ThemeBrowser } from "./theme-browser.js";
+import {
+	kitTagEffects,
+	kitThemeUpdate,
+	wipeNonTitleTagEffects,
+} from "./theme-template.js";
 import {
 	applyPromiseGain,
 	availableModes,
@@ -306,35 +312,6 @@ async function applyEvolveKeptTagUpdates(
 }
 
 /**
- * Delete every non-title power tag and every weakness tag from the theme.
- * Used in Replace mode where the whole theme is wiped.
- */
-async function wipeNonTitleTagEffects(theme) {
-	const wipeIds = [...theme.effects]
-		.filter(
-			(e) =>
-				(POWER_TAG_TYPES.has(e.type) && !e.system.isTitleTag) ||
-				e.type === "weakness_tag",
-		)
-		.map((e) => e.id);
-	if (wipeIds.length) {
-		await theme.deleteEmbeddedDocuments("ActiveEffect", wipeIds);
-	}
-	// The surviving title tag still carries the OLD themebook's question
-	// index — reset it so the new theme starts with a clean slot. The
-	// title tag's name is updated by the item-hooks rename-sync; only its
-	// question pointer needs zeroing.
-	const titleTag = [...theme.effects].find(
-		(e) => POWER_TAG_TYPES.has(e.type) && e.system?.isTitleTag,
-	);
-	if (titleTag && titleTag.system?.question != null) {
-		await theme.updateEmbeddedDocuments("ActiveEffect", [
-			{ _id: titleTag.id, "system.question": null },
-		]);
-	}
-}
-
-/**
  * Build the theme `update()` payload for the new shape — name, themebook,
  * level, quest text, and reset tracks. On Evolve, preserved specials are
  * carried forward with renames applied and traded entries dropped. On
@@ -523,43 +500,6 @@ async function applyTransformation({
 }
 
 /**
- * Group themebooks by Might tier (origin/adventure/greatness/variable)
- * for the new-theme dropdown. Books with an unrecognized tier fall into
- * an "Other" bucket at the end so they aren't silently dropped.
- */
-function buildThemebookGroups(themebooks) {
-	const tierOrder = [...getThemeLevels(), "variable"];
-	const buckets = new Map(tierOrder.map((k) => [k, []]));
-	const ungrouped = [];
-	for (const tb of themebooks) {
-		const bucket = buckets.get(tb.themeLevel);
-		if (bucket) bucket.push(tb);
-		else ungrouped.push(tb);
-	}
-	const sortByLabel = (a, b) => a.label.localeCompare(b.label);
-	const groups = tierOrder
-		.map((tier) => ({
-			tier,
-			label: t(`LITM.Terms.${tier}`) || tier,
-			options: buckets
-				.get(tier)
-				.sort(sortByLabel)
-				.map((tb) => ({ value: tb.name, label: tb.label })),
-		}))
-		.filter((g) => g.options.length > 0);
-	if (ungrouped.length) {
-		groups.push({
-			tier: "",
-			label: t("LITM.Ui.evolution_themebook_other"),
-			options: ungrouped
-				.sort(sortByLabel)
-				.map((tb) => ({ value: tb.name, label: tb.label })),
-		});
-	}
-	return groups;
-}
-
-/**
  * Build the Expand-mode context: the hero's other replaceable themes
  * and, for each, the count of extras the rules would trade in. The
  * recompute step reads `expandTargetExtras` keyed by target id so the
@@ -709,31 +649,14 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 	// Power/weakness tag effects to copy from the source. Title tag stays
 	// on the current theme (it auto-renames to the new theme's name via
 	// the item-hooks rename sync); only revisable tags are duplicated.
-	const toCreate = [];
-	for (const eff of dropped.effects) {
-		const isPower = POWER_TAG_TYPES.has(eff.type) && !eff.system?.isTitleTag;
-		const isWeakness = eff.type === "weakness_tag";
-		if (!isPower && !isWeakness) continue;
-		const obj = eff.toObject();
-		delete obj._id;
-		toCreate.push(obj);
-	}
+	const toCreate = kitTagEffects(dropped);
 	const replacedCaps = getTradeCaps(getRevisableParts(theme));
 
 	const newName = dropped.name;
 	const update = {
-		name: newName,
-		"system.themebook": dropped.system?.themebook ?? "",
-		"system.level": dropped.system?.level || getDefaultThemeLevel(),
-		"system.description": dropped.system?.description ?? "",
-		"system.quest.description": dropped.system?.quest?.description ?? "",
-		"system.quest.tracks.milestone.value": 0,
-		"system.quest.tracks.abandon.value": 0,
+		...kitThemeUpdate(dropped),
 		"system.improve.value": 0,
 		"system.nascentImprovements": 2,
-		"system.specialImprovements": foundry.utils.deepClone(
-			dropped.system?.specialImprovements ?? [],
-		),
 	};
 	// Fellowship themes never mark Promise (Core Book p.193).
 	const promiseGained = isFellowship ? 0 : 1 + totalTradeCap(replacedCaps);
@@ -788,6 +711,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			confirm: ThemeEvolutionWizard.#onConfirm,
 			cancel: ThemeEvolutionWizard.#onCancel,
 			setLevel: ThemeEvolutionWizard.#onSetLevel,
+			browseThemes: ThemeEvolutionWizard.#onBrowseThemes,
 		},
 	};
 
@@ -807,7 +731,6 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		// Optional: chat message that triggered the wizard. On successful
 		// confirmation, we flag the message so its footer button hides.
 		this.messageId = options.messageId ?? null;
-		this._themebooks = [];
 		// Re-entrancy guard. #onConfirm runs several awaits in sequence;
 		// without this, a second click during the in-flight transformation
 		// would trigger duplicate document updates and chat cards.
@@ -847,34 +770,10 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			return { canRender: false };
 		}
 
-		if (!this._themebooks.length) {
-			const all = await queryItemsFromPacks({
-				type: "themebook",
-				category: "themebooks",
-				indexFields: ["name", "system.theme_level", "system.isFellowship"],
-				map: (entry) => ({
-					name: entry.name,
-					label: entry.name,
-					themeLevel: entry.system?.theme_level ?? "",
-					isFellowship: !!entry.system?.isFellowship,
-				}),
-			});
-			// Fellowship themes can only evolve into other fellowship themebooks
-			// and vice versa — mixing kinds breaks the actor's invariant
-			// (heroes hold non-fellowship themes; the fellowship singleton
-			// holds fellowship themes).
-			const wantFellowship = !!theme.system?.isFellowship;
-			this._themebooks = all.filter((tb) => tb.isFellowship === wantFellowship);
-		}
-
-		const themebookGroups = buildThemebookGroups(this._themebooks);
 		const levels = getThemeLevels().map((key) => ({
 			value: key,
 			label: t(`LITM.Terms.${key}`) || key,
 		}));
-		const themebookLevels = Object.fromEntries(
-			this._themebooks.map((tb) => [tb.name, tb.themeLevel ?? ""]),
-		);
 
 		const isFellowship = !!theme.system.isFellowship;
 		const { defaultMode, milestoneFull, abandonFull } = availableModes(theme);
@@ -915,8 +814,6 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			showPathPicker: showModeSelect || expandAvailable,
 			milestoneFull,
 			abandonFull,
-			themebookGroups,
-			themebookLevels,
 			levels,
 			currentLevel: theme.system?.level || getDefaultThemeLevel(),
 			revisable,
@@ -954,17 +851,6 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			input.addEventListener("change", refresh);
 		}
 
-		// When the player picks a themebook with a fixed tier, default the
-		// might selection to that tier. They can still override afterwards.
-		const themebookSelect = html.querySelector("select[name='themebook']");
-		if (themebookSelect && context?.themebookLevels) {
-			themebookSelect.addEventListener("change", (ev) => {
-				const level = context.themebookLevels[ev.target.value];
-				if (!level || level === "variable") return;
-				applyLevelSelection(html, level);
-			});
-		}
-
 		refresh();
 
 		this._dragDrop.bind(html);
@@ -983,18 +869,29 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
 		if (!data?.uuid || data?.type !== "Item") return;
 		const item = await foundry.utils.fromUuid(data.uuid);
+		if (item?.type === "themebook") return this.#useThemebook(item);
 		if (!item || item.type !== "theme") {
 			ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_invalid"));
 			return;
 		}
+		return this.#replaceWithKit(item);
+	}
+
+	/**
+	 * Replace the theme with a full copy of a kit (or any theme item), after
+	 * a confirmation. Shared by a drop and a pick from the theme browser.
+	 * @param {Item} item  The `theme` item to copy
+	 * @returns {Promise<boolean>} True once the theme was replaced
+	 */
+	async #replaceWithKit(item) {
 		const actor = getActor(this);
 		const theme = getTheme(this);
-		if (!actor || !theme) return;
-		if (this._submitting) return;
+		if (!actor || !theme) return false;
+		if (this._submitting) return false;
 		// Replacing a theme with itself would wipe the tags it is meant to copy.
 		if (item.uuid === theme.uuid) {
 			ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_same"));
-			return;
+			return false;
 		}
 
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
@@ -1004,19 +901,68 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 				dropped: item.name,
 			}),
 		});
-		if (!confirmed) return;
+		if (!confirmed) return false;
 
 		this._submitting = true;
 		try {
 			const applied = await applyDroppedTheme({ actor, theme, dropped: item });
 			// A refused drop changed nothing: leave the wizard and its chat card be.
-			if (!applied) return;
+			if (!applied) return false;
 			await markSourceMessageResolved(this.messageId);
 			this.close();
 			theme.sheet?.render(true, { focus: true });
+			return true;
 		} finally {
 			this._submitting = false;
 		}
+	}
+
+	/**
+	 * Take a themebook as the new theme's type: fill the form's themebook
+	 * field and, for a book with a fixed Might, preset the level. Nothing
+	 * is written until the player confirms the wizard.
+	 * @param {{name: string, system?: {theme_level?: string, isFellowship?: boolean}}} book
+	 * @returns {boolean} False when the book was refused
+	 */
+	#useThemebook(book) {
+		const theme = getTheme(this);
+		const html = this.element;
+		if (!theme || !html) return false;
+		if (!!book.system?.isFellowship !== !!theme.system?.isFellowship) {
+			ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
+			return false;
+		}
+		const field = html.querySelector("input[name='themebook']");
+		if (field) field.value = book.name;
+		const label = html.querySelector("[data-role='themebook-name']");
+		if (label) label.textContent = book.name;
+		const level = book.system?.theme_level;
+		if (level && level !== "variable") applyLevelSelection(html, level);
+
+		return true;
+	}
+
+	/**
+	 * Open the theme browser on this theme's kind (Hero or Fellowship). A
+	 * picked kit replaces the theme, as a drop does; a picked book sets the
+	 * new theme's type.
+	 */
+	static #onBrowseThemes(_event, _target) {
+		const theme = getTheme(this);
+		if (!theme) return;
+		const Browser = game.litmv2?.ThemeBrowser ?? ThemeBrowser;
+		new Browser({
+			isFellowship: !!theme.system?.isFellowship,
+			pickLabel: t("LITM.Ui.theme_browser_use"),
+			subtitle: t("LITM.Ui.theme_browser_wizard_hint"),
+			onPick: async (entry) => {
+				const item = await foundry.utils.fromUuid(entry.uuid);
+				if (!item) return false;
+				if (entry.kind === "book") return this.#useThemebook(item);
+				// A cancelled or refused replace keeps the browser open.
+				return this.#replaceWithKit(item);
+			},
+		}).render(true);
 	}
 
 	static async #onCancel(_event, _target) {

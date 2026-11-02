@@ -6,6 +6,8 @@ import {
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ActionsApp } from "../../apps/actions-app.js";
+import { ThemeBrowser } from "../../apps/theme-browser.js";
+import { applyThemeTemplate } from "../../apps/theme-template.js";
 import { findBurnedSelection } from "../../apps/roll/burn-cap.js";
 import {
 	blockPlayerInitiatedRoll,
@@ -63,6 +65,7 @@ export class HeroSheet extends LitmActorSheet {
 			openThemeEvolution: HeroSheet.#onOpenThemeEvolution,
 			toggleTier: { handler: HeroSheet.#onToggleTier, buttons: [0, 2] },
 			openCamping: HeroSheet.#onOpenCamping,
+			browseThemes: HeroSheet.#onBrowseThemes,
 		},
 		form: {
 			handler: HeroSheet.#onSubmitForm,
@@ -124,6 +127,19 @@ export class HeroSheet extends LitmActorSheet {
 		const frame = await super._renderFrame(options);
 		const close = frame.querySelector(".window-header [data-action='close']");
 
+		// Theme browser: an edit-mode tool for setting a Hero's themes up.
+		// The frame renders once, so _onRender shows it in edit mode only.
+		if (this.document.isOwner) {
+			const label = game.i18n.localize("LITM.Ui.theme_browser_browse");
+			const btn = document.createElement("button");
+			btn.type = "button";
+			btn.className = "header-control icon fa-solid fa-book-open";
+			btn.dataset.action = "browseThemes";
+			btn.dataset.tooltip = label;
+			btn.setAttribute("aria-label", label);
+			close.insertAdjacentElement("beforebegin", btn);
+		}
+
 		// Camping button falls back here when fellowship is disabled (no
 		// fellowship sheet to host it). GM-only since the scene is a GM tool.
 		if (game.user.isGM && !LitmSettings.useFellowship) {
@@ -138,6 +154,74 @@ export class HeroSheet extends LitmActorSheet {
 		}
 
 		return frame;
+	}
+
+	/** @override */
+	async _onRender(context, options) {
+		await super._onRender(context, options);
+		const browse = this.window?.header?.querySelector?.(
+			"[data-action='browseThemes']",
+		);
+		if (browse) browse.hidden = !this._isEditMode;
+	}
+
+	/**
+	 * Re-shape one of this Hero's themes from a kit or a themebook, after a
+	 * confirmation. Setup, not evolution: no Promise, no nascent counter.
+	 * @param {Item} theme   One of this Hero's themes
+	 * @param {Item} source  A `theme` (kit) or `themebook` item
+	 */
+	async #replaceThemeWith(theme, source) {
+		const confirmed = await foundry.applications.api.DialogV2.confirm({
+			window: { title: game.i18n.localize("LITM.Ui.theme_browser_replace_title") },
+			content: `<p>${game.i18n.format("LITM.Ui.theme_browser_replace_body", {
+				current: foundry.utils.escapeHTML(theme.name),
+				source: foundry.utils.escapeHTML(source.name),
+			})}</p>`,
+		});
+		if (!confirmed) return false;
+		return applyThemeTemplate({ theme, source });
+	}
+
+	/**
+	 * Open the theme browser. Cards drag onto a theme card to replace it; the
+	 * pick button asks which theme to replace, for a keyboard.
+	 */
+	static #onBrowseThemes(_event, _target) {
+		const Browser = game.litmv2?.ThemeBrowser ?? ThemeBrowser;
+		new Browser({
+			isFellowship: false,
+			pickLabel: game.i18n.localize("LITM.Ui.theme_browser_use"),
+			subtitle: game.i18n.localize("LITM.Ui.theme_browser_sheet_hint"),
+			onPick: async (entry) => {
+				const themes = this.document.items.filter(
+					(i) => i.type === "theme" && !i.system.isFellowship,
+				);
+				if (!themes.length) return false;
+				const options = themes
+					.map(
+						(th, ix) =>
+							`<label class="flexrow gap-sm"><input type="radio" name="themeId" value="${th.id}" ${ix === 0 ? "checked" : ""} /><span>${foundry.utils.escapeHTML(th.name)}</span></label>`,
+					)
+					.join("");
+				const themeId = await foundry.applications.api.DialogV2.prompt({
+					window: {
+						title: game.i18n.localize("LITM.Ui.theme_browser_which_title"),
+					},
+					content: `<fieldset class="flexcol gap-sm">${options}</fieldset>`,
+					ok: {
+						label: game.i18n.localize("LITM.Ui.theme_browser_use"),
+						callback: (_ev, button) =>
+							button.form.querySelector("input[name='themeId']:checked")?.value,
+					},
+					rejectClose: false,
+				});
+				const theme = themeId ? this.document.items.get(themeId) : null;
+				const source = theme ? await foundry.utils.fromUuid(entry.uuid) : null;
+				if (!theme || !source) return false;
+				return (await this.#replaceThemeWith(theme, source)) !== false;
+			},
+		}).render(true);
 	}
 
 	/**
@@ -705,6 +789,20 @@ export class HeroSheet extends LitmActorSheet {
 	async _onDropItem(event, item) {
 		if (this.actor.uuid === item.parent?.uuid) {
 			return this._onSortItem(event, item);
+		}
+
+		// A kit or themebook dropped onto one of this Hero's theme cards, in
+		// edit mode, re-shapes that theme in place: a Hero starts with every
+		// theme slot filled, so there is nowhere to add one.
+		const card = event.target?.closest?.(".theme-card[data-item-id]");
+		const target = card ? this.document.items.get(card.dataset.itemId) : null;
+		if (
+			this._isEditMode &&
+			target?.type === "theme" &&
+			!target.system.isFellowship &&
+			(item.type === "theme" || item.type === "themebook")
+		) {
+			return this.#replaceThemeWith(target, item);
 		}
 
 		const refuseCreationKit = () =>

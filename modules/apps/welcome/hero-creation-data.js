@@ -5,6 +5,7 @@ import {
 	weaknessTagEffect,
 } from "../../active-effects/effect-factories.js";
 import { POWER_TAG_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
+import { loadThemeCatalog } from "../theme-catalog.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { Sockets } from "../../system/sockets.js";
 import { levelIcon, localize as t } from "../../utils.js";
@@ -223,19 +224,30 @@ export class HeroCreationData {
 			"type",
 			"system.category",
 		]);
-		this._cache.themekits = await this.#loadPackIndex("themekits", "theme", [
-			"name",
-			"img",
-			"type",
-			"system.level",
-		]);
-		this._cache.themebooks = await this.#loadPackIndex(
-			"themebooks",
-			"themebook",
-			["name", "img", "type", "system.theme_level"],
-		);
+		// Kits and books come from the same catalog as the theme browser, so
+		// both list the same sources. Hero creation never offers a Fellowship
+		// theme. `themeLevel` and `tagTooltip` are the names this wizard reads.
+		const catalog = await loadThemeCatalog({ isFellowship: false });
+		const toEntry = (e) => ({
+			...e,
+			themeLevel: e.level,
+			sourceLabel: e.sourceLabel || "World",
+			tagTooltip: e.sourceLabel ? "" : HeroCreationData.#worldTagTooltip(e.uuid),
+		});
+		this._cache.themekits = catalog.filter((e) => e.kind === "kit").map(toEntry);
+		this._cache.themebooks = catalog
+			.filter((e) => e.kind === "book")
+			.map(toEntry);
 
 		this._cache.loaded = true;
+	}
+
+	/** Tag tooltip for a world item; packs only give an index entry. */
+	static #worldTagTooltip(uuid) {
+		const item = foundry.utils.fromUuidSync?.(uuid, { strict: false });
+		return item?.effects
+			? HeroCreationData.buildTagTooltip([...item.effects])
+			: "";
 	}
 
 	async #loadPackIndex(category, type, fields) {

@@ -23,6 +23,7 @@ import { SpendPowerApp } from "./modules/apps/spend-power.js";
 import { StoryTagSidebar } from "./modules/apps/story-tags/story-tag-sidebar.js";
 import { StoryTagsStore } from "./modules/apps/story-tags/story-tags-store.js";
 import { ThemeAdvancementApp } from "./modules/apps/theme-advancement.js";
+import { ThemeBrowser } from "./modules/apps/theme-browser.js";
 import { ThemeEvolutionWizard } from "./modules/apps/theme-evolution.js";
 import { WelcomeOverlay } from "./modules/apps/welcome/welcome-overlay.js";
 import { SuperCheckbox } from "./modules/components/super-checkbox.js";
@@ -111,6 +112,7 @@ Hooks.once("init", () => {
 		ApplyActionMenuApp,
 		ThemeAdvancementApp,
 		ThemeEvolutionWizard,
+		ThemeBrowser,
 		LitmCampingScene,
 		ContentSources,
 		rollDialogHud: null,
