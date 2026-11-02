@@ -200,6 +200,23 @@ describe("buildOperations — rest", () => {
 		expect(stageLines(recap, "period1")).toEqual([]);
 	});
 
+	it("leaves an active hidden backpack tag as it is at Pack Up", () => {
+		const hidden = fakeEffect({
+			name: "cursed coin",
+			type: "story_tag",
+			system: { isHidden: true },
+		});
+		const backpack = fakeItem({ type: "backpack", effects: [hidden] });
+		const hero = fakeActor({ items: [backpack] });
+		hero.system = { backpackItem: backpack };
+
+		const { operations } = buildOperations(
+			defaultCampingState(),
+			world({ heroes: [hero] }),
+		);
+		expect(operations.disables).toEqual([]);
+	});
+
 	it("packs a hidden backpack tag without naming it in the public recap", () => {
 		const hidden = fakeEffect({
 			name: "cursed coin",

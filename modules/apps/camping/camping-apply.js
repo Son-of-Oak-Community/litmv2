@@ -210,8 +210,10 @@ function buildBackpackOps(hero, heroState, ops, packStage) {
 		if (effect.type !== "story_tag") continue;
 		const isKept = keptSet.has(effect.id);
 		// Active + not kept → disable. Disabled + kept → re-enable. The
-		// other two combinations leave the effect alone.
-		if (!effect.disabled && !isKept) {
+		// other two combinations leave the effect alone. A tag the Narrator
+		// hid isn't offered to the player, so it is never put away by
+		// default: hiding must not change what the player can't see.
+		if (!effect.disabled && !isKept && !effect.system?.isHidden) {
 			ops.disables.push({ effect });
 		} else if (effect.disabled && isKept) {
 			ops.enables.push({ effect });

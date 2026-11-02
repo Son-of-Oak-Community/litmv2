@@ -131,6 +131,9 @@ export function playerVisibleTagString(text, actor, { limits = [] } = {}) {
 			const c = classifyTagStringMatch(args.slice(0, 5));
 			return hidden.has(`${c.kind}:${c.name.toLowerCase()}`) ? "" : args[0];
 		})
+		// The same clean-up the sync mixin does when a tag is deleted.
+		.replace(/,\s*,/g, ",")
+		.replace(/^\s*,|,\s*$/g, "")
 		.replace(/ {2,}/g, " ")
 		.trim();
 }

@@ -29,6 +29,12 @@ describe("playerVisibleTagString", () => {
 		);
 	});
 
+	it("leaves no stray separators in a comma-separated string", () => {
+		expect(
+			playerVisibleTagString("[coiled], [venomous], [wounded-2], [enraged-3]", challenge),
+		).toBe("[coiled], [wounded-2]");
+	});
+
 	it("treats a limit with no hidden flag as hidden", () => {
 		expect(
 			playerVisibleTagString("[harm:4]", actor(), { limits: [{ label: "harm" }] }),
