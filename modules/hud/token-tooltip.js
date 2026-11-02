@@ -1,3 +1,4 @@
+import { isEffectVisible } from "../active-effects/effect-queries.js";
 import { StoryTagsStore } from "../apps/story-tags/story-tags-store.js";
 import { LitmSettings } from "../system/settings.js";
 
@@ -20,7 +21,7 @@ let _highlighting = false;
  */
 function _chip(baseClass, effect, label) {
 	const esc = foundry.utils.escapeHTML;
-	// Only a GM/owner ever sees a hidden effect here, and it is content the
+	// Only the GM ever sees a hidden effect here, and it is content the
 	// players cannot see — dim it the way the sheets and sidebar do.
 	const cls = effect.system.isHidden
 		? `${baseClass} litm--tag-hidden`
@@ -30,19 +31,19 @@ function _chip(baseClass, effect, label) {
 
 /**
  * Build tooltip HTML from an actor's story tags and status effects.
- * Respects isHidden — hidden tags only visible to GM/owner.
+ * Respects isHidden — hidden tags are visible to the GM only, never to a
+ * player, including the one who owns the actor.
  *
  * Names are player-controlled on owned documents and land in `innerHTML`, so
  * every interpolation is escaped. Exported for unit tests that pin that.
  * @param {Actor} actor
- * @param {boolean} isOwnerOrGM
  * @returns {string} HTML string, or empty string if no visible tags
  */
-export function buildTooltipHTML(actor, isOwnerOrGM) {
+export function buildTooltipHTML(actor) {
 	const storyTags = actor.system.storyTags ?? [];
 	const statuses = actor.system.statusEffects ?? [];
 
-	const isVisible = (e) => e.active && (isOwnerOrGM || !e.system.isHidden);
+	const isVisible = (e) => e.active && isEffectVisible(e);
 	// Statuses are inflicted and worth tracking at a glance; story/backpack tags
 	// are reached for on demand, so the tooltip can be narrowed to statuses.
 	const visibleTags = LitmSettings.tokenTooltipStatusesOnly
@@ -79,7 +80,7 @@ export function tokenTooltipHTML(token) {
 	// the same as in the roll dialog and the chat card.
 	if (!isOwnerOrGM && StoryTagsStore.concealedActorIds.has(actor.id))
 		return "";
-	return buildTooltipHTML(actor, isOwnerOrGM);
+	return buildTooltipHTML(actor);
 }
 
 /**
