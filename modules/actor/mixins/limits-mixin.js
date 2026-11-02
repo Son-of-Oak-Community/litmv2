@@ -1,3 +1,4 @@
+import { countsTowardLimit } from "../../active-effects/effect-queries.js";
 import { StatusTagData } from "../../active-effects/index.js";
 import {
 	announceLimitReached,
@@ -24,16 +25,12 @@ async function recalculate(model) {
 	const oldLimits = model.limits;
 	if (!oldLimits.length) return { reached: [] };
 
-	// On an actor a player owns, a hidden status is hidden from that player,
-	// so it doesn't move their limits either. Elsewhere (a Challenge) hidden
-	// is how the Narrator's statuses start (`startsHiddenOn`), so they count.
-	const skipHidden = !!actor.hasPlayerOwner;
 	const effects = [...actor.allApplicableEffects()]
 		.filter(
 			(e) =>
 				e.type === "status_tag" &&
 				e.system?.limitId &&
-				!(skipHidden && e.system?.isHidden),
+				countsTowardLimit(e, actor),
 		)
 		.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 

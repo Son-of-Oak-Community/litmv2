@@ -299,7 +299,23 @@ describe("HeroData limit readout", () => {
 		shown.active = true;
 		hidden.active = true;
 		const { model } = makeHero({ effects: [shown, hidden] });
+		model.parent.hasPlayerOwner = true;
 		model.prepareDerivedData();
 		expect(model.limit.value).toBe(model.limit.max - 1);
+	});
+});
+
+describe("HeroData limit readout, Narrator-run Hero", () => {
+	it("still counts a hidden status when no player owns the Hero", () => {
+		const hidden = fakeEffect({
+			type: "status_tag",
+			name: "wounded",
+			system: { currentTier: 3, isHidden: true },
+		});
+		hidden.active = true;
+		const { model } = makeHero({ effects: [hidden] });
+		model.parent.hasPlayerOwner = false;
+		model.prepareDerivedData();
+		expect(model.limit.value).toBe(model.limit.max - 3);
 	});
 });

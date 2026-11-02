@@ -459,6 +459,18 @@ describe("status writes recalc through one ActiveEffect choke point", () => {
 		expect(actor.system.recalculateLimitValues).toHaveBeenCalledTimes(1);
 	});
 
+	it("recalcs when the actor's ownership changes, not on other updates", () => {
+		// Other updateActor listeners (the roll-dialog HUD) read game.litmv2.
+		game.litmv2 ??= {};
+		const actor = withSpy(fakeActor({ type: "hero" }));
+		dispatch("updateActor", actor, { name: "Renamed" }, {}, ME);
+		expect(actor.system.recalculateLimitValues).not.toHaveBeenCalled();
+		dispatch("updateActor", actor, { ownership: { p2: 3 } }, {}, ME);
+		expect(actor.system.recalculateLimitValues).toHaveBeenCalledTimes(1);
+		dispatch("updateActor", actor, { ownership: { p2: 0 } }, {}, OTHER);
+		expect(actor.system.recalculateLimitValues).toHaveBeenCalledTimes(1);
+	});
+
 	it("recalcs when tiers change, or a status is linked or unlinked, not on a rename", () => {
 		const actor = withSpy(fakeActor({ type: "challenge" }));
 		const linked = fakeEffect({

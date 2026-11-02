@@ -29,6 +29,22 @@ export function startsHiddenOn(actor) {
 }
 
 /**
+ * Whether a status counts toward its actor's limits. On an actor a player
+ * owns, a hidden status is hidden from that player, so it must not move what
+ * they can see. Elsewhere hidden is how the Narrator's statuses start (see
+ * {@link startsHiddenOn}), so they count. The Hero's limit readout, the limit
+ * recalc and the story-tag sidebar all use this one rule.
+ * @param {{system?: {isHidden?: boolean}, hidden?: boolean}} effect
+ *   An ActiveEffect, or a UI descriptor carrying `hidden`
+ * @param {Actor|null|undefined} actor
+ * @returns {boolean}
+ */
+export function countsTowardLimit(effect, actor) {
+	const hidden = effect?.system?.isHidden ?? effect?.hidden ?? false;
+	return !(hidden && actor?.hasPlayerOwner);
+}
+
+/**
  * Flatten an effect into a plain object suitable for templates and sockets.
  * @param {ActiveEffect} e
  * @returns {object}

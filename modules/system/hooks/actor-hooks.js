@@ -268,6 +268,13 @@ function _recalcLimitsOnStatusChange() {
 		if (userId !== game.userId) return;
 		if (effect.type === "status_tag" && effect.system?.limitId) recalc(effect);
 	});
+	// Whether a hidden status counts depends on a player owning the actor
+	// (countsTowardLimit), so an ownership change can move its limits.
+	Hooks.on("updateActor", (actor, changes, _options, userId) => {
+		if (userId !== game.userId || actor.pack) return;
+		if (!("ownership" in (changes ?? {}))) return;
+		actor.system?.recalculateLimitValues?.()?.catch(console.error);
+	});
 }
 
 const HERO_ITEM_LIMITS = {
