@@ -1,4 +1,7 @@
-import { dedupeTitleTags } from "../../active-effects/effect-queries.js";
+import {
+	countsTowardLimit,
+	dedupeTitleTags,
+} from "../../active-effects/effect-queries.js";
 import { completeTrackUpdate, fireTrackCompletion } from "../../system/chat.js";
 import {
 	ACTOR_TAG_TYPES,
@@ -347,8 +350,10 @@ export class HeroData extends LimitsMixin(
 	prepareDerivedData() {
 		super.prepareDerivedData();
 		const baseLimit = CONFIG.litmv2?.heroLimit ?? 5;
+		// The readout is the Hero's token bar: a hidden status mustn't move it
+		// for the player it is hidden from (countsTowardLimit).
 		const highestStatus = this.statusEffects
-			.filter((e) => e.active)
+			.filter((e) => e.active && countsTowardLimit(e, this.parent))
 			.reduce((max, e) => Math.max(max, e.system.currentTier), 0);
 		// Floors at 0: a status can now exceed the Limit (that's what makes it
 		// permanent), and the token bar has no state for "past overcome". 0

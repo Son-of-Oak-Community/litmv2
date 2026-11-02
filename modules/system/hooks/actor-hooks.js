@@ -259,12 +259,21 @@ function _recalcLimitsOnStatusChange() {
 		const system = changes?.system;
 		if (!system) return;
 		const relinked = "limitId" in system;
-		if (!relinked && !("tiers" in system)) return;
+		// Hiding or revealing a status changes whether it counts.
+		const counted = "tiers" in system || "isHidden" in system;
+		if (!relinked && !counted) return;
 		if (relinked || effect.system?.limitId) recalc(effect);
 	});
 	Hooks.on("deleteActiveEffect", (effect, _options, userId) => {
 		if (userId !== game.userId) return;
 		if (effect.type === "status_tag" && effect.system?.limitId) recalc(effect);
+	});
+	// Whether a hidden status counts depends on a player owning the actor
+	// (countsTowardLimit), so an ownership change can move its limits.
+	Hooks.on("updateActor", (actor, changes, _options, userId) => {
+		if (userId !== game.userId || actor.pack) return;
+		if (!("ownership" in (changes ?? {}))) return;
+		actor.system?.recalculateLimitValues?.()?.catch(console.error);
 	});
 }
 

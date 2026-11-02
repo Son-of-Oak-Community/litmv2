@@ -1,3 +1,4 @@
+import { playerVisibleTagString } from "../../item/action/tag-string.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { TagStringSyncMixin } from "../../sheets/tag-string-sync-mixin.js";
 import { EFFECT_TYPES, MIGHT_OPTIONS } from "../../system/config.js";
@@ -95,8 +96,14 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 		if (limitedView) return this.#prepareLimitedContext(context);
 
 		const enriched = await this._enrichFields("description", "specialFeatures");
+		// Play mode shows players only what the Narrator revealed; edit mode is
+		// the owner's raw string.
 		const enrichedTags = await enrichPlainText(
-			isPlay ? sys.derivedTags || sys.tags || "" : sys.tags || "",
+			isPlay
+				? playerVisibleTagString(sys.derivedTags || sys.tags || "", this.document, {
+						limits: sys.derivedLimits ?? sys.limits ?? [],
+					})
+				: sys.tags || "",
 			this.document,
 		);
 		enriched.tags = enrichedTags;
@@ -254,8 +261,12 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 	 */
 	async #prepareLimitsAndMight(isPlay) {
 		const sys = this.system;
+		// In play, a player sees the limits revealed to them, as in the limited
+		// view (addon-only limits carry no `hidden`, so they stay hidden).
 		const limitsSource = isPlay
-			? sys.derivedLimits || sys.limits
+			? (sys.derivedLimits || sys.limits || []).filter(
+					(l) => game.user.isGM || l.hidden === false,
+				)
 			: sys.limits || [];
 		const canonicalIds = new Set((sys.limits ?? []).map((l) => l.id));
 		const limits = await Promise.all(

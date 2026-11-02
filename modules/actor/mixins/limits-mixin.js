@@ -1,3 +1,4 @@
+import { countsTowardLimit } from "../../active-effects/effect-queries.js";
 import { StatusTagData } from "../../active-effects/index.js";
 import {
 	announceLimitReached,
@@ -25,7 +26,12 @@ async function recalculate(model) {
 	if (!oldLimits.length) return { reached: [] };
 
 	const effects = [...actor.allApplicableEffects()]
-		.filter((e) => e.type === "status_tag" && e.system?.limitId)
+		.filter(
+			(e) =>
+				e.type === "status_tag" &&
+				e.system?.limitId &&
+				countsTowardLimit(e, actor),
+		)
 		.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 
 	const newLimits = oldLimits.map((limit) => {

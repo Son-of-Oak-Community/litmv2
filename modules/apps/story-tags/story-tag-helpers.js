@@ -1,3 +1,4 @@
+import { countsTowardLimit } from "../../active-effects/effect-queries.js";
 import {
 	maxStatusTier,
 	padTiers,
@@ -197,13 +198,15 @@ export function mapEffectForUI(e) {
  * Computes stacked tier values for each limit group.
  * @param {object[]} tags   Flat tag UI descriptors (from mapEffectForUI)
  * @param {object[]} limits Limit objects with at least `id` and `max`
+ * @param {{actor?: Actor|null}} [options]  The column's actor, for
+ *   countsTowardLimit; scene columns have none
  * @returns {{ limits: object[], ungroupedTags: object[] }}
  */
-export function partitionTagsByLimit(tags, limits) {
+export function partitionTagsByLimit(tags, limits, { actor = null } = {}) {
 	const groupedLimits = limits.map((limit) => {
 		const groupedTags = tags.filter((t) => t.limitId === limit.id);
 		const statusTierArrays = groupedTags
-			.filter((t) => t.type === "status_tag")
+			.filter((t) => t.type === "status_tag" && countsTowardLimit(t, actor))
 			.map((t) => t.values);
 		// The same value the recalc stores: statuses plus any Advance offset.
 		const { value: computedValue } = resolveLimitValue(

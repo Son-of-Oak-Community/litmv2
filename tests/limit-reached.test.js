@@ -448,6 +448,29 @@ describe("status writes recalc through one ActiveEffect choke point", () => {
 		expect(actor.system.recalculateLimitValues).not.toHaveBeenCalled();
 	});
 
+	it("recalcs when a linked status is hidden or revealed", () => {
+		const actor = withSpy(fakeActor({ type: "hero" }));
+		const linked = fakeEffect({
+			type: "status_tag",
+			system: { limitId: "lim-1", tiers: tiers(2), isHidden: true },
+			parent: actor,
+		});
+		dispatch("updateActiveEffect", linked, { system: { isHidden: true } }, {}, ME);
+		expect(actor.system.recalculateLimitValues).toHaveBeenCalledTimes(1);
+	});
+
+	it("recalcs when the actor's ownership changes, not on other updates", () => {
+		// Other updateActor listeners (the roll-dialog HUD) read game.litmv2.
+		game.litmv2 ??= {};
+		const actor = withSpy(fakeActor({ type: "hero" }));
+		dispatch("updateActor", actor, { name: "Renamed" }, {}, ME);
+		expect(actor.system.recalculateLimitValues).not.toHaveBeenCalled();
+		dispatch("updateActor", actor, { ownership: { p2: 3 } }, {}, ME);
+		expect(actor.system.recalculateLimitValues).toHaveBeenCalledTimes(1);
+		dispatch("updateActor", actor, { ownership: { p2: 0 } }, {}, OTHER);
+		expect(actor.system.recalculateLimitValues).toHaveBeenCalledTimes(1);
+	});
+
 	it("recalcs when tiers change, or a status is linked or unlinked, not on a rename", () => {
 		const actor = withSpy(fakeActor({ type: "challenge" }));
 		const linked = fakeEffect({
@@ -587,5 +610,45 @@ describe("status writes recalc through one ActiveEffect choke point", () => {
 		expect(existing.system.limitId).toBe("lim-1");
 		expect(actor.stored[0].value).toBe(3);
 		expect(reachedCalls()).toHaveLength(1);
+	});
+});
+
+// A hidden status is hidden from the player who owns the actor, so it must not
+// move that actor's limits. A Challenge's statuses start hidden, so there they
+// count.
+describe("recalculateLimitValues: hidden statuses", () => {
+	const hiddenStatus = (n) =>
+		fakeEffect({
+			type: "status_tag",
+			system: { limitId: "lim-1", tiers: tiers(n), isHidden: true },
+		});
+
+	it("leaves a hidden status out on an actor a player owns", async () => {
+		const { actor, model } = buildActor({ effects: [status(1), hiddenStatus(3)] });
+		actor.hasPlayerOwner = true;
+
+		await model.recalculateLimitValues();
+
+		expect(actor.stored[0].value).toBe(1);
+		expect(reachedCalls()).toHaveLength(0);
+	});
+
+	it("leaves it out on a Hero no player owns too", async () => {
+		const { actor, model } = buildActor({ effects: [hiddenStatus(3)] });
+		actor.type = "hero";
+		actor.hasPlayerOwner = false;
+
+		await model.recalculateLimitValues();
+
+		expect(actor.stored[0].value).toBe(0);
+	});
+
+	it("counts it on an actor no player owns", async () => {
+		const { actor, model } = buildActor({ effects: [hiddenStatus(3)] });
+		actor.hasPlayerOwner = false;
+
+		await model.recalculateLimitValues();
+
+		expect(actor.stored[0].value).toBe(3);
 	});
 });

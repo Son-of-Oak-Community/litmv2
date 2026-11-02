@@ -1,3 +1,4 @@
+import { isEffectVisible } from "../../active-effects/effect-queries.js";
 import { enrichHTML, localize as t } from "../../utils.js";
 import { makeActorCard, tagSpan } from "./renderer-utils.js";
 
@@ -90,8 +91,9 @@ export async function renderHero(actor) {
 	}
 
 	// ── Story Tags & Statuses ──
-	const storyTags = sys.storyTags ?? [];
-	const statuses = sys.statusEffects ?? [];
+	// Built on each viewer's client: a player never sees what the Narrator hid.
+	const storyTags = (sys.storyTags ?? []).filter(isEffectVisible);
+	const statuses = (sys.statusEffects ?? []).filter(isEffectVisible);
 	if (storyTags.length || statuses.length) {
 		const section = document.createElement("div");
 		section.classList.add("litm-render--hero__story-tags");

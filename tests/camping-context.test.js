@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	buildContext,
+	buildSceneStoryTags,
 	buildSteps,
 	partitionCampingEffects,
 	stepIsComplete,
@@ -12,6 +13,7 @@ import {
 	setReflectMilestone,
 	setType,
 } from "../modules/apps/camping/camping-state.js";
+import { StoryTagsStore } from "../modules/apps/story-tags/story-tags-store.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
 // Minimal hero shape — just the fields buildSteps / stepIsComplete read.
@@ -30,6 +32,71 @@ function hero({
 function act(activity = null) {
 	return { activity };
 }
+
+describe("buildSceneStoryTags — hidden scene tags", () => {
+	afterEach(() => {
+		game.user.isGM = false;
+		vi.restoreAllMocks();
+	});
+
+	function bannerNames() {
+		const tag = (name, isHidden) => ({
+			id: name,
+			name,
+			type: "status_tag",
+			system: { isHidden, currentTier: 1 },
+			getFlag: () => "camp-1",
+		});
+		vi.spyOn(StoryTagsStore, "sceneStoryEffects", "get").mockReturnValue([
+			tag("drizzle", false),
+			tag("watched", true),
+		]);
+		return buildSceneStoryTags("camp-1").map((t) => t.name);
+	}
+
+	it("leaves a hidden scene tag off the player's camp banner", () => {
+		expect(bannerNames()).toEqual(["drizzle"]);
+	});
+
+	it("still shows it to the Narrator", () => {
+		game.user.isGM = true;
+		expect(bannerNames()).toEqual(["drizzle", "watched"]);
+	});
+});
+
+describe("partitionCampingEffects — hidden statuses", () => {
+	afterEach(() => {
+		game.user.isGM = false;
+	});
+
+	const hiddenStatus = () =>
+		fakeEffect({
+			name: "secret grace",
+			type: "status_tag",
+			system: { currentTier: 2, isHidden: true },
+		});
+
+	it("keeps a status the Narrator hid out of the player's Rest list", () => {
+		const shown = fakeEffect({
+			name: "tired",
+			type: "status_tag",
+			system: { currentTier: 1 },
+		});
+		const hero = fakeActor({ effects: [shown, hiddenStatus()] });
+		hero.system = { fellowshipActor: null };
+
+		expect(partitionCampingEffects(hero).statusEffects).toEqual([shown]);
+	});
+
+	it("still lists it for the Narrator", () => {
+		game.user.isGM = true;
+		const hidden = hiddenStatus();
+		const hero = fakeActor({ effects: [hidden] });
+		hero.system = { fellowshipActor: null };
+
+		expect(partitionCampingEffects(hero).statusEffects).toEqual([hidden]);
+	});
+});
 
 describe("partitionCampingEffects — Quality Time fellowship tags", () => {
 	// Fellowship tags sit on the Fellowship actor's theme item. A hero reaches

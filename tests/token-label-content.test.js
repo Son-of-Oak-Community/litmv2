@@ -82,18 +82,18 @@ describe("tokenTooltipHTML", () => {
 			tags: ["rope"],
 			statuses: [["wounded", 2]],
 		});
-		expect(tokenTooltipHTML(token)).toBe(buildTooltipHTML(token.actor, true));
+		expect(tokenTooltipHTML(token)).toBe(buildTooltipHTML(token.actor));
 	});
 
 	it("treats a GM as an owner of a token they do not own", () => {
 		game.user.isGM = true;
 		const token = fakeToken({ isOwner: false, tags: ["secret plan"] });
-		expect(tokenTooltipHTML(token)).toBe(buildTooltipHTML(token.actor, true));
+		expect(tokenTooltipHTML(token)).toBe(buildTooltipHTML(token.actor));
 	});
 
 	it("does not grant owner sight to a non-GM non-owner", () => {
 		const token = fakeToken({ isOwner: false, tags: ["rope"] });
-		expect(tokenTooltipHTML(token)).toBe(buildTooltipHTML(token.actor, false));
+		expect(tokenTooltipHTML(token)).toBe(buildTooltipHTML(token.actor));
 	});
 });
 

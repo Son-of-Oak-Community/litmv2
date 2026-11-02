@@ -210,13 +210,16 @@ function buildBackpackOps(hero, heroState, ops, packStage) {
 		if (effect.type !== "story_tag") continue;
 		const isKept = keptSet.has(effect.id);
 		// Active + not kept → disable. Disabled + kept → re-enable. The
-		// other two combinations leave the effect alone.
-		if (!effect.disabled && !isKept) {
+		// other two combinations leave the effect alone. A tag the Narrator
+		// hid isn't offered to the player, so it is never put away by
+		// default: hiding must not change what the player can't see.
+		if (!effect.disabled && !isKept && !effect.system?.isHidden) {
 			ops.disables.push({ effect });
 		} else if (effect.disabled && isKept) {
 			ops.enables.push({ effect });
 		}
-		if (isKept) {
+		// The recap is a public chat card: a hidden tag is packed unannounced.
+		if (isKept && !effect.system?.isHidden) {
 			kept.push({
 				name: effect.name,
 				isSingleUse: !!effect.system?.isSingleUse,
@@ -254,10 +257,12 @@ function buildActivityOps(
 	}
 }
 
-function buildRestOps(act, allFx, ops, lines) {
+function buildRestOps(act, allFx, ops, allLines) {
 	for (const [statusId, choice] of Object.entries(act.restChoices ?? {})) {
 		const effect = allFx.find((e) => e.id === statusId);
 		if (!effect) continue;
+		// Only the Narrator can rest a hidden status; the public recap skips it.
+		const lines = effect.system?.isHidden ? [] : allLines;
 		if (choice.action === "remove") {
 			ops.statusDeletes.push({ effect });
 			lines.push({
@@ -295,7 +300,7 @@ function buildRestOps(act, allFx, ops, lines) {
 		// stale client can't unilaterally restore a shared resource.
 		if (effect && effect.type === "power_tag") {
 			ops.unscratches.push({ effect });
-			lines.push({ kind: "tag-recovered", name: effect.name });
+			allLines.push({ kind: "tag-recovered", name: effect.name });
 		}
 	}
 }

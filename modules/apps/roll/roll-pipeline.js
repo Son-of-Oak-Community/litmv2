@@ -233,8 +233,13 @@ export function executeRoll({
  */
 function relayScratch(tag, event, data) {
 	if (game.users.activeGM) return Sockets.dispatch(event, data);
-	// A tag the Narrator invoked from a concealed source stays unnamed here.
-	const name = tag.concealedAtRoll ? t("LITM.Ui.roll_concealed_tag") : tag.name;
+	// A tag the Narrator invoked from a concealed source, or hid, stays unnamed.
+	const hidden =
+		tag.concealedAtRoll ||
+		tag.effectHiddenAtRoll ||
+		foundry.utils.fromUuidSync(tag.uuid ?? "", { strict: false })?.system
+			?.isHidden;
+	const name = hidden ? t("LITM.Ui.roll_concealed_tag") : tag.name;
 	ui.notifications.warn(
 		game.i18n.format("LITM.Ui.scratch_needs_narrator", { tag: name }),
 	);

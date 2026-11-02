@@ -181,6 +181,63 @@ describe("buildOperations — backpack scratch", () => {
 });
 
 describe("buildOperations — rest", () => {
+	it("rests a hidden status without naming it in the public recap", () => {
+		const hidden = fakeEffect({
+			name: "secret grace",
+			type: "status_tag",
+			system: { currentTier: 2, isHidden: true },
+		});
+		const hero = fakeActor({ effects: [hidden] });
+		const state = defaultCampingState();
+		setActivity(state, hero.id, 0, "rest");
+		setRestChoice(state, hero.id, 0, hidden.id, { action: "remove" });
+
+		const { operations, recap } = buildOperations(
+			state,
+			world({ heroes: [hero] }),
+		);
+		expect(operations.statusDeletes).toContainEqual({ effect: hidden });
+		expect(stageLines(recap, "period1")).toEqual([]);
+	});
+
+	it("leaves an active hidden backpack tag as it is at Pack Up", () => {
+		const hidden = fakeEffect({
+			name: "cursed coin",
+			type: "story_tag",
+			system: { isHidden: true },
+		});
+		const backpack = fakeItem({ type: "backpack", effects: [hidden] });
+		const hero = fakeActor({ items: [backpack] });
+		hero.system = { backpackItem: backpack };
+
+		const { operations } = buildOperations(
+			defaultCampingState(),
+			world({ heroes: [hero] }),
+		);
+		expect(operations.disables).toEqual([]);
+	});
+
+	it("packs a hidden backpack tag without naming it in the public recap", () => {
+		const hidden = fakeEffect({
+			name: "cursed coin",
+			type: "story_tag",
+			disabled: true,
+			system: { isHidden: true },
+		});
+		const backpack = fakeItem({ type: "backpack", effects: [hidden] });
+		const hero = fakeActor({ items: [backpack] });
+		hero.system = { backpackItem: backpack };
+		const state = defaultCampingState();
+		setBackpackKept(state, hero.id, hidden.id, true);
+
+		const { operations, recap } = buildOperations(
+			state,
+			world({ heroes: [hero] }),
+		);
+		expect(operations.enables).toContainEqual({ effect: hidden });
+		expect(stage(recap, "packUp").heroes[0].kept).toEqual([]);
+	});
+
 	it("queues status reduction and removal", () => {
 		const s1 = fakeEffect({
 			name: "tired",

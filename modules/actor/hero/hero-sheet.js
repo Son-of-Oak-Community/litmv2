@@ -753,7 +753,9 @@ export class HeroSheet extends LitmActorSheet {
 	 * @private
 	 */
 	async #handleLootDrop(item) {
-		const tags = item.system.tags;
+		// A hidden tag isn't offered to a player, so it stays with the dropped
+		// backpack; the Narrator, who sees it, can still take it.
+		const tags = item.system.tags.filter(isEffectVisible);
 		const content = await foundry.applications.handlebars.renderTemplate(
 			"systems/litmv2/templates/apps/loot-dialog.html",
 			{

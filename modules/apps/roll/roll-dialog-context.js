@@ -207,7 +207,8 @@ export function buildContributedTagGroups(
 			if (!actor) continue;
 			const allTags = (actor.system.allRollTags ?? []).map(effectToPlain);
 			const rawTag = allTags.find((t) => t.uuid === effectId);
-			if (!rawTag) continue;
+			// Left out here, a hidden contribution becomes a masked row.
+			if (!rawTag || !isEffectVisible(rawTag)) continue;
 			const tag = decorateTag({
 				...rawTag,
 				state: sel.state,
@@ -375,7 +376,7 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 			});
 		}
 	}
-	const fellowshipNonTheme = fellowship.tags.filter((e) => e.active);
+	const fellowshipNonTheme = fellowship.tags.filter(isVisibleTag);
 	const fellowshipStoryTags = fellowshipNonTheme
 		.filter((e) => e.type === "story_tag")
 		.map(withSelection);

@@ -19,6 +19,11 @@ describe("startsHiddenOn", () => {
 		expect(startsHiddenOn({ hasPlayerOwner: true })).toBe(false);
 	});
 
+	it("shows the GM's additions to a Hero no player owns yet", () => {
+		game.user = { isGM: true };
+		expect(startsHiddenOn({ type: "hero", hasPlayerOwner: false })).toBe(false);
+	});
+
 	it("never hides a player's own additions", () => {
 		game.user = { isGM: false };
 		expect(startsHiddenOn({ hasPlayerOwner: false })).toBe(false);

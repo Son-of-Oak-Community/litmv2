@@ -296,3 +296,39 @@ describe("HeroData.fellowshipActor", () => {
 		}
 	});
 });
+
+describe("HeroData limit readout", () => {
+	it("ignores a status the Narrator hid", () => {
+		const shown = fakeEffect({
+			type: "status_tag",
+			name: "tired",
+			system: { currentTier: 1 },
+		});
+		const hidden = fakeEffect({
+			type: "status_tag",
+			name: "secret grace",
+			system: { currentTier: 4, isHidden: true },
+		});
+		shown.active = true;
+		hidden.active = true;
+		const { model } = makeHero({ effects: [shown, hidden] });
+		model.parent.hasPlayerOwner = true;
+		model.prepareDerivedData();
+		expect(model.limit.value).toBe(model.limit.max - 1);
+	});
+});
+
+describe("HeroData limit readout, Narrator-run Hero", () => {
+	it("ignores a hidden status on a Hero no player owns too", () => {
+		const hidden = fakeEffect({
+			type: "status_tag",
+			name: "wounded",
+			system: { currentTier: 3, isHidden: true },
+		});
+		hidden.active = true;
+		const { model } = makeHero({ effects: [hidden] });
+		model.parent.hasPlayerOwner = false;
+		model.prepareDerivedData();
+		expect(model.limit.value).toBe(model.limit.max);
+	});
+});

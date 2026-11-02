@@ -1,3 +1,4 @@
+import { playerVisibleTagString } from "../../item/action/tag-string.js";
 import { enrichHTML, localize as t } from "../../utils.js";
 import { makeActorCard } from "./renderer-utils.js";
 import { renderVignette, vignetteCard } from "./vignette-renderer.js";
@@ -32,11 +33,15 @@ export async function renderJourney(actor) {
 	}
 
 	// ── Tags & Statuses ──
-	if (sys.tags) {
+	// Built on each viewer's client: a player sees only what was revealed.
+	const visibleTags = playerVisibleTagString(sys.tags, actor, {
+		limits: sys.limits ?? [],
+	});
+	if (visibleTags) {
 		const tagsSection = document.createElement("div");
 		tagsSection.classList.add("litm-render--journey__tags");
 		// Leave as text so the tag enricher processes it
-		tagsSection.textContent = sys.tags;
+		tagsSection.textContent = visibleTags;
 		container.appendChild(tagsSection);
 	}
 

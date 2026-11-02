@@ -100,6 +100,33 @@ describe("applySpendIntent — reduce_status owner routing", () => {
 		expect(results[0].bodyLines[0]).toContain("Serpent: enraged");
 	});
 
+	it("names a hidden status as unseen on the public card, tier kept", async () => {
+		game.user.isGM = true;
+		const status = fakeStatus({ id: "s1", name: "secret grace", tier: 4 });
+		status.system.isHidden = true;
+		const foe = fakeActor({
+			id: "c1",
+			name: "Serpent",
+			effects: [status],
+			isOwner: true,
+		});
+		const hero = fakeActor({ id: "h1", name: "Gerrin" });
+		game.actors.get = vi.fn((id) => ({ h1: hero, c1: foe })[id] ?? null);
+
+		const { results } = await applySpendIntent(
+			hero,
+			statusPickerIntent([
+				{ effectId: "s1", name: "secret grace", actorId: "c1", tiers: 2 },
+			]),
+		);
+
+		expect(status.system.reduceTier).toHaveBeenCalled();
+		const [line] = results[0].bodyLines;
+		expect(line).not.toContain("secret grace");
+		expect(line).toContain("LITM.Ui.roll_concealed_tag-4");
+		expect(line).toContain("LITM.Ui.roll_concealed_tag-2");
+	});
+
 	it("relays an unowned reduction to the active GM and still charges", async () => {
 		const status = fakeStatus({ id: "s1", name: "enraged", tier: 4 });
 		const foe = fakeActor({

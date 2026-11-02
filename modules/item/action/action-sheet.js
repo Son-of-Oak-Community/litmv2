@@ -2,6 +2,7 @@ import {
 	callForRollLabel,
 	sendRollRequest,
 } from "../../apps/roll/roll-request.js";
+import { isEffectVisible } from "../../active-effects/effect-queries.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
 import { POWER_REF_TAG_TYPES } from "../../system/config.js";
 import {
@@ -233,6 +234,7 @@ export class ActionSheet extends LitmItemSheet {
 
 		const addEffect = (effect, ownerActor) => {
 			if (!POWER_REF_TAG_TYPES.has(effect.type)) return;
+			if (!isEffectVisible(effect)) return;
 			const sourceItem = effect.parent !== ownerActor ? effect.parent : null;
 			const groupKey = sourceItem?.uuid ?? `${ownerActor.uuid}:self`;
 

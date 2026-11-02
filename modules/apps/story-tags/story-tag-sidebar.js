@@ -507,7 +507,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 				max: actorDoc.system.getEffectiveMax(l),
 			}));
 
-			const partitioned = partitionTagsByLimit(actor.tags, overridden);
+			const partitioned = partitionTagsByLimit(actor.tags, overridden, {
+				actor: actorDoc,
+			});
 			// Enrich outcomes for challenge limits; the outcome stays the GM's
 			if (isChallenge) {
 				for (const limit of partitioned.limits) {

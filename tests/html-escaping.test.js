@@ -41,24 +41,24 @@ describe("token tooltip escapes player-controlled names", () => {
 	}
 
 	it("escapes a story tag name", () => {
-		const html = buildTooltipHTML(tooltipActor({ tagName: PAYLOAD }), true);
+		const html = buildTooltipHTML(tooltipActor({ tagName: PAYLOAD }));
 		expect(html).not.toContain("<img");
 		expect(html).toContain("&lt;img");
 	});
 
 	it("escapes a status name", () => {
-		const html = buildTooltipHTML(tooltipActor({ statusName: PAYLOAD }), true);
+		const html = buildTooltipHTML(tooltipActor({ statusName: PAYLOAD }));
 		expect(html).not.toContain("<img");
 		expect(html).toContain("&lt;img");
 	});
 
 	it("still renders ordinary names and the status tier", () => {
-		const html = buildTooltipHTML(tooltipActor(), true);
+		const html = buildTooltipHTML(tooltipActor());
 		expect(html).toContain("rope");
 		expect(html).toContain("wounded 2");
 	});
 
-	it("hides GM-hidden entries from non-owners", () => {
+	it("hides GM-hidden entries from every player, owners included", () => {
 		const actor = {
 			system: {
 				storyTags: [
@@ -67,8 +67,13 @@ describe("token tooltip escapes player-controlled names", () => {
 				statusEffects: [],
 			},
 		};
-		expect(buildTooltipHTML(actor, false)).toBe("");
-		expect(buildTooltipHTML(actor, true)).toContain("secret");
+		expect(buildTooltipHTML(actor)).toBe("");
+		game.user.isGM = true;
+		try {
+			expect(buildTooltipHTML(actor)).toContain("secret");
+		} finally {
+			game.user.isGM = false;
+		}
 	});
 });
 

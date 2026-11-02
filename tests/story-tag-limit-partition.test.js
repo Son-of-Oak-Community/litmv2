@@ -45,3 +45,29 @@ describe("partitionTagsByLimit computedValue", () => {
 		expect(limits[0].computedValue).toBe(0);
 	});
 });
+
+describe("partitionTagsByLimit and hidden statuses", () => {
+	const hiddenStatus = {
+		id: "s1",
+		type: "status_tag",
+		limitId: "lim",
+		hidden: true,
+		values: [false, false, true, false, false, false],
+	};
+	const limits = [{ id: "lim", max: 4 }];
+
+	it("leaves a hidden status out of a player-owned actor's value, matching the recalc", () => {
+		const { limits: out } = partitionTagsByLimit([hiddenStatus], limits, {
+			actor: { hasPlayerOwner: true },
+		});
+		expect(out[0].computedValue).toBe(0);
+		expect(out[0].tags).toEqual([hiddenStatus]);
+	});
+
+	it("counts it on an actor no player owns", () => {
+		const { limits: out } = partitionTagsByLimit([hiddenStatus], limits, {
+			actor: { hasPlayerOwner: false },
+		});
+		expect(out[0].computedValue).toBe(3);
+	});
+});

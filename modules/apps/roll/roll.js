@@ -278,8 +278,10 @@ export class LitmRoll extends foundry.dice.Roll {
 	static isConcealmentEffectHidden(tag) {
 		if (!tag.uuid) return undefined;
 		const effect = foundry.utils.fromUuidSync(tag.uuid, { strict: false });
-		if (!effect) return undefined;
-		return !!effect.system?.isHidden;
+		// An unloaded compendium index entry has no system data: unknown, so
+		// the policy recorded at roll time decides rather than revealing.
+		if (!effect?.system) return undefined;
+		return !!effect.system.isHidden;
 	}
 
 	/** Effects may be consumed after a roll while their owning actor lives on. */
