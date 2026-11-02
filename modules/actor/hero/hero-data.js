@@ -333,8 +333,10 @@ export class HeroData extends LimitsMixin(
 	prepareDerivedData() {
 		super.prepareDerivedData();
 		const baseLimit = CONFIG.litmv2?.heroLimit ?? 5;
+		// A status the Narrator hid doesn't count: the readout is the Hero's
+		// token bar, and a bar that moved would tell the player it is there.
 		const highestStatus = this.statusEffects
-			.filter((e) => e.active)
+			.filter((e) => e.active && !e.system?.isHidden)
 			.reduce((max, e) => Math.max(max, e.system.currentTier), 0);
 		// Floors at 0: a status can now exceed the Limit (that's what makes it
 		// permanent), and the token bar has no state for "past overcome". 0

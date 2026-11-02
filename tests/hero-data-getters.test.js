@@ -283,3 +283,23 @@ describe("HeroData.fellowshipActor", () => {
 		}
 	});
 });
+
+describe("HeroData limit readout", () => {
+	it("ignores a status the Narrator hid", () => {
+		const shown = fakeEffect({
+			type: "status_tag",
+			name: "tired",
+			system: { currentTier: 1 },
+		});
+		const hidden = fakeEffect({
+			type: "status_tag",
+			name: "secret grace",
+			system: { currentTier: 4, isHidden: true },
+		});
+		shown.active = true;
+		hidden.active = true;
+		const { model } = makeHero({ effects: [shown, hidden] });
+		model.prepareDerivedData();
+		expect(model.limit.value).toBe(model.limit.max - 1);
+	});
+});

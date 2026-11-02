@@ -259,7 +259,9 @@ function _recalcLimitsOnStatusChange() {
 		const system = changes?.system;
 		if (!system) return;
 		const relinked = "limitId" in system;
-		if (!relinked && !("tiers" in system)) return;
+		// Hiding or revealing a status changes whether it counts.
+		const counted = "tiers" in system || "isHidden" in system;
+		if (!relinked && !counted) return;
 		if (relinked || effect.system?.limitId) recalc(effect);
 	});
 	Hooks.on("deleteActiveEffect", (effect, _options, userId) => {
