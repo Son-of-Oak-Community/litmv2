@@ -203,7 +203,8 @@ export function buildContributedTagGroups(
 			if (!actor) continue;
 			const allTags = (actor.system.allRollTags ?? []).map(effectToPlain);
 			const rawTag = allTags.find((t) => t.uuid === effectId);
-			if (!rawTag) continue;
+			// Left out here, a hidden contribution becomes a masked row.
+			if (!rawTag || !isEffectVisible(rawTag)) continue;
 			const tag = decorateTag({
 				...rawTag,
 				state: sel.state,
