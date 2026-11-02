@@ -159,8 +159,8 @@ function ownsApplyQueue() {
  * receipt, sharing the same queue so remote and local edits compose cleanly.
  */
 /**
- * Before the GM moves the camp on, ask for confirmation when a hero with a
- * player owner has not pressed Ready. Resolves true to proceed.
+ * Before the GM moves the camp on, ask for confirmation when a hero with an
+ * online player owner has not pressed Ready. Resolves true to proceed.
  */
 async function confirmUnready(state) {
 	const notice = unreadyNotice(state);
@@ -173,8 +173,13 @@ async function confirmUnready(state) {
 
 /** "Not ready" paragraphs naming the waiting heroes, or "" when all are. */
 function unreadyNotice(state) {
+	// Only heroes a player is here to ready: an offline owner never can.
 	const waiting = getCampingHeroes().filter(
-		(a) => a.hasPlayerOwner && !state?.heroStates?.[a.id]?.ready,
+		(a) =>
+			!state?.heroStates?.[a.id]?.ready &&
+			game.users.some(
+				(u) => u.active && !u.isGM && a.testUserPermission(u, "OWNER"),
+			),
 	);
 	if (!waiting.length) return "";
 	return `<p>${t("LITM.Ui.camping_not_ready_body")}</p><p>${waiting
@@ -823,8 +828,9 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 
 	static async #onToggleReady(_event, target) {
 		const heroId = target.dataset.heroId;
-		const ready = readState()?.heroStates?.[heroId]?.ready ?? false;
-		await enqueueOp("ready", { heroId, on: !ready });
+		const state = readState();
+		const ready = state?.heroStates?.[heroId]?.ready ?? false;
+		await enqueueOp("ready", { heroId, on: !ready, step: state?.activeStep });
 	}
 
 	static async #onToggleThirdPeriod(_event, target) {
@@ -991,10 +997,15 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			() => LitmCampingScene.#instance?.render(),
 			100,
 		);
+		// Only the actors on the camp page: the camping heroes and the
+		// Fellowship. Every redraw drops text still being typed into a camp
+		// field, so a change on an unrelated hero must not trigger one.
 		const campActor = (doc) => {
 			const actor = doc?.documentName === "Actor" ? doc : doc?.parent;
 			if (actor?.documentName === "Item") return campActor(actor);
-			return [ACTOR_TYPES.hero, ACTOR_TYPES.fellowship].includes(actor?.type);
+			if (!actor) return false;
+			if (actor.type === ACTOR_TYPES.fellowship) return true;
+			return getCampingHeroes().some((h) => h.id === actor.id);
 		};
 		for (const event of ["create", "update", "delete"]) {
 			Hooks.on(`${event}ActiveEffect`, (effect) => {

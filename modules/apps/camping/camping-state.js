@@ -333,7 +333,13 @@ export function setActiveStep(state, step) {
 	for (const h of Object.values(state.heroStates ?? {})) h.ready = false;
 }
 
-export function setReady(state, heroId, on) {
+/**
+ * Mark a hero Ready. `step` is the step the player saw when they pressed it:
+ * a Ready that arrives after the camp has moved on is dropped, so a click in
+ * flight while the Narrator presses Next cannot lock the hero on the new step.
+ */
+export function setReady(state, heroId, on, step) {
+	if (step !== undefined && step !== state.activeStep) return;
 	ensureHeroState(state, heroId).ready = !!on;
 }
 
@@ -460,7 +466,7 @@ export const SETTERS = {
 	"backpack-kept": (s, { heroId, effectId, kept }) =>
 		setBackpackKept(s, heroId, effectId, kept),
 	"third-period": (s, { heroId, on }) => setThirdPeriod(s, heroId, on),
-	ready: (s, { heroId, on }) => setReady(s, heroId, on),
+	ready: (s, { heroId, on, step }) => setReady(s, heroId, on, step),
 	activity: (s, { heroId, period, activity }) =>
 		setActivity(s, heroId, period, activity),
 	"activity-detail": (s, { heroId, period, value }) =>

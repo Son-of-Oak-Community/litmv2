@@ -598,6 +598,23 @@ describe("Ready", () => {
 		setActiveStep(s, "period2");
 		expect(s.heroStates.a.ready).toBe(false);
 	});
+
+	it("drops a Ready sent from a step the camp has already left", () => {
+		const s = defaultCampingState();
+		setActiveStep(s, "period1");
+		setActiveStep(s, "period2");
+		SETTERS.ready(s, { heroId: "a", on: true, step: "period1" });
+		expect(s.heroStates?.a?.ready ?? false).toBe(false);
+	});
+
+	it("applies a Ready sent from the current step, or with no step", () => {
+		const s = defaultCampingState();
+		setActiveStep(s, "period2");
+		SETTERS.ready(s, { heroId: "a", on: true, step: "period2" });
+		expect(s.heroStates.a.ready).toBe(true);
+		SETTERS.ready(s, { heroId: "b", on: true });
+		expect(s.heroStates.b.ready).toBe(true);
+	});
 });
 
 describe("stepOrder", () => {

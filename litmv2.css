@@ -138,6 +138,11 @@ body,
 		var(--color-text-primary) 40%,
 		transparent
 	);
+	--color-text-primary-70: color-mix(
+		in srgb,
+		var(--color-text-primary) 70%,
+		transparent
+	);
 
 	/* Overlay colors */
 	--color-overlay-light: color-mix(in srgb, white 25%, transparent);
@@ -560,6 +565,7 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
    with the existing tag chrome. */
 .litm-power_tag.litm--single-use,
 .litm-story_tag.litm--single-use,
+.litm-backpack.litm--single-use,
 .litm-tag.litm--single-use {
 	font-weight: 400;
 }
@@ -6309,7 +6315,7 @@ fieldset.litm-party-overview > legend {
 	font-size: var(--font-size-13);
 	/* Dimmed by colour, not opacity: opacity makes a stacking context that
 	   paints over the floated portrait and swallows its clicks. */
-	color: color-mix(in srgb, currentColor 70%, transparent);
+	color: var(--color-text-primary-70);
 	margin: 2px 0 0;
 }
 
