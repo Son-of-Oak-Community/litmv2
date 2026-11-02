@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	buildContext,
+	buildSceneStoryTags,
 	buildSteps,
 	partitionCampingEffects,
 	stepIsComplete,
@@ -12,6 +13,7 @@ import {
 	setReflectMilestone,
 	setType,
 } from "../modules/apps/camping/camping-state.js";
+import { StoryTagsStore } from "../modules/apps/story-tags/story-tags-store.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
 // Minimal hero shape — just the fields buildSteps / stepIsComplete read.
@@ -30,6 +32,37 @@ function hero({
 function act(activity = null) {
 	return { activity };
 }
+
+describe("buildSceneStoryTags — hidden scene tags", () => {
+	afterEach(() => {
+		game.user.isGM = false;
+		vi.restoreAllMocks();
+	});
+
+	function bannerNames() {
+		const tag = (name, isHidden) => ({
+			id: name,
+			name,
+			type: "status_tag",
+			system: { isHidden, currentTier: 1 },
+			getFlag: () => "camp-1",
+		});
+		vi.spyOn(StoryTagsStore, "sceneStoryEffects", "get").mockReturnValue([
+			tag("drizzle", false),
+			tag("watched", true),
+		]);
+		return buildSceneStoryTags("camp-1").map((t) => t.name);
+	}
+
+	it("leaves a hidden scene tag off the player's camp banner", () => {
+		expect(bannerNames()).toEqual(["drizzle"]);
+	});
+
+	it("still shows it to the Narrator", () => {
+		game.user.isGM = true;
+		expect(bannerNames()).toEqual(["drizzle", "watched"]);
+	});
+});
 
 describe("partitionCampingEffects — hidden statuses", () => {
 	afterEach(() => {

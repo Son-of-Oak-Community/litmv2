@@ -421,7 +421,10 @@ export function stepIsComplete(stepId, heroes) {
 export function buildSceneStoryTags(campId) {
 	if (!campId) return [];
 	return StoryTagsStore.sceneStoryEffects
-		.filter((e) => e.getFlag?.("litmv2", "campId") === campId)
+		// The Narrator's sidebar starts new scene tags hidden; so does the banner.
+		.filter(
+			(e) => e.getFlag?.("litmv2", "campId") === campId && isEffectVisible(e),
+		)
 		.map((e) => ({
 			id: e.id,
 			name: e.name,
