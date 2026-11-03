@@ -1,5 +1,5 @@
 import { findBurnedSelection } from "./burn-cap.js";
-import { findHeroTagConflict } from "./group-roll.js";
+import { findHeroTagConflict, refusesHelperTag } from "./group-roll.js";
 
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const copy = (value) => structuredClone(value);
@@ -27,6 +27,10 @@ export class RollSync {
 		// `expectReseat`. `early` holds the edits accepted in the meantime.
 		this.awaitingReseat = false;
 		this.early = [];
+		// Whether this peer holds the owner's draft, from a snapshot or a
+		// reseat. A viewer that never heard from an owner must not answer a
+		// reseat: its blank view would wipe the Narrator's call.
+		this.heard = false;
 	}
 
 	apply(state, operation) {
@@ -40,7 +44,10 @@ export class RollSync {
 					tagActorId: entry.tagActorId,
 					participantIds: next.participantIds,
 				}) ||
-					(entry.state === "scratched" && findBurnedSelection(selections, id)))
+					(entry.state === "scratched" &&
+						findBurnedSelection(selections, id)) ||
+					(!next.participantIds?.length &&
+						refusesHelperTag(selections, id, entry)))
 			)
 				continue;
 			if (entry === null) selections.delete(id);
@@ -154,6 +161,7 @@ export class RollSync {
 		// them once the next snapshot lands. It is empty when there were none.
 		this.pending = [];
 		this.abandonReseat();
+		this.heard = true;
 		return true;
 	}
 
@@ -175,6 +183,7 @@ export class RollSync {
 		this.session = message.session;
 		this.revision = message.revision;
 		this.state = copy(message.state);
+		this.heard = true;
 		this.pending = this.pending.filter(
 			(op) => op.sequence > (message.ack[this.peerId] ?? 0),
 		);

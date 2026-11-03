@@ -205,17 +205,19 @@ export class KeyBindings {
 						localize: true,
 					});
 				}
-				// Toggling a dialog that is already open is not instigation —
+				// Raising a dialog that is already open is not instigation —
 				// only gate the case where this would start a new roll. Where
 				// the player may not start one, `R` asks for one, the same as
 				// the sheet's Roll button: one gesture, one behaviour.
 				// `rollDialogInstance` creates a dialog; ask `hasRollDialog` first
 				// so a mere check doesn't enrol this client in every roll socket.
-				const isOpen =
-					sheet.hasRollDialog && sheet.rollDialogInstance.rendered;
-				if (!isOpen && !canUserInitiateRoll())
-					return requestRollFromNarrator(sheet.actor);
-				return sheet.renderRollDialog({ toggle: true });
+				const dialog = sheet.hasRollDialog ? sheet.rollDialogInstance : null;
+				// Raise, never close: closing as the owner ends the roll, and a
+				// stray keypress must not throw away the Narrator's call.
+				if (dialog?.rendered)
+					return dialog.minimized ? dialog.maximize() : dialog.bringToFront();
+				if (!canUserInitiateRoll()) return requestRollFromNarrator(sheet.actor);
+				return sheet.renderRollDialog();
 			},
 			onUp: () => {},
 			restricted: false,

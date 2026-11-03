@@ -143,13 +143,19 @@ export function requiresRollApproval({
  * Whether the settings column (move bar, Might, modifiers) renders at all.
  * The roller needs it because it is their roll; the Narrator needs it on a
  * called roll even while watching as a non-owner, because the move and the
- * Might are theirs to set.
+ * Might are theirs to set. An Acting Together participant sees it read-only:
+ * the group's roll is theirs too, though the Fellowship's seat is the GM's.
  *
  * @param {object} args
  * @param {boolean} [args.isOwner]
  * @param {boolean} [args.isGM]
+ * @param {boolean} [args.isParticipant]  In an Acting Together roll.
  * @returns {boolean}
  */
-export function showsRollSettings({ isOwner = false, isGM = false } = {}) {
-	return !!isOwner || !!isGM;
+export function showsRollSettings({
+	isOwner = false,
+	isGM = false,
+	isParticipant = false,
+} = {}) {
+	return !!isOwner || !!isGM || !!isParticipant;
 }

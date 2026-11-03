@@ -3553,9 +3553,8 @@ section.standard-form.litm-theme-browser-body {
 }
 
 .litm--roll-dialog-tag-target {
-	color: var(--color-text-subtle);
-	font-style: italic;
-	font-size: var(--font-size-12);
+	align-items: center;
+	white-space: nowrap;
 }
 
 .litm fieldset ul.litm--roll-dialog-tags-summary {
@@ -3599,6 +3598,9 @@ section.standard-form.litm-theme-browser-body {
 }
 
 .litm--roll-dialog-theme-group:first-child,
+.litm--roll-dialog-tags-fieldset
+	> section.tab
+	> .litm--roll-dialog-section-break:first-child,
 .litm--roll-dialog-tags-fieldset
 	> section.tab
 	> .litm--roll-dialog-theme-group:first-of-type,
@@ -3689,9 +3691,20 @@ section.standard-form.litm-theme-browser-body {
 	white-space: nowrap;
 }
 
-.litm--roll-dialog-tabs [data-tab].active span {
+.litm--roll-dialog-tabs [data-tab].active span:not(.litm--roll-dialog-tab-power) {
 	text-decoration: underline;
 	text-underline-offset: 0.2em;
+}
+
+/* What this tab's selected tags add to Total Power. */
+.litm--roll-dialog-tab-power {
+	font-weight: bold;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-text-secondary);
+}
+
+.litm--roll-dialog-tab-power:empty {
+	display: none;
 }
 
 .litm--roll-dialog-tabs img {
@@ -8200,8 +8213,10 @@ button.litm-camping-scene__hero-link {
 	font-style: italic;
 }
 
-/* A tag the Narrator invoked: quill mark, and locked for the roller. */
-.litm--roll-dialog-tag-narrator {
+/* A tag the Narrator invoked: quill mark, and locked for the roller. The
+   eye-slash marks, for the Narrator only, a row the players can't see. */
+.litm--roll-dialog-tag-narrator,
+.litm--roll-dialog-tag-hidden {
 	font-size: var(--font-size-11);
 	color: var(--color-litm-tag-text);
 	opacity: 0.8;

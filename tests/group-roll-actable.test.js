@@ -13,17 +13,13 @@ import { actableActorIds } from "../modules/apps/roll/roll-dialog-context.js";
 
 const FELLOWSHIP = "fellowship-1";
 
-/**
- * A dialog stand-in plus the `game.actors` lookup the helper walks. No
- * `isGroupRoll` on it deliberately: the helper never reads one, because every
- * call site is already inside a group-roll branch.
- */
+/** A group-roll dialog stand-in plus the `game.actors` lookup the helper walks. */
 const makeDialog = ({ participantIds = [], owned = [] } = {}) => {
 	game.actors.get = (id) => ({
 		id,
 		testUserPermission: () => owned.includes(id),
 	});
-	return { actorId: FELLOWSHIP, participantIds };
+	return { actorId: FELLOWSHIP, participantIds, isGroupRoll: true };
 };
 
 afterEach(() => {
@@ -61,5 +57,27 @@ describe("actableActorIds", () => {
 			owned: ["h9"],
 		});
 		expect(actableActorIds(dialog)).toEqual(new Set());
+	});
+});
+
+describe("actableActorIds — Helping Each Other", () => {
+	it("gives a helper their own Hero only: no roller's tags, no scene's", () => {
+		game.user.character = { id: "h2" };
+		try {
+			const dialog = { actorId: "h1", participantIds: [], isGroupRoll: false };
+			expect(actableActorIds(dialog)).toEqual(new Set(["h2"]));
+		} finally {
+			delete game.user.character;
+		}
+	});
+
+	it("gives the roller's own player nothing to help with", () => {
+		game.user.character = { id: "h1" };
+		try {
+			const dialog = { actorId: "h1", participantIds: [], isGroupRoll: false };
+			expect(actableActorIds(dialog)).toEqual(new Set());
+		} finally {
+			delete game.user.character;
+		}
 	});
 });

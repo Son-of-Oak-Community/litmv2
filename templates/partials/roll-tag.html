@@ -13,14 +13,22 @@
 		<litm-super-checkbox name="{{tag.key}}" id="rd-{{tag.key}}" value="{{tag.state}}" data-type="{{tag.type}}"
 			states="{{tag.states}}" aria-label="{{tag.displayName}}" {{#if tag.locked}}disabled aria-disabled="true" data-locked="true"
 			{{/if}}></litm-super-checkbox>
-		<span class="litm--roll-dialog-badge litm-{{tag.type}}{{#if (and (eq tag.type "story_tag") (or tag.system.isSingleUse tag.isSingleUse))}} litm--single-use{{/if}}"
+		{{!-- A relationship reads like the Hero sheet: who, then the tag. --}}
+		{{#if tag.targetName}}<span class="litm--roll-dialog-tag-target flexrow noflex gap-sm">
+			{{#if tag.targetImg}}<img class="relationship-img" src="{{tag.targetImg}}" alt="" />{{/if}}
+			<span>{{tag.targetName}}</span>
+		</span>{{/if}}
+		<span class="litm--roll-dialog-badge litm-{{tag.type}}{{#if tag.isSingleUse}} litm--single-use{{/if}}"
 			data-text="{{tag.displayName}}{{ifThen (eq tag.type 'status_tag') (ifThen tag.value (concat '-' tag.value) '') ''}}">{{tag.displayName}}{{ifThen
-			(eq tag.type "status_tag") (ifThen tag.value (concat "-" tag.value) "") ""}}{{#if (and (eq tag.type "story_tag") (or tag.system.isSingleUse tag.isSingleUse))}}<span class="litm--single-use-mark">✱</span>{{/if}}{{#if (eq tag.type "weakness_tag")}}
+			(eq tag.type "status_tag") (ifThen tag.value (concat "-" tag.value) "") ""}}{{#if tag.isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}{{#if (eq tag.type "weakness_tag")}}
 			{{> "systems/litmv2/templates/partials/weakness-chevron.html"}}
 			{{/if}}</span>
 		{{#if tag.isNarrator}}
 		<i class="fa-solid fa-feather litm--roll-dialog-tag-narrator" aria-hidden="true"></i>
 		{{/if}}
-		{{#if tag.targetName}}<span class="litm--roll-dialog-tag-target">({{tag.targetName}})</span>{{/if}}
+		{{#if tag.hiddenFromPlayers}}
+		<i class="fa-solid fa-eye-slash litm--roll-dialog-tag-hidden" data-tooltip="{{localize 'LITM.Ui.hidden_from_players'}}"
+			aria-label="{{localize 'LITM.Ui.hidden_from_players'}}"></i>
+		{{/if}}
 	</label>
 </li>
