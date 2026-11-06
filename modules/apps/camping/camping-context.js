@@ -92,6 +92,28 @@ function buildBackpackPills(actor, heroState) {
 		}));
 }
 
+// Matches the quest track schema max in theme-data.js.
+const QUEST_TRACK_MAX = 3;
+
+// Current track marks, so the Reflect selectors aren't a blind choice.
+function trackCounts(theme) {
+	const tracks = theme.system?.quest?.tracks;
+	const improve = theme.system?.improve?.value ?? 0;
+	const milestone = tracks?.milestone?.value ?? 0;
+	const abandon = tracks?.abandon?.value ?? 0;
+	const improveMax = CONFIG.litmv2?.improveThreshold ?? 3;
+	return {
+		improve,
+		milestone,
+		abandon,
+		improveMax,
+		questMax: QUEST_TRACK_MAX,
+		improveFull: improve >= improveMax,
+		milestoneFull: milestone >= QUEST_TRACK_MAX,
+		abandonFull: abandon >= QUEST_TRACK_MAX,
+	};
+}
+
 /**
  * Build the list of themes a hero may Reflect on — their own + the
  * fellowship theme if linked.
@@ -101,6 +123,7 @@ function buildReflectTargets(actor) {
 		id: theme.id,
 		name: theme.name,
 		kind: "theme",
+		...trackCounts(theme),
 	}));
 	const fellowshipActor = actor.system?.fellowshipActor ?? null;
 	const fellowshipTheme = findFellowshipTheme(fellowshipActor);
@@ -109,6 +132,7 @@ function buildReflectTargets(actor) {
 			id: fellowshipTheme.id,
 			name: `${fellowshipActor.name}: ${fellowshipTheme.name}`,
 			kind: "fellowship",
+			...trackCounts(fellowshipTheme),
 		});
 	}
 	return ownThemes;
