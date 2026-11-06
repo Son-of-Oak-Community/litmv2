@@ -466,6 +466,7 @@
 			"camping_rephrase_placeholder": "(leave empty to keep)",
 			"camping_rest": "Rest",
 			"camping_rest_nothing": "Nothing to rest from.",
+			"camping_scene_hint": "This camp belongs to the scene {scene}. Each scene keeps its own camp: making camp on another scene starts a separate one.",
 			"camping_scene_tags_to_expire": "Scene tags to expire",
 			"camping_setup_hint": "Choose Camp or Sojourn, name the place, and add campsite tags and Threats. Click Begin Camp to open it for everyone.",
 			"camping_setup_waiting": "The Narrator is setting up camp…",
