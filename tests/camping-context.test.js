@@ -375,6 +375,32 @@ describe("buildContext — Reflect rows", () => {
 		expect(row.reflectAbandonName).toBe("Wanderer");
 	});
 
+	it("flags each Reflect track as full at its max", () => {
+		globalThis.game.packs = { get: () => undefined };
+		globalThis.game.user.isGM = true;
+		const theme = fakeItem({ id: "theme-1", type: "theme", name: "Wanderer" });
+		theme.system = {
+			improve: { value: 3 },
+			quest: { tracks: { milestone: { value: 1 }, abandon: { value: 3 } } },
+		};
+		const actor = fakeActor({ type: "hero", id: "hero-1", items: [theme] });
+		actor.system = { themes: [{ theme, tags: [] }], fellowshipActor: null };
+		globalThis.game.actors = { filter: (fn) => [actor].filter(fn) };
+		const state = defaultCampingState();
+		setActivity(state, actor.id, 0, "reflect");
+		const [target] =
+			buildContext(state).heroes[0].activities[0].reflectTargets;
+
+		expect(target).toMatchObject({
+			improve: 3,
+			improveFull: true,
+			milestone: 1,
+			milestoneFull: false,
+			abandon: 3,
+			abandonFull: true,
+		});
+	});
+
 	it("builds the same row for a camp as for a sojourn", () => {
 		expect(reflectRow("camp")).toEqual(reflectRow("sojourn"));
 	});
