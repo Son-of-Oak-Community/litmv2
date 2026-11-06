@@ -530,6 +530,16 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			await LitmCampingScene.#instance?.close();
 			return;
 		}
+		// Once begun, Cancel throws away the whole table's choices and the
+		// campsite tags. Setup is the Narrator's private prep: no prompt.
+		if (readState()?.phase === "active") {
+			const confirmed = await foundry.applications.api.DialogV2.confirm({
+				window: { title: t("LITM.Ui.camping_cancel_title") },
+				content: `<p>${t("LITM.Ui.camping_cancel_confirm")}</p>`,
+				modal: true,
+			});
+			if (!confirmed) return;
+		}
 		await LitmCampingScene.#runLifecycle("cancel");
 	}
 

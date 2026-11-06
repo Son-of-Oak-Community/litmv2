@@ -173,6 +173,12 @@ describe("Cancel", () => {
 		return state;
 	}
 
+	beforeEach(() => {
+		vi.spyOn(foundry.applications.api.DialogV2, "confirm").mockResolvedValue(
+			true,
+		);
+	});
+
 	it("rolls back only the campsite tags that still exist, then clears the session", async () => {
 		seedPack("live-1");
 		const scene = fakeScene({ camping: session(["live-1", "gone-1"]) });
@@ -722,6 +728,28 @@ describe("camp lifecycle with a second GM", () => {
 			});
 			expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
 			expect(sceneA.unsetFlag).not.toHaveBeenCalled();
+		});
+
+		it("keeps a begun camp when Cancel is not confirmed", async () => {
+			sceneA.flags = { litmv2: { camping: activeSession() } };
+			foundry.applications.api.DialogV2.confirm.mockResolvedValue(false);
+
+			await actions.cancel();
+
+			expect(foundry.applications.api.DialogV2.confirm).toHaveBeenCalledTimes(
+				1,
+			);
+			expect(Sockets.dispatch).not.toHaveBeenCalled();
+		});
+
+		it("cancels a camp still in setup without asking", async () => {
+			await actions.cancel();
+
+			expect(foundry.applications.api.DialogV2.confirm).not.toHaveBeenCalled();
+			expect(Sockets.dispatch).toHaveBeenCalledWith("campingLifecycle", {
+				action: "cancel",
+				sceneId: "scene-a",
+			});
 		});
 
 		it("names the camp's scene, not the one it is viewing", async () => {

@@ -396,6 +396,8 @@
 			"camping_campsite_tags_hint": "Use [name] for tags, [name-N] for statuses, and [name!] for single-use tags. Begin Camp adds them to the scene.",
 			"camping_campsite_tags_locked_hint": "Edit additional scene tags in the Tags sidebar.",
 			"camping_campsite_tags_placeholder": "[warm fire] [rainy-2] [annoying gnats!]",
+			"camping_cancel_confirm": "Discard this camp for everyone? Heroes' choices and the campsite tags will be lost, and nothing will be applied.",
+			"camping_cancel_title": "Cancel camp",
 			"camping_change": "Change",
 			"camping_duration_days": "Days (+1 Power)",
 			"camping_duration_label": "for",
