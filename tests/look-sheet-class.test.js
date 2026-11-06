@@ -4,6 +4,8 @@ import { LitmActor } from "../modules/actor/litm-actor.js";
 class HeroSheet {}
 class HeroSheetCards {}
 class HeroSheetLandscape {}
+class FellowshipSheet {}
+class FellowshipSheetCards {}
 
 const Base = Object.getPrototypeOf(LitmActor.prototype);
 
@@ -25,6 +27,10 @@ describe("LitmActor#_getSheetClass and the Cards look", () => {
 					"litmv2.HeroSheet": { cls: HeroSheet },
 					"litmv2.HeroSheetCards": { cls: HeroSheetCards },
 					"litmv2.HeroSheetLandscape": { cls: HeroSheetLandscape },
+				},
+				fellowship: {
+					"litmv2.FellowshipSheet": { cls: FellowshipSheet },
+					"litmv2.FellowshipSheetCards": { cls: FellowshipSheetCards },
 				},
 			},
 		};
@@ -66,6 +72,13 @@ describe("LitmActor#_getSheetClass and the Cards look", () => {
 		expect(actor({ base: HeroSheetLandscape })._getSheetClass()).toBe(
 			HeroSheetLandscape,
 		);
+	});
+
+	it("gives the Fellowship its Cards sheet too", () => {
+		look = "cards";
+		expect(
+			actor({ type: "fellowship", base: FellowshipSheet })._getSheetClass(),
+		).toBe(FellowshipSheetCards);
 	});
 
 	it("leaves other actor types alone", () => {

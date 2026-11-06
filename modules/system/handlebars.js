@@ -72,6 +72,7 @@ export class HandlebarsPartials {
 		"systems/litmv2/templates/partials/control-legend.html",
 		"systems/litmv2/templates/partials/weakness-chevron.html",
 		"systems/litmv2/templates/partials/hidden-mark.html",
+		"systems/litmv2/templates/partials/party-overview.html",
 		// The character-selection control. Listed here rather than on an owning
 		// sheet because the target-picker dialogs render it through a top-level
 		// renderTemplate with no ApplicationV2 lifecycle to hang it off.
