@@ -107,6 +107,8 @@
 		{{/if}}
 	</div>
 
+	{{!-- Every footer action is the Narrator's; a player closes with the window's X. --}}
+	{{#if isGM}}
 	<footer class="litm-camping-scene__footer">
 		<button type="button" class="litm-camping-scene__btn" data-action="cancel">{{localize "LITM.Ui.cancel"}}</button>
 		<div class="litm-camping-scene__footer-actions">
@@ -138,4 +140,5 @@
 		{{/if}}
 		</div>
 	</footer>
+	{{/if}}
 </div>
