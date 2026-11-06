@@ -3730,6 +3730,20 @@ section.standard-form.litm-theme-browser-body {
 	display: none;
 }
 
+/* "Rejoin camp" reuses the strip's items, above the roll strip: a camp
+   outlasts any roll made during it. */
+.litm-camping-hud {
+	order: -3;
+}
+
+.litm-camping-hud__icon {
+	display: grid;
+	place-items: center;
+	font-size: var(--font-size-20);
+	color: var(--color-litm-tag-text);
+	background: var(--color-warm-1-10);
+}
+
 /* The Narrator's call-for-roll control: the one thing on the main screen that
    starts a roll. Costs no layout Foundry was not already spending — #players
    is anchored bottom-left and grows upward into canvas, which is exactly what

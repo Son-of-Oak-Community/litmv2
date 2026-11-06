@@ -356,6 +356,11 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		return LitmCampingScene.#instance;
 	}
 
+	/** Id of the scene this client's camp window is bound to, if any. */
+	static get sceneId() {
+		return campSceneId;
+	}
+
 	async close(options) {
 		LitmCampingScene.#instance = null;
 		return super.close(options);
