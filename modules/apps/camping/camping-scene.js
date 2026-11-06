@@ -269,6 +269,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			"pack-up": LitmCampingScene.#onPackUp,
 			cancel: LitmCampingScene.#onCancel,
 			"toggle-third-period": LitmCampingScene.#onToggleThirdPeriod,
+			"backpack-keep-all": LitmCampingScene.#onBackpackKeepAll,
 			"launch-camp-roll": LitmCampingScene.#onLaunchCampRoll,
 			"add-threat": LitmCampingScene.#onAddThreat,
 			"edit-threat": LitmCampingScene.#onEditThreat,
@@ -831,6 +832,15 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		const state = readState();
 		const ready = state?.heroStates?.[heroId]?.ready ?? false;
 		await enqueueOp("ready", { heroId, on: !ready, step: state?.activeStep });
+	}
+
+	static async #onBackpackKeepAll(_event, target) {
+		const { heroId, effectIds, kept } = target.dataset;
+		await enqueueOp("backpack-kept-all", {
+			heroId,
+			effectIds: effectIds.split(","),
+			kept: kept === "true",
+		});
 	}
 
 	static async #onToggleThirdPeriod(_event, target) {

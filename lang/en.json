@@ -382,6 +382,8 @@
 			"burn_cap_warning": "Only one tag can be burned per roll. Un-scratch the other tag first.",
 			"camping_activities": "Activities",
 			"camping_backpack_keep": "Backpack",
+			"camping_backpack_keep_all": "Keep all",
+			"camping_backpack_keep_none": "Keep none",
 			"camping_backpack_keep_hint": "Check the tags you want to keep. Pack Up scratches every unchecked tag.",
 			"camping_backpack_kept": "Kept",
 			"camping_backpack_stays_inactive": "Inactive — leave deactivated",

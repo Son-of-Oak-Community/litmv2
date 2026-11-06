@@ -88,6 +88,8 @@ function buildBackpackPills(actor, heroState) {
 			name: e.name,
 			isSingleUse: !!e.system?.isSingleUse,
 			disabled: !!e.disabled,
+			// Only the GM gets hidden tags (isEffectVisible), so only they see the mark.
+			isHidden: !!e.system?.isHidden,
 			kept: keptSet.has(e.id),
 		}));
 }
@@ -281,6 +283,7 @@ function buildQualityTimeContext(
 function buildHeroContext(actor, heroState, allHeroes) {
 	const buckets = partitionCampingEffects(actor);
 	const backpackTags = buildBackpackPills(actor, heroState);
+	const activeBackpackTags = backpackTags.filter((tag) => !tag.disabled);
 	const reflectTargets = buildReflectTargets(actor);
 	const periodCount = heroState.thirdPeriodActive ? 3 : 2;
 	const activities = buildActivityRows(heroState, periodCount, {
@@ -306,6 +309,9 @@ function buildHeroContext(actor, heroState, allHeroes) {
 		thirdPeriodActive: !!heroState.thirdPeriodActive,
 		backpackTags,
 		hasBackpack: backpackTags.length > 0,
+		// Keep all covers active tags only; re-enabling inactive ones stays a per-tag choice.
+		allBackpackKept: activeBackpackTags.every((tag) => tag.kept),
+		backpackTagIds: activeBackpackTags.map((tag) => tag.id).join(","),
 		activities,
 		qualityTime,
 		hasQualityTimeOptions:

@@ -7336,6 +7336,16 @@ button.litm-camping-scene__hero-link {
 	opacity: 0.6;
 }
 
+/* GM-only mark on a backpack tag hidden from players: a secondary glyph,
+   so smaller than the tag text, and it fades with the tag when marked. */
+.litm-camping-scene__hidden-mark {
+	font-size: 0.75em;
+}
+
+.litm-camping-scene__pill.marked .litm-camping-scene__hidden-mark {
+	opacity: 0.6;
+}
+
 /* Inactive backpack tags on Pack Up are still selectable — ticking
    re-enables them at apply time (see buildBackpackOps in camping-apply).
    Visually muted so the player can tell them apart from active ones at
@@ -8009,6 +8019,10 @@ button.litm-camping-scene__hero-link {
 	flex-direction: column;
 	gap: var(--spacer-4);
 	min-width: 0;
+}
+
+.litm-camping-scene__row-content > .litm-camping-scene__btn {
+	align-self: flex-start;
 }
 
 @media (max-width: 720px) {

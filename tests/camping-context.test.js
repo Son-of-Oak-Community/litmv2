@@ -9,6 +9,7 @@ import {
 import {
 	defaultCampingState,
 	setActivity,
+	setBackpackKept,
 	setReflectAbandon,
 	setReflectMilestone,
 	setType,
@@ -332,6 +333,46 @@ describe("stepIsComplete", () => {
 
 	it("returns false for an empty hero list", () => {
 		expect(stepIsComplete("period1", [])).toBe(false);
+	});
+});
+
+describe("buildContext — Pack Up Keep all", () => {
+	const original = {
+		actors: globalThis.game.actors,
+		packs: globalThis.game.packs,
+		isGM: globalThis.game.user.isGM,
+	};
+
+	afterEach(() => {
+		globalThis.game.actors = original.actors;
+		globalThis.game.packs = original.packs;
+		globalThis.game.user.isGM = original.isGM;
+	});
+
+	it("covers active backpack tags only, never an inactive one", () => {
+		const active = fakeEffect({ name: "rope", type: "story_tag" });
+		const inactive = fakeEffect({
+			name: "lantern",
+			type: "story_tag",
+			disabled: true,
+		});
+		const backpack = fakeItem({
+			type: "backpack",
+			effects: [active, inactive],
+		});
+		const actor = fakeActor({ type: "hero", items: [backpack] });
+		actor.system = { backpackItem: backpack, themes: [] };
+		globalThis.game.actors = { filter: (fn) => [actor].filter(fn) };
+		globalThis.game.packs = { get: () => undefined };
+		globalThis.game.user.isGM = true;
+		const state = defaultCampingState();
+		const hero = () => buildContext(state).heroes[0];
+
+		expect(hero().backpackTagIds).toBe(active.id);
+		expect(hero().allBackpackKept).toBe(false);
+
+		setBackpackKept(state, actor.id, active.id, true);
+		expect(hero().allBackpackKept).toBe(true);
 	});
 });
 

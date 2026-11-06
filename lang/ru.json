@@ -382,6 +382,8 @@
 			"burn_cap_warning": "За бросок можно сжечь только один тег. Сначала снимите вычёркивание с другого тега.",
 			"camping_activities": "Занятия",
 			"camping_backpack_keep": "Рюкзак",
+			"camping_backpack_keep_all": "Все",
+			"camping_backpack_keep_none": "Ничего",
 			"camping_backpack_keep_hint": "Отметьте теги, которые хотите оставить. «Свернуть Лагерь» вычёркивает каждый неотмеченный тег.",
 			"camping_backpack_kept": "Оставлено",
 			"camping_backpack_stays_inactive": "Неактивен — оставить деактивированным",
