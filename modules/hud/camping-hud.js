@@ -10,6 +10,17 @@ export function shouldShowCampPickup({ state, rendered }) {
 }
 
 /**
+ * The name a camp's scene goes by for this user, or "" for a map they cannot
+ * see. Same rule as Foundry's scene navigation, so a hidden map is not exposed.
+ */
+export function campSceneLabel(scene) {
+	if (!scene) return "";
+	return scene.active || scene.isView || scene.visible
+		? scene.navName || scene.name
+		: "";
+}
+
+/**
  * The camp's counterpart to the roll-dialog HUD strip: a "rejoin" entry above
  * the player list while a camp or sojourn is running. Players only ever reach
  * the camp through the Begin Camp broadcast, so after a reload this is their
@@ -62,12 +73,8 @@ export class CampingHud {
 										),
 									})
 								: t("LITM.Ui.camping_camp"),
-						// Same rule as Foundry's scene navigation, so a hidden map's
-						// name is not exposed; the entry itself stays to rejoin by.
-						sceneName:
-							scene.active || scene.isView || scene.visible
-								? scene.navName || scene.name
-								: "",
+						// The entry itself stays for a hidden map, to rejoin by.
+						sceneName: campSceneLabel(scene),
 					};
 				}) ?? [];
 

@@ -2,6 +2,7 @@ import {
 	statusTagEffect,
 	storyTagEffect,
 } from "../../active-effects/effect-factories.js";
+import { campSceneLabel } from "../../hud/camping-hud.js";
 import { error, warn } from "../../logger.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { ACTOR_TYPES } from "../../system/config.js";
@@ -359,6 +360,19 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 	/** Id of the scene this client's camp window is bound to, if any. */
 	static get sceneId() {
 		return campSceneId;
+	}
+
+	/** "Camping — <scene>", so the window says which scene's camp it is. */
+	get title() {
+		const name = campSceneLabel(campScene());
+		return name ? `${super.title} — ${name}` : super.title;
+	}
+
+	_configureRenderOptions(options) {
+		super._configureRenderOptions(options);
+		// The frame only reads the title on first render, and this singleton can
+		// rebind to another scene's camp while open.
+		if (this.hasFrame) (options.window ??= {}).title = this.title;
 	}
 
 	async close(options) {

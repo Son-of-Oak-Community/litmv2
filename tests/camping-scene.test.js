@@ -440,6 +440,23 @@ describe("scene binding", () => {
 		return Hooks.on.mock.calls.find(([n]) => n === name)[1];
 	};
 
+	it("names the bound scene in the window title, unless it is hidden", () => {
+		const base = Object.getPrototypeOf(LitmCampingScene.prototype);
+		Object.defineProperty(base, "title", {
+			get: () => "Camping",
+			configurable: true,
+		});
+		Object.assign(sceneA, { name: "Simple Battle", navName: "Battle" });
+		canvas.scene = sceneA;
+		const app = LitmCampingScene.open();
+
+		sceneA.visible = true;
+		expect(app.title).toBe("Camping — Battle");
+		sceneA.visible = false;
+		expect(app.title).toBe("Camping");
+		delete base.title;
+	});
+
 	it("strips a running camp from a copied or imported scene", () => {
 		const del = Symbol("del");
 		globalThis._del = del;

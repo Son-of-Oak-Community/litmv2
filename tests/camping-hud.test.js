@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	CampingHud,
+	campSceneLabel,
 	shouldShowCampPickup,
 } from "../modules/hud/camping-hud.js";
 
@@ -26,6 +27,29 @@ describe("camp pickup", () => {
 		{ state: { phase: "active" }, rendered: true },
 	])("stays hidden otherwise: %j", (args) => {
 		expect(shouldShowCampPickup(args)).toBe(false);
+	});
+});
+
+describe("camp scene label", () => {
+	const scene = { name: "Simple Battle", navName: "Battle" };
+
+	it.each([
+		{ visible: true },
+		{ active: true },
+		{ isView: true },
+	])("names a scene the user can see: %j", (seen) => {
+		expect(campSceneLabel({ ...scene, ...seen })).toBe("Battle");
+	});
+
+	it("falls back to the scene name without a navigation name", () => {
+		expect(campSceneLabel({ name: "Simple Battle", visible: true })).toBe(
+			"Simple Battle",
+		);
+	});
+
+	it("hides a map the user cannot see", () => {
+		expect(campSceneLabel(scene)).toBe("");
+		expect(campSceneLabel(null)).toBe("");
 	});
 });
 
