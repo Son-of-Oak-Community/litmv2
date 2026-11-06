@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LitmActor } from "../modules/actor/litm-actor.js";
+import { refreshCardsSheets } from "../modules/system/settings.js";
 
 class HeroSheet {}
 class HeroSheetCards {}
 class HeroSheetLandscape {}
+class FellowshipSheet {}
+class FellowshipSheetCards {}
 
 const Base = Object.getPrototypeOf(LitmActor.prototype);
 
@@ -25,6 +28,10 @@ describe("LitmActor#_getSheetClass and the Cards look", () => {
 					"litmv2.HeroSheet": { cls: HeroSheet },
 					"litmv2.HeroSheetCards": { cls: HeroSheetCards },
 					"litmv2.HeroSheetLandscape": { cls: HeroSheetLandscape },
+				},
+				fellowship: {
+					"litmv2.FellowshipSheet": { cls: FellowshipSheet },
+					"litmv2.FellowshipSheetCards": { cls: FellowshipSheetCards },
 				},
 			},
 		};
@@ -68,8 +75,74 @@ describe("LitmActor#_getSheetClass and the Cards look", () => {
 		);
 	});
 
+	it("gives the Fellowship its Cards sheet too", () => {
+		look = "cards";
+		expect(
+			actor({ type: "fellowship", base: FellowshipSheet })._getSheetClass(),
+		).toBe(FellowshipSheetCards);
+	});
+
 	it("leaves other actor types alone", () => {
 		look = "cards";
 		expect(actor({ type: "challenge" })._getSheetClass()).toBe(HeroSheet);
+	});
+});
+
+describe("refreshCardsSheets hands the roll window to the new sheet", () => {
+	const saved = {};
+	beforeEach(() => {
+		saved.filter = game.actors.filter;
+		saved.instances = foundry.applications.instances;
+		saved.documentClass = CONFIG.Actor?.documentClass;
+		CONFIG.Actor ??= {};
+		CONFIG.Actor.documentClass = { CARDS_SHEETS: { hero: [] } };
+		foundry.applications.instances = new Map();
+	});
+	afterEach(() => {
+		game.actors.filter = saved.filter;
+		foundry.applications.instances = saved.instances;
+		CONFIG.Actor.documentClass = saved.documentClass;
+	});
+
+	// A Classic sheet holding a dialog; the look now asks for NewSheet.
+	function heroWith(dialog) {
+		class NewSheet {
+			adopted = null;
+			adoptRollDialog(d) {
+				this.adopted = d;
+			}
+			render() {}
+		}
+		const old = {
+			rendered: true,
+			hasRollDialog: !!dialog,
+			rollDialogInstance: dialog,
+			close: async () => {},
+		};
+		const hero = {
+			type: "hero",
+			_sheet: old,
+			_getSheetClass: () => NewSheet,
+			get sheet() {
+				this._sheet ??= new NewSheet();
+				return this._sheet;
+			},
+		};
+		game.actors.filter = (fn) => [hero].filter(fn);
+		return hero;
+	}
+
+	it("moves a closed dialog (a draft awaiting approval)", async () => {
+		const dialog = { rendered: false };
+		const hero = heroWith(dialog);
+		await refreshCardsSheets();
+		expect(hero.sheet.adopted).toBe(dialog);
+	});
+
+	it("moves an open dialog instead of keeping the old sheet", async () => {
+		const dialog = { rendered: true };
+		const hero = heroWith(dialog);
+		await refreshCardsSheets();
+		expect(hero.sheet.adopted).toBe(dialog);
 	});
 });

@@ -3959,8 +3959,7 @@ section.standard-form.litm-theme-browser-body {
 
 /* The Fellowship's default icon is drawn white: ink it on the light theme.
    Portraits and custom art keep their colours. */
-.litm--roll
-	:is(.litm--roll-dialog-tabs, .litm--roll-dialog-actor-label)
+.litm--roll :is(.litm--roll-dialog-tabs, .litm--roll-dialog-actor-label)
 	img[src$="icons/fellowship.svg"] {
 	filter: var(--litm-icon-filter);
 }
@@ -8617,9 +8616,10 @@ button.litm-camping-scene__hero-link {
    25. Hero Sheet — Cards
    The opt-in "Hero Sheet (Cards)" variant (HeroSheetCards): theme cards
    read like the printed ones — tags lead, quest and tracks recede, the
-   portrait is always framed. The hero panel and kit are scoped to
-   .litm-hero-cards; the card face (25b) to .litm--printed-cards, which
-   only sheets using PrintedCardsMixin carry. The two neutral rules first
+   portrait is always framed. The hero panel is scoped to
+   .litm-hero-cards; the card face (25b) and the board and kit (25c) to
+   .litm--printed-cards, which only sheets using PrintedCardsMixin carry
+   (the hero and Fellowship Cards sheets). The two neutral rules first
    keep shared markup looking classic everywhere else.
    ======================================== */
 
@@ -8656,8 +8656,8 @@ button.litm-camping-scene__hero-link {
 
 /* Hero description: clamped like a theme description so a long one doesn't
    push the themes off-screen; the hero name toggles it. It keeps its own
-   type — only the clamp and fade are borrowed. */
-.litm-hero-cards .litm--hero-description {
+   type — only the clamp and fade are borrowed. The Fellowship's, too. */
+:is(.litm-hero-cards, .litm-fellowship-cards) .litm--hero-description {
 	margin-top: 0;
 	font-family: inherit;
 	cursor: pointer;
@@ -8667,13 +8667,15 @@ button.litm-camping-scene__hero-link {
 	}
 }
 
-.litm-hero-cards .litm--hero-description .theme-card__description-body {
+:is(.litm-hero-cards, .litm-fellowship-cards)
+	.litm--hero-description
+	.theme-card__description-body {
 	max-height: 6em;
 	font-style: inherit;
 	color: inherit;
 }
 
-.litm-hero-cards
+:is(.litm-hero-cards, .litm-fellowship-cards)
 	.litm--hero-description.is-short
 	.theme-card__description-body {
 	max-height: none;
@@ -8696,7 +8698,7 @@ button.litm-camping-scene__hero-link {
 }
 
 /* Special improvements show their name only; the description is a tooltip. */
-.litm-hero-cards .special-improvements-list
+.litm--printed-cards .special-improvements-list
 	li[data-tooltip]:not(.is-locked)
 	h5 {
 	cursor: help;
@@ -8704,7 +8706,7 @@ button.litm-camping-scene__hero-link {
 
 /* Shared card face for 25b and 25c: one surface, two banner families —
    theme cards take their level's might colour, kit sections take sienna. */
-.litm-hero-cards {
+.litm--printed-cards {
 	--litm-card-surface: url("assets/journal/parchment.webp") center / 100% 100%;
 	--litm-card-border: color-mix(
 		in srgb,
@@ -8733,6 +8735,9 @@ button.litm-camping-scene__hero-link {
 	/* Board chip tint strength: full on parchment, as on the classic sheet;
 	   the dark theme halves it. */
 	--litm-chip-mix: 100%;
+}
+
+.litm-hero-cards {
 	--litm-hero-panel-w: 20rem;
 	/* A % resolves against the element's containing block (.window-content
 	   for the absolutely placed panel), i.e. the window, not the viewport. */
@@ -8742,8 +8747,8 @@ button.litm-camping-scene__hero-link {
 }
 
 /* Dark card faces: the dark parchment, cropped rather than stretched. */
-:is(body.theme-dark, .themed.theme-dark) .litm-hero-cards:not(.theme-light),
-.litm-hero-cards:is(.themed.theme-dark) {
+:is(body.theme-dark, .themed.theme-dark) .litm--printed-cards:not(.theme-light),
+.litm--printed-cards:is(.themed.theme-dark) {
 	--litm-card-surface: url("assets/journal/parchment-dark.webp") center / cover;
 }
 
@@ -8753,7 +8758,7 @@ button.litm-camping-scene__hero-link {
    dark enough for the cream banner ink at 4.5:1 or better. */
 /* `.application` matches the dark-theme token block's specificity; being
    later in the file, this one wins in both themes. */
-body.litm--colorblind .application.litm-hero-cards {
+body.litm--colorblind .application.litm--printed-cards {
 	--color-litm-might-origin: #00785a;
 	--color-litm-might-adventure: #b34700;
 	--color-litm-might-greatness: #1f5f99;
@@ -9221,6 +9226,11 @@ body.litm--colorblind .application.litm-hero-cards {
 	&[data-banner="fellowship"] {
 		--litm-level: var(--litm-banner-fellowship);
 	}
+
+	/* A card of story tags and statuses, not a theme: the kit's sienna. */
+	&[data-banner="kit"] {
+		--litm-level: var(--litm-banner-kit);
+	}
 }
 
 /* The might colours turn pastel in the dark theme; darken them so the
@@ -9282,6 +9292,9 @@ body.theme-dark
 /* The banner is the card's drag handle (Play and Edit mode). */
 .litm--printed-cards .theme-card > legend.draggable {
 	cursor: grab;
+	/* Safari would select a word of the title on the double-click that opens the theme. */
+	-webkit-user-select: none;
+	user-select: none;
 }
 
 /* Reserve room for the absolutely placed buttons so a long title never runs
@@ -9816,13 +9829,13 @@ body.theme-dark
    cannot match a query on itself. Themes and the Fellowship share one row of
    equal cards; Statuses and Backpack share a row once both fit. Grid items
    stretch, so cards in a row share a height. */
-.litm-hero-cards .litm-hero-board {
+.litm--printed-cards .litm-hero-board {
 	display: flex;
 	flex-direction: column;
 }
 
 /* Cards sit close, as on a table; the base board spaces sections wider. */
-.litm-hero-cards
+.litm--printed-cards
 :is(
 	.litm-hero-board,
 	.litm-hero-board__themes,
@@ -9832,23 +9845,23 @@ body.theme-dark
 	gap: var(--spacer-8);
 }
 
-.litm-hero-cards :is(.litm-hero-board__themes, .litm-hero-board__story-grid) {
+.litm--printed-cards :is(.litm-hero-board__themes, .litm-hero-board__story-grid) {
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
 }
 
 /* Story cards keep a theme card's width: empty tracks stay, so one story
    theme does not stretch across the row. */
-.litm-hero-cards .litm-hero-board__story-grid {
+.litm--printed-cards .litm-hero-board__story-grid {
 	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
 }
 
-.litm-hero-cards .litm-hero-board__inventory {
+.litm--printed-cards .litm-hero-board__inventory {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
 }
 
 /* At 15rem a long tag wraps rather than widening the card. */
-.litm-hero-cards .theme-card
+.litm--printed-cards .theme-card
 	:is(
 		.litm-power_tag,
 		.litm-weakness_tag,
@@ -9859,7 +9872,7 @@ body.theme-dark
 	white-space: normal;
 }
 
-.litm-hero-cards [data-application-part="content"] {
+.litm--printed-cards [data-application-part="content"] {
 	/* The pane scrolls; the padding/margin pair keeps card shadows and focus
 	   rings inside its clip box. */
 	padding: 4px;
@@ -9871,26 +9884,37 @@ body.theme-dark
    the themes, without scrolling. Statuses first: they count toward Power. */
 /* Structural, so Play and Edit mode both get it: the inventory wrapper holds
    the backpack (or its empty state) then the statuses, in either template. */
-.litm-hero-cards .litm-hero-board__inventory {
+.litm--printed-cards .litm-hero-board__inventory {
 	order: -1;
 }
 
-.litm-hero-cards .litm-hero-board__inventory > :last-child {
+.litm--printed-cards .litm-hero-board__inventory > :last-child {
 	order: -1;
+}
+
+/* The Fellowship's story tags and statuses lead, in Edit mode too. */
+.litm-fellowship-cards .litm-fellowship-tags {
+	order: -1;
+}
+
+/* Its chips wrap with the kit's gap, centred like a theme's tags. */
+.litm-fellowship-cards .litm-fellowship-tags__chips {
+	gap: var(--spacer-8) var(--spacer-12);
+	justify-content: center;
 }
 
 /* Strip colour: sienna as-is on parchment. The dark theme uses the lifted
    sienna, deepened so the cream banner ink stays above 3:1. Chips on the
    dark surface need only half-strength tint. */
-:is(body.theme-dark, .themed.theme-dark) .litm-hero-cards:not(.theme-light),
-.litm-hero-cards:is(.themed.theme-dark) {
+:is(body.theme-dark, .themed.theme-dark) .litm--printed-cards:not(.theme-light),
+.litm--printed-cards:is(.themed.theme-dark) {
 	--litm-banner-kit: #c47a5a;
 	--litm-kit-strip: color-mix(in srgb, var(--litm-banner-kit) 65%, black);
 	--litm-chip-mix: 50%;
 }
 
 /* Card: shared surface, with the legend promoted to a full-width strip. */
-.litm-hero-cards fieldset.litm-kit-card {
+.litm--printed-cards fieldset.litm-kit-card {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacer-8);
@@ -9908,7 +9932,7 @@ body.theme-dark
 
 /* Placed absolutely, the legend stops being the fieldset's rendered legend
    and becomes an ordinary box: the same inset notched plaque as a theme. */
-.litm-hero-cards fieldset.litm-kit-card > legend.litm-kit-card__head {
+.litm--printed-cards fieldset.litm-kit-card > legend.litm-kit-card__head {
 	position: absolute;
 	inset-block-start: calc(-1 * var(--litm-banner-overhang));
 	inset-inline: var(--spacer-12);
@@ -9935,13 +9959,13 @@ body.theme-dark
 	text-shadow: 0 1px 0 var(--color-overlay-black-40);
 }
 
-.litm-hero-cards
+.litm--printed-cards
 	fieldset.litm-kit-card
 	> legend.litm-kit-card__head:has(button:not(.litm--banner-icon)) {
 	padding-inline: calc(2 * var(--spacer-8) + 1.4rem);
 }
 
-.litm-hero-cards
+.litm--printed-cards
 	fieldset.litm-kit-card
 	> legend.litm-kit-card__head:has(
 		button:not(.litm--banner-icon) + button:not(.litm--banner-icon)
@@ -9950,14 +9974,14 @@ body.theme-dark
 }
 
 /* Two strip buttons sit side by side, as on the theme strip. */
-.litm-hero-cards .litm-kit-card__head
+.litm--printed-cards .litm-kit-card__head
 	button:not(.litm--banner-icon):has(+ button:not(.litm--banner-icon)) {
 	inset-inline-end: calc(var(--spacer-8) + 1.4rem + var(--spacer-4));
 }
 
 /* The title keeps its .litm-banner markup for the classic sheet; here it is
    just text on the strip. */
-.litm-hero-cards .litm-kit-card__head > .litm-banner {
+.litm--printed-cards .litm-kit-card__head > .litm-banner {
 	display: block;
 	min-width: 0;
 	padding: 0;
@@ -9973,7 +9997,7 @@ body.theme-dark
 }
 
 /* Strip actions: small icon buttons, outlined in banner ink. */
-.litm-hero-cards .litm-kit-card__head button:not(.litm--banner-icon) {
+.litm--printed-cards .litm-kit-card__head button:not(.litm--banner-icon) {
 	position: absolute;
 	inset-block: 0;
 	inset-inline-end: var(--spacer-8);
@@ -10006,21 +10030,21 @@ body.theme-dark
 	}
 }
 
-.litm-hero-cards .litm-kit-card > .hint {
+.litm--printed-cards .litm-kit-card > .hint {
 	margin: 0;
 	font-size: var(--font-size-12);
 }
 
 /* Chips wrap with one consistent gap; colour is the base chip's, as in the
    roll dialog. */
-.litm-hero-cards .litm-kit-card
+.litm--printed-cards .litm-kit-card
 	:is(.litm-kit-card__tags, .litm--play-statuses) {
 	gap: var(--spacer-8) var(--spacer-12);
 }
 
 /* A theme with no tags yet is a stub: it doesn't stretch to its row's
    height, and its tracks stay hidden until something is marked. */
-.litm-hero-cards
+.litm--printed-cards
 .theme-card[data-level]:not(
 	:has(.theme-card-tags :is(.litm-power_tag, .litm-weakness_tag))
 ) {
@@ -10855,7 +10879,6 @@ body.litm--colorblind .application.litm--roll-cards {
 	height: auto;
 	min-height: 0;
 	padding: 0 var(--spacer-4);
-	line-height: 1.5;
 	border: 1px solid transparent;
 	background: none;
 	box-shadow: none;

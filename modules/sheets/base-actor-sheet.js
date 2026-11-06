@@ -974,6 +974,15 @@ export class LitmActorSheet extends LitmSheetMixin(
 	}
 
 	/**
+	 * Take over a dialog from a sheet this one replaces (a look switch), so a
+	 * draft suspended for approval still reopens on rejection.
+	 * @param {LitmRollDialog|null} dialog
+	 */
+	adoptRollDialog(dialog) {
+		this.#rollDialog ??= dialog;
+	}
+
+	/**
 	 * Apply a peer's roll-dialog sync. Never creates a dialog: a client with no
 	 * dialog open has nothing to update.
 	 * @param {object} data

@@ -1,0 +1,70 @@
+<section class="litm-hero-board">
+	<!-- Story tags and statuses lead (they change every scene), then the
+	     Fellowship theme and the story themes, all one row of cards. -->
+	<div class="litm-hero-board__story-grid">
+		<fieldset class="theme-card litm-fellowship-tags" data-banner="kit">
+			<legend class="litm-banner theme-card__book">{{> "systems/litmv2/templates/partials/banner-icon.html" glyph="fa-tag" action="addStoryTag" tagType="story_tag" promptName=true label=(localize "LITM.Ui.add_tag")}}{{> "systems/litmv2/templates/partials/banner-icon.html" glyph="fa-droplet" action="addStoryTag" tagType="status_tag" promptName=true label=(localize "LITM.Ui.add_status")}}<span class="theme-card__banner-tag">{{localize "LITM.Terms.story_tags_statuses"}}</span></legend>
+			{{#if storyTags.length}}
+			<div class="litm-fellowship-tags__chips flexrow">
+				{{#each storyTags as |tag|}}
+				{{#if tag.hidden}}<span class="noflex litm--hidden-wrap">{{/if}}
+				{{#if (eq tag.type "status_tag")}}
+				<span class="noflex litm-status{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}"
+					data-tag-id="{{tag.id}}" draggable="true" tabindex="0"
+					data-text="{{tag.name}}-{{tag.value}}">{{tag.name}}-{{tag.value}}</span>
+				{{else}}
+				<span class="noflex litm-story_tag{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}"
+					data-tag-id="{{tag.id}}" draggable="true" tabindex="0" data-text="{{tag.name}}">{{tag.name}}</span>
+				{{/if}}
+				{{#if tag.hidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}</span>{{/if}}
+				{{/each}}
+			</div>
+			{{else}}
+			<p class="hint">{{localize "LITM.Ui.no_story_tags_statuses"}}</p>
+			{{/if}}
+		</fieldset>
+		{{#if theme}}
+		<fieldset class="theme-card item" data-id="{{theme._id}}" data-item-id="{{theme._id}}" data-flip-key="{{theme._id}}" data-banner="fellowship">
+			<legend class="litm-banner theme-card__book">{{> "systems/litmv2/templates/partials/banner-icon.html" src="systems/litmv2/assets/media/icons/fellowship.svg" action="editItem" itemId=theme._id label=(localize "LITM.Ui.click_to_edit_theme") tooltip=theme.levelLabel}}{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag noBurn=true extraClass="theme-card__banner-tag"}}{{#if theme.system.description}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}</legend>
+			{{#if theme.system.description}}<div class="theme-card__back"><h4 class="theme-card__back-title">{{theme.system.themebook}}</h4>{{{ theme.system.description }}}</div>{{/if}}
+
+			{{> systems/litmv2/templates/partials/play-theme-tags.html theme noBurn=true}}
+
+			<div class="theme-card__lower">
+				{{> systems/litmv2/templates/partials/play-theme-tracks.html theme}}
+				{{#if theme.system.quest.description}}<blockquote class="theme-card__quest"><span class="theme-card__quest-label">{{localize 'LITM.Terms.quest'}}</span><q>{{theme.system.quest.description}}</q></blockquote>{{/if}}
+				{{> systems/litmv2/templates/partials/theme-special-improvements.html theme}}
+			</div>
+		</fieldset>
+		{{else}}
+		<div class="empty-state" data-tour="fellowship-cta">
+			<button type="button" class="plain hint" data-action="browseThemes"
+				data-tooltip="{{localize 'LITM.Ui.fellowship_browse_title'}}" aria-label="{{localize 'LITM.Ui.fellowship_browse_title'}}">
+				<img height="128" width="128" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
+			</button>
+			<p class="hint">{{{localize "LITM.Ui.fellowship_setup_cta"}}}</p>
+		</div>
+		{{/if}}
+
+		{{#each storyThemes as |theme|}}
+		<fieldset class="theme-card story-theme-card item" data-id="{{theme._id}}" data-level="{{theme.system.level}}" data-flip-key="{{theme._id}}">
+			<legend class="flexrow gap-xs">
+				<span class="litm-banner theme-card__book">{{> "systems/litmv2/templates/partials/banner-icon.html" src=theme.levelIcon action="editItem" itemId=theme._id label=(localize "LITM.Ui.click_to_edit_story_theme") tooltip=theme.levelLabel}}{{> systems/litmv2/templates/partials/play-tag.html theme.themeTag noBurn=true extraClass="theme-card__banner-tag"}}</span>
+				{{#if theme.system.description}}{{> "systems/litmv2/templates/partials/flip-button.html"}}{{/if}}
+			</legend>
+			{{#if theme.system.description}}<div class="theme-card__back"><h4 class="theme-card__back-title">{{localize "LITM.Terms.story"}}</h4>{{{ theme.system.description }}}</div>{{/if}}
+
+			<div class="story-theme-card__header">
+				{{#if theme.hasCustomImage}}
+				<img class="story-theme-card__portrait" src="{{theme.img}}" alt="{{theme.name}}" />
+				{{/if}}
+				<div class="flexcol gap-xs">
+					{{> systems/litmv2/templates/partials/play-theme-tags.html theme noBurn=true}}
+				</div>
+			</div>
+		</fieldset>
+		{{/each}}
+	</div>
+
+	{{> "systems/litmv2/templates/partials/party-overview.html"}}
+</section>

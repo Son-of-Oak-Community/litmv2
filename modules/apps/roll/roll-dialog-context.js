@@ -63,7 +63,7 @@ export function summarizeChips(rows, isCounted) {
 }
 
 /**
- * The book's name for a Might: Favoured or Imperiled from ±3, Extremely
+ * The book's name for a Might: Favored or Imperiled from ±3, Extremely
  * from ±6 (and past it, as a group's Might adds up, Core Book "Groups");
  * "" for Equal and the small steps.
  * @param {number} might

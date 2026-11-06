@@ -420,7 +420,7 @@ function _listenToTagDragTransfer() {
 	Hooks.on("ready", () => {
 		document.addEventListener("dragstart", (event) => {
 			const target = event.target.closest(
-				".litm--tag, .litm--status, .litm-tag, .litm-status, .litm-limit, .litm-weakness_tag",
+				".litm--tag, .litm--status, .litm-tag, .litm-story_tag, .litm-status, .litm-limit, .litm-weakness_tag",
 			);
 			if (!target) return;
 
