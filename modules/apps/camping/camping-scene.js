@@ -2,6 +2,7 @@ import {
 	statusTagEffect,
 	storyTagEffect,
 } from "../../active-effects/effect-factories.js";
+import { campSceneLabel } from "../../hud/camping-hud.js";
 import { error, warn } from "../../logger.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { ACTOR_TYPES } from "../../system/config.js";
@@ -356,6 +357,24 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		return LitmCampingScene.#instance;
 	}
 
+	/** Id of the scene this client's camp window is bound to, if any. */
+	static get sceneId() {
+		return campSceneId;
+	}
+
+	/** "Camping — <scene>", so the window says which scene's camp it is. */
+	get title() {
+		const name = campSceneLabel(campScene());
+		return name ? `${super.title} — ${name}` : super.title;
+	}
+
+	_configureRenderOptions(options) {
+		super._configureRenderOptions(options);
+		// The frame only reads the title on first render, and this singleton can
+		// rebind to another scene's camp while open.
+		if (this.hasFrame) (options.window ??= {}).title = this.title;
+	}
+
 	async close(options) {
 		LitmCampingScene.#instance = null;
 		return super.close(options);
@@ -404,6 +423,8 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			isCamp,
 			sojournDuration: state.sojournDuration,
 			isSetup,
+			// Each scene keeps its own camp; setup says which one this is.
+			sceneName: campScene()?.name ?? "",
 			activeTitle,
 			// "Begin Camp" stays as the setup-phase primary footer button.
 			canBeginCamp: isGM && isSetup,
@@ -524,6 +545,16 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		if (!game.user.isGM) {
 			await LitmCampingScene.#instance?.close();
 			return;
+		}
+		// Once begun, Cancel throws away the whole table's choices and the
+		// campsite tags. Setup is the Narrator's private prep: no prompt.
+		if (readState()?.phase === "active") {
+			const confirmed = await foundry.applications.api.DialogV2.confirm({
+				window: { title: t("LITM.Ui.camping_cancel_title") },
+				content: `<p>${t("LITM.Ui.camping_cancel_confirm")}</p>`,
+				modal: true,
+			});
+			if (!confirmed) return;
 		}
 		await LitmCampingScene.#runLifecycle("cancel");
 	}
@@ -932,6 +963,14 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			effect.updateSource({
 				[`flags.${FLAG_SCOPE}.campId`]: state.campId,
 			});
+		});
+
+		// A copied or imported scene must not bring a running camp along: it
+		// would be a second session with the same campId, whose Pack Up sweeps
+		// the original's campsite tags.
+		Hooks.on("preCreateScene", (scene) => {
+			if (!scene.flags?.[FLAG_SCOPE]?.[FLAG_PATH]) return;
+			scene.updateSource({ [`flags.${FLAG_SCOPE}.${FLAG_PATH}`]: _del });
 		});
 
 		Hooks.on("litm.camping.open", ({ sceneId } = {}) => {

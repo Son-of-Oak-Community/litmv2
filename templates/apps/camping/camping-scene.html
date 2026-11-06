@@ -34,6 +34,7 @@
 			</select>
 		</label>
 		{{/unless}}
+		<p class="hint">{{localize "LITM.Ui.camping_scene_hint" scene=sceneName}}</p>
 		{{else}}
 		{{!-- Active phase: read-only banner. Type, duration, and Power bonus
 		     were locked in at Begin Camp; the title centers them above the
@@ -106,6 +107,8 @@
 		{{/if}}
 	</div>
 
+	{{!-- Every footer action is the Narrator's; a player closes with the window's X. --}}
+	{{#if isGM}}
 	<footer class="litm-camping-scene__footer">
 		<button type="button" class="litm-camping-scene__btn" data-action="cancel">{{localize "LITM.Ui.cancel"}}</button>
 		<div class="litm-camping-scene__footer-actions">
@@ -137,4 +140,5 @@
 		{{/if}}
 		</div>
 	</footer>
+	{{/if}}
 </div>
