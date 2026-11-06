@@ -951,6 +951,14 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			});
 		});
 
+		// A copied or imported scene must not bring a running camp along: it
+		// would be a second session with the same campId, whose Pack Up sweeps
+		// the original's campsite tags.
+		Hooks.on("preCreateScene", (scene) => {
+			if (!scene.flags?.[FLAG_SCOPE]?.[FLAG_PATH]) return;
+			scene.updateSource({ [`flags.${FLAG_SCOPE}.${FLAG_PATH}`]: _del });
+		});
+
 		Hooks.on("litm.camping.open", ({ sceneId } = {}) => {
 			LitmCampingScene.open({ sceneId });
 		});

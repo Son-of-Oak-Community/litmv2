@@ -440,6 +440,26 @@ describe("scene binding", () => {
 		return Hooks.on.mock.calls.find(([n]) => n === name)[1];
 	};
 
+	it("strips a running camp from a copied or imported scene", () => {
+		const del = Symbol("del");
+		globalThis._del = del;
+		const copy = {
+			flags: { litmv2: { camping: { phase: "active" } } },
+			updateSource: vi.fn(),
+		};
+		const plain = { flags: {}, updateSource: vi.fn() };
+
+		const preCreate = hook("preCreateScene");
+		preCreate(copy);
+		preCreate(plain);
+
+		expect(copy.updateSource).toHaveBeenCalledWith({
+			"flags.litmv2.camping": del,
+		});
+		expect(plain.updateSource).not.toHaveBeenCalled();
+		delete globalThis._del;
+	});
+
 	it("records the scene id in the session it opens", () => {
 		canvas.scene = sceneA;
 
