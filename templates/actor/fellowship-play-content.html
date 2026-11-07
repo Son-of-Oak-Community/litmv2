@@ -71,8 +71,9 @@
 		{{#if storyTags.length}}
 		<fieldset>
 			<legend>{{localize "LITM.Terms.story_tags_statuses"}}</legend>
-			<div class="litm--play-tags">
+			<div class="litm--play-tags litm--play-statuses">
 				{{#each storyTags as |tag|}}
+				{{#if tag.hidden}}<span class="litm--hidden-wrap">{{/if}}
 				{{#if (eq tag.type "status_tag")}}
 				<span class="litm-status{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}"
 					data-tag-id="{{tag.id}}" draggable="true" tabindex="0"
@@ -81,6 +82,7 @@
 				<span class="litm-tag{{#if tag.hidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}"
 					data-tag-id="{{tag.id}}" draggable="true" tabindex="0" data-text="{{tag.name}}">{{tag.name}}</span>
 				{{/if}}
+				{{#if tag.hidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}</span>{{/if}}
 				{{/each}}
 			</div>
 		</fieldset>
@@ -175,11 +177,15 @@
 				<h3>{{localize "LITM.Terms.story_tags_statuses"}}</h3>
 				<div class="litm-party-overview__tags">
 					{{#each hero.storyTags as |tag|}}
-					<span class="litm-tag" data-text="{{tag.name}}">{{tag.name}}</span>
+					{{#if tag.system.isHidden}}<span class="litm--hidden-wrap">{{/if}}
+					<span class="litm-tag{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}" data-text="{{tag.name}}">{{tag.name}}</span>
+					{{#if tag.system.isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}</span>{{/if}}
 					{{/each}}
 					{{#each hero.statuses as |status|}}
-					<span class="litm-status" data-text="{{status.name}} {{status.value}}">{{status.name}}
-						<strong>{{status.value}}</strong></span>
+					{{#if status.system.isHidden}}<span class="litm--hidden-wrap">{{/if}}
+					<span class="litm-status{{#if status.system.isHidden}} litm--tag-hidden{{/if}}" data-text="{{status.name}} {{status.system.currentTier}}">{{status.name}}
+						<strong>{{status.system.currentTier}}</strong></span>
+					{{#if status.system.isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}</span>{{/if}}
 					{{/each}}
 				</div>
 			</section>

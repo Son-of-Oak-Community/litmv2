@@ -35,7 +35,7 @@
 				/>
 
 				<input
-					class="flex1"
+					class="flex1{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}"
 					type="text"
 					name="effects.{{tag._id}}.name"
 					value="{{tag.name}}"

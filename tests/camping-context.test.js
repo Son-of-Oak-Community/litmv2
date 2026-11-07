@@ -442,6 +442,24 @@ describe("buildContext — Reflect rows", () => {
 		});
 	});
 
+	it("flags a hidden status in the Narrator's Rest list", () => {
+		const hidden = fakeEffect({
+			name: "wounded",
+			type: "status_tag",
+			system: { currentTier: 2, isHidden: true },
+		});
+		const actor = fakeActor({ type: "hero", id: "hero-1", effects: [hidden] });
+		actor.system = { themes: [], fellowshipActor: null };
+		globalThis.game.actors = { filter: (fn) => [actor].filter(fn) };
+		globalThis.game.packs = { get: () => undefined };
+		globalThis.game.user.isGM = true;
+		const state = defaultCampingState();
+		setActivity(state, actor.id, 0, "rest");
+		const [status] = buildContext(state).heroes[0].activities[0].restStatuses;
+
+		expect(status).toMatchObject({ name: "wounded", isHidden: true });
+	});
+
 	it("builds the same row for a camp as for a sojourn", () => {
 		expect(reflectRow("camp")).toEqual(reflectRow("sojourn"));
 	});

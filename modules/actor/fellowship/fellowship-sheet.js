@@ -50,9 +50,8 @@ function buildPartyOverview(fellowshipActor) {
 		const relationshipTags = hero.system.relationships.filter(
 			(e) => e.name && !e.system?.isScratched,
 		);
-		const storyTags = hero.system.backpack.filter(
-			(e) => e.active && !e.system?.isHidden,
-		);
+		// GM-only panel: hidden tags are listed too, marked like everywhere else.
+		const storyTags = hero.system.backpack.filter((e) => e.active);
 		const statuses = hero.system.statusEffects.filter(
 			(e) => e.active && (e.system?.currentTier ?? 0) > 0,
 		);

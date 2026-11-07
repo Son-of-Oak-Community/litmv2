@@ -94,6 +94,41 @@ export function classifyTagStringMatch(match) {
 }
 
 /**
+ * Lookup key for a classified tag-string match (`classifyTagStringMatch`).
+ * @param {{kind: string, name: string}} c
+ * @returns {string}
+ */
+export function tagKey(c) {
+	return `${c.kind}:${c.name.toLowerCase()}`;
+}
+
+/**
+ * Keys (`tagKey`) of the tag-string markup on `actor` that players can't see:
+ * each story tag or status the Narrator hid, unless a visible effect carries
+ * the same name, and each limit in `limits` not revealed (`hidden !== false`).
+ * @param {Actor|null} actor
+ * @param {{limits?: object[]}} [options]
+ * @returns {Set<string>}
+ */
+export function hiddenTagKeys(actor, { limits = [] } = {}) {
+	const kindOf = { story_tag: "story", status_tag: "status" };
+	const hidden = new Set();
+	const shown = new Set();
+	for (const e of actor?.allApplicableEffects?.() ?? []) {
+		const kind = kindOf[e.type];
+		if (!kind) continue;
+		const key = tagKey({ kind, name: e.name });
+		(e.system?.isHidden ? hidden : shown).add(key);
+	}
+	for (const shownKey of shown) hidden.delete(shownKey);
+	for (const limit of limits) {
+		if (limit?.hidden === false || !limit?.label) continue;
+		hidden.add(tagKey({ kind: "limit", name: limit.label }));
+	}
+	return hidden;
+}
+
+/**
  * A tag string as a player may see it. Tag strings (a Challenge's or a
  * Journey's `tags`) are a second copy of what the effects hold, so every
  * story tag or status the Narrator hid on `actor` would otherwise show there
@@ -108,20 +143,7 @@ export function classifyTagStringMatch(match) {
  */
 export function playerVisibleTagString(text, actor, { limits = [] } = {}) {
 	if (!text || globalThis.game?.user?.isGM) return text ?? "";
-	const kindOf = { story_tag: "story", status_tag: "status" };
-	const hidden = new Set();
-	const shown = new Set();
-	for (const e of actor?.allApplicableEffects?.() ?? []) {
-		const kind = kindOf[e.type];
-		if (!kind) continue;
-		const key = `${kind}:${e.name.toLowerCase()}`;
-		(e.system?.isHidden ? hidden : shown).add(key);
-	}
-	for (const shownKey of shown) hidden.delete(shownKey);
-	for (const limit of limits) {
-		if (limit?.hidden === false || !limit?.label) continue;
-		hidden.add(`limit:${limit.label.toLowerCase()}`);
-	}
+	const hidden = hiddenTagKeys(actor, { limits });
 	if (!hidden.size) return text;
 	const base = tagStringRe();
 	const flags = base.flags.includes("g") ? base.flags : `${base.flags}g`;
@@ -129,7 +151,7 @@ export function playerVisibleTagString(text, actor, { limits = [] } = {}) {
 	return text
 		.replace(re, (...args) => {
 			const c = classifyTagStringMatch(args.slice(0, 5));
-			return hidden.has(`${c.kind}:${c.name.toLowerCase()}`) ? "" : args[0];
+			return hidden.has(tagKey(c)) ? "" : args[0];
 		})
 		// The same clean-up the sync mixin does when a tag is deleted.
 		.replace(/,\s*,/g, ",")

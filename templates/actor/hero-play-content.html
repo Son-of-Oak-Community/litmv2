@@ -72,6 +72,7 @@
 			{{#if statuses.length}}
 			<div class="litm--play-statuses">
 				{{#each statuses as |tag|}}
+				{{#if tag.system.isHidden}}<span class="litm--hidden-wrap">{{/if}}
 				<span class="litm-status{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}" data-tag-type="{{tag.type}}" data-tag-id="{{tag.id}}"
 					data-text="{{tag.name}}{{#if tag.system.currentTier}}-{{tag.system.currentTier}}{{/if}}" data-effect-id="{{tag.id}}">
 					<span {{#if @root.isOwner}}data-action="selectTag"
@@ -85,6 +86,7 @@
 						{{/each}}
 					</span>
 				</span>
+				{{#if tag.system.isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}</span>{{/if}}
 				{{/each}}
 			</div>
 			{{else}}

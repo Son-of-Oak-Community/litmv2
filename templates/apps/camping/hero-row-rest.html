@@ -5,7 +5,8 @@
 			{{#each activity.restStatuses}}
 			<tr data-status-id="{{id}}">
 				<td>
-					<span class="litm-tag litm-status_tag">{{name}} {{currentTier}}</span>
+					<span class="litm-tag litm-status_tag{{#if isHidden}} litm--tag-hidden{{/if}}">{{name}} {{currentTier}}</span>
+					{{#if isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}{{/if}}
 				</td>
 				<td>
 					{{#if ../hero.canEdit}}

@@ -108,8 +108,8 @@
 		{{#if storyTags.length}}
 		<ul class="plain">
 			{{#each storyTags as |tag|}}
-			<li class="form-group{{#if tag.hidden}} litm--tag-hidden{{/if}}" style="gap: 8px; align-items: center; justify-content: space-between">
-				<span class="litm--tag-name-wrapper litm-{{tag.type}}">
+			<li class="form-group" style="gap: 8px; align-items: center; justify-content: space-between">
+				<span class="litm--tag-name-wrapper litm-{{tag.type}}{{#if tag.hidden}} litm--tag-hidden{{/if}}">
 					<input class="litm--tag-item-name" type="text" name="effects.{{tag.id}}.name" value="{{tag.name}}"
 						placeholder="{{localize 'LITM.Ui.tag_name'}}" />
 				</span>

@@ -110,6 +110,8 @@ export class LitmTokenHUD extends TokenHUD {
 				effectId: effect.id,
 				tiers: [...effect.system.tiers],
 				currentTier: effect.system.currentTier,
+				// Only the GM gets hidden statuses (isEffectVisible).
+				isHidden: !!effect.system.isHidden,
 			});
 		}
 		return rows;
