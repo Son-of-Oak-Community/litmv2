@@ -1,6 +1,9 @@
 import { isEffectVisible } from "../active-effects/effect-queries.js";
 import { StoryTagsStore } from "../apps/story-tags/story-tags-store.js";
-import { hiddenChipHtml } from "../system/renderers/renderer-utils.js";
+import {
+	HIDDEN_CHIP_CLASS,
+	hiddenWrapHtml,
+} from "../system/renderers/renderer-utils.js";
 import { LitmSettings } from "../system/settings.js";
 
 /** Shared chrome for both the hover tooltip and the persistent labels. */
@@ -22,10 +25,12 @@ let _highlighting = false;
  */
 function _chip(baseClass, effect, label) {
 	const esc = foundry.utils.escapeHTML;
-	const chip = `<span class="${baseClass}" data-text="${esc(label)}">${esc(label)}</span>`;
 	// Only the GM ever sees a hidden effect here, and it is content the
 	// players cannot see — mark it the way the sheets do.
-	return effect.system.isHidden ? hiddenChipHtml(chip) : chip;
+	const hidden = !!effect.system.isHidden;
+	const cls = hidden ? `${baseClass} ${HIDDEN_CHIP_CLASS}` : baseClass;
+	const chip = `<span class="${cls}" data-text="${esc(label)}">${esc(label)}</span>`;
+	return hidden ? hiddenWrapHtml(chip) : chip;
 }
 
 /**

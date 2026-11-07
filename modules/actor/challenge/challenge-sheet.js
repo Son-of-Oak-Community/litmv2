@@ -1,7 +1,3 @@
-import {
-	hiddenTagKeys,
-	playerVisibleTagString,
-} from "../../item/action/tag-string.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { TagStringSyncMixin } from "../../sheets/tag-string-sync-mixin.js";
 import { EFFECT_TYPES, MIGHT_OPTIONS } from "../../system/config.js";
@@ -99,22 +95,12 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 		if (limitedView) return this.#prepareLimitedContext(context);
 
 		const enriched = await this._enrichFields("description", "specialFeatures");
-		// Play mode shows players only what the Narrator revealed; edit mode is
-		// the owner's raw string.
-		const tagLimits = sys.derivedLimits ?? sys.limits ?? [];
-		const enrichedTags = await enrichPlainText(
-			isPlay
-				? playerVisibleTagString(sys.derivedTags || sys.tags || "", this.document, {
-						limits: tagLimits,
-					})
-				: sys.tags || "",
-			this.document,
-			// The Narrator gets everything, so mark what players can't see.
-			isPlay && game.user.isGM
-				? { hiddenTagKeys: hiddenTagKeys(this.document, { limits: tagLimits }) }
-				: undefined,
-		);
-		enriched.tags = enrichedTags;
+		// Play mode renders the derived string, addon tags included.
+		enriched.tags = await this._enrichTagString({
+			playTags: sys.derivedTags || sys.tags,
+			editTags: sys.tags,
+			limits: sys.derivedLimits ?? sys.limits ?? [],
+		});
 
 		const { vignettes, vignettesByType } = await this._prepareVignettes();
 		const { addonThreats, addons } = await this.#prepareAddonContext();

@@ -88,10 +88,19 @@ describe("tagChipHtml hidden", () => {
 	it("dims the chip and puts the eye-slash beside it, outside the dim", () => {
 		const html = tagChipHtml({ kind: "story", name: "venomous" }, { hidden: true });
 
-		expect(html).toMatch(/^<span class="litm--hidden-wrap"><span class="litm--tag-hidden litm-tag"/);
+		expect(html).toMatch(/^<span class="litm--hidden-wrap"><span class="litm-tag litm--tag-hidden"/);
 		// The mark follows the chip's closing tag, so the dim can't reach it.
 		expect(html).toMatch(/venomous<\/span><i class="[^"]*litm--hidden-mark/);
 		expect(html.endsWith("</i></span>")).toBe(true);
+	});
+
+	it.each([
+		{ kind: "status", name: "enraged", tier: 3 },
+		{ kind: "limit", name: "flee", value: "3" },
+		{ kind: "weakness", name: "slow" },
+	])("dims every chip kind it is asked to hide: %j", (c) => {
+		const html = tagChipHtml(c, { hidden: true });
+		expect(html).toMatch(/^<span class="litm--hidden-wrap"><span class="[^"]*litm--tag-hidden/);
 	});
 
 	it("leaves a visible chip alone", () => {

@@ -133,37 +133,42 @@ export function makeActorCard(actor, typeClass) {
  *        but chat-safe: a CSS-masked span, not the inline <svg> Foundry strips
  *        from chat-message content.
  * @param {boolean} [opts.hidden]  Hidden from players: dimmed, eye-slash
- *        beside it (`hiddenChipHtml`). Only for markup the Narrator alone sees.
+ *        beside it (`hiddenWrapHtml`). Only for markup the Narrator alone sees.
  * @returns {string}
  */
 export function tagChipHtml(c, { hidden = false, ...opts } = {}) {
-	const html = plainTagChipHtml(c, opts);
-	return hidden ? hiddenChipHtml(html) : html;
+	const html = plainTagChipHtml(c, {
+		...opts,
+		extraClass: hidden ? HIDDEN_CHIP_CLASS : "",
+	});
+	return hidden ? hiddenWrapHtml(html) : html;
 }
 
+/** The class that dims a chip hidden from players. */
+export const HIDDEN_CHIP_CLASS = "litm--tag-hidden";
+
 /**
- * A chip marked hidden from players, as the sheets draw it: the chip dimmed,
- * the eye-slash beside it outside the dim. String twin of
- * partials/hidden-mark.html, for chips built in JS. Expects `chipHtml` to open
- * with an element carrying a `class` attribute.
- * @param {string} chipHtml
+ * A chip marked hidden from players, as the sheets draw it: the chip, already
+ * dimmed with `HIDDEN_CHIP_CLASS`, and the eye-slash beside it outside the
+ * dim. String twin of partials/hidden-mark.html, for chips built in JS.
+ * @param {string} dimmedChipHtml
  * @returns {string}
  */
-export function hiddenChipHtml(chipHtml) {
+export function hiddenWrapHtml(dimmedChipHtml) {
 	const label = foundry.utils.escapeHTML(game.i18n.localize("LITM.Terms.hidden"));
-	const dimmed = chipHtml.replace('class="', 'class="litm--tag-hidden ');
-	return `<span class="litm--hidden-wrap">${dimmed}<i class="fa-solid fa-eye-slash litm--hidden-mark" role="img" data-tooltip="${label}" aria-label="${label}"></i></span>`;
+	return `<span class="litm--hidden-wrap">${dimmedChipHtml}<i class="fa-solid fa-eye-slash litm--hidden-mark" role="img" data-tooltip="${label}" aria-label="${label}"></i></span>`;
 }
 
 function plainTagChipHtml(
 	c,
-	{ tooltip = "", chevron = "", scratched = false } = {},
+	{ tooltip = "", chevron = "", scratched = false, extraClass = "" } = {},
 ) {
 	const esc = foundry.utils.escapeHTML;
 	const tip = tooltip ? ` data-tooltip="${esc(tooltip)}"` : "";
+	const more = extraClass ? ` ${extraClass}` : "";
 	switch (c.kind) {
 		case "weakness":
-			return `<span class="litm-weakness_tag" draggable="true"${tip} data-text="${esc(
+			return `<span class="litm-weakness_tag${more}" draggable="true"${tip} data-text="${esc(
 				c.name,
 			)}">${esc(c.name)}${chevron ? ` ${chevron}` : ""}</span>`;
 		case "limit": {
@@ -177,7 +182,7 @@ function plainTagChipHtml(
 			// data-value lets the dragstart handler recover the max — data-text
 			// must stay the bare name (it underlays the CSS text stroke).
 			const value = c.value ? ` data-value="${esc(c.value)}"` : "";
-			return `<span class="litm-limit" draggable="true"${tip} data-text="${esc(
+			return `<span class="litm-limit${more}" draggable="true"${tip} data-text="${esc(
 				c.name,
 			)}"${value}>${esc(c.name)}${valueHtml}</span>`;
 		}
@@ -187,7 +192,7 @@ function plainTagChipHtml(
 			// definite-looking "guard-7" that no mechanic backs.
 			const label = c.tier ? `${c.name}-${c.tier}` : c.name;
 			const cls = c.tier ? "litm-status" : "litm-status litm--variable-tier";
-			return `<span class="${cls}" draggable="true"${tip} data-text="${esc(
+			return `<span class="${cls}${more}" draggable="true"${tip} data-text="${esc(
 				label,
 			)}">${esc(label)}</span>`;
 		}
@@ -202,7 +207,7 @@ function plainTagChipHtml(
 			const mark = scratched
 				? ` <span class="litm-tag-scratch" aria-hidden="true"></span>`
 				: "";
-			return `<span class="${cls}" draggable="true"${tip} data-text="${esc(
+			return `<span class="${cls}${more}" draggable="true"${tip} data-text="${esc(
 				c.name,
 			)}">${esc(c.name)}${singleUse}${mark}</span>`;
 		}

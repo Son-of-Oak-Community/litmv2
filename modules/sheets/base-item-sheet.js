@@ -46,6 +46,7 @@ export class LitmItemSheet extends LitmSheetMixin(
 	 * @protected
 	 */
 	static async _onToggleEffectVisibility(_event, target) {
+		if (!game.user.isGM) return;
 		const effect = this.document.effects.get(target.dataset.id);
 		if (!effect) return;
 		await effect.update({ "system.isHidden": !effect.system.isHidden });
