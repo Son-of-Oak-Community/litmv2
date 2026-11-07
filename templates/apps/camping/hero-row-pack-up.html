@@ -1,4 +1,15 @@
 {{#if hero.hasBackpack}}
+{{#if (and hero.canEdit hero.backpackTagIds)}}
+<button type="button" class="litm-camping-scene__btn" data-action="backpack-keep-all"
+	data-hero-id="{{hero.id}}" data-effect-ids="{{hero.backpackTagIds}}"
+	data-kept="{{#if hero.allBackpackKept}}false{{else}}true{{/if}}">
+	{{#if hero.allBackpackKept}}
+	<i class="fa-solid fa-xmark" aria-hidden="true"></i> {{localize "LITM.Ui.camping_backpack_keep_none"}}
+	{{else}}
+	<i class="fa-solid fa-check-double" aria-hidden="true"></i> {{localize "LITM.Ui.camping_backpack_keep_all"}}
+	{{/if}}
+</button>
+{{/if}}
 <ul class="litm-camping-scene__pills plain">
 	{{#each hero.backpackTags}}
 	<li>
