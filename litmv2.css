@@ -3766,6 +3766,11 @@ section.standard-form.litm-theme-browser-body {
 	order: -3;
 }
 
+/* A camp can run for hours; the roll strip's pulse is for a short-lived roll. */
+.litm-camping-hud .litm-roll-dialog-hud__item {
+	animation: none;
+}
+
 .litm-camping-hud__icon {
 	display: grid;
 	place-items: center;

@@ -446,10 +446,18 @@ describe("scene binding", () => {
 			get: () => "Camping",
 			configurable: true,
 		});
-		Object.assign(sceneA, { name: "Simple Battle", navName: "Battle" });
+		Object.assign(sceneA, {
+			name: "Simple Battle",
+			navName: "Battle",
+			navigation: true,
+		});
 		canvas.scene = sceneA;
 		const app = LitmCampingScene.open();
 
+		sceneA.visible = false;
+		// The Narrator always knows which scene the camp is on.
+		expect(app.title).toBe("Camping — Battle");
+		game.user = { id: "player", isGM: false };
 		sceneA.visible = true;
 		expect(app.title).toBe("Camping — Battle");
 		sceneA.visible = false;

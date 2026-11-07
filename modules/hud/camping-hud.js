@@ -6,18 +6,29 @@ import { mountPlayersHud } from "./players-hud.js";
  * Narrator's private prep, and their sheet button already reopens it.
  */
 export function shouldShowCampPickup({ state, rendered }) {
-	return !!(state && state.phase === "active" && !rendered);
+	// A camp being packed up is about to end; offering to rejoin it would
+	// reopen a session that is being discarded.
+	return !!(
+		state &&
+		state.phase === "active" &&
+		!state.packingUp &&
+		!rendered
+	);
 }
 
 /**
  * The name a camp's scene goes by for this user, or "" for a map they cannot
- * see. Same rule as Foundry's scene navigation, so a hidden map is not exposed.
+ * see. Same rule as Foundry's loading screen: a scene left out of navigation
+ * keeps its name from players even when they may view it.
  */
 export function campSceneLabel(scene) {
 	if (!scene) return "";
-	return scene.active || scene.isView || scene.visible
-		? scene.navName || scene.name
-		: "";
+	const shown =
+		scene.active ||
+		scene.isView ||
+		(scene.navigation && scene.visible) ||
+		game.user?.isGM;
+	return shown ? scene.navName || scene.name : "";
 }
 
 /**

@@ -25,6 +25,7 @@ describe("camp pickup", () => {
 		{ state: null, rendered: false },
 		{ state: { phase: "setup" }, rendered: false },
 		{ state: { phase: "active" }, rendered: true },
+		{ state: { phase: "active", packingUp: true }, rendered: false },
 	])("stays hidden otherwise: %j", (args) => {
 		expect(shouldShowCampPickup(args)).toBe(false);
 	});
@@ -33,8 +34,10 @@ describe("camp pickup", () => {
 describe("camp scene label", () => {
 	const scene = { name: "Simple Battle", navName: "Battle" };
 
+	afterEach(() => vi.unstubAllGlobals());
+
 	it.each([
-		{ visible: true },
+		{ navigation: true, visible: true },
 		{ active: true },
 		{ isView: true },
 	])("names a scene the user can see: %j", (seen) => {
@@ -42,14 +45,29 @@ describe("camp scene label", () => {
 	});
 
 	it("falls back to the scene name without a navigation name", () => {
-		expect(campSceneLabel({ name: "Simple Battle", visible: true })).toBe(
-			"Simple Battle",
-		);
+		expect(
+			campSceneLabel({ name: "Simple Battle", navigation: true, visible: true }),
+		).toBe("Simple Battle");
 	});
 
 	it("hides a map the user cannot see", () => {
 		expect(campSceneLabel(scene)).toBe("");
 		expect(campSceneLabel(null)).toBe("");
+	});
+
+	// Foundry's own rule: permission alone does not name a scene the GM left
+	// out of navigation.
+	it("hides a viewable map left out of navigation", () => {
+		expect(
+			campSceneLabel({ ...scene, navigation: false, visible: true }),
+		).toBe("");
+	});
+
+	it("always names the scene for the GM", () => {
+		vi.stubGlobal("game", { ...game, user: { ...game.user, isGM: true } });
+		expect(
+			campSceneLabel({ ...scene, navigation: false, visible: true }),
+		).toBe("Battle");
 	});
 });
 
@@ -77,6 +95,7 @@ describe("camping HUD lifecycle", () => {
 		const scene = {
 			id: "scene1",
 			name: "Riverbank",
+			navigation: true,
 			visible: true,
 			getFlag: () => camping,
 		};

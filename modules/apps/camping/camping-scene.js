@@ -425,7 +425,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			sojournDuration: state.sojournDuration,
 			isSetup,
 			// Each scene keeps its own camp; setup says which one this is.
-			sceneName: campScene()?.name ?? "",
+			sceneName: campSceneLabel(campScene()),
 			activeTitle,
 			// "Begin Camp" stays as the setup-phase primary footer button.
 			canBeginCamp: isGM && isSetup,
