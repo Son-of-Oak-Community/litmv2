@@ -1,5 +1,6 @@
 import { WelcomeOverlay } from "../../apps/welcome/welcome-overlay.js";
 import { CallForRollHud } from "../../hud/call-for-roll-hud.js";
+import { CampingHud } from "../../hud/camping-hud.js";
 import { RollDialogHud } from "../../hud/roll-dialog-hud.js";
 import { error } from "../../logger.js";
 import { getStoryTagSidebar } from "../../utils.js";
@@ -41,6 +42,8 @@ function _setupRollDialogHud() {
 		// re-render or replace it.
 		const callHud = new CallForRollHud();
 		game.litmv2.callForRollHud = callHud;
+		const campingHud = new CampingHud();
+		game.litmv2.campingHud = campingHud;
 
 		const unsetPromises = [];
 		for (const actor of game.actors) {
@@ -62,6 +65,7 @@ function _setupRollDialogHud() {
 		await Promise.allSettled(unsetPromises);
 		callHud.render();
 		hud.render();
+		campingHud.render();
 	});
 }
 

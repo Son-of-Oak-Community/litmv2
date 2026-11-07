@@ -1,0 +1,15 @@
+{{#each entries}}
+<button type="button" class="litm-roll-dialog-hud__item" data-scene-id="{{sceneId}}">
+    <span class="litm-roll-dialog-hud__img litm-camping-hud__icon">
+        <i class="fa-solid fa-campground" aria-hidden="true"></i>
+    </span>
+    <span class="litm-roll-dialog-hud__text">
+        <span class="litm-roll-dialog-hud__title">{{title}}</span>
+        {{#if sceneName}}<span class="litm-roll-dialog-hud__meta">{{sceneName}}</span>{{/if}}
+    </span>
+    <span class="litm-roll-dialog-hud__action">
+        <i class="fa-solid fa-fire" aria-hidden="true"></i>
+        {{localize "LITM.Ui.camping_rejoin"}}
+    </span>
+</button>
+{{/each}}

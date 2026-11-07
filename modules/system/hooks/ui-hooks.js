@@ -246,6 +246,20 @@ function _renderRollDialogHudOnPlayers() {
 		// panel's contents on re-render and detaches them.
 		game.litmv2.callForRollHud?.render?.();
 		game.litmv2.rollDialogHud?.render?.();
+		game.litmv2.campingHud?.render?.();
+	});
+	// The camp entry follows the session flag and hides while this client's
+	// camp window is open.
+	for (const hook of [
+		"renderLitmCampingScene",
+		"closeLitmCampingScene",
+		"deleteScene",
+	]) {
+		Hooks.on(hook, () => game.litmv2.campingHud?.render?.());
+	}
+	Hooks.on("updateScene", (_scene, changes) => {
+		if (!foundry.utils.hasProperty(changes, "flags.litmv2")) return;
+		game.litmv2.campingHud?.render?.();
 	});
 }
 

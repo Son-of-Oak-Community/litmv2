@@ -83,6 +83,8 @@ Hooks.once("init", () => {
 	 * - `rollDialogHud` — mutable reference to the active roll-dialog HUD
 	 * - `callForRollHud` — mutable reference to the Narrator's main-screen
 	 *   call-for-roll control, which shares the players-panel region with it
+	 * - `campingHud` — mutable reference to the "rejoin camp" entry in the
+	 *   same region
 	 * - `showSacrificeBanner` — flash the sacrifice rite on peer clients;
 	 *   reassign to replace the default visual treatment
 	 */
@@ -117,6 +119,7 @@ Hooks.once("init", () => {
 		ContentSources,
 		rollDialogHud: null,
 		callForRollHud: null,
+		campingHud: null,
 		showSacrificeBanner,
 	};
 

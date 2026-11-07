@@ -323,6 +323,19 @@ consequences to each of them is still a decision, not an automatic fan-out.
 A table can want either without the other, which is why they are two booleans
 and not one three-state setting.
 
+### Camping
+
+`LitmCampingScene` (`modules/apps/camping/`) keeps its session in the scene
+flag `flags.litmv2.camping`, so **each scene keeps its own camp** — by design,
+not a gap. Making camp on another scene starts a separate session; the setup
+screen says which scene it belongs to. Players reach a camp only through the
+Begin Camp broadcast, so `CampingHud` (`modules/hud/camping-hud.js`) lists every
+active session above the player list, one entry per scene, as the way back
+after a reload; only the camp this client is viewing drops out of it. A copied
+or imported scene loses its `camping` flag (`preCreateScene`), since a second
+session sharing the campId would sweep the original's tags at Pack Up. Cancel
+on a begun camp asks the Narrator first; setup cancels silently.
+
 ### Sockets
 
 Namespace `system.litmv2`. Events cover roll-dialog open/sync/close, GM moderation, GM-proxied mutation of unowned documents (scratch, Improve marks, apply success/status, hero creation), story tags, and camping. Canonical list and payload shapes: `modules/system/sockets.js` — read it rather than guessing an event name.

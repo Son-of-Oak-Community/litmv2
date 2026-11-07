@@ -173,6 +173,12 @@ describe("Cancel", () => {
 		return state;
 	}
 
+	beforeEach(() => {
+		vi.spyOn(foundry.applications.api.DialogV2, "confirm").mockResolvedValue(
+			true,
+		);
+	});
+
 	it("rolls back only the campsite tags that still exist, then clears the session", async () => {
 		seedPack("live-1");
 		const scene = fakeScene({ camping: session(["live-1", "gone-1"]) });
@@ -433,6 +439,43 @@ describe("scene binding", () => {
 		LitmCampingScene.registerSocketHooks();
 		return Hooks.on.mock.calls.find(([n]) => n === name)[1];
 	};
+
+	it("names the bound scene in the window title, unless it is hidden", () => {
+		const base = Object.getPrototypeOf(LitmCampingScene.prototype);
+		Object.defineProperty(base, "title", {
+			get: () => "Camping",
+			configurable: true,
+		});
+		Object.assign(sceneA, { name: "Simple Battle", navName: "Battle" });
+		canvas.scene = sceneA;
+		const app = LitmCampingScene.open();
+
+		sceneA.visible = true;
+		expect(app.title).toBe("Camping — Battle");
+		sceneA.visible = false;
+		expect(app.title).toBe("Camping");
+		delete base.title;
+	});
+
+	it("strips a running camp from a copied or imported scene", () => {
+		const del = Symbol("del");
+		globalThis._del = del;
+		const copy = {
+			flags: { litmv2: { camping: { phase: "active" } } },
+			updateSource: vi.fn(),
+		};
+		const plain = { flags: {}, updateSource: vi.fn() };
+
+		const preCreate = hook("preCreateScene");
+		preCreate(copy);
+		preCreate(plain);
+
+		expect(copy.updateSource).toHaveBeenCalledWith({
+			"flags.litmv2.camping": del,
+		});
+		expect(plain.updateSource).not.toHaveBeenCalled();
+		delete globalThis._del;
+	});
 
 	it("records the scene id in the session it opens", () => {
 		canvas.scene = sceneA;
@@ -722,6 +765,28 @@ describe("camp lifecycle with a second GM", () => {
 			});
 			expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
 			expect(sceneA.unsetFlag).not.toHaveBeenCalled();
+		});
+
+		it("keeps a begun camp when Cancel is not confirmed", async () => {
+			sceneA.flags = { litmv2: { camping: activeSession() } };
+			foundry.applications.api.DialogV2.confirm.mockResolvedValue(false);
+
+			await actions.cancel();
+
+			expect(foundry.applications.api.DialogV2.confirm).toHaveBeenCalledTimes(
+				1,
+			);
+			expect(Sockets.dispatch).not.toHaveBeenCalled();
+		});
+
+		it("cancels a camp still in setup without asking", async () => {
+			await actions.cancel();
+
+			expect(foundry.applications.api.DialogV2.confirm).not.toHaveBeenCalled();
+			expect(Sockets.dispatch).toHaveBeenCalledWith("campingLifecycle", {
+				action: "cancel",
+				sceneId: "scene-a",
+			});
 		});
 
 		it("names the camp's scene, not the one it is viewing", async () => {
