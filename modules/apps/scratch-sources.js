@@ -40,6 +40,7 @@ export function collectScratchableTags(
 		id: e.id,
 		name: e.name,
 		isSingleUse: !!(e.system?.isSingleUse ?? e.isSingleUse),
+		isHidden: !!(e.system?.isHidden ?? e.isHidden),
 	});
 
 	const own = unscratchedStoryTags(actor).filter(

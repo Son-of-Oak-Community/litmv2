@@ -1,4 +1,9 @@
+import {
+	hiddenTagKeys,
+	playerVisibleTagString,
+} from "../item/action/tag-string.js";
 import { ACTOR_TAG_TYPES } from "../system/config.js";
+import { enrichPlainText } from "../utils.js";
 
 /**
  * Mixin that adds bidirectional tag-string ↔ ActiveEffect synchronisation.
@@ -27,6 +32,30 @@ export function TagStringSyncMixin(Base) {
 		/* -------------------------------------------- */
 		/*  Tag String ↔ Effects                        */
 		/* -------------------------------------------- */
+
+		/**
+		 * The tag string as this user may see it, enriched into chips. Play
+		 * mode shows players only what the Narrator revealed, and marks the
+		 * rest for the Narrator; edit mode is the owner's raw string.
+		 *
+		 * @param {object} options
+		 * @param {string} options.playTags  The string play mode renders.
+		 * @param {string} [options.editTags]  The string edit mode renders.
+		 * @param {object[]} [options.limits]  The limits the string may name.
+		 * @returns {Promise<string>}
+		 */
+		async _enrichTagString({ playTags, editTags = playTags, limits = [] }) {
+			const isPlay = !this._isEditMode;
+			return enrichPlainText(
+				isPlay
+					? playerVisibleTagString(playTags || "", this.document, { limits })
+					: editTags || "",
+				this.document,
+				isPlay && game.user.isGM
+					? { hiddenTagKeys: hiddenTagKeys(this.document, { limits }) }
+					: undefined,
+			);
+		}
 
 		_effectsToTagString() {
 			const effects = this.document.effects.filter(

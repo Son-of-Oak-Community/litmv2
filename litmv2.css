@@ -389,7 +389,9 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 		.litm--limit-max
 	):focus-visible,
 :where(.litm, .litm-landscape) textarea:focus-visible,
-:where(.litm, .litm-landscape) litm-super-checkbox:focus-visible {
+:where(.litm, .litm-landscape) litm-super-checkbox:focus-visible,
+/* Toggle labels wrap a clipped checkbox, so the label carries the ring. */
+:where(.litm, .litm-landscape) .litm--toggle-label:has(:focus-visible) {
 	outline: 2px solid var(--color-litm-tag);
 	outline-offset: 2px;
 }
@@ -573,12 +575,27 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 /* The ✱ falls back to a symbol font whose glyph sits large and heavy next to
    the serif label; set it small, upright and centred on the chip. Chips are
    inline-flex, so the chip's own gap spaces it from the name. */
-.litm--single-use-mark {
+.litm--single-use-mark,
+.litm--hidden-mark {
 	align-self: center;
 	font-size: 0.7em;
 	font-style: normal;
 	font-weight: 400;
 	line-height: 1;
+}
+
+/* GM-only eye-slash on a hidden tag/status chip and on the Show/Hide button. */
+.litm--hidden-mark,
+.litm--hidden-icon {
+	color: var(--color-litm-hidden);
+}
+
+/* A hidden chip is dimmed; its mark sits beside it, outside the dim, so the
+   cue keeps full strength. Spaced like a camp pill's chip and mark. */
+.litm--hidden-wrap {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacer-4);
 }
 
 /* A flex legend (banner + edit/add buttons) hugs its content. Chrome does
@@ -3749,6 +3766,11 @@ section.standard-form.litm-theme-browser-body {
 	order: -3;
 }
 
+/* A camp can run for hours; the roll strip's pulse is for a short-lived roll. */
+.litm-camping-hud .litm-roll-dialog-hud__item {
+	animation: none;
+}
+
 .litm-camping-hud__icon {
 	display: grid;
 	place-items: center;
@@ -5459,6 +5481,19 @@ input.litm--single-use::after {
 .litm--single-use:checked ~ .litm--single-use-indicator {
 	opacity: 1;
 	color: var(--color-text-primary);
+}
+
+/* Show/Hide button: frameless like the toggles beside it. Only the hidden
+   state stands out; a visible effect is the default and stays faint. */
+.litm--visibility-btn i {
+	font-size: var(--font-size-11);
+	opacity: 0.35;
+	transition: opacity var(--transition-fast);
+}
+
+.litm--visibility-btn:hover i,
+.litm--visibility-btn .litm--hidden-icon {
+	opacity: 1;
 }
 
 /* Scratch toggle */
@@ -8039,6 +8074,10 @@ button.litm-camping-scene__hero-link {
 	min-width: 0;
 }
 
+.litm-camping-scene__row-content > .litm-camping-scene__btn {
+	align-self: flex-start;
+}
+
 @media (max-width: 720px) {
 	.litm-camping-scene__hero-row {
 		grid-template-columns: 1fr;
@@ -8228,10 +8267,8 @@ button.litm-camping-scene__hero-link {
 	font-style: italic;
 }
 
-/* A tag the Narrator invoked: quill mark, and locked for the roller. The
-   eye-slash marks, for the Narrator only, a row the players can't see. */
-.litm--roll-dialog-tag-narrator,
-.litm--roll-dialog-tag-hidden {
+/* A tag the Narrator invoked: quill mark, and locked for the roller. */
+.litm--roll-dialog-tag-narrator {
 	font-size: var(--font-size-11);
 	color: var(--color-litm-tag-text);
 	opacity: 0.8;

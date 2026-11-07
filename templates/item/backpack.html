@@ -35,7 +35,7 @@
 				/>
 
 				<input
-					class="flex1"
+					class="flex1{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}"
 					type="text"
 					name="effects.{{tag._id}}.name"
 					value="{{tag.name}}"
@@ -47,6 +47,10 @@
 						{{checked tag.system.isSingleUse}} data-dtype="Boolean" />
 					<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
 				</label>
+
+				{{#if @root.isGM}}
+				{{> systems/litmv2/templates/partials/hidden-toggle.html id=tag._id hidden=tag.system.isHidden}}
+				{{/if}}
 
 				{{> systems/litmv2/templates/partials/edit-linked-ref-controls.html tag=tag}}
 

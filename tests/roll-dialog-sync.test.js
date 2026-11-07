@@ -390,4 +390,37 @@ describe("Helping Each Other", () => {
 		as("player", () => dialog.setSelection("ally-tag", "positive", "player"));
 		expect(dialog.getSelection("ally-tag").helper).toBe(true);
 	});
+
+	// The owner classifies help itself: an edit that claims `helper: false`
+	// for an ally's second tag is still held to the one-tag cap.
+	it("caps a contributor's help even when the edit says it is not help", async () => {
+		allyEffect("power_tag");
+		const owner = make("player", { ownerId: "player" });
+		as("player", () => owner.dispatchSync());
+		const { session } = last().sync;
+		const edit = (sequence, id) => ({
+			actorId: "actor",
+			senderId: "ally-user",
+			sync: {
+				kind: "edit",
+				peerId: "ally-peer",
+				sequence,
+				session,
+				fields: {},
+				selections: [
+					[id, { state: "positive", helper: false, tagActorId: "someone-else" }],
+				],
+			},
+		});
+
+		await as("player", () => owner.receiveUpdate(edit(1, "ally-tag-1")));
+		await as("player", () => owner.receiveUpdate(edit(2, "ally-tag-2")));
+
+		expect(owner.getSelection("ally-tag-1")).toMatchObject({
+			state: "positive",
+			helper: true,
+			tagActorId: "ally",
+		});
+		expect(owner.getSelection("ally-tag-2")?.state).toBeFalsy();
+	});
 });

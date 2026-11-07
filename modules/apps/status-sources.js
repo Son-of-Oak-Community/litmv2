@@ -35,6 +35,7 @@ export function collectReducibleStatuses(
 		id: e.id,
 		name: e.name,
 		tier: e.system.currentTier,
+		isHidden: !!e.system.isHidden,
 	});
 	const groups = [];
 	const seen = new Set();

@@ -648,6 +648,20 @@ export class LitmActorSheet extends LitmSheetMixin(
 	}
 
 	/**
+	 * GM: toggle whether players can see a story tag / status effect.
+	 * @param {Event} _event
+	 * @param {HTMLElement} target
+	 * @protected
+	 */
+	static async _onToggleEffectVisibility(_event, target) {
+		if (!game.user.isGM) return;
+		const effect = resolveEffect(target.dataset.id, this.document);
+		if (!effect) return;
+		await effect.update({ "system.isHidden": !effect.system.isHidden });
+		this._notifyStoryTags();
+	}
+
+	/**
 	 * Shared handler for toggling tag active state in edit mode.
 	 * Click = scratch/unscratch, Shift+Click = activate/deactivate.
 	 * Subclasses may override and call super for type-specific branches.

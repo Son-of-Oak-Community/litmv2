@@ -88,7 +88,7 @@
 			<ul class="plain">
 				{{#each statuses as |tag|}}
 				<li class="form-group status" style="gap: 8px; align-items: center;justify-content: space-between">
-					<span class="litm--tag-name-wrapper litm-status">
+					<span class="litm--tag-name-wrapper litm-status{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}">
 						<input class="litm--tag-item-name" type="text" name="effects.{{tag.id}}.name" value="{{tag.name}}"
 							placeholder="{{localize 'LITM.Ui.tag_name'}}" />
 					</span>
@@ -100,6 +100,9 @@
 						</button>
 						{{/each}}
 					</div>
+					{{#if @root.isGM}}
+					{{> systems/litmv2/templates/partials/hidden-toggle.html id=tag.id hidden=tag.system.isHidden}}
+					{{/if}}
 					<button type="button" class="noflex" data-action="removeEffect" data-id="{{tag.id}}"
 						data-tooltip="{{localize 'LITM.Ui.remove'}} status" aria-label="{{localize 'LITM.Ui.remove'}} status">
 						<i class="fa-solid fa-trash" aria-hidden="true"></i>

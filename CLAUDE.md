@@ -181,10 +181,11 @@ with the receive step it named.
 
 **Closing a view is not ending the roll — except for the Narrator.** A player
 viewer can close their window without retracting the owner's presence. The
-Narrator's window has **Cancel roll** and **Roll** buttons, and its header X is
-Cancel roll: the `narratorRollCommand` socket asks the owner's client to close
-or submit (submit skips approval; the card stays the player's). The Narrator's
-Escape key still only closes their view. The owner
+Narrator's window has **Cancel roll** and **Roll** buttons, and on a roll they
+called its header X is Cancel roll too: the `narratorRollCommand` socket asks
+the owner's client to close or submit (submit skips approval; the card stays
+the player's). On a roll the player started, the Narrator's X only closes their
+view, as Escape always does. The owner
 closing an abandoned call releases its narrator stamp and tag locks. Submission
 for moderation instead suspends the same draft, preserving its authority if
 rejected. A subsequent independent Sacrifice must not inherit a cancelled
@@ -201,9 +202,11 @@ carry a negative `order` (`mountPlayersHud` only guarantees presence). The strip
 is above the control, so the control never moves when a roll goes live. The
 story-tag sidebar keeps a secondary entry in its **window header** via
 `_getFrameButtons` — v14 renders those inline before the close button, unlike
-header *controls*, which go to the overflow menu. `R` opens the picker for a GM,
-with the same toggle behaviour it has for players, and a GM with an assigned
-character still gets the picker rather than their own sheet.
+header *controls*, which go to the overflow menu. `R` toggles the picker for a
+GM, and a GM with an assigned character still gets the picker rather than their
+own sheet. For a player, `R` opens or raises their roll and **never closes it**:
+closing as the owner ends the roll, and a stray key press must not throw away
+the Narrator's call.
 
 Pickup is only shown when the dialog is not already rendered on this client;
 the rendered/closed hooks refresh the HUD independently of actor flag updates.
@@ -351,7 +354,7 @@ participating Hero. Everyone else sees the HUD strip.
 
 `updateRollDialog` is owner-authoritative (`roll-sync.js`). Contributors send
 only the fields/tag IDs they changed; the owner merges them, rechecks the group
-tag and burn caps, and broadcasts a versioned canonical snapshot. Pending local
+tag, burn and helper caps, and broadcasts a versioned canonical snapshot. Pending local
 edits replay until their sequence is acknowledged, so crossing Narrator/player
 updates and simultaneous group contributions do not erase each other. Session
 IDs keep delayed snapshots and close/reset events from mutating a newer roll.
@@ -367,6 +370,20 @@ replayed on top of the adopted draft (`RollSync#expectReseat`); only a fresh
 owner (revision 0) waits for one. When a player takes the seat of a roll the
 GM was holding, every open dialog follows the new owner on the flag change
 (`LitmRollDialog#followSeat`), and the new owner keeps the old revision.
+
+When the whole table reloads, nobody holds the draft to hand back, so the
+`rollDialogOwner` flag also stores the call itself (participants, Action, title,
+narrator stamp) and the owner rebuilds it from there. A viewer only answers a
+reseat once it has heard from an owner (`RollSync#heard`); a blank view must
+not wipe the Narrator's call. After a reload the owner's HUD strip reads "Your
+unfinished roll". Ending a roll resets Might to 0; only a roll suspended for
+approval keeps it.
+
+**Helping Each Other** (p.156–157) on a single-Hero roll: a tag from another
+Hero is help, whoever picked it, the roller included. One per helping Hero,
+never a status, never burned (`refusesHelperTag`). The owner reclassifies each
+contributed entry from the tag itself (`#classifyHelpers`) before the merge, so
+the cap does not rest on the `helper` flag a contributor sent.
 
 ## Active Effects: the canonical tag store
 

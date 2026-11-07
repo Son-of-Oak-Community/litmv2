@@ -54,6 +54,7 @@ export class HeroSheet extends LitmActorSheet {
 			addMomentOfFulfillment: HeroSheet.#onAddMomentOfFulfillment,
 			removeMomentOfFulfillment: HeroSheet.#onRemoveMomentOfFulfillment,
 			removeEffect: LitmActorSheet._onRemoveEffect,
+			toggleEffectVisibility: LitmActorSheet._onToggleEffectVisibility,
 			scratchTag: HeroSheet.#onScratchTag,
 			selectTag: HeroSheet.#onSelectTag,
 			toggleTagActive: HeroSheet.#onToggleTagActive,
@@ -91,6 +92,7 @@ export class HeroSheet extends LitmActorSheet {
 			templates: [
 				"systems/litmv2/templates/partials/edit-theme-tags-activatable.html",
 				"systems/litmv2/templates/partials/icon-fellowship-hint.html",
+				"systems/litmv2/templates/partials/hidden-toggle.html",
 			],
 		},
 	};

@@ -15,8 +15,16 @@ export class LitmItemSheet extends LitmSheetMixin(
 		actions: {
 			viewLinkedRef: viewLinkedRefAction,
 			clearLinkedRef: LitmItemSheet._onClearLinkedRef,
+			toggleEffectVisibility: LitmItemSheet._onToggleEffectVisibility,
 		},
 	};
+
+	/** @override */
+	async _prepareContext(options) {
+		const context = await super._prepareContext(options);
+		context.isGM = game.user.isGM;
+		return context;
+	}
 
 	/**
 	 * Clear the linked reference on an embedded effect.
@@ -29,6 +37,20 @@ export class LitmItemSheet extends LitmSheetMixin(
 		const effect = effectId ? this.document.effects.get(effectId) : null;
 		if (!effect) return;
 		await effect.update({ "system.linkedRefUuid": null });
+	}
+
+	/**
+	 * GM: toggle whether players can see an embedded effect.
+	 * @param {Event} _event
+	 * @param {HTMLElement} target
+	 * @protected
+	 */
+	static async _onToggleEffectVisibility(_event, target) {
+		if (!game.user.isGM) return;
+		const effect = this.document.effects.get(target.dataset.id);
+		if (!effect) return;
+		await effect.update({ "system.isHidden": !effect.system.isHidden });
+		this.document.parent?.sheet?._notifyStoryTags?.();
 	}
 
 	/**

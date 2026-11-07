@@ -56,7 +56,11 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 
-		const enriched = await this._enrichFields("description", "tags");
+		const enriched = await this._enrichFields("description");
+		enriched.tags = await this._enrichTagString({
+			playTags: this.system.tags,
+			limits: this.system.limits ?? [],
+		});
 		const limitedView = this.document.testUserPermission(game.user, 'LIMITED', { exact: true });
 		const hasObserverPermission = this.document.testUserPermission(game.user, 'OBSERVER');
 

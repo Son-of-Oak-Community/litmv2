@@ -18,7 +18,7 @@
 			{{#if tag.targetImg}}<img class="relationship-img" src="{{tag.targetImg}}" alt="" />{{/if}}
 			<span>{{tag.targetName}}</span>
 		</span>{{/if}}
-		<span class="litm--roll-dialog-badge litm-{{tag.type}}{{#if tag.isSingleUse}} litm--single-use{{/if}}"
+		<span class="litm--roll-dialog-badge litm-{{tag.type}}{{#if tag.isSingleUse}} litm--single-use{{/if}}{{#if tag.hiddenFromPlayers}} litm--tag-hidden{{/if}}"
 			data-text="{{tag.displayName}}{{ifThen (eq tag.type 'status_tag') (ifThen tag.value (concat '-' tag.value) '') ''}}">{{tag.displayName}}{{ifThen
 			(eq tag.type "status_tag") (ifThen tag.value (concat "-" tag.value) "") ""}}{{#if tag.isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}{{#if (eq tag.type "weakness_tag")}}
 			{{> "systems/litmv2/templates/partials/weakness-chevron.html"}}
@@ -27,8 +27,7 @@
 		<i class="fa-solid fa-feather litm--roll-dialog-tag-narrator" aria-hidden="true"></i>
 		{{/if}}
 		{{#if tag.hiddenFromPlayers}}
-		<i class="fa-solid fa-eye-slash litm--roll-dialog-tag-hidden" data-tooltip="{{localize 'LITM.Ui.hidden_from_players'}}"
-			aria-label="{{localize 'LITM.Ui.hidden_from_players'}}"></i>
+		{{> "systems/litmv2/templates/partials/hidden-mark.html"}}
 		{{/if}}
 	</label>
 </li>

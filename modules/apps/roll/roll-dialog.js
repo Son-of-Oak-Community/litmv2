@@ -1344,10 +1344,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	_onFirstRender(context, options) {
 		super._onFirstRender(context, options);
 
-		// The Narrator's X ends a player's roll for the whole table, like
-		// Cancel roll; their own roll already ends on close.
+		// The Narrator's X ends a roll they called for the whole table, like
+		// Cancel roll; their own roll already ends on close. On a roll the
+		// player started, X only closes the Narrator's view — closing a view
+		// is not ending the roll, and the explicit Cancel button stays.
 		this.window?.close?.addEventListener("click", (event) => {
-			if (event.button === 0 && !this.isOwner && this.#ownerId)
+			if (
+				event.button === 0 &&
+				!this.isOwner &&
+				this.#ownerId &&
+				isNarratorControlled(this.#narratorCall)
+			)
 				this.#narratorCommand("cancel");
 		});
 
@@ -1494,6 +1501,31 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	 * Narrator's feather on a stamped pick needs one (Acting Together). */
 	#showNarratorMark() {
 		if (this.isOwner && this.#selectionStamp()) this.render();
+	}
+
+	/**
+	 * The owner decides which contributed tags are help, from the tag itself,
+	 * rather than trusting the `helper` and `tagActorId` a contributor sent.
+	 * That keeps the merge's Helping Each Other cap (`refusesHelperTag` in
+	 * `RollSync#apply`) honest whatever the sending client claimed.
+	 *
+	 * @param {object} message  An incoming sync message.
+	 * @returns {object} The message, with each edited entry reclassified.
+	 */
+	#classifyHelpers(message) {
+		if (message?.kind !== "edit" || !Array.isArray(message.selections))
+			return message;
+		return {
+			...message,
+			selections: message.selections.map(([id, entry]) => {
+				if (!entry) return [id, entry];
+				const tagActorId = resolveTagActorId(id) ?? entry.tagActorId ?? null;
+				return [
+					id,
+					{ ...entry, tagActorId, helper: this.#isHelpTag(tagActorId, id) },
+				];
+			}),
+		};
 	}
 
 	/**
@@ -2349,7 +2381,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				data.senderId !== this.ownerId
 			)
 				return;
-			const response = this.#sync.receive(data.sync, this.isOwner);
+			const response = this.#sync.receive(
+				this.isOwner ? this.#classifyHelpers(data.sync) : data.sync,
+				this.isOwner,
+			);
 			this.#applySyncState(this.#sync.view);
 			this.#sendSync(response);
 		} else {

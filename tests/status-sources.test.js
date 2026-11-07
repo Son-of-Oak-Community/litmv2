@@ -26,7 +26,7 @@ describe("collectReducibleStatuses", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				statuses: [{ id: "e1", name: "wounded", tier: 2 }],
+				statuses: [{ id: "e1", name: "wounded", tier: 2, isHidden: false }],
 			},
 		]);
 	});
@@ -45,13 +45,13 @@ describe("collectReducibleStatuses", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				statuses: [{ id: "e1", name: "wounded", tier: 2 }],
+				statuses: [{ id: "e1", name: "wounded", tier: 2, isHidden: false }],
 			},
 			{
 				ownerId: "c1",
 				ownerName: "Serpent",
 				isOwn: false,
-				statuses: [{ id: "e3", name: "enraged", tier: 4 }],
+				statuses: [{ id: "e3", name: "enraged", tier: 4, isHidden: false }],
 			},
 		]);
 	});
@@ -129,13 +129,13 @@ describe("collectReducibleStatuses", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				statuses: [{ id: "e0", name: "winded", tier: 1 }],
+				statuses: [{ id: "e0", name: "winded", tier: 1, isHidden: false }],
 			},
 			{
 				ownerId: "c1",
 				ownerName: "Serpent",
 				isOwn: false,
-				statuses: [{ id: "e3", name: "enraged", tier: 4 }],
+				statuses: [{ id: "e3", name: "enraged", tier: 4, isHidden: false }],
 			},
 		]);
 	});

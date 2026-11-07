@@ -6,7 +6,9 @@
 			data-hero-id="{{hero.id}}" data-period="{{activity.index}}">
 			<option value="">{{localize "LITM.Ui.camping_reflect_pick"}}</option>
 			{{#each activity.reflectTargets}}
-			<option value="{{id}}" {{#if (eq ../activity.reflectTargetItemId id)}}selected{{/if}}>{{name}}</option>
+			{{#if (or (not improveFull) (eq ../activity.reflectTargetItemId id))}}
+			<option value="{{id}}" {{#if (eq ../activity.reflectTargetItemId id)}}selected{{/if}}>{{name}}{{#if improveCounted}} ({{improve}}/{{improveMax}}){{/if}}</option>
+			{{/if}}
 			{{/each}}
 		</select>
 	</label>
@@ -16,7 +18,9 @@
 			data-hero-id="{{hero.id}}" data-period="{{activity.index}}">
 			<option value="">{{localize "LITM.Ui.camping_reflect_quest_skip"}}</option>
 			{{#each activity.reflectTargets}}
-			<option value="{{id}}" {{#if (eq ../activity.reflectMilestoneItemId id)}}selected{{/if}}>{{name}}</option>
+			{{#if (or (not milestoneFull) (eq ../activity.reflectMilestoneItemId id))}}
+			<option value="{{id}}" {{#if (eq ../activity.reflectMilestoneItemId id)}}selected{{/if}}>{{name}} ({{milestone}}/{{questMax}})</option>
+			{{/if}}
 			{{/each}}
 		</select>
 	</label>
@@ -26,7 +30,9 @@
 			data-hero-id="{{hero.id}}" data-period="{{activity.index}}">
 			<option value="">{{localize "LITM.Ui.camping_reflect_quest_skip"}}</option>
 			{{#each activity.reflectTargets}}
-			<option value="{{id}}" {{#if (eq ../activity.reflectAbandonItemId id)}}selected{{/if}}>{{name}}</option>
+			{{#if (or (not abandonFull) (eq ../activity.reflectAbandonItemId id))}}
+			<option value="{{id}}" {{#if (eq ../activity.reflectAbandonItemId id)}}selected{{/if}}>{{name}} ({{abandon}}/{{questMax}})</option>
+			{{/if}}
 			{{/each}}
 		</select>
 	</label>

@@ -122,15 +122,20 @@ export function availableThemebookImprovements(
  * Enrich HTML text with Foundry enrichers.
  * @param {string} text          The HTML text to enrich
  * @param {Document} document    The document context for enrichment
+ * @param {object} [options]
+ * @param {Set<string>} [options.hiddenTagKeys]  `hiddenTagKeys()` of the tags to
+ *        mark hidden. Pass it only for a view the Narrator alone sees.
  * @returns {Promise<string>}
  */
-export async function enrichHTML(text, document) {
+export async function enrichHTML(text, document, { hiddenTagKeys } = {}) {
 	if (!text) return "";
 	const TextEditor = foundry.applications.ux.TextEditor;
 	return (
 		(await TextEditor.enrichHTML(text, {
 			secrets: document.isOwner,
 			relativeTo: document,
+			// Tag chips whose key is in this set render marked hidden (GM views only).
+			hiddenTagKeys,
 		})) || ""
 	);
 }
@@ -143,11 +148,12 @@ export async function enrichHTML(text, document) {
  * still becomes a chip, and an `<img onerror>` stays inert text.
  * @param {string} text          Plain text, possibly holding enricher markup
  * @param {Document} document    The document context for enrichment
+ * @param {object} [options]       Passed to `enrichHTML`
  * @returns {Promise<string>}
  */
-export async function enrichPlainText(text, document) {
+export async function enrichPlainText(text, document, options) {
 	if (!text) return "";
-	return enrichHTML(foundry.utils.escapeHTML(text), document);
+	return enrichHTML(foundry.utils.escapeHTML(text), document, options);
 }
 
 export function toQuestionOptions(questions = [], skipFirst = 0) {
