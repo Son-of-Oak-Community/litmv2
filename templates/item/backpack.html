@@ -48,6 +48,10 @@
 					<i class="fa-solid fa-hourglass-half litm--single-use-indicator" aria-hidden="true"></i>
 				</label>
 
+				{{#if @root.isGM}}
+				{{> systems/litmv2/templates/partials/hidden-toggle.html id=tag._id hidden=tag.system.isHidden}}
+				{{/if}}
+
 				{{> systems/litmv2/templates/partials/edit-linked-ref-controls.html tag=tag}}
 
 				<button class="noflex"

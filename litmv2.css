@@ -389,7 +389,9 @@ body.litm--colorblind .themed.theme-light:not(.chat-log),
 		.litm--limit-max
 	):focus-visible,
 :where(.litm, .litm-landscape) textarea:focus-visible,
-:where(.litm, .litm-landscape) litm-super-checkbox:focus-visible {
+:where(.litm, .litm-landscape) litm-super-checkbox:focus-visible,
+/* Toggle labels wrap a clipped checkbox, so the label carries the ring. */
+:where(.litm, .litm-landscape) .litm--toggle-label:has(:focus-visible) {
 	outline: 2px solid var(--color-litm-tag);
 	outline-offset: 2px;
 }

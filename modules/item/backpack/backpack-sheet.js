@@ -38,6 +38,7 @@ export class BackpackSheet extends LitmItemSheet {
 			scrollable: [""],
 			templates: [
 				"systems/litmv2/templates/partials/edit-linked-ref-controls.html",
+				"systems/litmv2/templates/partials/hidden-toggle.html",
 			],
 		},
 	};

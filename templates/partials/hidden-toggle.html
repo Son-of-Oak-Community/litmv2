@@ -1,0 +1,7 @@
+{{!-- GM-only Show/Hide button for an effect row; the sheet must register the
+`toggleEffectVisibility` action. Context: { id, hidden }. --}}
+<button type="button" class="noflex" data-action="toggleEffectVisibility" data-id="{{id}}"
+	data-tooltip="{{localize (ifThen hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}"
+	aria-label="{{localize (ifThen hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}">
+	<i class="fa-solid {{ifThen hidden 'fa-eye-slash litm--hidden-icon' 'fa-eye'}}" aria-hidden="true"></i>
+</button>

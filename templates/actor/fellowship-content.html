@@ -131,11 +131,7 @@
 				</label>
 				{{/if}}
 				{{#if ../isGM}}
-				<button type="button" class="noflex" data-action="toggleEffectVisibility" data-id="{{tag.id}}"
-					data-tooltip="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}"
-					aria-label="{{localize (ifThen tag.hidden 'LITM.Ui.show' 'LITM.Ui.hide')}}">
-					<i class="fa-solid {{ifThen tag.hidden 'fa-eye-slash' 'fa-eye'}}" aria-hidden="true"></i>
-				</button>
+				{{> systems/litmv2/templates/partials/hidden-toggle.html id=tag.id hidden=tag.hidden}}
 				{{/if}}
 				<button type="button" class="noflex" data-action="removeEffect" data-id="{{tag.id}}"
 					data-tooltip="{{localize (ifThen (eq tag.type 'status_tag') 'LITM.Ui.remove_status' 'LITM.Ui.remove_tag')}}"
