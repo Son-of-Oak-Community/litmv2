@@ -382,8 +382,6 @@
 			"burn_cap_warning": "За кидок можна спалити лише один тег. Спершу зніміть закреслення з іншого тегу.",
 			"camping_activities": "Заняття",
 			"camping_backpack_keep": "Наплічник",
-			"camping_backpack_keep_all": "Всі",
-			"camping_backpack_keep_none": "Нічого",
 			"camping_backpack_keep_hint": "Позначте теги, які хочете залишити. «Згорнути Табір» закреслює кожен непозначений тег.",
 			"camping_backpack_kept": "Залишено",
 			"camping_backpack_stays_inactive": "Неактивний — залишити деактивованим",

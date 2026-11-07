@@ -7,7 +7,7 @@
 			<option value="">{{localize "LITM.Ui.camping_reflect_pick"}}</option>
 			{{#each activity.reflectTargets}}
 			{{#if (or (not improveFull) (eq ../activity.reflectTargetItemId id))}}
-			<option value="{{id}}" {{#if (eq ../activity.reflectTargetItemId id)}}selected{{/if}}>{{name}} ({{improve}}/{{improveMax}})</option>
+			<option value="{{id}}" {{#if (eq ../activity.reflectTargetItemId id)}}selected{{/if}}>{{name}}{{#if improveCounted}} ({{improve}}/{{improveMax}}){{/if}}</option>
 			{{/if}}
 			{{/each}}
 		</select>
