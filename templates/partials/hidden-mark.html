@@ -1,0 +1,5 @@
+{{!-- GM-only eye-slash after a hidden tag/status chip. Put it beside the
+dimmed chip (in a .litm--hidden-wrap, or a row that already groups them),
+never inside it: the dim would fade the mark too. hiddenChipHtml in
+renderer-utils.js is the string twin for chips built in JS. --}}
+<i class="fa-solid fa-eye-slash litm--hidden-mark" role="img" data-tooltip="{{localize 'LITM.Terms.hidden'}}" aria-label="{{localize 'LITM.Terms.hidden'}}"></i>

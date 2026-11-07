@@ -88,6 +88,8 @@ function buildBackpackPills(actor, heroState) {
 			name: e.name,
 			isSingleUse: !!e.system?.isSingleUse,
 			disabled: !!e.disabled,
+			// Only the GM gets hidden tags (isEffectVisible), so only they see the mark.
+			isHidden: !!e.system?.isHidden,
 			kept: keptSet.has(e.id),
 		}));
 }
@@ -192,6 +194,8 @@ function buildActivityRows(
 					id: e.id,
 					name: e.name,
 					currentTier: tier,
+					// Only the GM gets hidden statuses, so only they see the mark.
+					isHidden: !!e.system?.isHidden,
 					restAction: ch.action,
 					restAmount: ch.amount ?? 1,
 					decrement,
@@ -463,6 +467,8 @@ export function buildSceneStoryTags(campId) {
 			isStatus: e.type === "status_tag",
 			isSingleUse: !!e.system?.isSingleUse,
 			currentTier: e.system?.currentTier ?? 0,
+			// Only the GM gets hidden ones (isEffectVisible above).
+			isHidden: !!e.system?.isHidden,
 		}));
 }
 
@@ -482,6 +488,8 @@ export function buildPlaceOfStayContext(state) {
 		id: e.id,
 		name: e.name,
 		isSingleUse: !!e.system?.isSingleUse,
+		// The Place of Stay block is GM-only, so it lists hidden tags, marked.
+		isHidden: !!e.system?.isHidden,
 		markedForExpiry: placeOfStay.sceneTagsToExpire.includes(e.id),
 	}));
 	return {

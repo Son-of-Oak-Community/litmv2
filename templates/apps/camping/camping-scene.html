@@ -50,7 +50,9 @@
 			<p class="litm-camping-scene__active-tags">
 				{{~#each sceneStoryTags~}}
 					{{~#unless @first}}, {{/unless~}}
-					<span class="litm-tag {{#if isStatus}}litm-status_tag{{/if}}{{#if isSingleUse}} litm--single-use{{/if}}">{{name}}{{#if isStatus}} {{currentTier}}{{/if}}{{#if isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
+					{{~#if isHidden}}<span class="litm--hidden-wrap">{{/if~}}
+					<span class="litm-tag {{#if isStatus}}litm-status_tag{{/if}}{{#if isSingleUse}} litm--single-use{{/if}}{{#if isHidden}} litm--tag-hidden{{/if}}">{{name}}{{#if isStatus}} {{currentTier}}{{/if}}{{#if isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
+					{{~#if isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}</span>{{/if~}}
 				{{~/each~}}
 			</p>
 			{{/if}}

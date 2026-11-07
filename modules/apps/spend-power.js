@@ -269,6 +269,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				id: e._id ?? e.id,
 				name: e.name,
 				isSingleUse: !!e.system?.isSingleUse,
+				isHidden: !!e.system?.isHidden,
 			}));
 		// Candidate owners for scratch/reduce/inflict are the actors in play —
 		// scene tokens plus the story-tag sidebar's tracked actors, not every
@@ -484,6 +485,7 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 				id: effect.id,
 				name: effect.name,
 				itemId: effect.parent !== actor ? effect.parent?.id : "",
+				isHidden: !!effect.system?.isHidden,
 			}));
 	}
 

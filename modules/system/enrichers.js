@@ -1,5 +1,5 @@
 import { sendRollRequest } from "../apps/roll/roll-request.js";
-import { classifyTagStringMatch } from "../item/action/tag-string.js";
+import { classifyTagStringMatch, tagKey } from "../item/action/tag-string.js";
 import { renderAction } from "./renderers/action-renderer.js";
 import { renderChallenge } from "./renderers/challenge-renderer.js";
 import { renderHero } from "./renderers/hero-renderer.js";
@@ -276,10 +276,13 @@ export class Enrichers {
 			);
 			return chevronPromise;
 		};
-		const enrichTags = async (match) => {
+		const enrichTags = async (match, options) => {
 			const c = classifyTagStringMatch(match);
 			const chevron = c.kind === "weakness" ? await getChevron() : "";
-			return Enrichers.#html(tagChipHtml(c, { tooltip, chevron }));
+			// Opt-in per call (see enrichHTML's hiddenTagKeys): chat and journal
+			// output must never carry the mark.
+			const hidden = !!options?.hiddenTagKeys?.has(tagKey(c));
+			return Enrichers.#html(tagChipHtml(c, { tooltip, chevron, hidden }));
 		};
 		CONFIG.TextEditor.enrichers.push({
 			id: "litm.tag",

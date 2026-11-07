@@ -1,5 +1,7 @@
+import { hiddenTagKeys, playerVisibleTagString } from "../../item/action/tag-string.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { TagStringSyncMixin } from "../../sheets/tag-string-sync-mixin.js";
+import { enrichPlainText } from "../../utils.js";
 
 /**
  * Journey sheet for Legend in the Mist
@@ -56,7 +58,20 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 	async _prepareContext(options) {
 		const context = await super._prepareContext(options);
 
-		const enriched = await this._enrichFields("description", "tags");
+		const enriched = await this._enrichFields("description");
+		// Play mode shows players only what the Narrator revealed, and marks it
+		// for the Narrator; edit mode is the owner's raw string.
+		const isPlay = !this._isEditMode;
+		const limits = this.system.limits ?? [];
+		enriched.tags = await enrichPlainText(
+			isPlay
+				? playerVisibleTagString(this.system.tags || "", this.document, { limits })
+				: this.system.tags || "",
+			this.document,
+			isPlay && game.user.isGM
+				? { hiddenTagKeys: hiddenTagKeys(this.document, { limits }) }
+				: undefined,
+		);
 		const limitedView = this.document.testUserPermission(game.user, 'LIMITED', { exact: true });
 		const hasObserverPermission = this.document.testUserPermission(game.user, 'OBSERVER');
 
