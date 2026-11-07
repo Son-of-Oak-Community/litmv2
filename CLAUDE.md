@@ -235,6 +235,11 @@ an explicit reveal; roll tags record `tagActorId` and `concealedAtRoll` so a
 deleted source cannot accidentally reveal a historical secret. Missing legacy
 actor-backed sources fail closed.
 
+A hidden tag or status is never shown to the player it is hidden from, on any
+surface: sheets, camp, roll dialog, chat cards, tooltips, token labels. A
+reported leak means sweeping every player-facing surface, not only the one
+reported.
+
 Moderation uses the same projection. Stored public card HTML is masked even
 when authored by a GM; `renderModerationTooltip` replaces it per viewer, using
 the unredacted execution data in message flags. Presentation masks must never
