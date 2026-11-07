@@ -82,6 +82,45 @@ describe("called-roll lifecycle", () => {
 		);
 	});
 
+	// The window's X: on a called roll it is the Narrator's Cancel; on a roll
+	// the player started it only closes the Narrator's view.
+	describe("the Narrator's X", () => {
+		const clickX = (dialog) => {
+			foundry.applications.api.ApplicationV2.prototype._onFirstRender =
+				() => {};
+			let onClose;
+			dialog.window = {
+				close: { addEventListener: (_type, cb) => (onClose = cb) },
+			};
+			dialog.element = { addEventListener: () => {} };
+			dialog._onFirstRender({}, {});
+			onClose({ button: 0 });
+		};
+
+		it("cancels a roll the Narrator called", () => {
+			game.user = { id: "gm", isGM: true };
+			const dialog = makeDialog();
+			dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
+			clickX(dialog);
+			expect(Sockets.dispatch).toHaveBeenCalledWith(
+				"narratorRollCommand",
+				expect.objectContaining({ command: "cancel" }),
+			);
+		});
+
+		it("leaves a roll the player started alone", () => {
+			game.user = { id: "gm", isGM: true };
+			const dialog = makeDialog();
+			dialog.configureSharedRoll({ ownerId: "player" });
+			clickX(dialog);
+			expect(Sockets.dispatch).not.toHaveBeenCalledWith(
+				"narratorRollCommand",
+				expect.anything(),
+			);
+			expect(actor.unsetFlag).not.toHaveBeenCalled();
+		});
+	});
+
 	it("suspends narrator authority for approval and restores the same locked draft on rejection", async () => {
 		const dialog = makeDialog();
 		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
