@@ -100,6 +100,9 @@
 						</button>
 						{{/each}}
 					</div>
+					{{#if @root.isGM}}
+					{{> systems/litmv2/templates/partials/hidden-toggle.html id=tag.id hidden=tag.system.isHidden}}
+					{{/if}}
 					<button type="button" class="noflex" data-action="removeEffect" data-id="{{tag.id}}"
 						data-tooltip="{{localize 'LITM.Ui.remove'}} status" aria-label="{{localize 'LITM.Ui.remove'}} status">
 						<i class="fa-solid fa-trash" aria-hidden="true"></i>

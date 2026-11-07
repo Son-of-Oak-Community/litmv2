@@ -1,7 +1,6 @@
 import {
 	effectToPlain,
 	findApplicableEffect,
-	resolveEffect,
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ThemeBrowser } from "../../apps/theme-browser.js";
@@ -87,7 +86,7 @@ export class FellowshipSheet extends LitmActorSheet {
 			addStoryTheme: LitmActorSheet._onAddStoryTheme,
 			addStoryTag: LitmActorSheet._onAddStoryTag,
 			removeEffect: LitmActorSheet._onRemoveEffect,
-			toggleEffectVisibility: FellowshipSheet.#onToggleEffectVisibility,
+			toggleEffectVisibility: LitmActorSheet._onToggleEffectVisibility,
 			toggleTagActive: FellowshipSheet.#onToggleTagActive,
 			selectTag: FellowshipSheet.#onSelectTag,
 			adjustProgress: LitmActorSheet._onAdjustProgress,
@@ -121,6 +120,7 @@ export class FellowshipSheet extends LitmActorSheet {
 			template: "systems/litmv2/templates/actor/fellowship-content.html",
 			templates: [
 				"systems/litmv2/templates/partials/edit-theme-tags-activatable.html",
+				"systems/litmv2/templates/partials/hidden-toggle.html",
 			],
 		},
 	};
@@ -226,20 +226,6 @@ export class FellowshipSheet extends LitmActorSheet {
 	/* -------------------------------------------- */
 	/*  Event Handlers & Actions                    */
 	/* -------------------------------------------- */
-
-	/**
-	 * Toggle the hidden state of a story tag / status card effect.
-	 * @param {Event} _event
-	 * @param {HTMLElement} target
-	 * @private
-	 */
-	static async #onToggleEffectVisibility(_event, target) {
-		const effectId = target.dataset.id;
-		const effect = resolveEffect(effectId, this.document);
-		if (!effect) return;
-		await effect.update({ "system.isHidden": !effect.system.isHidden });
-		this._notifyStoryTags();
-	}
 
 	/**
 	 * Open a hero's sheet from the party overview
