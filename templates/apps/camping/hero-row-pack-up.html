@@ -1,4 +1,15 @@
 {{#if hero.hasBackpack}}
+{{#if (and hero.canEdit hero.backpackTagIds)}}
+<button type="button" class="litm-camping-scene__btn" data-action="backpack-keep-all"
+	data-hero-id="{{hero.id}}" data-effect-ids="{{hero.backpackTagIds}}"
+	data-kept="{{#if hero.allBackpackKept}}false{{else}}true{{/if}}">
+	{{#if hero.allBackpackKept}}
+	<i class="fa-solid fa-xmark" aria-hidden="true"></i> {{localize "LITM.Ui.camping_backpack_keep_none"}}
+	{{else}}
+	<i class="fa-solid fa-check-double" aria-hidden="true"></i> {{localize "LITM.Ui.camping_backpack_keep_all"}}
+	{{/if}}
+</button>
+{{/if}}
 <ul class="litm-camping-scene__pills plain">
 	{{#each hero.backpackTags}}
 	<li>
@@ -7,9 +18,10 @@
 			{{#if ../hero.canEdit}}
 			<input type="checkbox" data-update="backpack-kept"
 				data-hero-id="{{../hero.id}}" data-effect-id="{{id}}"
-				{{#if kept}}checked{{/if}}>
+				{{#if kept}}checked{{/if}}{{#if locked}} disabled{{/if}}>
 			{{/if}}
-			<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}">{{name}}{{#if isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
+			<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}{{#if isHidden}} litm--tag-hidden{{/if}}">{{name}}{{#if isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
+			{{#if isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}{{/if}}
 		</label>
 	</li>
 	{{/each}}

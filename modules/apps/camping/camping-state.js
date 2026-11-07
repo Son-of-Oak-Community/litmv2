@@ -465,6 +465,9 @@ export const SETTERS = {
 		setSceneTagExpiry(s, effectId, on),
 	"backpack-kept": (s, { heroId, effectId, kept }) =>
 		setBackpackKept(s, heroId, effectId, kept),
+	"backpack-kept-all": (s, { heroId, effectIds = [], kept }) => {
+		for (const id of effectIds) setBackpackKept(s, heroId, id, kept);
+	},
 	"third-period": (s, { heroId, on }) => setThirdPeriod(s, heroId, on),
 	ready: (s, { heroId, on, step }) => setReady(s, heroId, on, step),
 	activity: (s, { heroId, period, activity }) =>

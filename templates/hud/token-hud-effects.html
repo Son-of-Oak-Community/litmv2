@@ -7,7 +7,8 @@
 	{{/each}}
 </div>
 {{#each statusRows as |status|}}
-<span class="litm-status litm-hud-active" data-text="{{status.title}}{{#if status.currentTier}}-{{status.currentTier}}{{/if}}" data-effect-id="{{status.effectId}}">
+{{#if status.isHidden}}<span class="litm--hidden-wrap">{{/if}}
+<span class="litm-status litm-hud-active{{#if status.isHidden}} litm--tag-hidden{{/if}}" data-text="{{status.title}}{{#if status.currentTier}}-{{status.currentTier}}{{/if}}" data-effect-id="{{status.effectId}}">
 	<span>{{status.title}}{{#if status.currentTier}}-{{status.currentTier}}{{/if}}</span>
 	<span class="litm--tag-item-status" data-tooltip="{{localize 'LITM.Ui.right_click_reduce_status'}}">
 		{{#each status.tiers as |filled|}}
@@ -17,4 +18,5 @@
 		{{/each}}
 	</span>
 </span>
+{{#if status.isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}</span>{{/if}}
 {{/each}}

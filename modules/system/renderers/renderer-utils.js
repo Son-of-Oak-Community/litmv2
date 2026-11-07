@@ -132,9 +132,30 @@ export function makeActorCard(actor, typeClass) {
  *        adds the `scratched` class and the scratch glyph. Mirrors play-tag.html
  *        but chat-safe: a CSS-masked span, not the inline <svg> Foundry strips
  *        from chat-message content.
+ * @param {boolean} [opts.hidden]  Hidden from players: dimmed, eye-slash
+ *        beside it (`hiddenChipHtml`). Only for markup the Narrator alone sees.
  * @returns {string}
  */
-export function tagChipHtml(
+export function tagChipHtml(c, { hidden = false, ...opts } = {}) {
+	const html = plainTagChipHtml(c, opts);
+	return hidden ? hiddenChipHtml(html) : html;
+}
+
+/**
+ * A chip marked hidden from players, as the sheets draw it: the chip dimmed,
+ * the eye-slash beside it outside the dim. String twin of
+ * partials/hidden-mark.html, for chips built in JS. Expects `chipHtml` to open
+ * with an element carrying a `class` attribute.
+ * @param {string} chipHtml
+ * @returns {string}
+ */
+export function hiddenChipHtml(chipHtml) {
+	const label = foundry.utils.escapeHTML(game.i18n.localize("LITM.Terms.hidden"));
+	const dimmed = chipHtml.replace('class="', 'class="litm--tag-hidden ');
+	return `<span class="litm--hidden-wrap">${dimmed}<i class="fa-solid fa-eye-slash litm--hidden-mark" role="img" data-tooltip="${label}" aria-label="${label}"></i></span>`;
+}
+
+function plainTagChipHtml(
 	c,
 	{ tooltip = "", chevron = "", scratched = false } = {},
 ) {

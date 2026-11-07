@@ -115,7 +115,8 @@
 					<ul class="litm-spend-power__tag-chip-list">
 						{{#each option.scratchedTags as |tag|}}
 						<li class="litm-spend-power__tag-chip" data-action="toggle-chip" data-tag-id="{{tag.id}}" data-tag-name="{{tag.name}}" data-item-id="{{tag.itemId}}">
-							<span class="litm-tag" data-text="{{tag.name}}">{{tag.name}}</span>
+							<span class="litm-tag{{#if tag.isHidden}} litm--tag-hidden{{/if}}" data-text="{{tag.name}}">{{tag.name}}</span>
+							{{#if tag.isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}{{/if}}
 						</li>
 						{{/each}}
 					</ul>
@@ -127,7 +128,8 @@
 					<ul class="litm-spend-power__tag-chip-list">
 						{{#each group.tags as |tag|}}
 						<li class="litm-spend-power__tag-chip" data-action="toggle-chip" data-tag-id="{{tag.id}}" data-tag-name="{{tag.name}}" data-actor-id="{{group.ownerId}}" data-actor-uuid="{{group.ownerUuid}}"{{#if group.isScene}} data-scene-tag="true"{{/if}}{{#if tag.isSingleUse}} data-single-use="true"{{/if}}>
-							<span class="litm-tag{{#if tag.isSingleUse}} litm--single-use{{/if}}" data-text="{{tag.name}}">{{tag.name}}{{#if tag.isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
+							<span class="litm-tag{{#if tag.isSingleUse}} litm--single-use{{/if}}{{#if tag.isHidden}} litm--tag-hidden{{/if}}" data-text="{{tag.name}}">{{tag.name}}{{#if tag.isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
+							{{#if tag.isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}{{/if}}
 						</li>
 						{{/each}}
 					</ul>
@@ -142,7 +144,7 @@
 						{{!-- The counter shows the *resulting* tier: it starts at the
 						      current tier and minus reduces it; the drop is what's paid. --}}
 						<li class="litm-spend-power__status-item" data-effect-id="{{status.id}}" data-status-name="{{status.name}}" data-max-tier="{{status.tier}}" data-actor-id="{{group.ownerId}}" data-actor-uuid="{{group.ownerUuid}}">
-							<span class="litm-spend-power__status-name">{{status.name}}-{{status.tier}}</span>
+							<span class="litm-spend-power__status-name"><span{{#if status.isHidden}} class="litm--tag-hidden"{{/if}}>{{status.name}}-{{status.tier}}</span>{{#if status.isHidden}} {{> "systems/litmv2/templates/partials/hidden-mark.html"}}{{/if}}</span>
 							<div class="litm-spend-power__status-reduce flexrow">
 								<button type="button" class="litm-spend-power__counter-btn" data-action="counter-dec">
 									<i class="fas fa-minus" aria-hidden="true"></i>

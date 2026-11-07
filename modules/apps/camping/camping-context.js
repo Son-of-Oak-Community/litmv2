@@ -6,6 +6,7 @@ import { ACTOR_TYPES } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
 import { findFellowshipTheme, localize as t } from "../../utils.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
+import { TRACK_PATHS, trackMax } from "./camping-apply.js";
 import { defaultCampingState, ensureHeroState } from "./camping-state.js";
 
 const ONCE_PER_SCENE = new Set(["rest", "reflect"]);
@@ -88,19 +89,51 @@ function buildBackpackPills(actor, heroState) {
 			name: e.name,
 			isSingleUse: !!e.system?.isSingleUse,
 			disabled: !!e.disabled,
-			kept: keptSet.has(e.id),
+			// Only the GM gets hidden tags (isEffectVisible), so only they see the mark.
+			isHidden: !!e.system?.isHidden,
+			// Pack Up never puts a hidden active tag away (buildBackpackOps), so
+			// it reads kept and can't be unticked.
+			locked: !!e.system?.isHidden && !e.disabled,
+			kept: keptSet.has(e.id) || (!!e.system?.isHidden && !e.disabled),
 		}));
+}
+
+// Current track marks, so the Reflect selectors aren't a blind choice.
+// TODO: "full" reads the stored track only. Marks other Heroes picked this
+// camp on the shared Fellowship theme aren't counted, so two Heroes can both
+// pick it at 2/3 and bumpTrack (camping-apply.js) drops the second mark
+// while the recap still lists it.
+function trackCounts(theme, isSojourn) {
+	const value = (track) =>
+		foundry.utils.getProperty(theme, TRACK_PATHS[track]) ?? 0;
+	const improve = value("improve");
+	const milestone = value("milestone");
+	const abandon = value("abandon");
+	return {
+		improve,
+		milestone,
+		abandon,
+		improveMax: trackMax("improve"),
+		questMax: trackMax("milestone"),
+		// A sojourn's Reflect grants an improvement without marking the track
+		// (p.181), so a full Improve track still has something to give there.
+		improveFull: !isSojourn && improve >= trackMax("improve"),
+		improveCounted: !isSojourn,
+		milestoneFull: milestone >= trackMax("milestone"),
+		abandonFull: abandon >= trackMax("abandon"),
+	};
 }
 
 /**
  * Build the list of themes a hero may Reflect on — their own + the
  * fellowship theme if linked.
  */
-function buildReflectTargets(actor) {
+function buildReflectTargets(actor, isSojourn) {
 	const ownThemes = (actor.system?.themes ?? []).map(({ theme }) => ({
 		id: theme.id,
 		name: theme.name,
 		kind: "theme",
+		...trackCounts(theme, isSojourn),
 	}));
 	const fellowshipActor = actor.system?.fellowshipActor ?? null;
 	const fellowshipTheme = findFellowshipTheme(fellowshipActor);
@@ -109,6 +142,7 @@ function buildReflectTargets(actor) {
 			id: fellowshipTheme.id,
 			name: `${fellowshipActor.name}: ${fellowshipTheme.name}`,
 			kind: "fellowship",
+			...trackCounts(fellowshipTheme, isSojourn),
 		});
 	}
 	return ownThemes;
@@ -168,6 +202,8 @@ function buildActivityRows(
 					id: e.id,
 					name: e.name,
 					currentTier: tier,
+					// Only the GM gets hidden statuses, so only they see the mark.
+					isHidden: !!e.system?.isHidden,
 					restAction: ch.action,
 					restAmount: ch.amount ?? 1,
 					decrement,
@@ -254,10 +290,13 @@ function buildQualityTimeContext(
 	};
 }
 
-function buildHeroContext(actor, heroState, allHeroes) {
+function buildHeroContext(actor, heroState, allHeroes, isSojourn) {
 	const buckets = partitionCampingEffects(actor);
 	const backpackTags = buildBackpackPills(actor, heroState);
-	const reflectTargets = buildReflectTargets(actor);
+	const activeBackpackTags = backpackTags.filter(
+		(tag) => !tag.disabled && !tag.locked,
+	);
+	const reflectTargets = buildReflectTargets(actor, isSojourn);
 	const periodCount = heroState.thirdPeriodActive ? 3 : 2;
 	const activities = buildActivityRows(heroState, periodCount, {
 		...buckets,
@@ -282,6 +321,10 @@ function buildHeroContext(actor, heroState, allHeroes) {
 		thirdPeriodActive: !!heroState.thirdPeriodActive,
 		backpackTags,
 		hasBackpack: backpackTags.length > 0,
+		// Keep all covers active tags only; re-enabling inactive ones stays a
+		// per-tag choice, and a hidden one is always kept.
+		allBackpackKept: activeBackpackTags.every((tag) => tag.kept),
+		backpackTagIds: activeBackpackTags.map((tag) => tag.id).join(","),
 		activities,
 		qualityTime,
 		hasQualityTimeOptions:
@@ -300,7 +343,12 @@ export function buildContext(state) {
 	const allHeroes = getCampingHeroes();
 	const showThreats = LitmSettings.showCampingThreats;
 	const heroes = allHeroes.map((actor) =>
-		buildHeroContext(actor, ensureHeroState(live, actor.id), allHeroes),
+		buildHeroContext(
+			actor,
+			ensureHeroState(live, actor.id),
+			allHeroes,
+			live.type === "sojourn",
+		),
 	);
 	const placeOfStay = buildPlaceOfStayContext(live);
 	const threats = showThreats ? buildThreatsContext(live) : [];
@@ -435,6 +483,8 @@ export function buildSceneStoryTags(campId) {
 			isStatus: e.type === "status_tag",
 			isSingleUse: !!e.system?.isSingleUse,
 			currentTier: e.system?.currentTier ?? 0,
+			// Only the GM gets hidden ones (isEffectVisible above).
+			isHidden: !!e.system?.isHidden,
 		}));
 }
 
@@ -454,6 +504,8 @@ export function buildPlaceOfStayContext(state) {
 		id: e.id,
 		name: e.name,
 		isSingleUse: !!e.system?.isSingleUse,
+		// The Place of Stay block is GM-only, so it lists hidden tags, marked.
+		isHidden: !!e.system?.isHidden,
 		markedForExpiry: placeOfStay.sceneTagsToExpire.includes(e.id),
 	}));
 	return {

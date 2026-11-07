@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { playerVisibleTagString } from "../modules/item/action/tag-string.js";
+import {
+	hiddenTagKeys,
+	playerVisibleTagString,
+} from "../modules/item/action/tag-string.js";
+import { tagChipHtml } from "../modules/system/renderers/renderer-utils.js";
 
 // A Challenge's tag string is a second copy of its effects; for a player it
 // must not name what the Narrator hid.
@@ -52,5 +56,45 @@ describe("playerVisibleTagString", () => {
 	it("leaves the string untouched for the Narrator", () => {
 		game.user.isGM = true;
 		expect(playerVisibleTagString(text, challenge, { limits })).toBe(text);
+	});
+});
+
+// The Narrator's Challenge sheet keeps every chip and marks these keys hidden.
+describe("hiddenTagKeys", () => {
+	const effect = (name, type, isHidden) => ({ name, type, system: { isHidden } });
+	const actor = (...effects) => ({ allApplicableEffects: () => effects });
+
+	it("keys hidden tags, statuses and unrevealed limits, not a name also shown", () => {
+		const challenge = actor(
+			effect("Venomous", "story_tag", true),
+			effect("enraged", "status_tag", true),
+			effect("coiled", "story_tag", true),
+			effect("coiled", "story_tag", false),
+		);
+		const limits = [
+			{ label: "harm", hidden: false },
+			{ label: "Flee", hidden: true },
+		];
+
+		expect([...hiddenTagKeys(challenge, { limits })].sort()).toEqual([
+			"limit:flee",
+			"status:enraged",
+			"story:venomous",
+		]);
+	});
+});
+
+describe("tagChipHtml hidden", () => {
+	it("dims the chip and puts the eye-slash beside it, outside the dim", () => {
+		const html = tagChipHtml({ kind: "story", name: "venomous" }, { hidden: true });
+
+		expect(html).toMatch(/^<span class="litm--hidden-wrap"><span class="litm--tag-hidden litm-tag"/);
+		// The mark follows the chip's closing tag, so the dim can't reach it.
+		expect(html).toMatch(/venomous<\/span><i class="[^"]*litm--hidden-mark/);
+		expect(html.endsWith("</i></span>")).toBe(true);
+	});
+
+	it("leaves a visible chip alone", () => {
+		expect(tagChipHtml({ kind: "story", name: "coiled" })).not.toContain("litm--hidden");
 	});
 });
