@@ -18,7 +18,7 @@
 			{{#if ../hero.canEdit}}
 			<input type="checkbox" data-update="backpack-kept"
 				data-hero-id="{{../hero.id}}" data-effect-id="{{id}}"
-				{{#if kept}}checked{{/if}}>
+				{{#if kept}}checked{{/if}}{{#if locked}} disabled{{/if}}>
 			{{/if}}
 			<span class="litm-tag{{#if isSingleUse}} litm--single-use{{/if}}{{#if isHidden}} litm--tag-hidden{{/if}}">{{name}}{{#if isSingleUse}}<span class="litm--single-use-mark">✱</span>{{/if}}</span>
 			{{#if isHidden}}{{> "systems/litmv2/templates/partials/hidden-mark.html"}}{{/if}}

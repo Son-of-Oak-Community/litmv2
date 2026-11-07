@@ -374,6 +374,28 @@ describe("buildContext — Pack Up Keep all", () => {
 		setBackpackKept(state, actor.id, active.id, true);
 		expect(hero().allBackpackKept).toBe(true);
 	});
+
+	it("leaves a hidden active tag out: Pack Up always keeps it", () => {
+		const shown = fakeEffect({ name: "rope", type: "story_tag" });
+		const hidden = fakeEffect({ name: "map", type: "story_tag" });
+		hidden.system = { isHidden: true };
+		const backpack = fakeItem({ type: "backpack", effects: [shown, hidden] });
+		const actor = fakeActor({ type: "hero", items: [backpack] });
+		actor.system = { backpackItem: backpack, themes: [] };
+		globalThis.game.actors = { filter: (fn) => [actor].filter(fn) };
+		globalThis.game.packs = { get: () => undefined };
+		globalThis.game.user.isGM = true;
+		const state = defaultCampingState();
+		setBackpackKept(state, actor.id, shown.id, true);
+		const hero = buildContext(state).heroes[0];
+
+		expect(hero.backpackTagIds).toBe(shown.id);
+		expect(hero.allBackpackKept).toBe(true);
+		expect(hero.backpackTags.find((t) => t.id === hidden.id)).toMatchObject({
+			kept: true,
+			locked: true,
+		});
+	});
 });
 
 describe("buildContext — Reflect rows", () => {
@@ -442,6 +464,24 @@ describe("buildContext — Reflect rows", () => {
 		});
 	});
 
+	it("never treats a full Improve track as full on a sojourn", () => {
+		const theme = fakeItem({ id: "theme-1", type: "theme", name: "Wanderer" });
+		theme.system = { improve: { value: 3 }, quest: { tracks: {} } };
+		const actor = fakeActor({ type: "hero", id: "hero-1", items: [theme] });
+		actor.system = { themes: [{ theme, tags: [] }], fellowshipActor: null };
+		globalThis.game.actors = { filter: (fn) => [actor].filter(fn) };
+		globalThis.game.packs = { get: () => undefined };
+		globalThis.game.user.isGM = true;
+		const state = defaultCampingState();
+		setActivity(state, actor.id, 0, "reflect");
+		const target = () =>
+			buildContext(state).heroes[0].activities[0].reflectTargets[0];
+
+		expect(target().improveFull).toBe(true);
+		setType(state, "sojourn");
+		expect(target().improveFull).toBe(false);
+	});
+
 	it("flags a hidden status in the Narrator's Rest list", () => {
 		const hidden = fakeEffect({
 			name: "wounded",
@@ -460,7 +500,17 @@ describe("buildContext — Reflect rows", () => {
 		expect(status).toMatchObject({ name: "wounded", isHidden: true });
 	});
 
-	it("builds the same row for a camp as for a sojourn", () => {
-		expect(reflectRow("camp")).toEqual(reflectRow("sojourn"));
+	it("builds the same row for a camp as for a sojourn, bar the Improve count", () => {
+		const camp = reflectRow("camp");
+		const sojourn = reflectRow("sojourn");
+		// A sojourn's Reflect never marks Improve, so it doesn't show the count.
+		expect(sojourn.reflectTargets.map((t) => t.improveCounted)).toEqual(
+			camp.reflectTargets.map(() => false),
+		);
+		const strip = (row) => ({
+			...row,
+			reflectTargets: row.reflectTargets.map(({ improveCounted, ...t }) => t),
+		});
+		expect(strip(camp)).toEqual(strip(sojourn));
 	});
 });

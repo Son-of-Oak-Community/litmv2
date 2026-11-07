@@ -20,14 +20,14 @@ const TRACK_MAX = 3;
 // Where each track lives on a theme item (theme-data.js): Improve sits at the
 // top level, Abandon / Milestone nest under `quest.tracks`. Reads and writes
 // both go through these paths so they can't drift apart.
-const TRACK_PATHS = {
+export const TRACK_PATHS = {
 	improve: "system.improve.value",
 	abandon: "system.quest.tracks.abandon.value",
 	milestone: "system.quest.tracks.milestone.value",
 };
 
 /** Effective max for a theme track — Improve is world-configurable. */
-function trackMax(track) {
+export function trackMax(track) {
 	return track === "improve" ? CONFIG.litmv2.improveThreshold : TRACK_MAX;
 }
 
