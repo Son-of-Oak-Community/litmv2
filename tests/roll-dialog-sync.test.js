@@ -48,6 +48,24 @@ const controls = (dialog) => {
 		});
 };
 
+describe("ending a roll", () => {
+	// Might is the Narrator's judgement of this one action. A new roll starts
+	// from 0; only a roll suspended for approval comes back with it.
+	it("starts the next roll from Might 0 once an unrolled roll is closed", () => {
+		const roller = make("player", { ownerId: "player" });
+		as("player", () => controls(roller)("might", 3));
+		as("player", () => roller.endSharedRoll());
+		expect(roller.extractRollData()).toMatchObject({ might: 0 });
+	});
+
+	it("keeps the Might of a roll waiting for the Narrator's approval", () => {
+		const roller = make("player", { ownerId: "player" });
+		as("player", () => controls(roller)("might", 3));
+		as("player", () => roller.endSharedRoll({ preserveAuthority: true }));
+		expect(roller.extractRollData()).toMatchObject({ might: 3 });
+	});
+});
+
 describe("LitmRollDialog sync integration", () => {
 	it("keeps the first sheet selection made before the owner is claimed", async () => {
 		const roller = make("player", { ownerId: null });
@@ -265,6 +283,48 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 		expect(gm.extractRollData().might).toBe(3);
 	});
 
+	it("gets no answer from a blank viewer, and then publishes its own draft", async () => {
+		// Everyone reloaded and the Narrator reopened first: their window is
+		// blank, and answering would wipe the call's stamp and Might.
+		vi.useFakeTimers();
+		try {
+			const gm = make("gm", { ownerId: "player" });
+			gm.activateSync(SESSION);
+			const fresh = make("player", { ownerId: "player" });
+			fresh.activateSync(SESSION);
+			as("player", () => {
+				fresh.requestReseat();
+				fresh.setSelection("t1", "positive", "player");
+				fresh.dispatchSync();
+			});
+			const sent = messages.length;
+			as("gm", () => gm.dispatchReseat());
+			expect(messages.length).toBe(sent);
+
+			await as("player", () => vi.advanceTimersByTimeAsync(60_000));
+			expect(last().sync.kind).toBe("snapshot");
+			await as("gm", () => gm.receiveUpdate(last()));
+			expect(gm.getSelection("t1").state).toBe("positive");
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("doesn't publish an ended roll when the wait runs out", async () => {
+		vi.useFakeTimers();
+		try {
+			const fresh = make("player", { ownerId: "player" });
+			fresh.activateSync(SESSION);
+			as("player", () => fresh.requestReseat());
+			as("player", () => fresh.endSharedRoll());
+			const sent = messages.length;
+			await as("player", () => vi.advanceTimersByTimeAsync(60_000));
+			expect(messages.length).toBe(sent);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("is not rolled back by a stray reply when a live owner re-renders", async () => {
 		// The sheet asks for a reseat whenever the assigned owner renders the
 		// dialog, mid-roll included (a reaction, the HUD strip, the keybinding).
@@ -300,5 +360,34 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+});
+
+describe("Helping Each Other", () => {
+	// p.157: the help is one of the helper's tags, never a status.
+	const allyEffect = (type) => {
+		foundry.utils.fromUuidSync.mockImplementation(() => ({
+			type,
+			parent: { documentName: "Actor", id: "ally" },
+		}));
+		game.actors.get.mockImplementation((id) =>
+			id === "ally" ? { type: "hero" } : null,
+		);
+	};
+
+	it("does not count an ally's status as their help", () => {
+		allyEffect("status_tag");
+		const dialog = make("player", { ownerId: "player" });
+		as("player", () =>
+			dialog.setSelection("ally-status", "positive", "player"),
+		);
+		expect(dialog.getSelection("ally-status").helper).toBe(false);
+	});
+
+	it("counts an ally's power tag as their help", () => {
+		allyEffect("power_tag");
+		const dialog = make("player", { ownerId: "player" });
+		as("player", () => dialog.setSelection("ally-tag", "positive", "player"));
+		expect(dialog.getSelection("ally-tag").helper).toBe(true);
 	});
 });

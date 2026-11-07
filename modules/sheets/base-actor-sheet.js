@@ -9,6 +9,7 @@ import {
 	startsHiddenOn,
 } from "../active-effects/effect-queries.js";
 import { clampTier, maxStatusTier } from "../active-effects/status-tag-data.js";
+import { isNarratorControlled } from "../apps/roll/roll-authority.js";
 import { resolveRollDialogOwnership } from "../apps/roll/roll-pipeline.js";
 import {
 	mapEffectForUI,
@@ -940,17 +941,9 @@ export class LitmActorSheet extends LitmSheetMixin(
 	 * one. Recomputing would hand an Acting Together roll to any player with
 	 * OWNER on the Fellowship, via the "take over a GM-parked dialog" clause in
 	 * `resolveRollDialogOwnership`.
-	 *
-	 * @param {object} [options]
-	 * @param {boolean} [options.toggle] Close it instead when already open.
 	 */
-	renderRollDialog(options = {}) {
+	renderRollDialog() {
 		const dialog = this.rollDialogInstance;
-
-		if (options.toggle && dialog.rendered) {
-			dialog.close();
-			return;
-		}
 		dialog.activateSync();
 
 		// A roll the Narrator called already knows whose it is. The flag is the
@@ -960,8 +953,21 @@ export class LitmActorSheet extends LitmSheetMixin(
 		if (assigned?.narrator && assigned.ownerId) {
 			dialog.activateSync(assigned.syncSession);
 			dialog.ownerId = assigned.ownerId;
-			// The owner landing here is a reload mid-call: take the draft back
-			// from the table instead of starting it over.
+			// The owner landing here is a reload mid-call. Rebuild the call from
+			// the flag first — participants, Action, the Narrator's stamp — so a
+			// table with nobody left to answer still gets the called roll and
+			// not a blank one; then take the live draft back from the table.
+			if (
+				dialog.isOwner &&
+				isNarratorControlled(assigned.call) &&
+				!isNarratorControlled(dialog.narratorCall)
+			)
+				dialog.configureSharedRoll({
+					...assigned.call,
+					ownerId: assigned.ownerId,
+					type: assigned.type,
+					syncSession: assigned.syncSession,
+				});
 			if (dialog.isOwner) dialog.requestReseat();
 			else
 				Sockets.dispatch("requestRollDialogSync", {

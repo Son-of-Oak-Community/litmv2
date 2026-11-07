@@ -32,9 +32,16 @@ describe("roll pickup", () => {
 		expect(shouldShowRollPickup({ ...shared, userId })).toBe(true);
 	});
 
+	it("brings the owner back to a called roll they are not viewing", () => {
+		expect(shouldShowRollPickup({ ...shared, userId: "roller" })).toBe(true);
+		expect(
+			shouldShowRollPickup({ ...shared, userId: "roller", rendered: true }),
+		).toBe(false);
+	});
+
 	it.each([
 		{ flag: null },
-		{ userId: "roller" },
+		{ userId: "roller", flag: { ownerId: "roller" } },
 		{ ownerActive: false },
 		{ flag: { ownerId: "roller", type: "sacrifice" } },
 	])("does not advertise unavailable or separately handled rolls: %j", (change) => {

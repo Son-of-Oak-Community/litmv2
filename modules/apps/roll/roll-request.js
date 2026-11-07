@@ -88,6 +88,15 @@ export async function openSharedRoll({
 		// group roll it would hand the Fellowship's dialog to whichever player
 		// happens to own that actor.
 		narrator: true,
+		// What the call was, so an owner reopening it with nobody left to
+		// answer the reseat rebuilds the call instead of a blank roll.
+		call: {
+			participantIds: payload.participantIds,
+			actionUuid: payload.actionUuid,
+			title: payload.title,
+			narratorUserId: payload.narratorUserId,
+			narratorName: payload.narratorName,
+		},
 	});
 
 	Sockets.dispatch("openRollDialog", payload);
@@ -213,15 +222,15 @@ export async function sendRollRequest({ action }) {
  * this needs none of `resolveApprovedRoll`'s hardening.
  *
  * @param {Actor} actor The Hero whose player is asking.
- * @returns {Promise<ChatMessage|null>}
+ * @returns {Promise<ChatMessage|LitmRollDialog|null>} The request card, or the joined dialog.
  */
 export async function requestRollFromNarrator(actor) {
 	if (!actor) return null;
-	// A live roll for this Hero is already the thing they are asking for.
-	if (actor.getFlag("litmv2", FLAGS.rollDialogOwner)) {
-		ui.notifications?.info(t("LITM.Ui.roll_request_already_open"));
-		return null;
-	}
+	// A live roll for this Hero is already the thing they are asking for: join
+	// it. The HUD strip hides from the seat's owner, so after a reload this is
+	// their only way back in.
+	if (actor.getFlag("litmv2", FLAGS.rollDialogOwner))
+		return actor.sheet?.renderRollDialog() ?? null;
 	const narrators = game.users.filter((u) => u.isGM && u.active);
 	if (!narrators.length) {
 		ui.notifications?.warn(t("LITM.Ui.roll_request_no_narrator"));

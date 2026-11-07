@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { findBurnedSelection } from "../modules/apps/roll/burn-cap.js";
 import {
 	findHeroTagConflict,
+	refusesHelperTag,
 	resolveFellowshipParticipants,
 	resolveGroupParticipants,
 } from "../modules/apps/roll/group-roll.js";
@@ -224,5 +225,58 @@ describe("resolveFellowshipParticipants", () => {
 		expect(
 			resolveFellowshipParticipants({ heroes, fellowshipId: "f1" }),
 		).toEqual(["h1", "h2"]);
+	});
+});
+
+describe("refusesHelperTag (Helping Each Other)", () => {
+	const help = (actor, state = "positive") => ({
+		state,
+		helper: true,
+		tagActorId: actor,
+	});
+
+	it("allows a helper's first tag and refuses a second from the same Hero", () => {
+		const entries = new Map([["t1", help("arsinia")]]);
+		expect(refusesHelperTag(new Map(), "t1", help("arsinia"))).toBe(false);
+		expect(refusesHelperTag(entries, "t2", help("arsinia"))).toBe(true);
+	});
+
+	it("lets a helper re-cycle their own tag and lets a second helper in", () => {
+		const entries = new Map([["t1", help("arsinia")]]);
+		expect(refusesHelperTag(entries, "t1", help("arsinia", "negative"))).toBe(
+			false,
+		);
+		expect(refusesHelperTag(entries, "t2", help("gerrin"))).toBe(false);
+	});
+
+	it("doesn't count the helper's weakness as their one tag", () => {
+		const weak = new Map([["w1", help("arsinia", "negative")]]);
+		expect(refusesHelperTag(weak, "t1", help("arsinia"))).toBe(false);
+		const helped = new Map([["t1", help("arsinia")]]);
+		expect(refusesHelperTag(helped, "w1", help("arsinia", "negative"))).toBe(
+			false,
+		);
+	});
+
+	it("counts any pick of the helper's tags, a burned one included", () => {
+		const burned = new Map([["t1", help("arsinia", "scratched")]]);
+		expect(refusesHelperTag(burned, "t2", help("arsinia"))).toBe(true);
+	});
+
+	it("never lets a helper burn", () => {
+		expect(
+			refusesHelperTag(new Map(), "t1", help("arsinia", "scratched")),
+		).toBe(true);
+	});
+
+	it("ignores clearing a tag and anything that isn't help", () => {
+		const entries = new Map([["t1", help("arsinia")]]);
+		expect(refusesHelperTag(entries, "t2", help("arsinia", ""))).toBe(false);
+		expect(
+			refusesHelperTag(entries, "t2", {
+				state: "scratched",
+				tagActorId: "arsinia",
+			}),
+		).toBe(false);
 	});
 });

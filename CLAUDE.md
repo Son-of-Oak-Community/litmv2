@@ -179,8 +179,12 @@ HUD strip in `#players`, driven by the same `rollDialogOwner` flag every other
 open roll uses; the roll posts its own card. `litm.narratorCallReceived` is gone
 with the receive step it named.
 
-**Closing a view is not ending the roll.** A viewer, including the Narrator,
-can close their window without retracting the owner's presence. The owner
+**Closing a view is not ending the roll — except for the Narrator.** A player
+viewer can close their window without retracting the owner's presence. The
+Narrator's window has **Cancel roll** and **Roll** buttons, and its header X is
+Cancel roll: the `narratorRollCommand` socket asks the owner's client to close
+or submit (submit skips approval; the card stays the player's). The Narrator's
+Escape key still only closes their view. The owner
 closing an abandoned call releases its narrator stamp and tag locks. Submission
 for moderation instead suspends the same draft, preserving its authority if
 rejected. A subsequent independent Sacrifice must not inherit a cancelled

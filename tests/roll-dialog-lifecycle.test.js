@@ -61,6 +61,7 @@ describe("called-roll lifecycle", () => {
 			actorId: actor.id,
 			syncSession,
 			preserveAuthority: false,
+			cancelled: false,
 		});
 		dialog.setType("sacrifice");
 		expect(dialog.type).toBe("sacrifice");
@@ -195,5 +196,101 @@ describe("local-only roll previews", () => {
 		expect(actor.setFlag).not.toHaveBeenCalled();
 		expect(actor.unsetFlag).not.toHaveBeenCalled();
 		expect(Sockets.dispatch).not.toHaveBeenCalled();
+	});
+});
+
+describe("the Narrator's Roll and Cancel on the roller's client", () => {
+	let handlers;
+	const command = (data, senderId = "gm") =>
+		handlers.get("narratorRollCommand")({
+			senderId,
+			data: { actorId: actor.id, ...data },
+		});
+
+	beforeEach(() => {
+		handlers = new Map();
+		vi.spyOn(Sockets, "on").mockImplementation((name, handler) =>
+			handlers.set(name, handler),
+		);
+		Sockets.registerListeners();
+	});
+
+	function openDialog() {
+		const dialog = makeDialog();
+		dialog.rendered = true;
+		dialog.submit = vi.fn(async () => {});
+		dialog.close = vi.fn();
+		dialog.painfulSacrificeHasNoTarget = () => false;
+		actor.sheet = { hasRollDialog: true, rollDialogInstance: dialog };
+		return dialog;
+	}
+
+	it("ignores a command from a player", async () => {
+		const dialog = openDialog();
+		await command({ command: "roll" }, "player2");
+		expect(dialog.submit).not.toHaveBeenCalled();
+	});
+
+	it("rolls past approval, and cancels by closing", async () => {
+		const dialog = openDialog();
+		await command({ command: "roll" });
+		expect(dialog.submit).toHaveBeenCalledWith({ narrator: true });
+		await command({ command: "cancel" });
+		expect(dialog.close).toHaveBeenCalled();
+	});
+
+	it("tells the Narrator when a Sacrifice has nothing left to pay", async () => {
+		const dialog = openDialog();
+		dialog.painfulSacrificeHasNoTarget = () => true;
+		await command({ command: "roll" });
+		expect(dialog.submit).not.toHaveBeenCalled();
+		expect(Sockets.dispatch).toHaveBeenCalledWith(
+			"narratorRollCommandRefused",
+			{
+				userId: "gm",
+				reason: "sacrifice",
+			},
+		);
+	});
+
+	// After a reload the called roll lives on in the flag, with no window.
+	it("cancels a called roll the roller hasn't reopened, and refuses to roll it", async () => {
+		await command({ command: "roll" });
+		expect(Sockets.dispatch).toHaveBeenCalledWith(
+			"narratorRollCommandRefused",
+			{
+				userId: "gm",
+				reason: "closed",
+			},
+		);
+		expect(actor.unsetFlag).not.toHaveBeenCalled();
+		await command({ command: "cancel" });
+		expect(actor.unsetFlag).toHaveBeenCalledWith("litmv2", "rollDialogOwner");
+		expect(Sockets.dispatch).toHaveBeenCalledWith(
+			"closeRollDialog",
+			expect.objectContaining({ actorId: actor.id, cancelled: true }),
+		);
+	});
+});
+
+describe("the Narrator cancelling a roll whose owner is away", () => {
+	it("ends the call on the Narrator's side too", async () => {
+		game.user = { id: "gm", isGM: true };
+		game.users = {
+			get: (id) => ({ id, active: id !== "player", isGM: id === "gm" }),
+		};
+		const dialog = makeDialog();
+		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
+		dialog.setSelection("tag", "negative", "gm", { narrator: true });
+		dialog.rendered = true;
+		await LitmRollDialog.DEFAULT_OPTIONS.actions.narratorCommand.call(
+			dialog,
+			null,
+			{
+				dataset: { command: "cancel" },
+			},
+		);
+		expect(dialog.narratorCall).toBeNull();
+		expect(dialog.getSelection("tag").narrator).toBe(false);
 	});
 });
