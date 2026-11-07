@@ -8011,6 +8011,10 @@ button.litm-camping-scene__hero-link {
 	min-width: 0;
 }
 
+.litm-camping-scene__row-content > .litm-camping-scene__btn {
+	align-self: flex-start;
+}
+
 @media (max-width: 720px) {
 	.litm-camping-scene__hero-row {
 		grid-template-columns: 1fr;

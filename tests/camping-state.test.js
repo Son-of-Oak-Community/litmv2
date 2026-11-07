@@ -108,6 +108,23 @@ describe("setBackpackKept", () => {
 		expect(s.heroStates["hero-1"].backpackKept).toEqual([]);
 	});
 
+	it("keeps or drops every listed tag via backpack-kept-all", () => {
+		const s = defaultCampingState();
+		setBackpackKept(s, "hero-1", "fx-1", true);
+		SETTERS["backpack-kept-all"](s, {
+			heroId: "hero-1",
+			effectIds: ["fx-1", "fx-2"],
+			kept: true,
+		});
+		expect(s.heroStates["hero-1"].backpackKept).toEqual(["fx-1", "fx-2"]);
+		SETTERS["backpack-kept-all"](s, {
+			heroId: "hero-1",
+			effectIds: ["fx-1", "fx-2"],
+			kept: false,
+		});
+		expect(s.heroStates["hero-1"].backpackKept).toEqual([]);
+	});
+
 	it("does not duplicate when checked twice", () => {
 		const s = defaultCampingState();
 		setBackpackKept(s, "hero-1", "fx-1", true);
