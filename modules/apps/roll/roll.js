@@ -6,7 +6,7 @@ import {
 	ROLL_TYPES,
 } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
-import { localize as t } from "../../utils.js";
+import { levelIcon, localize as t } from "../../utils.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 import { isTagConcealed, maskConcealedTags } from "./concealment.js";
 
@@ -105,12 +105,17 @@ export class LitmRoll extends foundry.dice.Roll {
 		return { label: "consequences", description: "LITM.Ui.roll_failure" };
 	}
 
-	#getSacrificeThemeName() {
+	#getSacrificeTheme() {
 		const themeId = this.litm.sacrificeThemeId;
 		if (!themeId) return null;
-		const actor = this.actor;
-		const theme = actor?.items?.get(themeId);
-		return theme?.name || null;
+		const theme = this.actor?.items?.get(themeId);
+		if (!theme?.name) return null;
+		const level = theme.system?.level;
+		return {
+			name: theme.name,
+			icon: level ? levelIcon(level) : null,
+			levelLabel: level ? t(`LITM.Terms.${level}`) : "",
+		};
 	}
 
 	get modifier() {
@@ -138,7 +143,7 @@ export class LitmRoll extends foundry.dice.Roll {
 			modifier: isPrivate ? "???" : this.modifier,
 			tradePower: this.litm.tradePower || 0,
 			sacrificeLevel: this.litm.sacrificeLevel || null,
-			sacrificeThemeName: this.#getSacrificeThemeName(),
+			sacrificeTheme: this.#getSacrificeTheme(),
 			// Grave's price is "a status at the tier that kills you", which
 			// tracks the world's track depth rather than a fixed 6.
 			maxStatusTier: maxStatusTier(),

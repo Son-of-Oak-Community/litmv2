@@ -125,14 +125,14 @@
 							<img class="noflex icon-md" src="systems/litmv2/assets/media/icons/{{t.level}}.svg"
 								alt="{{t.levelLabel}}" data-tooltip="{{t.levelLabel}}" />
 							{{/if}}
-							<span class="litm-power_tag litm-title_tag" data-text="{{t.name}}">{{t.name}}</span>
+							<span class="litm-power_tag litm-title_tag {{#if t.titleScratched}}scratched{{/if}}" data-text="{{t.name}}">{{t.name}}</span>
 						</div>
 						{{#if t.spent}}<span class="litm--sacrifice-theme-spent-note">{{localize 'LITM.Ui.sacrifice_theme_spent'}}</span>{{/if}}
 					</div>
 					{{#if t.hasTags}}
 					<div class="theme-card-tags">
 						{{#each t.powerTags}}
-						<span class="litm-power_tag" data-text="{{this}}">{{this}}</span>
+						<span class="litm-power_tag {{#if scratched}}scratched{{/if}}" data-text="{{name}}">{{name}}</span>
 						{{/each}}
 						{{#each t.weaknessTags}}
 						<span class="litm-weakness_tag" data-text="{{this}}">{{this}}</span>

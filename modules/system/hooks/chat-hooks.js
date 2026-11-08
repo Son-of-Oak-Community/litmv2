@@ -18,7 +18,11 @@ import {
 } from "../../item/action/action-rules.js";
 import { getVerbDef } from "../../item/action/verb-definitions.js";
 import { warn } from "../../logger.js";
-import { localize as t, viewLinkedRefAction } from "../../utils.js";
+import {
+	levelIcon,
+	localize as t,
+	viewLinkedRefAction,
+} from "../../utils.js";
 import { buildTrackCompleteContent } from "../chat.js";
 import {
 	FLAGS,
@@ -325,12 +329,29 @@ async function _confirmAndApplySacrifice(
 			: "LITM.Ui.sacrifice_confirm_painful";
 	const confirmed = await foundry.applications.api.DialogV2.confirm({
 		window: { title: t("LITM.Ui.sacrifice_confirm_title") },
-		content: dialogContent(confirmKey, { theme: theme.name }),
+		content: `${sacrificeThemeHeader(theme)}${dialogContent(confirmKey, { theme: theme.name })}`,
 		rejectClose: false,
 		modal: true,
 	});
 	if (!confirmed) return null;
 	return applyThemeSacrifice(actor, effective, { themeId });
+}
+
+/**
+ * The theme being sacrificed, headed the way the sheet and the roll dialog show
+ * it: its Might (level) icon beside the title tag.
+ * @param {Item} theme
+ * @returns {string} HTML
+ */
+function sacrificeThemeHeader(theme) {
+	const esc = foundry.utils.escapeHTML;
+	const level = theme.system?.level;
+	const label = level ? esc(t(`LITM.Terms.${level}`)) : "";
+	const name = esc(theme.name);
+	const icon = level
+		? `<img class="noflex icon-md" src="${levelIcon(level)}" alt="${label}" data-tooltip="${label}" />`
+		: "";
+	return `<div class="flexrow noflex gap-sm">${icon}<span class="noflex litm-power_tag litm-title_tag" data-text="${name}">${name}</span></div>`;
 }
 
 /**
@@ -370,6 +391,7 @@ async function _pickSacrificeTag(theme) {
 	return foundry.applications.api.DialogV2.prompt({
 		window: { title: t("LITM.Ui.sacrifice_confirm_title") },
 		classes: ["litm", "litm--picker", "litm--tag-picker-dialog"],
+		// The picker's group heading already shows the theme's icon and title.
 		content: `${dialogContent("LITM.Ui.sacrifice_confirm_painful_one", { theme: theme.name })}${content}`,
 		position: { width: 420 },
 		ok: {

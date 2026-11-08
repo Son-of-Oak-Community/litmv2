@@ -1977,7 +1977,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 						!e.disabled &&
 						!e.system?.isTitleTag,
 				)
-				.map((e) => e.name);
+				.map((e) => ({ name: e.name, scratched: !!e.system?.isScratched }));
+			const titleScratched = !!theme.system?.themeTag?.system?.isScratched;
 			const spent = isThemeSpent(theme);
 			const weaknessTags = effects
 				.filter((e) => e.type === "weakness_tag" && !e.disabled)
@@ -1989,6 +1990,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			return {
 				id: theme.id,
 				name: theme.name,
+				titleScratched,
 				themebook: theme.system?.themebook || "",
 				level,
 				levelLabel: level ? game.i18n.localize(`LITM.Terms.${level}`) : "",
