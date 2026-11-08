@@ -9,6 +9,7 @@ import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import {
 	getStoryTagSidebar,
+	levelIcon,
 	localize as t,
 	viewLinkedRefAction,
 } from "../../utils.js";
@@ -45,6 +46,7 @@ import {
 	resolveRollDialogOwnership,
 } from "./roll-pipeline.js";
 import { RollSync } from "./roll-sync.js";
+import { refuseUnpaidSacrifice } from "./roll-request.js";
 import { hasPainfulSacrificeTarget, isThemeSpent } from "./sacrifice-rules.js";
 
 export { resolveRollDialogOwnership };
@@ -110,9 +112,16 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		return executeRoll(data);
 	}
 
-	static async _onSubmit(_event, _form, formData, { narrator = false } = {}) {
+	static async _onSubmit(
+		_event,
+		_form,
+		formData,
+		{ narrator = false, checked = false } = {},
+	) {
 		if (!this.isOwner || this.localOnly) return;
-		if (this.painfulSacrificeHasNoTarget()) return;
+		// `checked`: the Narrator's Roll command already ran the gate, to send
+		// its refusal back.
+		if (!checked && this.rollRefusal({ narrator })) return;
 		// A double press would post two cards and run post-roll bookkeeping
 		// twice: two Improve marks for one invoked weakness.
 		if (submitting.has(this)) return;
@@ -141,7 +150,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	static async #onSendToNarrator(_event, _target) {
 		if (!this.isOwner || this.localOnly) return;
-		if (this.painfulSacrificeHasNoTarget()) return;
+		if (this.rollRefusal()) return;
 		const formData = new foundry.applications.ux.FormDataExtended(this.element);
 		const rollData = this.extractRollData(formData);
 		await this._createModerationRequest(rollData);
@@ -184,6 +193,94 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	/**
+	 * Why this roll can't go ahead, or null: the one gate Roll, Send to
+	 * Narrator and the Narrator's Roll command all pass, so the rules agree
+	 * across them. Each refusal warns. Rolls made by calling
+	 * `LitmRollDialog.roll` directly skip it, like every other dialog rule.
+	 * @param {object} [options]
+	 * @param {boolean} [options.narrator] The Narrator pressed Roll.
+	 * @returns {"sacrificeTheme"|"sacrifice"|"unpaidSacrifice"|null}
+	 */
+	rollRefusal({ narrator = false } = {}) {
+		// A player's client running the Narrator's Roll stays quiet: the
+		// refusal goes back to the Narrator, who pressed it.
+		const quiet = narrator && !game.user.isGM;
+		// All themes spent first: no theme can be picked then, so "choose a
+		// theme" would be the wrong advice.
+		if (this.painfulSacrificeHasNoTarget({ quiet })) return "sacrifice";
+		if (this.sacrificeThemeMissing({ quiet })) return "sacrificeTheme";
+		if (
+			this.blockedByUnpaidSacrifice({
+				byNarrator: narrator || game.user.isGM,
+			})
+		)
+			return "unpaidSacrifice";
+		return null;
+	}
+
+	/**
+	 * A Hero still owing a Sacrifice can't roll again until it is paid; see
+	 * {@link refuseUnpaidSacrifice}. Warns and returns true when blocked.
+	 * @param {object} [options]
+	 * @param {boolean} [options.byNarrator]
+	 * @param {boolean} [options.tellNarrator]
+	 * @returns {boolean}
+	 */
+	blockedByUnpaidSacrifice({
+		byNarrator = game.user.isGM,
+		tellNarrator = true,
+	} = {}) {
+		return refuseUnpaidSacrifice(this.#rollingHeroes(), {
+			byNarrator,
+			newSacrifice: this.type === "sacrifice",
+			tellNarrator,
+		});
+	}
+
+	/** The Heroes this roll is for: Acting Together's participants, else the actor. */
+	#rollingHeroes() {
+		if (!this.isGroupRoll) return [this.actor];
+		return this.#participantIds.map((id) => game.actors.get(id));
+	}
+
+	/**
+	 * A Sacrifice names the theme it risks (every level: Painful and Scarring
+	 * pay with it, a lessened Grave becomes Scarring), and nothing picks it for
+	 * the player — a stray click on Roll must not stake a theme they never
+	 * chose. Warns and returns true while none is chosen. Public, like
+	 * {@link painfulSacrificeHasNoTarget}.
+	 * @returns {boolean}
+	 */
+	sacrificeThemeMissing({ quiet = false } = {}) {
+		if (!this.#awaitsSacrificeTheme()) return false;
+		if (!quiet)
+			ui.notifications?.warn(t("LITM.Ui.sacrifice_choose_theme_warning"));
+		return true;
+	}
+
+	/** A Hero with no theme left has none to choose, and still rolls (Grave pays with a status). */
+	#awaitsSacrificeTheme() {
+		if (this.type !== "sacrifice") return false;
+		const themes = this.#sacrificeThemeItems();
+		// A chosen theme deleted since the last render counts as none chosen.
+		return (
+			themes.length > 0 && !themes.some((i) => i.id === this.#sacrificeThemeId)
+		);
+	}
+
+	/** Roll (and Send to Narrator) wait for the Sacrifice's theme; see
+	 *  {@link sacrificeThemeMissing}. Selection changes don't re-render, so
+	 *  this runs by hand wherever the type, level or theme changes. */
+	#syncRollButtons() {
+		// Left pressable when every theme is spent, so Roll can say why.
+		const waiting = this.#awaitsSacrificeTheme() && !this.#painfulAllSpent();
+		for (const button of this.element?.querySelectorAll(
+			"button[type='submit'], [data-action='sendToNarrator']",
+		) ?? [])
+			button.disabled = waiting;
+	}
+
+	/**
 	 * Guard against a Painful sacrifice that can't pay its price. Painful
 	 * scratches a theme's power tags, so it needs a theme with something left to
 	 * scratch; when every theme is already spent the sacrifice would cost
@@ -193,13 +290,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	 * {@link extractRollData}.
 	 * @returns {boolean}
 	 */
-	painfulSacrificeHasNoTarget() {
+	painfulSacrificeHasNoTarget({ quiet = false } = {}) {
+		if (!this.#painfulAllSpent()) return false;
+		if (!quiet) ui.notifications?.warn(t("LITM.Ui.sacrifice_all_spent_warning"));
+		return true;
+	}
+
+	#painfulAllSpent() {
 		if (this.type !== "sacrifice" || this.#sacrificeLevel !== "painful")
 			return false;
 		const themes = this.#sacrificeThemeItems();
-		if (themes.length === 0 || hasPainfulSacrificeTarget(themes)) return false;
-		ui.notifications?.warn(t("LITM.Ui.sacrifice_all_spent_warning"));
-		return true;
+		return themes.length > 0 && !hasPainfulSacrificeTarget(themes);
 	}
 
 	static #onSetSacrificeLevel(_event, target) {
@@ -214,7 +315,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	/** Reflect the active sacrifice level in the rendered grid: highlight the
 	 *  level chip, mark the theme grid (.painful-mode disables spent cards via
-	 *  CSS), and bump the selection off a now-invalid spent theme. Level
+	 *  CSS), and clear the selection off a now-invalid spent theme. Level
 	 *  changes don't re-render, so this runs by hand; shared by the click and
 	 *  keyboard level handlers. */
 	#applySacrificeLevelToDom(level) {
@@ -225,6 +326,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		)) {
 			label.classList.toggle("is-active", label.dataset.level === level);
 		}
+		for (const terms of root.querySelectorAll(".litm--sacrifice-terms"))
+			terms.classList.toggle("hidden", terms.dataset.level !== level);
 		const isPainful = level === "painful";
 		const grid = root.querySelector(".litm--sacrifice-theme-grid");
 		grid?.classList.toggle("painful-mode", isPainful);
@@ -235,10 +338,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const selected = cards.find(
 			(c) => c.dataset.themeId === this.#sacrificeThemeId,
 		);
-		if (selected?.dataset.spent === "true") {
-			const live = cards.find((c) => c.dataset.spent !== "true");
-			if (live) this.#applySacrificeThemeSelection(live.dataset.themeId);
-		}
+		// A spent theme can't pay a Painful price: unselect it rather than
+		// choosing another theme for the player.
+		if (selected?.dataset.spent === "true")
+			this.#applySacrificeThemeSelection(null);
 	}
 
 	static #onSelectSacrificeTheme(_event, target) {
@@ -254,12 +357,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	/** Set the sacrifice theme (the private field is the source of truth, same
 	 *  principle as #selectionMap) and reflect it in the rendered card grid.
-	 *  Shared by the click handler and the level switch (which may need to bump
+	 *  Shared by the click handler and the level switch (which may need to clear
 	 *  selection off a spent theme). */
 	#applySacrificeThemeSelection(themeId) {
 		this.#sacrificeThemeId = themeId;
 		const root = this.element;
 		if (!root) return;
+		this.#syncRollButtons();
 		for (const card of root.querySelectorAll(
 			"[data-action='selectSacrificeTheme']",
 		)) {
@@ -1314,14 +1418,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sacrificeLevelOptions: ["painful", "scarring", "grave"].map((key) => ({
 				value: key,
 				label: t(`LITM.Ui.sacrifice_${key}`),
+				// Core Book p.159: what the level achieves, what it costs, and
+				// what a Miracle lessens the cost to.
+				gain: t(`LITM.Ui.sacrifice_${key}_gain`),
 				description: game.i18n.format(`LITM.Ui.sacrifice_${key}_price`, {
 					tier: maxStatusTier(),
 				}),
+				miracle: t(`LITM.Ui.sacrifice_${key}_miracle`),
 				selected: this.#sacrificeLevel === key,
 			})),
-			// #ensureSacrificeThemeSelected auto-selects a valid theme (assigning
-			// this.#sacrificeThemeId — the source of truth, read at submit time)
-			// and flags the chosen card via `selected` in its return value.
+			// #ensureSacrificeThemeSelected drops an invalid choice (never picks
+			// one) and flags the chosen card via `selected` in its return value;
+			// this.#sacrificeThemeId is the source of truth, read at submit time.
 			sacrificeThemes,
 			sacrificeStatusName: this.#sacrificeStatusName,
 			maxStatusTier: maxStatusTier(),
@@ -1343,6 +1451,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	_onFirstRender(context, options) {
 		super._onFirstRender(context, options);
+		// Say so as the window opens — called, joined or started — rather than
+		// only when Roll is refused. Nothing was refused yet, so the Narrator
+		// is not told. Only the seat that presses Roll hears it: a player
+		// watching Acting Together, which the Narrator rolls, is not held.
+		if (!this.localOnly && this.isOwner)
+			this.blockedByUnpaidSacrifice({ tellNarrator: false });
 
 		// The Narrator's X ends a roll they called for the whole table, like
 		// Cancel roll; their own roll already ends on close. On a roll the
@@ -1388,6 +1502,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#hedgeRadioEl = null;
 		this.#cautionRadioEl = null;
 		Hooks.callAll("litm.rollDialogRendered", this.actor, this);
+		this.#syncRollButtons();
 
 		// Might scale tooltip (depends on elements recreated each render)
 		const mightLabel = this.element.querySelector(".litm--might-name-wrapper");
@@ -1924,6 +2039,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// Grave-only: status name input for the top-tier status on fail/snc.
 		if (graveFieldset)
 			graveFieldset.classList.toggle("hidden", level !== "grave");
+		this.#syncRollButtons();
 	}
 
 	// Mirrors #onSetSacrificeLevel (the data-action click handler) but is the
@@ -1957,15 +2073,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#ensureSacrificeThemeSelected() {
 		const themes = this.#sacrificeThemeItems().sort((a, b) => a.sort - b.sort);
 		if (themes.length === 0) return [];
-		// Auto-select. Painful can't target a spent theme, so prefer the first
-		// live one; only fall back to a spent theme if every theme is spent.
+		// Never auto-select: the player names the theme they risk. Only drop a
+		// choice that is gone, or spent under Painful.
 		const isPainful = this.#sacrificeLevel === "painful";
 		const current = themes.find((t) => t.id === this.#sacrificeThemeId);
-		const currentInvalid = !current || (isPainful && isThemeSpent(current));
-		if (currentInvalid) {
-			const firstLive = isPainful ? themes.find((t) => !isThemeSpent(t)) : null;
-			this.#sacrificeThemeId = (firstLive ?? themes[0]).id;
-		}
+		if (!current || (isPainful && isThemeSpent(current)))
+			this.#sacrificeThemeId = null;
 		const trackPips = (value, length = 3) =>
 			Array.from({ length }, (_, i) => ({ filled: i < (value ?? 0) }));
 		return themes.map((theme) => {
@@ -1993,6 +2106,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				titleScratched,
 				themebook: theme.system?.themebook || "",
 				level,
+				icon: level ? levelIcon(level) : null,
 				levelLabel: level ? game.i18n.localize(`LITM.Terms.${level}`) : "",
 				quest: theme.system?.quest?.description || "",
 				powerTags,

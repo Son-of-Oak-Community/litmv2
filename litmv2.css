@@ -2289,6 +2289,26 @@ section.standard-form.litm-theme-browser-body {
 	opacity: 1;
 }
 
+/* The chosen level's terms (Core Book p.159): what it achieves, its price,
+   and what a Miracle lessens it to. Read before committing to a level. */
+.litm--sacrifice-terms {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var(--spacer-4) var(--spacer-8);
+	margin: var(--spacer-8) 0 0;
+}
+
+.litm--sacrifice-terms dt {
+	font-weight: 600;
+	color: var(--color-text-secondary);
+	/* Foundry's `dl dt` shadow doubles the labels on parchment. */
+	text-shadow: none;
+}
+
+.litm--sacrifice-terms dd {
+	margin: 0;
+}
+
 /* Sacrifice theme picker — a responsive grid of regular .theme-cards.
    The cards themselves are the established play-mode chrome (parchment,
    banner plaque, title-tag, tag chips); the picker only owns the layout
@@ -3769,6 +3789,21 @@ section.standard-form.litm-theme-browser-body {
 /* A camp can run for hours; the roll strip's pulse is for a short-lived roll. */
 .litm-camping-hud .litm-roll-dialog-hud__item {
 	animation: none;
+}
+
+/* Unpaid Sacrifices sit on top: a debt outlasts both the camp and the roll,
+   so it does not pulse either. A player who doesn't own the Hero gets the
+   entry as plain text, not a button. */
+.litm-sacrifice-hud {
+	order: -4;
+}
+
+.litm-sacrifice-hud .litm-roll-dialog-hud__item {
+	animation: none;
+}
+
+.litm-sacrifice-hud div.litm-roll-dialog-hud__item {
+	cursor: default;
 }
 
 .litm-camping-hud__icon {

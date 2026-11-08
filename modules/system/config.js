@@ -8,6 +8,7 @@ export const FLAGS = Object.freeze({
 	rollDialogOwner: "rollDialogOwner",
 	actionUuid: "actionUuid",
 	sceneTags: "sceneTags",
+	pendingSacrifice: "pendingSacrifice",
 });
 
 /** All theme-bound tag effect types (power, weakness, fellowship). */

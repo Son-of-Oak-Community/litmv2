@@ -3,6 +3,7 @@ import { FLAGS } from "../../system/config.js";
 import { Sockets } from "../../system/sockets.js";
 import { localize as t } from "../../utils.js";
 import { resolveSharedRollOwner } from "./roll-authority.js";
+import { pendingSacrifice } from "./sacrifice-price.js";
 
 /**
  * The Narrator's Call, as a shared table rather than a handoff.
@@ -228,9 +229,11 @@ export async function requestRollFromNarrator(actor) {
 	if (!actor) return null;
 	// A live roll for this Hero is already the thing they are asking for: join
 	// it. The HUD strip hides from the seat's owner, so after a reload this is
-	// their only way back in.
+	// their only way back in — even owing a Sacrifice, since the Narrator may
+	// have called it and only the roll's own Roll button is held.
 	if (actor.getFlag("litmv2", FLAGS.rollDialogOwner))
 		return actor.sheet?.renderRollDialog() ?? null;
+	if (refuseUnpaidSacrifice(actor)) return null;
 	const narrators = game.users.filter((u) => u.isGM && u.active);
 	if (!narrators.length) {
 		ui.notifications?.warn(t("LITM.Ui.roll_request_no_narrator"));
@@ -247,6 +250,64 @@ export async function requestRollFromNarrator(actor) {
 	});
 	ui.notifications?.info(t("LITM.Ui.roll_request_sent"));
 	return message;
+}
+
+/**
+ * A Hero pays the price of their last Sacrifice before rolling again, or
+ * asking to (Core Book p.159: the price is paid, not deferred). Refuses a
+ * player with a warning and tells the Narrators; the Narrator is never
+ * refused, only reminded. A player hears only about Heroes they own, the
+ * Narrator about every Hero in the roll. The debt is the Hero's
+ * `pendingSacrifice` flag, paid from the ribbon or the card.
+ *
+ * A new Sacrifice is refused to everyone, the Narrator included: a Hero owes
+ * one price at a time, and a second roll would overwrite the first.
+ * @param {Actor|Actor[]} heroes The Hero rolling, or Acting Together's participants.
+ * @param {object} [options]
+ * @param {boolean} [options.byNarrator] The Narrator pressed Roll — on their
+ *   own client, or on the player's client that runs the Narrator's Roll.
+ * @param {boolean} [options.newSacrifice] The roll is itself a Sacrifice.
+ * @param {boolean} [options.tellNarrator] Tell the Narrators a player was
+ *   refused. Off when only warning early, as a roll window opens.
+ * @returns {boolean} true when the roll must not go ahead.
+ */
+export function refuseUnpaidSacrifice(
+	heroes,
+	{
+		byNarrator = game.user.isGM,
+		newSacrifice = false,
+		tellNarrator = true,
+	} = {},
+) {
+	const owing = [heroes]
+		.flat()
+		.filter((a) => a && (byNarrator || a.isOwner) && pendingSacrifice(a));
+	if (!owing.length) return false;
+	const name = game.i18n.getListFormatter().format(owing.map((a) => a.name));
+	if (newSacrifice && byNarrator) {
+		// On a player's client running the Narrator's Roll, the refusal goes
+		// back to the Narrator instead.
+		if (game.user.isGM)
+			ui.notifications?.warn(
+				game.i18n.format("LITM.Ui.sacrifice_unpaid_new", { name }),
+			);
+		return true;
+	}
+	if (byNarrator) {
+		// A player's client running the Narrator's Roll stays quiet: the
+		// reminder is for the Narrator, who saw it when the window opened.
+		if (game.user.isGM)
+			ui.notifications?.warn(
+				game.i18n.format("LITM.Ui.sacrifice_unpaid_reminder", { name }),
+			);
+		return false;
+	}
+	ui.notifications?.warn(
+		game.i18n.format("LITM.Ui.sacrifice_unpaid_warning", { name }),
+	);
+	if (tellNarrator)
+		Sockets.dispatch("unpaidSacrifice", { actorIds: owing.map((a) => a.id) });
+	return true;
 }
 
 /**

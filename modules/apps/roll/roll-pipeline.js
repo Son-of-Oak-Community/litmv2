@@ -9,6 +9,7 @@ import { Sockets } from "../../system/sockets.js";
 import { localize as t } from "../../utils.js";
 import { LitmRoll } from "./roll.js";
 import { canInitiateRoll } from "./roll-authority.js";
+import { recordPendingSacrifice } from "./sacrifice-price.js";
 
 /**
  * Roll execution + post-roll bookkeeping, lifted out of the dialog so the
@@ -199,6 +200,10 @@ export function executeRoll({
 		.then(async (res) => {
 			Hooks.callAll("litm.roll", roll, res);
 			const actor = game.actors.get(actorId);
+			// The price is owed from the moment the dice land (p.159), on the Hero
+			// rather than the card, so clearing chat does not cancel it.
+			if (type === "sacrifice")
+				await recordPendingSacrifice(actor, roll, res)?.catch(console.error);
 			// The card is already posted. A bookkeeping failure (a scratch the
 			// roller can't write, say) must not skip the reset below, or the dialog
 			// stays open and armed and Roll posts a second card for the same roll.

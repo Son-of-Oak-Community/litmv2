@@ -142,6 +142,7 @@ class StubDialogV2 extends StubAppV2 {
 	static confirm = () => Promise.resolve(false);
 	static prompt = () => Promise.resolve(null);
 	static input = () => Promise.resolve(null);
+	static wait = () => Promise.resolve(null);
 }
 class StubDocumentSheetV2 extends StubAppV2 {
 	async _prepareContext() {
@@ -227,6 +228,7 @@ globalThis.game = {
 		format: (key, data = {}) =>
 			Object.entries(data).reduce((s, [k, v]) => s.replace(`{${k}}`, v), key),
 		has: () => true,
+		getListFormatter: () => new Intl.ListFormat("en"),
 	},
 	settings: {
 		get: vi.fn(),

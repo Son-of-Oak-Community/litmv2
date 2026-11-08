@@ -99,6 +99,16 @@
 				</label>
 				{{/each}}
 			</div>
+			{{#each sacrificeLevelOptions as |opt|}}
+			<dl class="litm--sacrifice-terms {{#unless opt.selected}}hidden{{/unless}}" data-level="{{opt.value}}">
+				<dt>{{localize "LITM.Ui.sacrifice_terms_gain"}}</dt>
+				<dd>{{opt.gain}}</dd>
+				<dt>{{localize "LITM.Ui.sacrifice_terms_price"}}</dt>
+				<dd>{{opt.description}}</dd>
+				<dt>{{localize "LITM.Ui.sacrifice_terms_miracle"}}</dt>
+				<dd>{{opt.miracle}}</dd>
+			</dl>
+			{{/each}}
 		</fieldset>
 		<fieldset class="litm--sacrifice-grave-fieldset hidden">
 			<legend>{{localize "LITM.Ui.sacrifice_grave_label"}}</legend>
@@ -120,13 +130,7 @@
 					aria-checked="{{#if t.selected}}true{{else}}false{{/if}}">
 					{{#if t.themebook}}<legend class="litm-banner theme-card__book">{{t.themebook}}</legend>{{/if}}
 					<div class="theme-card-header">
-						<div class="flexrow noflex gap-sm">
-							{{#if t.level}}
-							<img class="noflex icon-md" src="systems/litmv2/assets/media/icons/{{t.level}}.svg"
-								alt="{{t.levelLabel}}" data-tooltip="{{t.levelLabel}}" />
-							{{/if}}
-							<span class="litm-power_tag litm-title_tag {{#if t.titleScratched}}scratched{{/if}}" data-text="{{t.name}}">{{t.name}}</span>
-						</div>
+						{{> "systems/litmv2/templates/partials/sacrifice-theme.html" t scratched=t.titleScratched}}
 						{{#if t.spent}}<span class="litm--sacrifice-theme-spent-note">{{localize 'LITM.Ui.sacrifice_theme_spent'}}</span>{{/if}}
 					</div>
 					{{#if t.hasTags}}

@@ -1,10 +1,12 @@
-import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { gainImprovement } from "../../actor/hero/hero-data.js";
 import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { collectSourceConsequences } from "../../apps/consequence-sources.js";
 import { renderModerationTooltip } from "../../apps/roll/moderation-render.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
-import { effectiveSacrificeLevel } from "../../apps/roll/sacrifice-rules.js";
+import {
+	completePendingSacrifice,
+	pendingSacrifice,
+} from "../../apps/roll/sacrifice-price.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
 import { StoryTagsStore } from "../../apps/story-tags/story-tags-store.js";
 import { ThemeAdvancementApp } from "../../apps/theme-advancement.js";
@@ -18,71 +20,11 @@ import {
 } from "../../item/action/action-rules.js";
 import { getVerbDef } from "../../item/action/verb-definitions.js";
 import { warn } from "../../logger.js";
-import {
-	levelIcon,
-	localize as t,
-	viewLinkedRefAction,
-} from "../../utils.js";
+import { localize as t, viewLinkedRefAction } from "../../utils.js";
 import { buildTrackCompleteContent } from "../chat.js";
-import {
-	FLAGS,
-	IMPROVE_MARKING_TAG_TYPES,
-	POWER_TAG_TYPES,
-} from "../config.js";
-import { dialogContent, formatCostLabel } from "../renderers/renderer-utils.js";
+import { FLAGS, IMPROVE_MARKING_TAG_TYPES } from "../config.js";
+import { formatCostLabel } from "../renderers/renderer-utils.js";
 import { Sockets } from "../sockets.js";
-
-/**
- * Apply the consequence of a sacrifice roll to a hero. The price is paid by
- * a theme for painful/scarring and by a status at the world's top tier — the
- * one that kills or transforms — for grave.
- * Performs document mutations only; notifications are shown by the caller.
- * @param {Actor} actor
- * @param {"painfulOne"|"painful"|"scarring"|"grave"} level - The *effective* price level
- * @param {object} [opts]
- * @param {string} [opts.themeId]   Required for painfulOne/painful/scarring
- * @param {string} [opts.tagId]     Required for painfulOne — the one tag to scratch
- * @param {string} [opts.statusName] Required for grave
- * @returns {Promise<{themeName?: string, tagName?: string, statusName?: string}|null>}
- */
-async function applyThemeSacrifice(
-	actor,
-	level,
-	{ themeId, tagId, statusName } = {},
-) {
-	if (level === "grave") {
-		if (!statusName) return null;
-		await actor.system.addStatus(statusName, { tier: maxStatusTier() });
-		return { statusName };
-	}
-
-	const theme = themeId ? actor.items.get(themeId) : null;
-	if (!theme) return null;
-	const themeName = theme.name;
-
-	if (level === "painfulOne") {
-		const tag = theme.effects.get(tagId);
-		if (!tag) return null;
-		await tag.update({ "system.isScratched": true });
-		return { themeName, tagName: tag.name };
-	}
-
-	if (level === "painful") {
-		const powerEffects = theme.effects.filter((e) =>
-			POWER_TAG_TYPES.has(e.type),
-		);
-		if (powerEffects.length) {
-			await theme.updateEmbeddedDocuments(
-				"ActiveEffect",
-				powerEffects.map((e) => ({ _id: e.id, "system.isScratched": true })),
-			);
-		}
-	} else if (level === "scarring") {
-		await actor.deleteEmbeddedDocuments("Item", [theme.id]);
-	}
-
-	return { themeName };
-}
 
 export function registerChatHooks() {
 	Hooks.on("renderChatMessageHTML", onRenderChatMessage);
@@ -188,6 +130,15 @@ async function _handleApproveModeration(_target, app) {
 			await app.delete().catch(console.error);
 			return;
 		}
+		// The roller's client would refuse it after the card is gone and every
+		// dialog reset; keep the request until the earlier price is settled.
+		const hero = game.actors.get(data.actorId);
+		if (data.type === "sacrifice" && pendingSacrifice(hero)) {
+			ui.notifications?.warn(
+				game.i18n.format("LITM.Ui.sacrifice_unpaid_new", { name: hero.name }),
+			);
+			return;
+		}
 
 		// Roll
 		if (userId === game.userId) {
@@ -235,174 +186,10 @@ async function _handleApproveModeration(_target, app) {
 
 async function _handleCompleteSacrifice(target) {
 	const { message, roll } = _getMessageAndRoll(target);
-	const { sacrificeLevel, sacrificeThemeId, sacrificeStatusName, actorId } =
-		roll.litm;
-	// Whoever rolled the Sacrifice completes it. A GM-authored card means the
-	// Narrator rolled it for a player who couldn't, so the Narrator finishes it
-	// too; only the author or a GM can latch the card anyway.
-	if (!message.isAuthor && !game.user.isGM) return;
-	const actor = game.actors.get(actorId);
-	if (!actor?.isOwner) return;
-
-	const outcomeLabel = roll.outcome?.label;
-	const effective = effectiveSacrificeLevel(sacrificeLevel, outcomeLabel);
-
-	const result = await _confirmAndApplySacrifice(actor, {
-		effective,
-		themeId: sacrificeThemeId,
-		statusName: sacrificeStatusName,
-	});
-	if (!result) return;
-
-	if (result.statusName) {
-		ui.notifications.info(
-			game.i18n.format("LITM.Ui.sacrifice_status_applied", {
-				actor: actor.name,
-				status: result.statusName,
-			}),
-		);
-	} else if (result.tagName) {
-		ui.notifications.info(
-			game.i18n.format("LITM.Ui.sacrifice_tag_scratched", {
-				tag: result.tagName,
-				theme: result.themeName,
-			}),
-		);
-	} else if (result.themeName) {
-		const notifKey =
-			effective === "scarring"
-				? "LITM.Ui.sacrifice_theme_removed"
-				: "LITM.Ui.sacrifice_theme_scratched";
-		ui.notifications.info(
-			game.i18n.format(notifKey, { theme: result.themeName }),
-		);
-	}
-
-	// Mark sacrifice as completed so button disappears
-	roll.options.sacrificeCompleted = true;
-	await message.update({ rolls: [roll.toJSON()] });
-}
-
-/**
- * Confirm with the player and apply the sacrifice consequence. The dialog
- * pre-collected the theme (always) and status name (grave-only), so this
- * step is a confirm-or-cancel, not a re-collection.
- * @param {Actor} actor
- * @param {object} ctx
- * @param {"painfulOne"|"painful"|"scarring"|"grave"} ctx.effective
- * @param {string} [ctx.themeId]
- * @param {string} [ctx.statusName]
- * @returns {Promise<{themeName?: string, statusName?: string}|null>}
- */
-async function _confirmAndApplySacrifice(
-	actor,
-	{ effective, themeId, statusName },
-) {
-	if (effective === "grave") {
-		const name =
-			(statusName || "").trim() || t("LITM.Ui.sacrifice_grave_default");
-		// Status name is user input from the roll dialog; dialogContent escapes
-		// it, and the raw `name` still goes to addStatus below.
-		const confirmed = await foundry.applications.api.DialogV2.confirm({
-			window: { title: t("LITM.Ui.sacrifice_confirm_title") },
-			content: dialogContent("LITM.Ui.sacrifice_confirm_grave_named", {
-				status: name,
-				tier: maxStatusTier(),
-			}),
-			rejectClose: false,
-			modal: true,
-		});
-		if (!confirmed) return null;
-		return applyThemeSacrifice(actor, "grave", { statusName: name });
-	}
-
-	const theme = themeId ? actor.items.get(themeId) : null;
-	if (!theme) return null;
-	if (effective === "painfulOne") {
-		const tagId = await _pickSacrificeTag(theme);
-		if (!tagId) return null;
-		return applyThemeSacrifice(actor, effective, { themeId, tagId });
-	}
-	const confirmKey =
-		effective === "scarring"
-			? "LITM.Ui.sacrifice_confirm_scarring"
-			: "LITM.Ui.sacrifice_confirm_painful";
-	const confirmed = await foundry.applications.api.DialogV2.confirm({
-		window: { title: t("LITM.Ui.sacrifice_confirm_title") },
-		content: `${sacrificeThemeHeader(theme)}${dialogContent(confirmKey, { theme: theme.name })}`,
-		rejectClose: false,
-		modal: true,
-	});
-	if (!confirmed) return null;
-	return applyThemeSacrifice(actor, effective, { themeId });
-}
-
-/**
- * The theme being sacrificed, headed the way the sheet and the roll dialog show
- * it: its Might (level) icon beside the title tag.
- * @param {Item} theme
- * @returns {string} HTML
- */
-function sacrificeThemeHeader(theme) {
-	const esc = foundry.utils.escapeHTML;
-	const level = theme.system?.level;
-	const label = level ? esc(t(`LITM.Terms.${level}`)) : "";
-	const name = esc(theme.name);
-	const icon = level
-		? `<img class="noflex icon-md" src="${levelIcon(level)}" alt="${label}" data-tooltip="${label}" />`
-		: "";
-	return `<div class="flexrow noflex gap-sm">${icon}<span class="noflex litm-power_tag litm-title_tag" data-text="${name}">${name}</span></div>`;
-}
-
-/**
- * A Miracle on a Painful Sacrifice scratches one tag of the theme (Core Book
- * p.159), and the player picks which. Offers the same tags a full Painful
- * price would scratch, minus the ones already scratched.
- * @param {Item} theme
- * @returns {Promise<string|null>} the chosen effect id
- */
-async function _pickSacrificeTag(theme) {
-	const live = theme.effects.filter(
-		(e) => POWER_TAG_TYPES.has(e.type) && !e.disabled && !e.system?.isScratched,
-	);
-	if (!live.length) return null;
-	const titleTag = live.find((e) => e.system?.isTitleTag);
-	// Pre-check the first tag shown, so OK always names one: a Miracle still pays.
-	const first = titleTag ?? live[0];
-	const entry = (e) => ({
-		index: e.id,
-		name: e.name,
-		type: e.type,
-		checked: e === first,
-	});
-	const content = await foundry.applications.handlebars.renderTemplate(
-		"systems/litmv2/templates/apps/tag-picker-form.html",
-		{
-			groups: [
-				{
-					img: theme.img,
-					fallbackLabel: theme.name,
-					titleEntry: titleTag ? entry(titleTag) : null,
-					entries: live.filter((e) => e !== titleTag).map(entry),
-				},
-			],
-		},
-	);
-	return foundry.applications.api.DialogV2.prompt({
-		window: { title: t("LITM.Ui.sacrifice_confirm_title") },
-		classes: ["litm", "litm--picker", "litm--tag-picker-dialog"],
-		// The picker's group heading already shows the theme's icon and title.
-		content: `${dialogContent("LITM.Ui.sacrifice_confirm_painful_one", { theme: theme.name })}${content}`,
-		position: { width: 420 },
-		ok: {
-			label: t("LITM.Ui.sacrifice_complete"),
-			callback: (_event, button) =>
-				button.form?.querySelector("input[name='picked']:checked")?.value ??
-				null,
-		},
-		rejectClose: false,
-		modal: true,
-	});
+	const actor = game.actors.get(roll.litm.actorId);
+	// The price is the Hero's, kept on the Hero; the card only offers to pay it.
+	if (pendingSacrifice(actor)?.messageId !== message.id) return;
+	await completePendingSacrifice(actor);
 }
 
 async function _handleRejectModeration(_target, app) {
@@ -738,19 +525,15 @@ function onRenderChatMessage(app, html, _data) {
 		console.error("LITM spend-power exhaustion check failed:", e),
 	);
 
-	// Hide complete-sacrifice once completed, and from anyone but the roller
-	// (or a GM) — see `_handleCompleteSacrifice`.
+	// Complete Sacrifice shows while this card is the Hero's open debt, to
+	// whoever owns the Hero — see `_handleCompleteSacrifice`.
 	const sacrificeBtn = element.querySelector(
 		"[data-click='complete-sacrifice']",
 	);
 	if (sacrificeBtn) {
-		const roll = app.rolls?.[0];
-		if (
-			roll?.litm?.sacrificeCompleted ||
-			(!app.isAuthor && !game.user.isGM)
-		) {
+		const actor = game.actors.get(app.rolls?.[0]?.litm?.actorId);
+		if (!actor?.isOwner || pendingSacrifice(actor)?.messageId !== app.id)
 			sacrificeBtn.remove();
-		}
 	}
 
 	// Hide theme advancement / evolution buttons for non-owners. Advancement

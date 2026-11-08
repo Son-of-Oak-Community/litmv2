@@ -1,10 +1,15 @@
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
+import {
+	paymentDialogId,
+	pendingSacrifice,
+} from "../../apps/roll/sacrifice-price.js";
 import { SceneTagDialog } from "../../apps/story-tags/scene-tag-dialog.js";
 import {
 	classifyTagStringMatch,
 	tagDragData,
 } from "../../item/action/tag-string.js";
 import { getStoryTagSidebar, localize as t } from "../../utils.js";
+import { FLAGS } from "../config.js";
 
 export function registerUiHooks() {
 	_iconOnlyHeaderButtons();
@@ -247,7 +252,27 @@ function _renderRollDialogHudOnPlayers() {
 		game.litmv2.callForRollHud?.render?.();
 		game.litmv2.rollDialogHud?.render?.();
 		game.litmv2.campingHud?.render?.();
+		game.litmv2.sacrificeHud?.render?.();
 	});
+	// An owed Sacrifice lives on the Hero: the ribbon follows the flag, and so
+	// does each of that Hero's Sacrifice cards on screen, whose Complete button
+	// shows only while the card is the open debt.
+	Hooks.on("updateActor", (actor, changes) => {
+		const flags = changes.flags?.litmv2 ?? {};
+		if (!(FLAGS.pendingSacrifice in flags || `-=${FLAGS.pendingSacrifice}` in flags))
+			return;
+		game.litmv2.sacrificeHud?.render?.();
+		// Settled from another client: a payment dialog still open here is moot.
+		if (!pendingSacrifice(actor))
+			foundry.applications.instances.get(paymentDialogId(actor))?.close();
+		for (const li of ui.chat?.element?.querySelectorAll(".message[data-message-id]") ?? []) {
+			const message = game.messages.get(li.dataset.messageId);
+			const litm = message?.rolls?.[0]?.options;
+			if (litm?.type === "sacrifice" && litm.actorId === actor.id)
+				ui.chat.updateMessage(message);
+		}
+	});
+	Hooks.on("deleteActor", () => game.litmv2.sacrificeHud?.render?.());
 	// The camp entry follows the session flag and hides while this client's
 	// camp window is open.
 	for (const hook of [

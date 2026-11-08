@@ -29,6 +29,7 @@ beforeEach(() => {
 		getFlag: vi.fn(() => ({ ownerId: "player", narrator: true })),
 		setFlag: vi.fn(),
 		unsetFlag: vi.fn(),
+		items: [{ id: "theme", type: "theme", system: {}, effects: [] }],
 	};
 	game.actors.get.mockReturnValue(actor);
 	foundry.applications.api.ApplicationV2.prototype.close = async function () {
@@ -260,6 +261,7 @@ describe("the Narrator's Roll and Cancel on the roller's client", () => {
 		dialog.submit = vi.fn(async () => {});
 		dialog.close = vi.fn();
 		dialog.painfulSacrificeHasNoTarget = () => false;
+		dialog.sacrificeThemeMissing = () => false;
 		actor.sheet = { hasRollDialog: true, rollDialogInstance: dialog };
 		return dialog;
 	}
@@ -273,7 +275,10 @@ describe("the Narrator's Roll and Cancel on the roller's client", () => {
 	it("rolls past approval, and cancels by closing", async () => {
 		const dialog = openDialog();
 		await command({ command: "roll" });
-		expect(dialog.submit).toHaveBeenCalledWith({ narrator: true });
+		expect(dialog.submit).toHaveBeenCalledWith({
+			narrator: true,
+			checked: true,
+		});
 		await command({ command: "cancel" });
 		expect(dialog.close).toHaveBeenCalled();
 	});
@@ -331,5 +336,39 @@ describe("the Narrator cancelling a roll whose owner is away", () => {
 		);
 		expect(dialog.narratorCall).toBeNull();
 		expect(dialog.getSelection("tag").narrator).toBe(false);
+	});
+});
+
+describe("Sacrifice theme choice", () => {
+	// Nothing picks the theme a Sacrifice risks: a stray Roll must not stake
+	// a theme the player never chose.
+	it("refuses a Sacrifice until a theme is chosen", () => {
+		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(true);
+		expect(
+			makeDialog({
+				type: "sacrifice",
+				sacrificeThemeId: "theme",
+			}).sacrificeThemeMissing(),
+		).toBe(false);
+		expect(makeDialog({ type: "quick" }).sacrificeThemeMissing()).toBe(false);
+	});
+
+	it("counts a chosen theme deleted since as none chosen", () => {
+		expect(
+			makeDialog({ type: "sacrifice", sacrificeThemeId: "gone" }).sacrificeThemeMissing(),
+		).toBe(true);
+	});
+
+	it("keeps the Narrator's refused Roll off the player's screen", () => {
+		const warn = vi.spyOn(ui.notifications, "warn");
+		expect(makeDialog({ type: "sacrifice" }).rollRefusal({ narrator: true })).toBe(
+			"sacrificeTheme",
+		);
+		expect(warn).not.toHaveBeenCalled();
+	});
+
+	it("lets a Hero with no theme left roll one", () => {
+		actor.items = [];
+		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(false);
 	});
 });

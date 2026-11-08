@@ -6,9 +6,10 @@ import {
 	ROLL_TYPES,
 } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
-import { levelIcon, localize as t } from "../../utils.js";
+import { localize as t } from "../../utils.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 import { isTagConcealed, maskConcealedTags } from "./concealment.js";
+import { sacrificeThemeView } from "./sacrifice-price.js";
 
 export class LitmRoll extends foundry.dice.Roll {
 	static CHAT_TEMPLATE = "systems/litmv2/templates/chat/message.html";
@@ -109,13 +110,7 @@ export class LitmRoll extends foundry.dice.Roll {
 		const themeId = this.litm.sacrificeThemeId;
 		if (!themeId) return null;
 		const theme = this.actor?.items?.get(themeId);
-		if (!theme?.name) return null;
-		const level = theme.system?.level;
-		return {
-			name: theme.name,
-			icon: level ? levelIcon(level) : null,
-			levelLabel: level ? t(`LITM.Terms.${level}`) : "",
-		};
+		return theme?.name ? sacrificeThemeView(theme) : null;
 	}
 
 	get modifier() {
@@ -163,8 +158,8 @@ export class LitmRoll extends foundry.dice.Roll {
 				(this.litm.weaknessTags ?? []).some((tag) =>
 					IMPROVE_MARKING_TAG_TYPES.has(tag.type),
 				),
-			canCompleteSacrifice:
-				this.litm.type === "sacrifice" && !this.litm.sacrificeCompleted,
+			// The render hook drops the button unless the card is the open debt.
+			canCompleteSacrifice: this.litm.type === "sacrifice",
 		};
 
 		return foundry.applications.handlebars.renderTemplate(template, chatData);
