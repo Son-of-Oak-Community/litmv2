@@ -22,6 +22,7 @@ import { LitmRoll } from "./roll.js";
 import {
 	canEditNarratorFields,
 	canEditTradePower,
+	canToggleSacrifice,
 	isNarratorControlled,
 	requiresRollApproval,
 	showsRollSettings,
@@ -89,6 +90,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			toggleRollTag: LitmRollDialog.#onToggleRollTag,
 			selectSacrificeTheme: LitmRollDialog.#onSelectSacrificeTheme,
 			setSacrificeLevel: LitmRollDialog.#onSetSacrificeLevel,
+			toggleSacrifice: LitmRollDialog.#onToggleSacrifice,
 		},
 	};
 
@@ -668,6 +670,24 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	/**
+	 * Whether this client may turn the roll into a Sacrifice, or back: the
+	 * roller's switch on a Quick outcome, never a move the Narrator calls.
+	 * @returns {boolean}
+	 */
+	get canProposeSacrifice() {
+		return canToggleSacrifice({
+			isOwner: this.isOwner && !this.localOnly,
+			type: this.type,
+			isGroupRoll: this.isGroupRoll,
+		});
+	}
+
+	static #onToggleSacrifice() {
+		if (!this.canProposeSacrifice) return;
+		this.setType(this.type === "sacrifice" ? "quick" : "sacrifice");
+	}
+
+	/**
 	 * Whether pressing Roll asks the Narrator rather than rolling.
 	 * @returns {boolean}
 	 */
@@ -715,8 +735,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	} = {}) {
 		this.#cachedTotalPower = null;
 		if (ownerId) this.ownerId = ownerId;
-		// A called roll is never a sacrifice — p.150 makes that price the
-		// player's to elect, never the Narrator's to demand.
+		// A call never starts as a Sacrifice: that price is the player's to
+		// elect (p.159), with the switch beside the move bar, never the
+		// Narrator's to demand.
 		this.type = !type || type === "sacrifice" ? "quick" : type;
 		this.#sacrificeThemeId = null;
 		this.#sacrificeStatusName = "";
@@ -757,7 +778,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// are entitled to make (p.147) — and it arrives through this same setter
 		// from the chat card, so refusing it would make reacting impossible
 		// while a call is open.
-		if (type !== "mitigate" && !this.canSetNarratorFields) {
+		// So is a Sacrifice: the roller elects it on a Quick outcome (p.159),
+		// on a called roll too — see {@link canProposeSacrifice}.
+		const sacrificeSwitch =
+			(type === "sacrifice" || type === "quick") && this.canProposeSacrifice;
+		if (type !== "mitigate" && !sacrificeSwitch && !this.canSetNarratorFields) {
 			ui.notifications?.info(t("LITM.Ui.roll_move_is_narrators"));
 			return;
 		}
@@ -1397,6 +1422,14 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			isGroupRoll: this.isGroupRoll,
 			title: this.rollName,
 			type: this.type,
+			// A Sacrifice is a Quick outcome (p.159): the move bar keeps saying so.
+			moveType: this.type === "sacrifice" ? "quick" : this.type,
+			isSacrifice: this.type === "sacrifice",
+			canProposeSacrifice: this.canProposeSacrifice,
+			// The Narrator watches a Sacrifice the way they watch any roll: the
+			// player's own view, read-only.
+			showSacrifice: isOwner || isGMViewer,
+			canEditSacrifice: isOwner,
 			mitigationBanner:
 				this.type === "mitigate" ? mitigationBannerText(this.#mitigation) : "",
 			narratorCall: isNarratorControlled(this.#narratorCall)
@@ -1573,7 +1606,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		for (const bar of this.element.querySelectorAll(
 			".litm--roll-type-bar, .litm--might-radio-row",
 		)) {
-			if (bar.classList.contains("litm--trade-power-bar")) continue;
+			// Hedge/Caution and the Sacrifice level are the roller's.
+			if (
+				bar.classList.contains("litm--trade-power-bar") ||
+				bar.classList.contains("litm--sacrifice-level-bar")
+			)
+				continue;
 			bar.classList.toggle("is-locked", !canSetNarratorFields);
 		}
 	}
@@ -1989,35 +2027,27 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	#toggleSacrificeMode(isSacrifice) {
 		if (!this.element) return;
-		// Hide might/modifier and total power for sacrifice rolls
-		const mightFieldset = this.element
-			.querySelector(".litm--roll-dialog-might")
-			?.closest("fieldset");
-		const totalPowerEl = this.element.querySelector(
-			".litm--roll-dialog-total-power",
-		);
-		const sacrificeFieldset = this.element.querySelector(
-			".litm--sacrifice-level-fieldset",
-		);
-		const tagsFieldset = this.element.querySelector(
-			".litm--roll-dialog-tags-fieldset",
-		);
-		// The owner-view tag-category nav lives in the same column wrapper
-		// as the tags fieldset — hide them together so the column collapses
-		// entirely during sacrifice rolls instead of leaving an orphan nav.
-		const tagsColumn = this.element.querySelector(
+		const root = this.element;
+		const toggle = (selector, hidden) => {
+			for (const el of root.querySelectorAll(selector))
+				el.classList.toggle("hidden", hidden);
+		};
+		// A Sacrifice adds no Power (p.159): the modifiers and the total go,
+		// and the tags give way to the theme cards, which take the tag
+		// column's place. The move bar stays: it is still a Quick outcome, and
+		// the Narrator may still change the move.
+		toggle(".litm--roll-dialog-modifiers", isSacrifice);
+		toggle(".litm--roll-dialog-total-power", isSacrifice);
+		toggle(".litm--sacrifice-level-fieldset", !isSacrifice);
+		toggle(".litm--roll-dialog-tags-fieldset, .litm--roll-dialog-tabs", isSacrifice);
+		// Only the roller has theme cards; anyone else's tag column is empty.
+		toggle(
 			".litm--roll-dialog-tags-column",
+			isSacrifice && !root.querySelector(".litm--sacrifice-theme-fieldset"),
 		);
-		const typeBar = this.element.querySelector(".litm--roll-type-bar");
-		if (mightFieldset) mightFieldset.classList.toggle("hidden", isSacrifice);
-		if (totalPowerEl) totalPowerEl.classList.toggle("hidden", isSacrifice);
-		if (sacrificeFieldset)
-			sacrificeFieldset.classList.toggle("hidden", !isSacrifice);
-		if (tagsFieldset) tagsFieldset.classList.toggle("hidden", isSacrifice);
-		if (tagsColumn) tagsColumn.classList.toggle("hidden", isSacrifice);
-		// Sacrifice is its own ritual — quick/tracked/mitigate make no sense
-		// during it. Hide the roll-type bar entirely in sacrifice mode.
-		if (typeBar) typeBar.classList.toggle("hidden", isSacrifice);
+		const button = root.querySelector("[data-action='toggleSacrifice']");
+		button?.setAttribute("aria-pressed", String(isSacrifice));
+		button?.classList.toggle("is-active", isSacrifice);
 		// Toggle level-specific subfields (theme selector + grave status input)
 		this.#toggleSacrificeSubfields(isSacrifice ? this.#sacrificeLevel : null);
 	}
@@ -2046,6 +2076,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	// KEYBOARD path: arrow-key navigation on the sacrificeLevel radio group
 	// fires `change` without a click, so this is not a removable duplicate.
 	#handleSacrificeLevelChange(target) {
+		if (!this.isOwner) {
+			this.#restoreRadio("sacrificeLevel", this.#sacrificeLevel);
+			return;
+		}
 		const level = target.value;
 		if (!level || level === this.#sacrificeLevel) return;
 		this.#sacrificeLevel = level;
@@ -2055,6 +2089,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	#handleSacrificeStatusNameChange(target) {
+		if (!this.isOwner) {
+			target.value = this.#sacrificeStatusName;
+			return;
+		}
 		this.#sacrificeStatusName = target.value || "";
 		this.#dispatchUpdate();
 	}
@@ -2381,10 +2419,16 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		}
 		for (const key of ["type", "might"]) {
 			// The explicit reaction entry point is allowed to change the move
-			// even on a called roll. The radio handler still rejects player edits.
+			// even on a called roll, and so is the roller's Sacrifice switch
+			// between Quick and Sacrifice. The radio handler still rejects
+			// player edits.
 			const reaction =
 				key === "type" && this.isOwner && this.type === "mitigate";
-			if (!this.canSetNarratorFields && !reaction)
+			const sacrificeSwitch =
+				key === "type" &&
+				this.canProposeSacrifice &&
+				["quick", "sacrifice"].includes(this.#sync.view.type);
+			if (!this.canSetNarratorFields && !reaction && !sacrificeSwitch)
 				state[key] = this.#sync.view[key];
 		}
 		if (!this.isOwner && !game.user.isGM) {

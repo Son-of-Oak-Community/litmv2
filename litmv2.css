@@ -2194,15 +2194,25 @@ section.standard-form.litm-theme-browser-body {
 	opacity: 0.75;
 }
 
-/* Sacrifice trigger — warm/dire styling on the Roll-adjacent button.
-   Click sets the dialog's type to sacrifice and opens it. */
-.litm--sacrifice-button {
-	border-color: var(--color-litm-weakness-text);
-	color: var(--color-litm-weakness-text);
+/* The roller's Sacrifice switch beside the move bar — warm/dire styling.
+   Pressed, it turns the Quick outcome into a Sacrifice (p.159). */
+.litm--roll-move-row {
+	align-items: center;
 }
 
-.litm--sacrifice-button:hover {
+.litm--sacrifice-toggle {
+	border-color: var(--color-litm-weakness-text);
+	color: var(--color-litm-weakness-text);
+	white-space: nowrap;
+}
+
+.litm--sacrifice-toggle:hover {
 	background: var(--color-warm-1-10);
+}
+
+.litm--sacrifice-toggle.is-active {
+	background: var(--color-litm-weakness-text);
+	color: var(--color-light-1);
 }
 
 /* Sacrifice rite — a transient inscription that appears when another player

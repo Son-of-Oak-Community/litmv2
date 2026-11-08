@@ -372,3 +372,33 @@ describe("Sacrifice theme choice", () => {
 		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(false);
 	});
 });
+
+// p.159: a Sacrifice is a Quick outcome the player elects, so on a called roll
+// the roller may switch Quick to Sacrifice and back, but no further.
+describe("the roller's Sacrifice switch", () => {
+	const calledRoll = () => {
+		const dialog = makeDialog();
+		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
+		dialog.updatePresence = vi.fn(async () => {});
+		return dialog;
+	};
+
+	it("turns the Narrator's called Quick outcome into a Sacrifice and back", () => {
+		const dialog = calledRoll();
+		dialog.setType("sacrifice");
+		expect(dialog.type).toBe("sacrifice");
+		dialog.setType("quick");
+		expect(dialog.type).toBe("quick");
+	});
+
+	it("leaves the rest of the move to the Narrator", () => {
+		const dialog = calledRoll();
+		dialog.setType("tracked");
+		expect(dialog.type).toBe("quick");
+	});
+
+	it("is not the switch of a Narrator watching the roll", () => {
+		game.user = { id: "gm", isGM: true };
+		expect(calledRoll().canProposeSacrifice).toBe(false);
+	});
+});

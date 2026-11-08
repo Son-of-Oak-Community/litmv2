@@ -47,7 +47,6 @@ export class HeroSheet extends LitmActorSheet {
 		tag: "form",
 		actions: {
 			openRollDialog: HeroSheet.#onOpenRollDialog,
-			openSacrificeRoll: HeroSheet.#onOpenSacrificeRoll,
 			openActionsApp: HeroSheet.#onOpenActionsApp,
 			addStoryTag: LitmActorSheet._onAddStoryTag,
 			addStoryTheme: LitmActorSheet._onAddStoryTheme,
@@ -500,11 +499,6 @@ export class HeroSheet extends LitmActorSheet {
 			this.rollDialogInstance.setType("quick");
 		}
 		this.renderRollDialog();
-	}
-
-	static #onOpenSacrificeRoll(_event, _target) {
-		this.renderRollDialog();
-		this.rollDialogInstance?.setType("sacrifice");
 	}
 
 	/**

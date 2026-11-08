@@ -896,6 +896,8 @@
 			"sacrifice_banner_message": "{name} prepares to Sacrifice.",
 			"sacrifice_choose_theme": "Choose Theme",
 			"sacrifice_choose_theme_warning": "Choose the theme this Sacrifice risks before rolling.",
+			"sacrifice_propose": "Make a Sacrifice",
+			"sacrifice_propose_hint": "A Quick outcome where you accept a severe price to achieve something extraordinary. No Power is added to the roll.",
 			"sacrifice_complete": "Complete Sacrifice",
 			"sacrifice_completed": "Sacrifice completed.",
 			"sacrifice_confirm_grave_named": "This will apply the tier-{tier} status <strong>{status}</strong> to <strong>{name}</strong>. Proceed?",

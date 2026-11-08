@@ -141,11 +141,11 @@ CallForRollApp (GM)  -- picks WHO is rolling, and optionally WHICH Action
 The authority split lives in `modules/apps/roll/roll-authority.js` (pure,
 unit-tested):
 
-- **Narrator's half** — move type and Might. Locked for non-GMs whenever the roll
-  carries a narrator stamp (`canEditNarratorFields`). Enforced in the template
-  (`disabled`), in `#handleTypeChange` / `#handleMightChange`, which revert, and
-  in `setType`, which the hero sheet's Sacrifice button calls directly; the
-  markup is not the boundary. **The GM may set the move and the Might on any
+- **Narrator's half** — move type and Might. Locked for non-GMs whenever the
+  roll carries a narrator stamp (`canEditNarratorFields`). Enforced in the
+  template (`disabled`), in `#handleTypeChange` / `#handleMightChange`, which
+  revert, and in `setType`; the markup is
+  not the boundary. **The GM may set the move and the Might on any
   roll, called or not** — judging Might is the Narrator's job (p.272), so the
   settings column renders for them even as a non-owner viewer. That is a
   deliberate widening of the pre-branch behaviour, where the column was
@@ -154,8 +154,14 @@ unit-tested):
   takes it all from the dialog's own fields, because `FormDataExtended` skips
   `:disabled` controls — reading Might off the form would drop exactly the value
   the Narrator had just set, and `modifier`/`title` have no form control at all.
-- **Roller's half** — their own tags, modifier, Trade Power. Trade Power is
-  additionally off for a group roll (`canEditTradePower`).
+- **Roller's half** — their own tags, modifier, Trade Power, and the
+  **Sacrifice switch**. Trade Power is additionally off for a group roll
+  (`canEditTradePower`). A Sacrifice is a Quick outcome the player elects
+  (p.159), so the switch beside the move bar is the roller's even on a called
+  roll, and only between Quick and Sacrifice (`canToggleSacrifice`); the move
+  bar keeps showing Quick. It never appears on Acting Together. A Sacrifice
+  adds no Power: its formula stays `2d6`, and its theme cards take the tag
+  column's place. The Narrator sees the player's Sacrifice choices read-only.
 - Selection entries carrying `narrator: true` stay locked for non-GMs in both
   `makeTagDecorator` and `LitmRollDialog#canModifyTag`.
 
