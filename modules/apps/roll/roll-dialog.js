@@ -94,7 +94,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			toggleRollTag: LitmRollDialog.#onToggleRollTag,
 			selectSacrificeTheme: LitmRollDialog.#onSelectSacrificeTheme,
 			setSacrificeLevel: LitmRollDialog.#onSetSacrificeLevel,
-			toggleSacrifice: LitmRollDialog.#onToggleSacrifice,
 			openSecretGrace: LitmRollDialog.#onOpenSecretGrace,
 		},
 	};
@@ -478,7 +477,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			actorId: this.actorId,
 			syncSession: this.syncSession,
 			type,
-			tags,
+			// A Sacrifice adds no Power (p.159): tags picked before the switch
+			// are neither invoked, burned nor used up.
+			tags: isSacrifice ? [] : tags,
 			title: this.rollName,
 			speaker: this.speaker,
 			// Mirrors the `totalPower` getter, which is what the dialog displays.
@@ -492,7 +493,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				isSacrifice && this.#sacrificeLevel === "grave"
 					? this.#sacrificeStatusName
 					: undefined,
-			actionUuid: this.#actionUuid,
+			// Kept while the switch is on, so turning it off brings the Action back.
+			actionUuid: isSacrifice ? null : this.#actionUuid,
 			mitigation: type === "mitigate" ? this.#mitigation : null,
 			// Acting Together: the outcome lands on the whole group (p.157), so
 			// the card carries who was in it and the GM's apply flow offers them
@@ -526,6 +528,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#might = 0;
 	/** The number the Narrator tells a Sacrifice to add (p.159); no Power is. */
 	#sacrificeBonus = 0;
+	/** The move a Sacrifice replaced, to go back to. shortcut: kept on this
+	 *  client only, so after a reload a called roll's way back is Quick. */
+	#moveBeforeSacrifice = null;
 	#tradePower = 0;
 	#sacrificeLevel = "painful";
 	#sacrificeThemeId = null;
@@ -697,9 +702,24 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		game.litmv2.SecretGraceApp?.open(this.actor);
 	}
 
-	static #onToggleSacrifice() {
-		if (!this.canProposeSacrifice) return;
-		this.setType(this.type === "sacrifice" ? "quick" : "sacrifice");
+	/**
+	 * Whether this client may pick `type` on the move bar. The move is the
+	 * Narrator's half, but for Sacrifice, which is the roller's: on a called
+	 * roll it is Sacrifice or the move the Narrator called, and nothing else.
+	 * @param {string} type
+	 * @returns {boolean}
+	 */
+	#canPickType(type) {
+		if (type === "sacrifice") return this.canProposeSacrifice;
+		if (this.canSetNarratorFields) return true;
+		return this.canProposeSacrifice && type === this.#calledMove();
+	}
+
+	/** The move this roll is, or was before the roller made it a Sacrifice. */
+	#calledMove() {
+		return this.type === "sacrifice"
+			? (this.#moveBeforeSacrifice ?? "quick")
+			: this.type;
 	}
 
 	/**
@@ -751,7 +771,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#cachedTotalPower = null;
 		if (ownerId) this.ownerId = ownerId;
 		// A call never starts as a Sacrifice: that price is the player's to
-		// elect (p.159), with the switch beside the move bar, never the
+		// elect (p.159), with the switch in Modifiers, never the
 		// Narrator's to demand.
 		this.type = !type || type === "sacrifice" ? "quick" : type;
 		this.#sacrificeThemeId = null;
@@ -793,29 +813,24 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// are entitled to make (p.147) — and it arrives through this same setter
 		// from the chat card, so refusing it would make reacting impossible
 		// while a call is open.
-		// So is a Sacrifice: the roller elects it on a Quick outcome (p.159),
-		// on a called roll too — see {@link canProposeSacrifice}.
-		const sacrificeSwitch =
-			(type === "sacrifice" || type === "quick") && this.canProposeSacrifice;
-		if (type !== "mitigate" && !sacrificeSwitch && !this.canSetNarratorFields) {
+		// So is a Sacrifice: the roller elects it (p.159), on a called roll
+		// too, and may go back to the called move — see {@link #canPickType}.
+		if (type !== "mitigate" && !this.#canPickType(type)) {
 			ui.notifications?.info(t("LITM.Ui.roll_move_is_narrators"));
 			return;
 		}
 		// Mitigation context only makes sense for a reaction; drop it when the
 		// player switches away so no stale "Reacting to…" banner survives.
-		if (type !== "mitigate") this.#mitigation = null;
+		// A Sacrifice set aside for now keeps it, to go back to.
+		if (type !== "mitigate" && type !== "sacrifice") this.#mitigation = null;
 		// Likewise the sojourn bonus belongs to a camp action only.
 		if (type !== "campAction") this.#sojournBonus = 0;
-		// Sacrifice is its own ritual — clear any pending action so the
-		// dialog never shows the action strip alongside the sacrifice grid.
-		if (type === "sacrifice") {
-			this.#actionUuid = null;
-			this.#actionDoc = null;
-		}
 		// Secret Grace always starts at 0, entering or leaving a Sacrifice: a
 		// value filled in from the Hero's record would show the player it
 		// exists (Vol. II p.78 — never say where the number comes from).
 		if (type !== this.type) this.#sacrificeBonus = 0;
+		if (type === "sacrifice" && this.type !== "sacrifice")
+			this.#moveBeforeSacrifice = this.type;
 		this.type = type;
 		// Re-render rather than poke the DOM: the move is named in three places
 		// that all read `type` out of the render context — the segmented bar,
@@ -1262,7 +1277,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const isOwner = this.isOwner;
 		const isGMViewer = game.user.isGM && !isOwner;
 
-		const actionContext = buildActionContext({ action: this.#actionDoc });
+		// A Sacrifice hides the Action strip; the Action stays for the way back.
+		const actionContext =
+			this.type === "sacrifice"
+				? null
+				: buildActionContext({ action: this.#actionDoc });
 
 		const { shared, gmTagGroups, storyTagGroups } = this.#buildTagGroups({
 			isOwner,
@@ -1407,11 +1426,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sceneActorTagGroups,
 			contributedTagGroups,
 			ownerTabs,
-			rollTypes: {
-				quick: "LITM.Ui.roll_quick",
-				tracked: "LITM.Ui.roll_tracked",
-				mitigate: "LITM.Ui.roll_mitigate",
-			},
+			// Sacrifice first, Quick the default (p.159). Acting Together has no
+			// single Hero to pay a price, so it never offers one.
+			rollTypes: [
+				...(this.isGroupRoll ? [] : ["sacrifice"]),
+				"quick",
+				"tracked",
+				"mitigate",
+			].map((key) => ({
+				key,
+				label: `LITM.Ui.roll_${key}`,
+				disabled: !this.#canPickType(key),
+			})),
 			storyTagGroups,
 			gmTagGroups,
 			concealedTags,
@@ -1634,8 +1660,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			if (canSetNarratorFields) input.removeAttribute("aria-disabled");
 			else input.setAttribute("aria-disabled", "true");
 		};
-		for (const input of this.element.querySelectorAll("input[name='type']"))
-			lock(input);
+		for (const input of this.element.querySelectorAll("input[name='type']")) {
+			const pickable = this.#canPickType(input.value);
+			input.disabled = !pickable;
+			if (pickable) input.removeAttribute("aria-disabled");
+			else input.setAttribute("aria-disabled", "true");
+		}
 		for (const input of this.element.querySelectorAll("input[name='might']"))
 			lock(input);
 		// Secret Grace is the Narrator's on every roll, called or not.
@@ -1650,8 +1680,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			".litm--roll-type-bar, .litm--might-radio-row",
 		)) {
 			// Hedge/Caution and the Sacrifice level are the roller's; Secret
-			// Grace is locked above.
+			// Grace is locked above; the move bar locks option by option.
 			if (
+				bar.classList.contains("litm--move-bar") ||
 				bar.classList.contains("litm--trade-power-bar") ||
 				bar.classList.contains("litm--sacrifice-level-bar") ||
 				bar.classList.contains("litm--grace-radio-row")
@@ -1935,6 +1966,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#modifier = 0;
 		this.#might = 0;
 		this.#sacrificeBonus = 0;
+		this.#moveBeforeSacrifice = null;
 		this.#tradePower = 0;
 		this.#sacrificeLevel = "painful";
 		this.#sacrificeThemeId = null;
@@ -2063,7 +2095,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// to `setType`, whose gate deliberately lets a reaction through: the
 		// bar offers `mitigate` too, and on a called roll it is not the
 		// roller's to pick.
-		if (!this.canSetNarratorFields) {
+		if (!this.#canPickType(target.value)) {
 			this.#restoreRadio("type", this.type);
 			return;
 		}
@@ -2094,9 +2126,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			".litm--roll-dialog-tags-column",
 			isSacrifice && !root.querySelector(".litm--sacrifice-theme-fieldset"),
 		);
-		const button = root.querySelector("[data-action='toggleSacrifice']");
-		button?.setAttribute("aria-pressed", String(isSacrifice));
-		button?.classList.toggle("is-active", isSacrifice);
 		// Toggle level-specific subfields (theme selector + grave status input)
 		this.#toggleSacrificeSubfields(isSacrifice ? this.#sacrificeLevel : null);
 	}
@@ -2503,7 +2532,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			const sacrificeSwitch =
 				key === "type" &&
 				this.canProposeSacrifice &&
-				["quick", "sacrifice"].includes(this.#sync.view.type);
+				(state.type === "sacrifice" || this.#sync.view.type === "sacrifice");
 			if (!this.canSetNarratorFields && !reaction && !sacrificeSwitch)
 				state[key] = this.#sync.view[key];
 		}

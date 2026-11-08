@@ -2194,12 +2194,6 @@ section.standard-form.litm-theme-browser-body {
 	opacity: 0.75;
 }
 
-/* The roller's Sacrifice switch beside the move bar — warm/dire styling.
-   Pressed, it turns the Quick outcome into a Sacrifice (p.159). */
-.litm--roll-move-row {
-	align-items: center;
-}
-
 /* The Narrator's view of the Hero's Secret Grace, at the end of the label row. */
 .litm--sacrifice-grace .litm--might-label-row .hint {
 	margin-inline: auto var(--spacer-4);
@@ -2210,19 +2204,9 @@ section.standard-form.litm-theme-browser-body {
 	text-decoration: line-through;
 }
 
-.litm--sacrifice-toggle {
-	border-color: var(--color-litm-weakness-text);
+/* The Sacrifice move, first on the move bar: it reads dire (p.159). */
+.litm--sacrifice-switch {
 	color: var(--color-litm-weakness-text);
-	white-space: nowrap;
-}
-
-.litm--sacrifice-toggle:hover {
-	background: var(--color-warm-1-10);
-}
-
-.litm--sacrifice-toggle.is-active {
-	background: var(--color-litm-weakness-text);
-	color: var(--color-light-1);
 }
 
 /* Sacrifice rite — a transient inscription that appears when another player
@@ -3340,6 +3324,13 @@ section.standard-form.litm-theme-browser-body {
 .litm--roll-type-option.is-disabled {
 	opacity: 0.4;
 	cursor: not-allowed;
+}
+
+/* The chosen move stays legible when this client can't change it, e.g. the
+   Narrator watching a player's Sacrifice. */
+.litm--roll-type-option.is-disabled.is-active {
+	opacity: 1;
+	cursor: default;
 }
 
 /* Grid: settings beside the tag column when wide enough.

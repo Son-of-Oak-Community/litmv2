@@ -168,14 +168,21 @@ unit-tested):
   takes it all from the dialog's own fields, because `FormDataExtended` skips
   `:disabled` controls — reading Might off the form would drop exactly the value
   the Narrator had just set, and `modifier`/`title` have no form control at all.
-- **Roller's half** — their own tags, modifier, Trade Power, and the
-  **Sacrifice switch**. Trade Power is additionally off for a group roll
-  (`canEditTradePower`). A Sacrifice is a Quick outcome the player elects
-  (p.159), so the switch beside the move bar is the roller's even on a called
-  roll, and only between Quick and Sacrifice (`canToggleSacrifice`); the move
-  bar keeps showing Quick. It never appears on Acting Together. A Sacrifice
+- **Roller's half** — their own tags, modifier, Trade Power, and
+  **Sacrifice**. Trade Power is additionally off for a group roll
+  (`canEditTradePower`). Sacrifice is its own move, first on the move bar,
+  with Quick still the default. The player elects it (p.159), so it is the
+  roller's option on that bar (`canToggleSacrifice`), never the Narrator's for
+  them: from any move on their own roll, and on a called roll of any move it
+  is Sacrifice or the called move, nothing else. The move a Sacrifice
+  replaced is kept to go back to (`#moveBeforeSacrifice`, this client only),
+  Reaction context included. `#canPickType` is the per-option
+  rule the template, `#handleTypeChange` and `setType` share. It never appears
+  on Acting Together. A Sacrifice
   adds no Power: its formula is `2d6 + @sacrificeBonus`, and its theme cards
-  take the tag column's place.
+  take the tag column's place. It rolls no tags and no Action (`executeRoll`
+  drops them, so nothing is burned or used up); the dialog keeps the called
+  Action, so switching back restores it.
 - Selection entries carrying `narrator: true` stay locked for non-GMs in both
   `makeTagDecorator` and `LitmRollDialog#canModifyTag`.
 
@@ -325,8 +332,8 @@ consequences to each of them is still a decision, not an automatic fan-out.
   gated on `isGM` alone and never on this setting, even though `canInitiateRoll`
   would answer the same today; a test pins that. It gates *instigation* only.
   Joining an open roll, being called into one, reacting and camp actions stay
-  open regardless. A Sacrifice is the roller's switch inside the roll window,
-  so with the setting off a player asks for the roll and flips it there.
+  open regardless. Sacrifice is the roller's move inside the roll window,
+  so with the setting off a player asks for the roll and picks it there.
 
   Instigation splits two ways, and the split is deliberate. The **hero-sheet
   Roll button and `R`** — the same gesture, one with a mouse — stay available

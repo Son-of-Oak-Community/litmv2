@@ -416,6 +416,52 @@ describe("the roller's Sacrifice switch", () => {
 		dialog.endSharedRoll();
 		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
 	});
+
+	it("rolls no tags and no Action as a Sacrifice, and keeps the called Action", () => {
+		const dialog = makeDialog();
+		dialog.configureSharedRoll({
+			ownerId: "player",
+			narratorUserId: "gm",
+			actionUuid: "Item.sneak",
+		});
+		dialog.updatePresence = vi.fn(async () => {});
+		dialog.setSelection("tag-1", "scratched", "player");
+		dialog.setType("sacrifice");
+		expect(dialog.extractRollData({})).toMatchObject({ tags: [], actionUuid: null });
+		dialog.setType("quick");
+		expect(dialog.extractRollData({}).actionUuid).toBe("Item.sneak");
+	});
+
+	it("is Sacrifice or the called move, on a called roll of any move", () => {
+		const dialog = makeDialog({ type: "tracked" });
+		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm", type: "tracked" });
+		dialog.updatePresence = vi.fn(async () => {});
+		dialog.setType("tracked");
+		expect(dialog.type).toBe("tracked");
+		dialog.setType("sacrifice");
+		expect(dialog.type).toBe("sacrifice");
+		dialog.setType("quick");
+		expect(dialog.type).toBe("sacrifice");
+		dialog.setType("tracked");
+		expect(dialog.type).toBe("tracked");
+	});
+
+	it("is a move of its own on the roller's own roll, from any move", () => {
+		const dialog = makeDialog({ type: "tracked" });
+		dialog.updatePresence = vi.fn(async () => {});
+		dialog.setType("sacrifice");
+		expect(dialog.type).toBe("sacrifice");
+	});
+
+	it("is never the Narrator's to pick for the player", () => {
+		game.user = { id: "gm", isGM: true };
+		const dialog = makeDialog();
+		dialog.updatePresence = vi.fn(async () => {});
+		expect(dialog.canProposeSacrifice).toBe(false);
+		dialog.setType("sacrifice");
+		expect(dialog.type).toBe("quick");
+	});
+
 	it("is not the switch of a Narrator watching the roll", () => {
 		game.user = { id: "gm", isGM: true };
 		expect(calledRoll().canProposeSacrifice).toBe(false);

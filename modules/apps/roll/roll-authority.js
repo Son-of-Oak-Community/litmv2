@@ -56,9 +56,10 @@ export function canEditNarratorFields({
  *
  * Core Book p.159: a Sacrifice is a type of Quick outcome the player elects —
  * "choose your level of Sacrifice" — and the Narrator then says what it can
- * achieve. So it is the roller's switch, not a move in the Narrator's half:
- * it stays theirs on a called roll, and only while the move is Quick. Acting
- * Together has no single Hero to pay the price, so it never offers one.
+ * achieve. So it is the roller's choice, not a move in the Narrator's half:
+ * it stays theirs on a called roll, whatever move was called — Sacrifice or
+ * that move. A camp action is not a roll to sacrifice on. Acting Together has
+ * no single Hero to pay the price, so it never offers one.
  *
  * @param {object} args
  * @param {boolean} [args.isOwner]
@@ -71,9 +72,7 @@ export function canToggleSacrifice({
 	type = "quick",
 	isGroupRoll = false,
 } = {}) {
-	return (
-		!!isOwner && !isGroupRoll && (type === "quick" || type === "sacrifice")
-	);
+	return !!isOwner && !isGroupRoll && type !== "campAction";
 }
 
 /**

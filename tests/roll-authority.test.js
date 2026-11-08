@@ -237,18 +237,17 @@ describe("canInitiateRoll", () => {
 });
 
 describe("canToggleSacrifice", () => {
-	it("is the roller's on a Quick outcome, called or not", () => {
-		expect(canToggleSacrifice({ isOwner: true, type: "quick" })).toBe(true);
-		expect(canToggleSacrifice({ isOwner: true, type: "sacrifice" })).toBe(true);
+	it("is the roller's on any move, called or not", () => {
+		for (const type of ["quick", "tracked", "mitigate", "sacrifice"])
+			expect(canToggleSacrifice({ isOwner: true, type })).toBe(true);
 	});
 
 	it("is never the Narrator's or a watcher's", () => {
 		expect(canToggleSacrifice({ isOwner: false, type: "quick" })).toBe(false);
 	});
 
-	it("is not offered on a Tracked roll, a reaction or Acting Together", () => {
-		expect(canToggleSacrifice({ isOwner: true, type: "tracked" })).toBe(false);
-		expect(canToggleSacrifice({ isOwner: true, type: "mitigate" })).toBe(false);
+	it("is not offered on a camp action or Acting Together", () => {
+		expect(canToggleSacrifice({ isOwner: true, type: "campAction" })).toBe(false);
 		expect(
 			canToggleSacrifice({ isOwner: true, type: "quick", isGroupRoll: true }),
 		).toBe(false);

@@ -7,6 +7,7 @@ import {
 	completePendingSacrifice,
 	recordPendingSacrifice,
 } from "../modules/apps/roll/sacrifice-price.js";
+import { executeRoll } from "../modules/apps/roll/roll-pipeline.js";
 import { debtPrice } from "../modules/hud/sacrifice-hud.js";
 import { Sockets } from "../modules/system/sockets.js";
 
@@ -336,5 +337,43 @@ describe("requestRollFromNarrator", () => {
 			sheet: { renderRollDialog: () => dialog },
 		};
 		expect(await requestRollFromNarrator(actor)).toBe(dialog);
+	});
+});
+
+describe("executeRoll for a Sacrifice", () => {
+	let options;
+	let saved;
+	beforeEach(() => {
+		options = undefined;
+		saved = { litmv2: game.litmv2, config: CONFIG.litmv2 };
+		game.litmv2 = {
+			LitmRoll: class {
+				constructor(_formula, _data, opts) {
+					options = opts;
+				}
+				toMessage() {
+					return Promise.resolve({ rolls: [] });
+				}
+			},
+		};
+		CONFIG.litmv2 = { ...CONFIG.litmv2, roll: {} };
+	});
+	afterEach(() => {
+		game.litmv2 = saved.litmv2;
+		CONFIG.litmv2 = saved.config;
+		game.actors.get.mockReset();
+	});
+	const burned = { uuid: "Actor.gerrin.Item.t.ActiveEffect.e", name: "Bow", type: "power_tag", state: "scratched" };
+
+	it("invokes, burns and uses up no tag", async () => {
+		game.actors.get.mockReturnValue(hero("gerrin", { isOwner: false }));
+		await executeRoll({ actorId: "gerrin", tags: [burned], type: "sacrifice" });
+		expect(options.scratchedTags).toEqual([]);
+	});
+
+	it("records no Might or modifier the dice never got", async () => {
+		game.actors.get.mockReturnValue(hero("gerrin", { isOwner: false }));
+		await executeRoll({ actorId: "gerrin", tags: [], type: "sacrifice", might: 3, modifier: 2 });
+		expect(options).toMatchObject({ might: 0, modifier: 0, totalPower: 0 });
 	});
 });

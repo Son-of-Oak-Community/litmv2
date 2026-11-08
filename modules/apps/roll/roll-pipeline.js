@@ -95,6 +95,12 @@ export function executeRoll({
 	participantIds = [],
 	syncSession = null,
 }) {
+	if (type === "sacrifice") {
+		// A Sacrifice adds no Power: nothing is invoked, burned or used up,
+		// and the card must not list a Might the dice never got.
+		tags = [];
+		modifier = might = tradePower = 0;
+	}
 	tags = LitmRoll.captureConcealment(tags);
 	const {
 		scratchedTags,
