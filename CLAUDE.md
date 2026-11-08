@@ -145,7 +145,18 @@ unit-tested):
   roll carries a narrator stamp (`canEditNarratorFields`). The Secret Grace
   (0 to +6) the Narrator may tell a Sacrifice to add (p.159) is stricter: the
   Narrator's alone on every roll, called or not; the player sees it locked,
-  labelled "Bonus". Enforced in the template
+  labelled "Bonus", and it always starts at 0 so a pre-filled value never
+  shows the player the Hero has one. The Hero's own Secret Grace (Vol. II
+  p.78) is the `secretGrace` actor flag (`secret-grace.js`): moments of grace
+  the Narrator notes in `SecretGraceApp` (a GM-only button by the hero sheet's
+  Roll, and beside a Sacrifice's "Secret Grace Bonus"), one tier each; a moment
+  can be scratched to keep it as history without counting it.
+  It is not a status effect, so it never counts as Power. A Sacrifice with a
+  Secret Grace Bonus of N scratches the first N live moments when its price
+  is paid (`completePendingSacrifice`, from the debt's `graceBonus`), never
+  at the roll and never on Forgive;
+  the Narrator's Fellowship party overview lists each Hero's live moments.
+  Enforced in the template
   (`disabled`), in `#handleTypeChange` / `#handleMightChange` /
   `#handleSacrificeBonusChange`, which revert, and in `setType`; the markup is
   not the boundary. **The GM may set the move and the Might on any
@@ -313,8 +324,9 @@ consequences to each of them is still a decision, not an automatic fan-out.
   the main-screen control, the sidebar's window-header entry, `R` — is therefore
   gated on `isGM` alone and never on this setting, even though `canInitiateRoll`
   would answer the same today; a test pins that. It gates *instigation* only.
-  Joining an open roll, being called into one, reacting, camp actions and
-  Sacrifice stay open regardless.
+  Joining an open roll, being called into one, reacting and camp actions stay
+  open regardless. A Sacrifice is the roller's switch inside the roll window,
+  so with the setting off a player asks for the roll and flips it there.
 
   Instigation splits two ways, and the split is deliberate. The **hero-sheet
   Roll button and `R`** — the same gesture, one with a mouse — stay available

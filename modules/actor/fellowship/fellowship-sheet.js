@@ -4,6 +4,7 @@ import {
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ThemeBrowser } from "../../apps/theme-browser.js";
+import { liveGraceMoments, secretGraceTier } from "../hero/secret-grace.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import {
 	ACTOR_TYPES,
@@ -52,10 +53,16 @@ function buildPartyOverview(fellowshipActor) {
 		const statuses = hero.system.statusEffects.filter(
 			(e) => e.active && (e.system?.currentTier ?? 0) > 0,
 		);
+		// The Narrator's Secret Grace (Vol. II p.78): the moments still live.
+		// This whole panel is GM-only, like the hidden tags above.
+		const graceLive = liveGraceMoments(hero);
 		return {
 			id: hero.id,
 			name: hero.name,
 			img: hero.img,
+			secretGrace: graceLive.length
+				? { tier: secretGraceTier(hero), moments: graceLive }
+				: null,
 			description: hero.system.description ?? "",
 			quests,
 			weaknesses,

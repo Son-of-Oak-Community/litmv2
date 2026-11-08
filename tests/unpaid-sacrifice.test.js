@@ -124,6 +124,7 @@ describe("recordPendingSacrifice", () => {
 			themeId: "t1",
 			statusName: "Dead",
 			messageId: "m1",
+			graceBonus: 0,
 		});
 	});
 
@@ -179,6 +180,44 @@ describe("completePendingSacrifice", () => {
 		expect(hero.unsetFlag).not.toHaveBeenCalled();
 		expect(info).toHaveBeenCalledWith("LITM.Ui.sacrifice_already_settled");
 		info.mockRestore();
+	});
+
+	// Vol. II p.78: the Secret Grace is spent with the price, not at the roll.
+	const gracedHero = () => {
+		const hero = graveHero();
+		hero.flag.graceBonus = 1;
+		hero.grace = [
+			{ id: "a", text: "Spared the wolf", scratched: false },
+			{ id: "b", text: "Shared her bread", scratched: false },
+		];
+		hero.getFlag = (_scope, key) =>
+			key === "pendingSacrifice"
+				? hero.flag
+				: key === "secretGrace"
+					? hero.grace
+					: undefined;
+		hero.setFlag = vi.fn(async (_scope, key, value) => {
+			if (key === "secretGrace") hero.grace = value;
+		});
+		return hero;
+	};
+
+	it("spends the Secret Grace Bonus once the price is paid", async () => {
+		const hero = gracedHero();
+		wait.mockResolvedValue(true);
+		expect(await completePendingSacrifice(hero)).toBe(true);
+		expect(hero.grace.map((m) => m.scratched)).toEqual([true, false]);
+	});
+
+	it("keeps the Secret Grace when the Narrator forgives the price", async () => {
+		const hero = gracedHero();
+		game.user = { id: "gm", isGM: true };
+		wait.mockImplementation(async ({ buttons }) =>
+			buttons.find((b) => b.action === "forgive").callback(),
+		);
+		expect(await completePendingSacrifice(hero)).toBe(true);
+		expect(hero.system.addStatus).not.toHaveBeenCalled();
+		expect(hero.grace.every((m) => !m.scratched)).toBe(true);
 	});
 
 	it("clears the debt before paying, so a second owner can't pay it again", async () => {

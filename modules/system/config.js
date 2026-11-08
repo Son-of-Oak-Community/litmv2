@@ -9,6 +9,7 @@ export const FLAGS = Object.freeze({
 	actionUuid: "actionUuid",
 	sceneTags: "sceneTags",
 	pendingSacrifice: "pendingSacrifice",
+	secretGrace: "secretGrace",
 });
 
 /** All theme-bound tag effect types (power, weakness, fellowship). */

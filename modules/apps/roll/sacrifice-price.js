@@ -3,6 +3,7 @@ import { FLAGS, POWER_TAG_TYPES } from "../../system/config.js";
 import { dialogContent } from "../../system/renderers/renderer-utils.js";
 import { levelIcon, localize as t } from "../../utils.js";
 import { effectiveSacrificeLevel } from "./sacrifice-rules.js";
+import { spendSecretGrace } from "../../actor/hero/secret-grace.js";
 
 /**
  * Paying a Sacrifice (Core Book p.159). The price a Sacrifice roll leaves owing
@@ -18,7 +19,7 @@ const FORGIVE = Symbol("forgive");
 /**
  * The price a Hero still owes, or null.
  * @param {Actor} actor
- * @returns {{level: string, outcome: string, themeId?: string, statusName?: string, messageId?: string}|null}
+ * @returns {{level: string, outcome: string, themeId?: string, statusName?: string, messageId?: string, graceBonus?: number}|null}
  */
 export function pendingSacrifice(actor) {
 	return actor?.getFlag?.("litmv2", FLAGS.pendingSacrifice) ?? null;
@@ -33,13 +34,21 @@ export function pendingSacrifice(actor) {
  */
 export function recordPendingSacrifice(actor, roll, message) {
 	if (!actor?.isOwner) return;
-	const { sacrificeLevel, sacrificeThemeId, sacrificeStatusName } = roll.litm;
+	const {
+		sacrificeLevel,
+		sacrificeThemeId,
+		sacrificeStatusName,
+		sacrificeBonus,
+	} = roll.litm;
 	return actor.setFlag("litmv2", FLAGS.pendingSacrifice, {
 		level: sacrificeLevel || "painful",
 		outcome: roll.outcome?.label ?? "",
 		themeId: sacrificeThemeId ?? null,
 		statusName: sacrificeStatusName ?? null,
 		messageId: message?.id ?? null,
+		// The Secret Grace the roll was granted, spent only once the price is
+		// paid (Vol. II p.78); a forgiven Sacrifice keeps it.
+		graceBonus: Number(sacrificeBonus) || 0,
 	});
 }
 
@@ -96,7 +105,10 @@ export async function completePendingSacrifice(actor) {
 		ui.notifications.info(
 			game.i18n.format("LITM.Ui.sacrifice_forgiven", { name: actor.name }),
 		);
-	else notifyPaid(actor, effective, result);
+	else {
+		notifyPaid(actor, effective, result);
+		await spendSecretGrace(actor, pending.graceBonus)?.catch(console.error);
+	}
 	return true;
 }
 

@@ -424,3 +424,33 @@ describe("Helping Each Other", () => {
 		expect(owner.getSelection("ally-tag-2")?.state).toBeFalsy();
 	});
 });
+
+describe("Secret Grace Bonus", () => {
+	it("is the Narrator's; the roller's Sacrifice switch only resets it to 0", async () => {
+		const roller = make("player", { ownerId: "player" });
+		const gm = make("gm", { ownerId: "player" });
+		roller.updatePresence = gm.updatePresence = vi.fn(async () => {});
+		const playerChange = controls(roller);
+		const gmChange = controls(gm);
+		as("player", () => roller.setType("sacrifice"));
+		await as("gm", () => gm.receiveUpdate(last()));
+		as("gm", () => gmChange("sacrificeBonus", 2));
+		await as("player", () => roller.receiveUpdate(last()));
+		await as("gm", () => gm.receiveUpdate(last()));
+		expect(roller.extractRollData()).toMatchObject({ sacrificeBonus: 2 });
+
+		as("player", () => playerChange("sacrificeBonus", 5));
+		as("player", () => playerChange("sacrificeLevel", "grave"));
+		await as("gm", () => gm.receiveUpdate(last()));
+		expect(roller.extractRollData()).toMatchObject({ sacrificeBonus: 2 });
+		expect(gm.extractRollData()).toMatchObject({
+			sacrificeBonus: 2,
+			sacrificeLevel: "grave",
+		});
+
+		as("player", () => roller.setType("quick"));
+		as("player", () => roller.setType("sacrifice"));
+		await as("gm", () => gm.receiveUpdate(last()));
+		expect(gm.extractRollData()).toMatchObject({ sacrificeBonus: 0 });
+	});
+});

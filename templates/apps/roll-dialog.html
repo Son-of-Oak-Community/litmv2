@@ -175,6 +175,12 @@
 						{{graceLabel}}
 						<i class="fa-solid fa-circle-info" aria-hidden="true"></i>
 					</span>
+					{{!-- The Narrator's view: the Hero's Secret Grace, and its window. --}}
+					{{#if (ne heroGraceTier null)}}
+					<span class="hint">{{localize "LITM.Ui.secret_grace_hero_tier" tier=heroGraceTier}}</span>
+					<button type="button" class="noflex icon fa-solid fa-dove" data-action="openSecretGrace"
+						data-tooltip="{{localize 'LITM.Ui.sacrifice_grace'}}" aria-label="{{localize 'LITM.Ui.sacrifice_grace'}}"></button>
+					{{/if}}
 				</div>
 				<div class="litm--might-radio-row litm--grace-radio-row {{#unless canSetGrace}}is-locked{{/unless}}"
 					role="radiogroup" aria-label="{{graceLabel}}">

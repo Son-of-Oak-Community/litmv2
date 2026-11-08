@@ -3,6 +3,7 @@ import {
 	paymentDialogId,
 	pendingSacrifice,
 } from "../../apps/roll/sacrifice-price.js";
+import { SecretGraceApp } from "../../apps/secret-grace-app.js";
 import { SceneTagDialog } from "../../apps/story-tags/scene-tag-dialog.js";
 import {
 	classifyTagStringMatch,
@@ -259,16 +260,32 @@ function _renderRollDialogHudOnPlayers() {
 	// shows only while the card is the open debt.
 	Hooks.on("updateActor", (actor, changes) => {
 		const flags = changes.flags?.litmv2 ?? {};
+		// The Narrator's Secret Grace window and a Sacrifice's tier hint follow
+		// the Hero's record.
+		if (FLAGS.secretGrace in flags || `-=${FLAGS.secretGrace}` in flags) {
+			foundry.applications.instances
+				.get(SecretGraceApp.idFor(actor))
+				?.render();
+			// Only the Narrator's Sacrifice window shows the tier.
+			const dialog = game.user.isGM && actor.sheet?.hasRollDialog
+				? actor.sheet.rollDialogInstance
+				: null;
+			if (dialog?.rendered && dialog.type === "sacrifice") dialog.render();
+		}
 		if (!(FLAGS.pendingSacrifice in flags || `-=${FLAGS.pendingSacrifice}` in flags))
 			return;
 		game.litmv2.sacrificeHud?.render?.();
 		// Settled from another client: a payment dialog still open here is moot.
 		if (!pendingSacrifice(actor))
 			foundry.applications.instances.get(paymentDialogId(actor))?.close();
+		// Only two cards can change: the one showing Complete now, and the new debt's.
+		const debtId = pendingSacrifice(actor)?.messageId;
 		for (const li of ui.chat?.element?.querySelectorAll(".message[data-message-id]") ?? []) {
-			const message = game.messages.get(li.dataset.messageId);
-			const litm = message?.rolls?.[0]?.options;
-			if (litm?.type === "sacrifice" && litm.actorId === actor.id)
+			const { messageId } = li.dataset;
+			if (messageId !== debtId && !li.querySelector("[data-click='complete-sacrifice']"))
+				continue;
+			const message = game.messages.get(messageId);
+			if (message?.rolls?.[0]?.options?.actorId === actor.id)
 				ui.chat.updateMessage(message);
 		}
 	});

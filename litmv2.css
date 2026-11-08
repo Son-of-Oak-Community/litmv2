@@ -2200,6 +2200,16 @@ section.standard-form.litm-theme-browser-body {
 	align-items: center;
 }
 
+/* The Narrator's view of the Hero's Secret Grace, at the end of the label row. */
+.litm--sacrifice-grace .litm--might-label-row .hint {
+	margin-inline: auto var(--spacer-4);
+}
+
+/* A Secret Grace moment the Narrator scratched: kept for history, not counted. */
+.litm--grace-scratched {
+	text-decoration: line-through;
+}
+
 .litm--sacrifice-toggle {
 	border-color: var(--color-litm-weakness-text);
 	color: var(--color-litm-weakness-text);

@@ -397,6 +397,25 @@ describe("the roller's Sacrifice switch", () => {
 		expect(dialog.type).toBe("quick");
 	});
 
+	it("starts every Sacrifice's grace at 0, whatever the Hero holds", () => {
+		const dialog = calledRoll();
+		actor.getFlag = vi.fn((_scope, key) =>
+			key === "secretGrace"
+				? [{ id: "m", text: "Spared the wolf", spent: false }]
+				: { ownerId: "player", narrator: true },
+		);
+		dialog.setType("sacrifice");
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
+	});
+
+	it("drops the Narrator's grace when the roll ends unrolled", async () => {
+		const dialog = calledRoll();
+		dialog.setType("sacrifice");
+		await dialog.receiveUpdate({ actorId: actor.id, sacrificeBonus: 4 });
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(4);
+		dialog.endSharedRoll();
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
+	});
 	it("is not the switch of a Narrator watching the roll", () => {
 		game.user = { id: "gm", isGM: true };
 		expect(calledRoll().canProposeSacrifice).toBe(false);

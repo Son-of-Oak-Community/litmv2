@@ -52,6 +52,7 @@ export class HeroSheet extends LitmActorSheet {
 			addStoryTheme: LitmActorSheet._onAddStoryTheme,
 			addMomentOfFulfillment: HeroSheet.#onAddMomentOfFulfillment,
 			removeMomentOfFulfillment: HeroSheet.#onRemoveMomentOfFulfillment,
+			openSecretGrace: HeroSheet.#onOpenSecretGrace,
 			removeEffect: LitmActorSheet._onRemoveEffect,
 			toggleEffectVisibility: LitmActorSheet._onToggleEffectVisibility,
 			scratchTag: HeroSheet.#onScratchTag,
@@ -323,6 +324,8 @@ export class HeroSheet extends LitmActorSheet {
 			storyThemes,
 			backpack,
 			statuses,
+			// The Secret Grace is the Narrator's alone (Vol. II p.78).
+			showSecretGrace: game.user.isGM,
 			relationshipEntries,
 			relationshipVisible,
 			lostRelationships,
@@ -559,6 +562,10 @@ export class HeroSheet extends LitmActorSheet {
 	 */
 	static async #onAddMomentOfFulfillment() {
 		await this.document.system.recordMomentOfFulfillment();
+	}
+
+	static #onOpenSecretGrace() {
+		game.litmv2.SecretGraceApp.open(this.document);
 	}
 
 	/**

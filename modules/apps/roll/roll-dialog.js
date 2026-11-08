@@ -48,6 +48,10 @@ import {
 } from "./roll-pipeline.js";
 import { RollSync } from "./roll-sync.js";
 import { refuseUnpaidSacrifice } from "./roll-request.js";
+import {
+	graceBonusLabel,
+	secretGraceTier,
+} from "../../actor/hero/secret-grace.js";
 import { hasPainfulSacrificeTarget, isThemeSpent } from "./sacrifice-rules.js";
 
 export { resolveRollDialogOwnership };
@@ -91,6 +95,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			selectSacrificeTheme: LitmRollDialog.#onSelectSacrificeTheme,
 			setSacrificeLevel: LitmRollDialog.#onSetSacrificeLevel,
 			toggleSacrifice: LitmRollDialog.#onToggleSacrifice,
+			openSecretGrace: LitmRollDialog.#onOpenSecretGrace,
 		},
 	};
 
@@ -687,6 +692,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		});
 	}
 
+	/** The Narrator's window on the Hero's Secret Grace (Vol. II p.78). */
+	static #onOpenSecretGrace() {
+		game.litmv2.SecretGraceApp?.open(this.actor);
+	}
+
 	static #onToggleSacrifice() {
 		if (!this.canProposeSacrifice) return;
 		this.setType(this.type === "sacrifice" ? "quick" : "sacrifice");
@@ -774,10 +784,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	setType(type) {
 		if (!type) return;
 		// The move on a called roll is the Narrator's. The same gate the radio
-		// bar and `#handleTypeChange` apply belongs here too: the hero sheet's
-		// Sacrifice button calls straight through, which would otherwise let a
-		// roller silently turn the Narrator's Quick outcome into a Sacrifice on
-		// the shared object they are both looking at.
+		// bar and `#handleTypeChange` apply belongs here too: callers reach this
+		// setter directly, which would otherwise let a roller silently change
+		// the Narrator's move on the shared object they are both looking at.
 		//
 		// Reactions are the exception. A Consequence landing mid-call is not the
 		// player overriding the Narrator's judgement, it is a different roll they
@@ -803,6 +812,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			this.#actionUuid = null;
 			this.#actionDoc = null;
 		}
+		// Secret Grace always starts at 0, entering or leaving a Sacrifice: a
+		// value filled in from the Hero's record would show the player it
+		// exists (Vol. II p.78 — never say where the number comes from).
+		if (type !== this.type) this.#sacrificeBonus = 0;
 		this.type = type;
 		// Re-render rather than poke the DOM: the move is named in three places
 		// that all read `type` out of the render context — the segmented bar,
@@ -1440,10 +1453,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// not even a player's own unprompted roll lets them set it.
 			canSetGrace: game.user.isGM,
 			sacrificeBonus: this.#sacrificeBonus,
-			// The Narrator grants it as a Secret Grace; the player just sees a bonus.
-			graceLabel: t(
-				game.user.isGM ? "LITM.Ui.sacrifice_grace" : "LITM.Ui.sacrifice_bonus",
-			),
+			// The Narrator grants it as a Secret Grace; the player just sees a
+			// bonus. Only the Narrator is shown the Hero's current tier.
+			heroGraceTier: game.user.isGM ? secretGraceTier(this.actor) : null,
+			graceLabel: graceBonusLabel(),
 			graceHint: t(
 				game.user.isGM
 					? "LITM.Ui.sacrifice_grace_hint"
@@ -2473,8 +2486,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		]) {
 			if (!this.isOwner) state[key] = this.#sync.view[key];
 		}
-		// Secret Grace is the Narrator's alone, called roll or not.
-		if (!game.user.isGM) state.sacrificeBonus = this.#sync.view.sacrificeBonus;
+		// Secret Grace is the Narrator's alone, called roll or not. A player's
+		// client may only send the reset to 0 that `setType` makes as the move
+		// changes.
+		const graceReset =
+			state.type !== this.#sync.view.type && state.sacrificeBonus === 0;
+		if (!game.user.isGM && !graceReset)
+			state.sacrificeBonus = this.#sync.view.sacrificeBonus;
 		for (const key of ["type", "might"]) {
 			// The explicit reaction entry point is allowed to change the move
 			// even on a called roll, and so is the roller's Sacrifice switch
