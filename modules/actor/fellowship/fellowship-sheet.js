@@ -30,10 +30,7 @@ function buildPartyOverview(fellowshipActor) {
 	);
 	return heroes.map((hero) => {
 		const themes = hero.items.filter(
-			(i) =>
-				i.type === ITEM_TYPES.theme &&
-				!i.system.isFellowship &&
-				!i.system.isScratched,
+			(i) => i.type === ITEM_TYPES.theme && !i.system.isFellowship,
 		);
 		const quests = themes
 			.filter((theme) => theme.system.quest?.description)
