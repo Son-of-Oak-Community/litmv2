@@ -35,3 +35,18 @@ export function isThemeSpent(theme) {
 export function hasPainfulSacrificeTarget(themes) {
 	return themes.some((theme) => !isThemeSpent(theme));
 }
+
+/**
+ * The price of a sacrifice once the roll is in — a Miracle ("success") lessens
+ * it by one level, Fate and In Vain pay it in full (Core Book p.159). A lessened
+ * Painful scratches one tag instead of every tag: "painfulOne".
+ * @param {"painful"|"scarring"|"grave"} level
+ * @param {"success"|"snc"|"consequences"} outcomeLabel
+ * @returns {"painfulOne"|"painful"|"scarring"|"grave"}
+ */
+export function effectiveSacrificeLevel(level, outcomeLabel) {
+	if (outcomeLabel !== "success") return level;
+	if (level === "grave") return "scarring";
+	if (level === "scarring") return "painful";
+	return "painfulOne";
+}

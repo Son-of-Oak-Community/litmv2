@@ -4,6 +4,7 @@ import { ApplyActionMenuApp } from "../../apps/apply-action-menu.js";
 import { collectSourceConsequences } from "../../apps/consequence-sources.js";
 import { renderModerationTooltip } from "../../apps/roll/moderation-render.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
+import { effectiveSacrificeLevel } from "../../apps/roll/sacrifice-rules.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
 import { StoryTagsStore } from "../../apps/story-tags/story-tags-store.js";
 import { ThemeAdvancementApp } from "../../apps/theme-advancement.js";
@@ -28,34 +29,23 @@ import { dialogContent, formatCostLabel } from "../renderers/renderer-utils.js";
 import { Sockets } from "../sockets.js";
 
 /**
- * The price of a sacrifice paid on the chat card — for "success" (Miracle)
- * the price is lessened by one rung; otherwise the level as rolled stands.
- * Painful lessens to nothing; the caller is responsible for suppressing the
- * completion step in that case.
- * @param {"painful"|"scarring"|"grave"} level
- * @param {"success"|"snc"|"consequences"} outcomeLabel
- * @returns {"none"|"painful"|"scarring"|"grave"}
- */
-function effectiveSacrificeLevel(level, outcomeLabel) {
-	if (outcomeLabel !== "success") return level;
-	if (level === "grave") return "scarring";
-	if (level === "scarring") return "painful";
-	return "none";
-}
-
-/**
  * Apply the consequence of a sacrifice roll to a hero. The price is paid by
  * a theme for painful/scarring and by a status at the world's top tier — the
  * one that kills or transforms — for grave.
  * Performs document mutations only; notifications are shown by the caller.
  * @param {Actor} actor
- * @param {"painful"|"scarring"|"grave"} level - The *effective* price level
+ * @param {"painfulOne"|"painful"|"scarring"|"grave"} level - The *effective* price level
  * @param {object} [opts]
- * @param {string} [opts.themeId]   Required for painful/scarring
+ * @param {string} [opts.themeId]   Required for painfulOne/painful/scarring
+ * @param {string} [opts.tagId]     Required for painfulOne — the one tag to scratch
  * @param {string} [opts.statusName] Required for grave
- * @returns {Promise<{themeName?: string, statusName?: string}|null>}
+ * @returns {Promise<{themeName?: string, tagName?: string, statusName?: string}|null>}
  */
-async function applyThemeSacrifice(actor, level, { themeId, statusName } = {}) {
+async function applyThemeSacrifice(
+	actor,
+	level,
+	{ themeId, tagId, statusName } = {},
+) {
 	if (level === "grave") {
 		if (!statusName) return null;
 		await actor.system.addStatus(statusName, { tier: maxStatusTier() });
@@ -65,6 +55,13 @@ async function applyThemeSacrifice(actor, level, { themeId, statusName } = {}) {
 	const theme = themeId ? actor.items.get(themeId) : null;
 	if (!theme) return null;
 	const themeName = theme.name;
+
+	if (level === "painfulOne") {
+		const tag = theme.effects.get(tagId);
+		if (!tag) return null;
+		await tag.update({ "system.isScratched": true });
+		return { themeName, tagName: tag.name };
+	}
 
 	if (level === "painful") {
 		const powerEffects = theme.effects.filter((e) =>
@@ -76,9 +73,6 @@ async function applyThemeSacrifice(actor, level, { themeId, statusName } = {}) {
 				powerEffects.map((e) => ({ _id: e.id, "system.isScratched": true })),
 			);
 		}
-		await actor.updateEmbeddedDocuments("Item", [
-			{ _id: theme.id, "system.isScratched": true },
-		]);
 	} else if (level === "scarring") {
 		await actor.deleteEmbeddedDocuments("Item", [theme.id]);
 	}
@@ -248,7 +242,6 @@ async function _handleCompleteSacrifice(target) {
 
 	const outcomeLabel = roll.outcome?.label;
 	const effective = effectiveSacrificeLevel(sacrificeLevel, outcomeLabel);
-	if (effective === "none") return;
 
 	const result = await _confirmAndApplySacrifice(actor, {
 		effective,
@@ -262,6 +255,13 @@ async function _handleCompleteSacrifice(target) {
 			game.i18n.format("LITM.Ui.sacrifice_status_applied", {
 				actor: actor.name,
 				status: result.statusName,
+			}),
+		);
+	} else if (result.tagName) {
+		ui.notifications.info(
+			game.i18n.format("LITM.Ui.sacrifice_tag_scratched", {
+				tag: result.tagName,
+				theme: result.themeName,
 			}),
 		);
 	} else if (result.themeName) {
@@ -285,7 +285,7 @@ async function _handleCompleteSacrifice(target) {
  * step is a confirm-or-cancel, not a re-collection.
  * @param {Actor} actor
  * @param {object} ctx
- * @param {"painful"|"scarring"|"grave"} ctx.effective
+ * @param {"painfulOne"|"painful"|"scarring"|"grave"} ctx.effective
  * @param {string} [ctx.themeId]
  * @param {string} [ctx.statusName]
  * @returns {Promise<{themeName?: string, statusName?: string}|null>}
@@ -314,6 +314,11 @@ async function _confirmAndApplySacrifice(
 
 	const theme = themeId ? actor.items.get(themeId) : null;
 	if (!theme) return null;
+	if (effective === "painfulOne") {
+		const tagId = await _pickSacrificeTag(theme);
+		if (!tagId) return null;
+		return applyThemeSacrifice(actor, effective, { themeId, tagId });
+	}
 	const confirmKey =
 		effective === "scarring"
 			? "LITM.Ui.sacrifice_confirm_scarring"
@@ -326,6 +331,56 @@ async function _confirmAndApplySacrifice(
 	});
 	if (!confirmed) return null;
 	return applyThemeSacrifice(actor, effective, { themeId });
+}
+
+/**
+ * A Miracle on a Painful Sacrifice scratches one tag of the theme (Core Book
+ * p.159), and the player picks which. Offers the same tags a full Painful
+ * price would scratch, minus the ones already scratched.
+ * @param {Item} theme
+ * @returns {Promise<string|null>} the chosen effect id
+ */
+async function _pickSacrificeTag(theme) {
+	const live = theme.effects.filter(
+		(e) => POWER_TAG_TYPES.has(e.type) && !e.disabled && !e.system?.isScratched,
+	);
+	if (!live.length) return null;
+	const titleTag = live.find((e) => e.system?.isTitleTag);
+	// Pre-check the first tag shown, so OK always names one: a Miracle still pays.
+	const first = titleTag ?? live[0];
+	const entry = (e) => ({
+		index: e.id,
+		name: e.name,
+		type: e.type,
+		checked: e === first,
+	});
+	const content = await foundry.applications.handlebars.renderTemplate(
+		"systems/litmv2/templates/apps/tag-picker-form.html",
+		{
+			groups: [
+				{
+					img: theme.img,
+					fallbackLabel: theme.name,
+					titleEntry: titleTag ? entry(titleTag) : null,
+					entries: live.filter((e) => e !== titleTag).map(entry),
+				},
+			],
+		},
+	);
+	return foundry.applications.api.DialogV2.prompt({
+		window: { title: t("LITM.Ui.sacrifice_confirm_title") },
+		classes: ["litm", "litm--picker", "litm--tag-picker-dialog"],
+		content: `${dialogContent("LITM.Ui.sacrifice_confirm_painful_one", { theme: theme.name })}${content}`,
+		position: { width: 420 },
+		ok: {
+			label: t("LITM.Ui.sacrifice_complete"),
+			callback: (_event, button) =>
+				button.form?.querySelector("input[name='picked']:checked")?.value ??
+				null,
+		},
+		rejectClose: false,
+		modal: true,
+	});
 }
 
 async function _handleRejectModeration(_target, app) {

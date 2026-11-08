@@ -158,15 +158,8 @@ export class LitmRoll extends foundry.dice.Roll {
 				(this.litm.weaknessTags ?? []).some((tag) =>
 					IMPROVE_MARKING_TAG_TYPES.has(tag.type),
 				),
-			// A Miracle on Painful lessens the price to nothing — there is
-			// no completion step to perform, so the button is suppressed.
 			canCompleteSacrifice:
-				this.litm.type === "sacrifice" &&
-				!this.litm.sacrificeCompleted &&
-				!(
-					this.litm.sacrificeLevel === "painful" &&
-					this.outcome?.label === "success"
-				),
+				this.litm.type === "sacrifice" && !this.litm.sacrificeCompleted,
 		};
 
 		return foundry.applications.handlebars.renderTemplate(template, chatData);

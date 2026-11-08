@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	effectiveSacrificeLevel,
 	hasPainfulSacrificeTarget,
 	isThemeSpent,
 } from "../modules/apps/roll/sacrifice-rules.js";
@@ -111,5 +112,20 @@ describe("hasPainfulSacrificeTarget", () => {
 
 	it("is false for an empty theme list", () => {
 		expect(hasPainfulSacrificeTarget([])).toBe(false);
+	});
+});
+
+describe("effectiveSacrificeLevel", () => {
+	it("pays the level in full on Fate and In Vain", () => {
+		for (const level of ["painful", "scarring", "grave"]) {
+			expect(effectiveSacrificeLevel(level, "snc")).toBe(level);
+			expect(effectiveSacrificeLevel(level, "consequences")).toBe(level);
+		}
+	});
+
+	it("lessens by one level on a Miracle; Painful still scratches one tag", () => {
+		expect(effectiveSacrificeLevel("grave", "success")).toBe("scarring");
+		expect(effectiveSacrificeLevel("scarring", "success")).toBe("painful");
+		expect(effectiveSacrificeLevel("painful", "success")).toBe("painfulOne");
 	});
 });
