@@ -1153,7 +1153,7 @@ section.standard-form.litm-theme-browser-body {
 	transition: color var(--transition-fast);
 }
 [data-linked-ref-target].is-drop-hover .litm--ref-drop {
-	color: var(--color-litm-tag);
+	color: var(--color-litm-tag-text);
 }
 .litm--ref-controls {
 	display: inline-flex;
@@ -6000,17 +6000,26 @@ input.litm--single-use::after {
 
 .litm-spend-power .litm-spend-power__tag-chip {
 	cursor: pointer;
+	-webkit-user-select: none;
 	user-select: none;
-	opacity: 0.6;
-	transition: opacity var(--transition-fast) ease;
+	opacity: 0.5;
+	filter: grayscale(1);
+	transition:
+		opacity var(--transition-fast) ease,
+		filter var(--transition-fast) ease;
 }
 
 .litm-spend-power .litm-spend-power__tag-chip:hover {
 	opacity: 0.85;
 }
 
+/* Opacity alone was too faint on light parchment: the chosen chip keeps its
+   colour and takes the checkbox's ring. */
 .litm-spend-power .litm-spend-power__tag-chip.is-selected {
 	opacity: 1;
+	filter: none;
+	outline: 2px solid var(--color-warm-1);
+	outline-offset: 1px;
 }
 
 .litm-spend-power .litm-spend-power__status-list {
@@ -7394,6 +7403,8 @@ body.litm--colorblind .themed.theme-dark,
 }
 
 .litm-camping-scene__duration-field {
+	/* The scene hint beside it is long; shrinking here collapses the select. */
+	flex: none;
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacer-8);
@@ -7447,9 +7458,11 @@ body.litm--colorblind .themed.theme-dark,
 		color var(--transition-slow);
 }
 
+/* A checked checkbox's colours: yellow on a faint orange vanished on light
+   parchment. */
 .litm-camping-scene__type-card.active .litm-camping-scene__type-card-icon {
-	background: var(--color-warm-1-25);
-	color: var(--color-litm-tag);
+	background: var(--color-warm-1);
+	color: var(--color-dark-1);
 }
 
 .litm-camping-scene__type-card-title {
@@ -8135,8 +8148,10 @@ button.litm-camping-scene__hero-link {
 	background: var(--color-border);
 }
 
+/* The active step's underline colour: the tag-chip fill vanished on light
+   parchment. */
 .litm-camping-scene__timeline-item.complete:not(:last-child)::after {
-	background: var(--color-litm-tag);
+	background: var(--color-warm-1);
 }
 
 .litm-camping-scene__timeline-btn {
