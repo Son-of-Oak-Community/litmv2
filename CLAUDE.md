@@ -142,9 +142,12 @@ The authority split lives in `modules/apps/roll/roll-authority.js` (pure,
 unit-tested):
 
 - **Narrator's half** — move type and Might. Locked for non-GMs whenever the
-  roll carries a narrator stamp (`canEditNarratorFields`). Enforced in the
-  template (`disabled`), in `#handleTypeChange` / `#handleMightChange`, which
-  revert, and in `setType`; the markup is
+  roll carries a narrator stamp (`canEditNarratorFields`). The Secret Grace
+  (0 to +6) the Narrator may tell a Sacrifice to add (p.159) is stricter: the
+  Narrator's alone on every roll, called or not; the player sees it locked,
+  labelled "Bonus". Enforced in the template
+  (`disabled`), in `#handleTypeChange` / `#handleMightChange` /
+  `#handleSacrificeBonusChange`, which revert, and in `setType`; the markup is
   not the boundary. **The GM may set the move and the Might on any
   roll, called or not** — judging Might is the Narrator's job (p.272), so the
   settings column renders for them even as a non-owner viewer. That is a
@@ -160,8 +163,8 @@ unit-tested):
   (p.159), so the switch beside the move bar is the roller's even on a called
   roll, and only between Quick and Sacrifice (`canToggleSacrifice`); the move
   bar keeps showing Quick. It never appears on Acting Together. A Sacrifice
-  adds no Power: its formula stays `2d6`, and its theme cards take the tag
-  column's place. The Narrator sees the player's Sacrifice choices read-only.
+  adds no Power: its formula is `2d6 + @sacrificeBonus`, and its theme cards
+  take the tag column's place.
 - Selection entries carrying `narrator: true` stay locked for non-GMs in both
   `makeTagDecorator` and `LitmRollDialog#canModifyTag`.
 

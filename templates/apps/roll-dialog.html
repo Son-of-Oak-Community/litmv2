@@ -92,7 +92,7 @@
 		     Might is the Narrator's judgement on a called roll, so a GM
 		     watching a player's roll still needs the column. The Sacrifice
 		     level stays owner-only — a Sacrifice is the player's price to elect
-		     (p.159). --}}
+		     (p.159); its Secret Grace is the Narrator's half. --}}
 		{{#if showSettings}}
 		<div class="litm--roll-dialog-settings">
 		{{#if showSacrifice}}
@@ -161,6 +161,28 @@
 						{{else if (gt this 0)}}<span>+{{this}}</span>
 						{{else}}<span>{{this}}</span>
 						{{/if}}
+					</label>
+					{{/each}}
+				</div>
+			</div>
+			{{!-- Secret Grace, p.159: "At the Narrator's option, they may tell you
+			     to add a number to the total before you roll." Shown in place of
+			     Might during a Sacrifice, which adds no Power. Only the Narrator
+			     sets it, on any roll; the player sees it locked. --}}
+			<div class="litm--sacrifice-grace hidden">
+				<div class="litm--might-label-row">
+					<span class="litm--might-name-wrapper" data-tooltip="{{graceHint}}">
+						{{graceLabel}}
+						<i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+					</span>
+				</div>
+				<div class="litm--might-radio-row litm--grace-radio-row {{#unless canSetGrace}}is-locked{{/unless}}"
+					role="radiogroup" aria-label="{{graceLabel}}">
+					{{#each graceRange}}
+					<label class="litm--segmented-option litm--might-option litm--grace-option {{#if (eq ../sacrificeBonus this)}}is-active{{/if}}">
+						<input type="radio" name="sacrificeBonus" value="{{this}}" {{checked (eq ../sacrificeBonus this)}}
+							{{#unless @root.canSetGrace}}disabled aria-disabled="true"{{/unless}} />
+						<span>{{#if (gt this 0)}}+{{/if}}{{this}}</span>
 					</label>
 					{{/each}}
 				</div>

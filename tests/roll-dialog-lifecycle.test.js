@@ -401,4 +401,13 @@ describe("the roller's Sacrifice switch", () => {
 		game.user = { id: "gm", isGM: true };
 		expect(calledRoll().canProposeSacrifice).toBe(false);
 	});
+
+	it("rolls the Narrator's number with a Sacrifice", async () => {
+		const { resolveRollFormula } = await import(
+			"../modules/apps/roll/roll-pipeline.js"
+		);
+		expect(resolveRollFormula({ type: "sacrifice" })).toBe(
+			"2d6 + @sacrificeBonus",
+		);
+	});
 });

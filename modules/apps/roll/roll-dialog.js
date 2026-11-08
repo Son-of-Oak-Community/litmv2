@@ -481,6 +481,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			might: this.#might,
 			tradePower: this.#tradePower,
 			sacrificeLevel: isSacrifice ? this.#sacrificeLevel : undefined,
+			sacrificeBonus: isSacrifice ? this.#sacrificeBonus : 0,
 			sacrificeThemeId: isSacrifice ? this.#sacrificeThemeId : undefined,
 			sacrificeStatusName:
 				isSacrifice && this.#sacrificeLevel === "grave"
@@ -518,6 +519,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	#modifier = 0;
 	#might = 0;
+	/** The number the Narrator tells a Sacrifice to add (p.159); no Power is. */
+	#sacrificeBonus = 0;
 	#tradePower = 0;
 	#sacrificeLevel = "painful";
 	#sacrificeThemeId = null;
@@ -616,6 +619,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// sacrifice, mirroring the Roll button's behaviour in hero-sheet.
 		if (this.#actionUuid && this.type === "sacrifice") {
 			this.type = "quick";
+			// As `setType`: Secret Grace never outlives the Sacrifice.
+			this.#sacrificeBonus = 0;
 			this.updatePresence(true).catch(console.error);
 		}
 		this.rollName = "";
@@ -746,6 +751,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#actionUuid = actionUuid || null;
 		this.#actionDoc = null;
 		this.#might = 0;
+		this.#sacrificeBonus = 0;
 		this.#modifier = 0;
 		this.#tradePower = 0;
 		this.#sojournBonus = 0;
@@ -1427,9 +1433,22 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			isSacrifice: this.type === "sacrifice",
 			canProposeSacrifice: this.canProposeSacrifice,
 			// The Narrator watches a Sacrifice the way they watch any roll: the
-			// player's own view, read-only.
+			// player's own view, read-only — but for the grace, which is theirs.
 			showSacrifice: isOwner || isGMViewer,
 			canEditSacrifice: isOwner,
+			// Secret Grace is the Narrator's alone, on every roll: unlike Might,
+			// not even a player's own unprompted roll lets them set it.
+			canSetGrace: game.user.isGM,
+			sacrificeBonus: this.#sacrificeBonus,
+			// The Narrator grants it as a Secret Grace; the player just sees a bonus.
+			graceLabel: t(
+				game.user.isGM ? "LITM.Ui.sacrifice_grace" : "LITM.Ui.sacrifice_bonus",
+			),
+			graceHint: t(
+				game.user.isGM
+					? "LITM.Ui.sacrifice_grace_hint"
+					: "LITM.Ui.sacrifice_bonus_hint",
+			),
 			mitigationBanner:
 				this.type === "mitigate" ? mitigationBannerText(this.#mitigation) : "",
 			narratorCall: isNarratorControlled(this.#narratorCall)
@@ -1444,6 +1463,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			modifier: this.#modifier,
 			might: this.#might,
 			mightRange: Array.from({ length: 13 }, (_, i) => i - 6),
+			graceRange: Array.from({ length: 7 }, (_, i) => i),
 			tradePower: this.#tradePower,
 			canHedge: this.totalPower >= 2,
 			canCaution: this.totalPower <= 2,
@@ -1516,6 +1536,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				this.#handleTradePowerChange(target);
 			} else if (target.matches("input[name='sacrificeLevel']")) {
 				this.#handleSacrificeLevelChange(target);
+			} else if (target.matches("input[name='sacrificeBonus']")) {
+				this.#handleSacrificeBonusChange(target);
 			} else if (target.matches("input[name='sacrificeStatusName']")) {
 				this.#handleSacrificeStatusNameChange(target);
 			} else if (target.matches("input[name='type']")) {
@@ -1603,13 +1625,23 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			lock(input);
 		for (const input of this.element.querySelectorAll("input[name='might']"))
 			lock(input);
+		// Secret Grace is the Narrator's on every roll, called or not.
+		for (const input of this.element.querySelectorAll(
+			"input[name='sacrificeBonus']",
+		)) {
+			input.disabled = !game.user.isGM;
+			if (game.user.isGM) input.removeAttribute("aria-disabled");
+			else input.setAttribute("aria-disabled", "true");
+		}
 		for (const bar of this.element.querySelectorAll(
 			".litm--roll-type-bar, .litm--might-radio-row",
 		)) {
-			// Hedge/Caution and the Sacrifice level are the roller's.
+			// Hedge/Caution and the Sacrifice level are the roller's; Secret
+			// Grace is locked above.
 			if (
 				bar.classList.contains("litm--trade-power-bar") ||
-				bar.classList.contains("litm--sacrifice-level-bar")
+				bar.classList.contains("litm--sacrifice-level-bar") ||
+				bar.classList.contains("litm--grace-radio-row")
 			)
 				continue;
 			bar.classList.toggle("is-locked", !canSetNarratorFields);
@@ -1889,6 +1921,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.clearSelections();
 		this.#modifier = 0;
 		this.#might = 0;
+		this.#sacrificeBonus = 0;
 		this.#tradePower = 0;
 		this.#sacrificeLevel = "painful";
 		this.#sacrificeThemeId = null;
@@ -1926,6 +1959,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			for (const entry of this.#selectionMap.values()) entry.narrator = false;
 			// Might judged this action; the next roll starts from Equal.
 			this.#might = 0;
+			// Nor the Narrator's Secret Grace, which was for this Sacrifice.
+			this.#sacrificeBonus = 0;
 			this.#cachedTotalPower = null;
 		}
 		this.invalidateSync();
@@ -2032,12 +2067,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			for (const el of root.querySelectorAll(selector))
 				el.classList.toggle("hidden", hidden);
 		};
-		// A Sacrifice adds no Power (p.159): the modifiers and the total go,
-		// and the tags give way to the theme cards, which take the tag
-		// column's place. The move bar stays: it is still a Quick outcome, and
-		// the Narrator may still change the move.
-		toggle(".litm--roll-dialog-modifiers", isSacrifice);
-		toggle(".litm--roll-dialog-total-power", isSacrifice);
+		// A Sacrifice adds no Power (p.159): Might gives way to the Narrator's
+		// Secret Grace, and the tags to the theme cards, which take the tag
+		// column's place. The total stays, reading the Grace bonus the roll
+		// adds. The move bar stays: it is still a Quick outcome, and the
+		// Narrator may still change the move.
+		toggle(".litm--roll-dialog-might", isSacrifice);
+		toggle(".litm--sacrifice-grace", !isSacrifice);
 		toggle(".litm--sacrifice-level-fieldset", !isSacrifice);
 		toggle(".litm--roll-dialog-tags-fieldset, .litm--roll-dialog-tabs", isSacrifice);
 		// Only the roller has theme cards; anyone else's tag column is empty.
@@ -2085,6 +2121,22 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#sacrificeLevel = level;
 		this.#applySacrificeLevelToDom(level);
 		this.#toggleSacrificeSubfields(this.#sacrificeLevel);
+		this.#dispatchUpdate();
+	}
+
+	/** The Narrator's Secret Grace for a Sacrifice: theirs alone, on any roll. */
+	#handleSacrificeBonusChange(target) {
+		if (!game.user.isGM) {
+			this.#restoreRadio("sacrificeBonus", this.#sacrificeBonus);
+			return;
+		}
+		this.#sacrificeBonus = Number(target.value) || 0;
+		for (const label of this.element.querySelectorAll(".litm--grace-option"))
+			label.classList.toggle(
+				"is-active",
+				label.querySelector("input")?.value === String(this.#sacrificeBonus),
+			);
+		this.#updateTotalPower();
 		this.#dispatchUpdate();
 	}
 
@@ -2282,7 +2334,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 		if (this.#totalPowerEl) {
 			const trade = this.#tradePower;
-			if (trade) {
+			// A Sacrifice rolls 2d6 + its Secret Grace bonus, nothing else.
+			if (this.type === "sacrifice")
+				this.#totalPowerEl.textContent = this.#sacrificeBonus;
+			else if (trade) {
 				const rollPower = totalPower + trade;
 				const spendPower = Math.max(totalPower - trade, 1);
 				this.#totalPowerEl.innerHTML = `${totalPower} <span class="litm--trade-annotation">(${t("LITM.Terms.roll")}: ${rollPower >= 0 ? "+" : ""}${rollPower}, ${t("LITM.Ui.spend_power")}: ${spendPower})</span>`;
@@ -2375,6 +2430,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			type: this.type,
 			modifier: this.#modifier,
 			might: this.#might,
+			sacrificeBonus: this.#sacrificeBonus,
 			tradePower: this.#tradePower,
 			sacrificeLevel: this.#sacrificeLevel,
 			sacrificeThemeId: this.#sacrificeThemeId,
@@ -2417,6 +2473,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		]) {
 			if (!this.isOwner) state[key] = this.#sync.view[key];
 		}
+		// Secret Grace is the Narrator's alone, called roll or not.
+		if (!game.user.isGM) state.sacrificeBonus = this.#sync.view.sacrificeBonus;
 		for (const key of ["type", "might"]) {
 			// The explicit reaction entry point is allowed to change the move
 			// even on a called roll, and so is the roller's Sacrifice switch
@@ -2565,6 +2623,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		type,
 		modifier,
 		might,
+		sacrificeBonus,
 		tradePower,
 		sacrificeLevel,
 		sacrificeThemeId,
@@ -2584,6 +2643,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (type !== undefined) this.type = type;
 		if (modifier !== undefined) this.#modifier = modifier;
 		if (might !== undefined) this.#might = might;
+		if (sacrificeBonus !== undefined) this.#sacrificeBonus = sacrificeBonus;
 		if (tradePower !== undefined) this.#tradePower = tradePower;
 		if (sacrificeLevel !== undefined) this.#sacrificeLevel = sacrificeLevel;
 		if (sacrificeThemeId !== undefined)

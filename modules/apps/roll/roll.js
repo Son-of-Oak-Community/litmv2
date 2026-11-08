@@ -138,6 +138,14 @@ export class LitmRoll extends foundry.dice.Roll {
 			modifier: isPrivate ? "???" : this.modifier,
 			tradePower: this.litm.tradePower || 0,
 			sacrificeLevel: this.litm.sacrificeLevel || null,
+			// The Narrator's Secret Grace on a Sacrifice (p.159), signed; empty at 0.
+			sacrificeBonus: this.litm.sacrificeBonus
+				? `${this.litm.sacrificeBonus > 0 ? "+" : ""}${this.litm.sacrificeBonus}`
+				: "",
+			// Rendered per viewer: the Narrator's Secret Grace is a bonus to players.
+			sacrificeBonusLabel: t(
+				game.user.isGM ? "LITM.Ui.sacrifice_grace" : "LITM.Ui.sacrifice_bonus",
+			),
 			sacrificeTheme: this.#getSacrificeTheme(),
 			// Grave's price is "a status at the tier that kills you", which
 			// tracks the world's track depth rather than a fixed 6.

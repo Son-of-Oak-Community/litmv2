@@ -57,10 +57,11 @@ export function buildRollPreview({ tags, modifier = 0, might = 0 }) {
  */
 export function resolveRollFormula(args) {
 	const { type } = args;
-	// Sacrifice rolls use only 2d6 — no Power is added.
+	// Sacrifice rolls add no Power — only the number the Narrator may tell
+	// the roller to add (p.159).
 	const defaultFormula =
 		type === "sacrifice"
-			? "2d6"
+			? "2d6 + @sacrificeBonus"
 			: "2d6 + (@scratchedValue + @powerValue + @positiveStatusValue - @weaknessValue - @negativeStatusValue + @modifier + @mightOffset + @tradePower)";
 
 	return typeof CONFIG.litmv2.roll.formula === "function"
@@ -88,6 +89,7 @@ export function executeRoll({
 	sacrificeLevel,
 	sacrificeThemeId,
 	sacrificeStatusName,
+	sacrificeBonus = 0,
 	actionUuid = null,
 	mitigation = null,
 	participantIds = [],
@@ -120,8 +122,10 @@ export function executeRoll({
 		might,
 	});
 
+	sacrificeBonus = type === "sacrifice" ? Math.trunc(Number(sacrificeBonus)) || 0 : 0;
 	const formula = resolveRollFormula({
 		type,
+		sacrificeBonus,
 		scratchedTags,
 		powerTags,
 		weaknessTags,
@@ -164,6 +168,7 @@ export function executeRoll({
 			modifier: Number(modifier) || 0,
 			mightOffset,
 			tradePower: Number(tradePower) || 0,
+			sacrificeBonus,
 		},
 		{
 			actorId,
@@ -183,6 +188,7 @@ export function executeRoll({
 			sacrificeLevel,
 			sacrificeThemeId,
 			sacrificeStatusName,
+			sacrificeBonus,
 			mitigation,
 			// Acting Together (p.157): the outcome affects the entire group, so
 			// the card remembers who was in it. The GM apply flow reads this to
