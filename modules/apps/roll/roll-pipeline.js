@@ -9,7 +9,7 @@ import { Sockets } from "../../system/sockets.js";
 import { localize as t } from "../../utils.js";
 import { LitmRoll } from "./roll.js";
 import { canInitiateRoll } from "./roll-authority.js";
-import { recordPendingSacrifice } from "./sacrifice-price.js";
+import { pendingSacrifice, recordPendingSacrifice } from "./sacrifice-price.js";
 
 /**
  * Roll execution + post-roll bookkeeping, lifted out of the dialog so the
@@ -96,6 +96,15 @@ export function executeRoll({
 	syncSession = null,
 }) {
 	if (type === "sacrifice") {
+		// One price at a time (p.159). The dialog refuses this too, but an
+		// approved roll arrives here without it and would overwrite the debt.
+		const hero = game.actors.get(actorId);
+		if (pendingSacrifice(hero)) {
+			ui.notifications?.warn(
+				game.i18n.format("LITM.Ui.sacrifice_unpaid_new", { name: hero.name }),
+			);
+			return;
+		}
 		// A Sacrifice adds no Power: nothing is invoked, burned or used up,
 		// and the card must not list a Might the dice never got.
 		tags = [];

@@ -4,7 +4,8 @@ import { collectSourceConsequences } from "../../apps/consequence-sources.js";
 import { renderModerationTooltip } from "../../apps/roll/moderation-render.js";
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
 import {
-	completePendingSacrifice,
+	canSettleSacrifice,
+	payPendingSacrifice,
 	pendingSacrifice,
 } from "../../apps/roll/sacrifice-price.js";
 import { SpendPowerApp } from "../../apps/spend-power.js";
@@ -189,7 +190,7 @@ async function _handleCompleteSacrifice(target) {
 	const actor = game.actors.get(roll.litm.actorId);
 	// The price is the Hero's, kept on the Hero; the card only offers to pay it.
 	if (pendingSacrifice(actor)?.messageId !== message.id) return;
-	await completePendingSacrifice(actor);
+	await payPendingSacrifice(actor);
 }
 
 async function _handleRejectModeration(_target, app) {
@@ -526,13 +527,16 @@ function onRenderChatMessage(app, html, _data) {
 	);
 
 	// Complete Sacrifice shows while this card is the Hero's open debt, to
-	// whoever owns the Hero — see `_handleCompleteSacrifice`.
+	// its payer, and to the Narrator to forgive — see `canSettleSacrifice`.
 	const sacrificeBtn = element.querySelector(
 		"[data-click='complete-sacrifice']",
 	);
 	if (sacrificeBtn) {
 		const actor = game.actors.get(app.rolls?.[0]?.litm?.actorId);
-		if (!actor?.isOwner || pendingSacrifice(actor)?.messageId !== app.id)
+		if (
+			!canSettleSacrifice(actor) ||
+			pendingSacrifice(actor)?.messageId !== app.id
+		)
 			sacrificeBtn.remove();
 	}
 

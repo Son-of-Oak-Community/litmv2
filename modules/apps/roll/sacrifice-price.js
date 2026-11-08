@@ -2,6 +2,7 @@ import { maxStatusTier } from "../../active-effects/status-tag-data.js";
 import { FLAGS, POWER_TAG_TYPES } from "../../system/config.js";
 import { dialogContent } from "../../system/renderers/renderer-utils.js";
 import { levelIcon, localize as t } from "../../utils.js";
+import { resolveSharedRollOwner } from "./roll-authority.js";
 import { effectiveSacrificeLevel } from "./sacrifice-rules.js";
 import { spendSecretGrace } from "../../actor/hero/secret-grace.js";
 
@@ -53,6 +54,32 @@ export function recordPendingSacrifice(actor, roll, message) {
 }
 
 /**
+ * The one user who pays a Hero's debt: an active player owning the Hero, else
+ * the Narrator — the same seat a shared roll picks. One payer, so two owners
+ * can't both press Complete in the same moment and pay it twice; any
+ * Narrator may still forgive.
+ * @param {Actor} actor
+ * @returns {string|null}
+ */
+export function sacrificePayerId(actor) {
+	return resolveSharedRollOwner({
+		owners: game.users.filter((u) => actor.testUserPermission(u, "OWNER")),
+		gmUserId: game.users.activeGM?.id ?? null,
+	});
+}
+
+/**
+ * Whether `user` may open the payment dialog: the payer, or a Narrator to
+ * forgive.
+ * @param {Actor} actor
+ * @param {User} [user]
+ * @returns {boolean}
+ */
+export function canSettleSacrifice(actor, user = game.user) {
+	return !!actor && (user.isGM || sacrificePayerId(actor) === user.id);
+}
+
+/**
  * The id of a Hero's payment dialog, so it can be closed once the debt is
  * settled from another client.
  * @param {Actor} actor
@@ -77,39 +104,46 @@ function stillOwes(actor, debt) {
  */
 export async function completePendingSacrifice(actor) {
 	const pending = pendingSacrifice(actor);
-	if (!pending || !actor.isOwner) return false;
+	if (!pending || !canSettleSacrifice(actor)) return false;
 	const effective = effectiveSacrificeLevel(pending.level, pending.outcome);
-	// A copy: askToPay marks it `claimed`, and the flag's own object must not change.
-	const debt = { ...pending };
-	let result;
-	try {
-		result = await confirmAndApplySacrifice(actor, {
-			effective,
-			themeId: pending.themeId,
-			statusName: pending.statusName,
-			debt,
-		});
-	} catch (err) {
-		// The debt was cleared before the price went on; a price that failed
-		// to apply is still owed.
-		if (debt.claimed) {
-			const { claimed: _claimed, ...flag } = debt;
-			await actor.setFlag("litmv2", FLAGS.pendingSacrifice, flag);
-		}
-		throw err;
-	}
+	const result = await confirmAndApplySacrifice(actor, {
+		effective,
+		themeId: pending.themeId,
+		statusName: pending.statusName,
+		debt: pending,
+	});
+	// Closed, settled elsewhere, or the theme or tag went first: still owed.
 	if (!result) return false;
-	// Settled without a dialog: nothing was left to pay with.
-	if (!debt.claimed) await actor.unsetFlag("litmv2", FLAGS.pendingSacrifice);
+	// Cleared only once the price is on, so a payer who drops away mid-payment
+	// leaves the debt owed rather than gone unpaid.
+	await actor.unsetFlag("litmv2", FLAGS.pendingSacrifice);
 	if (result === FORGIVE)
 		ui.notifications.info(
 			game.i18n.format("LITM.Ui.sacrifice_forgiven", { name: actor.name }),
 		);
 	else {
 		notifyPaid(actor, effective, result);
-		await spendSecretGrace(actor, pending.graceBonus)?.catch(console.error);
+		// Grace is spent with a price paid, not with a debt that had none left.
+		if (!result.nothing)
+			await spendSecretGrace(actor, pending.graceBonus)?.catch(console.error);
 	}
 	return true;
+}
+
+/**
+ * {@link completePendingSacrifice} for a click: a price that failed to apply
+ * stays owed, and the player is told rather than left with a silent
+ * console error.
+ * @param {Actor} actor
+ */
+export function payPendingSacrifice(actor) {
+	return completePendingSacrifice(actor).catch((err) => {
+		console.error(err);
+		ui.notifications.error(
+			game.i18n.format("LITM.Ui.sacrifice_pay_failed", { name: actor.name }),
+		);
+		return false;
+	});
 }
 
 /**
@@ -121,8 +155,8 @@ export async function completePendingSacrifice(actor) {
  * The debt can be settled elsewhere while this stays open — the Narrator
  * forgives, another owner pays. The answer is checked against the debt the
  * dialog was opened for, so a late Complete applies nothing. A live answer
- * clears the debt at once, before the price is applied, so a second owner
- * answering a moment later finds it settled rather than paying it again.
+ * stands until the price is applied; {@link completePendingSacrifice} clears
+ * it then. Only the payer is offered Complete, so it is never paid twice.
  * @param {object} options
  * @param {Actor} options.actor
  * @param {object} options.debt  The pendingSacrifice flag the dialog is for.
@@ -137,13 +171,17 @@ async function askToPay({ actor, debt, content, pay = () => true, dialog = {} })
 		window: { title: t("LITM.Ui.sacrifice_confirm_title") },
 		content,
 		buttons: [
-			{
-				action: "pay",
-				label: t("LITM.Ui.sacrifice_complete"),
-				icon: "fa-solid fa-hand-holding-heart",
-				default: true,
-				callback: (_event, button) => pay(button) ?? null,
-			},
+			...(sacrificePayerId(actor) === game.user.id
+				? [
+						{
+							action: "pay",
+							label: t("LITM.Ui.sacrifice_complete"),
+							icon: "fa-solid fa-hand-holding-heart",
+							default: true,
+							callback: (_event, button) => pay(button) ?? null,
+						},
+					]
+				: []),
 			...(game.user.isGM
 				? [
 						{
@@ -160,11 +198,7 @@ async function askToPay({ actor, debt, content, pay = () => true, dialog = {} })
 		...dialog,
 	});
 	if (answer == null) return null;
-	if (stillOwes(actor, debt)) {
-		debt.claimed = true;
-		await actor.unsetFlag("litmv2", FLAGS.pendingSacrifice);
-		return answer;
-	}
+	if (stillOwes(actor, debt)) return answer;
 	ui.notifications.info(
 		game.i18n.format("LITM.Ui.sacrifice_already_settled", { name: actor.name }),
 	);

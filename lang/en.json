@@ -889,6 +889,7 @@
 			"sacrifice_already_settled": "{name}'s Sacrifice was already settled. Nothing more is paid.",
 			"sacrifice_forgiven": "{name} is forgiven the price of their Sacrifice.",
 			"sacrifice_nothing_to_pay": "{name}'s Sacrifice is settled: nothing is left to pay it with.",
+			"sacrifice_pay_failed": "{name}'s Sacrifice couldn't be paid and is still owed. Check the console for details.",
 			"sacrifice_unpaid_new": "{name} still owes the price of their last Sacrifice. Complete or forgive it on the ribbon above the player list before a new one.",
 			"sacrifice_unpaid_new_called": "That Hero still owes the price of their last Sacrifice. Complete or forgive it on the ribbon above the player list before a new one.",
 			"sacrifice_unpaid_warning": "{name} still owes the price of a Sacrifice. Pay it from the ribbon above the player list before rolling again.",

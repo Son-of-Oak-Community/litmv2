@@ -1,5 +1,6 @@
 import {
-	completePendingSacrifice,
+	canSettleSacrifice,
+	payPendingSacrifice,
 	pendingSacrifice,
 } from "../apps/roll/sacrifice-price.js";
 import { effectiveSacrificeLevel } from "../apps/roll/sacrifice-rules.js";
@@ -55,7 +56,7 @@ export class SacrificeHud {
 			this.#container.addEventListener("click", (event) => {
 				const target = event.target.closest("button[data-actor-id]");
 				const actor = game.actors.get(target?.dataset.actorId);
-				if (actor) completePendingSacrifice(actor);
+				if (actor) payPendingSacrifice(actor);
 			});
 		}
 		mountPlayersHud(this.#container);
@@ -71,7 +72,7 @@ export class SacrificeHud {
 							name: actor.name,
 							price: debtPrice(actor, pendingSacrifice(actor)),
 						}),
-						canPay: actor.isOwner,
+						canPay: canSettleSacrifice(actor),
 					};
 				}) ?? [];
 

@@ -151,15 +151,28 @@ describe("completePendingSacrifice", () => {
 			}),
 			system: { addStatus: vi.fn() },
 			items: { get: () => null },
+			testUserPermission: (user) => user.id === "player" || user.isGM,
 		};
 		return hero;
 	};
 	let wait;
+	let savedUsers;
+	// The Hero's player is online, so they are the one who pays.
+	const table = (...users) =>
+		Object.assign(users, { activeGM: users.find((u) => u.isGM) ?? null });
 	beforeEach(() => {
 		wait = vi.spyOn(foundry.applications.api.DialogV2, "wait");
 		game.user = { id: "player", isGM: false };
+		savedUsers = game.users;
+		game.users = table(
+			{ id: "player", isGM: false, active: true },
+			{ id: "gm", isGM: true, active: true },
+		);
 	});
-	afterEach(() => wait.mockRestore());
+	afterEach(() => {
+		wait.mockRestore();
+		game.users = savedUsers;
+	});
 
 	it("pays the price and clears the debt", async () => {
 		const hero = graveHero();
@@ -221,28 +234,70 @@ describe("completePendingSacrifice", () => {
 		expect(hero.grace.every((m) => !m.scratched)).toBe(true);
 	});
 
-	it("clears the debt before paying, so a second owner can't pay it again", async () => {
+	it("clears the debt only once the price is on", async () => {
 		const hero = graveHero();
 		hero.system.addStatus = vi.fn(() => {
-			expect(hero.flag).toBeUndefined();
+			expect(hero.flag).toBeDefined();
 		});
 		wait.mockResolvedValue(true);
 		expect(await completePendingSacrifice(hero)).toBe(true);
 		expect(hero.system.addStatus).toHaveBeenCalled();
+		expect(hero.flag).toBeUndefined();
 	});
 
-	it("owes the debt again when the price fails to apply", async () => {
+	it("still owes the debt when the price fails to apply", async () => {
 		const hero = graveHero();
 		const owed = hero.flag;
-		hero.setFlag = vi.fn(async (_scope, _key, value) => {
-			hero.flag = value;
-		});
 		hero.system.addStatus = vi.fn(async () => {
 			throw new Error("no permission");
 		});
 		wait.mockResolvedValue(true);
 		await expect(completePendingSacrifice(hero)).rejects.toThrow();
 		expect(hero.flag).toEqual(owed);
+	});
+
+	it("lets only one owner pay, and the Narrator only forgive while the player is on", async () => {
+		const hero = graveHero();
+		hero.testUserPermission = (user) => user.id !== "gm2";
+		game.users = table(
+			{ id: "player", isGM: false, active: true },
+			{ id: "other", isGM: false, active: true },
+			{ id: "gm", isGM: true, active: true },
+		);
+		game.user = { id: "other", isGM: false };
+		expect(await completePendingSacrifice(hero)).toBe(false);
+		expect(wait).not.toHaveBeenCalled();
+		game.user = { id: "gm", isGM: true };
+		wait.mockResolvedValue(null);
+		await completePendingSacrifice(hero);
+		expect(wait.mock.calls[0][0].buttons.map((b) => b.action)).toEqual([
+			"forgive",
+		]);
+	});
+
+	it("owes the debt again when the theme went before the price landed", async () => {
+		const hero = gracedHero();
+		hero.flag = { level: "painful", outcome: "snc", themeId: "t", messageId: "m1", graceBonus: 1 };
+		const owed = hero.flag;
+		hero.setFlag = vi.fn(async (_scope, key, value) => {
+			if (key === "pendingSacrifice") hero.flag = value;
+		});
+		const theme = { name: "Ranger", effects: [] };
+		hero.items = { get: () => theme };
+		wait.mockImplementation(async () => {
+			hero.items = { get: () => null }; // the Narrator deleted it meanwhile
+			return true;
+		});
+		expect(await completePendingSacrifice(hero)).toBe(false);
+		expect(hero.flag).toEqual(owed);
+		expect(hero.grace.every((m) => !m.scratched)).toBe(true);
+	});
+
+	it("keeps the Secret Grace when nothing was left to pay", async () => {
+		const hero = gracedHero();
+		hero.flag = { level: "painful", outcome: "snc", themeId: "gone", messageId: "m1", graceBonus: 2 };
+		expect(await completePendingSacrifice(hero)).toBe(true);
+		expect(hero.grace.every((m) => !m.scratched)).toBe(true);
 	});
 
 	it("settles a Miracle with no tag left to scratch, without a dialog", async () => {
@@ -375,5 +430,14 @@ describe("executeRoll for a Sacrifice", () => {
 		game.actors.get.mockReturnValue(hero("gerrin", { isOwner: false }));
 		await executeRoll({ actorId: "gerrin", tags: [], type: "sacrifice", might: 3, modifier: 2 });
 		expect(options).toMatchObject({ might: 0, modifier: 0, totalPower: 0 });
+	});
+
+	it("refuses a second Sacrifice while the first is owed, as an approved roll would", async () => {
+		game.actors.get.mockReturnValue(hero("gerrin", { owes: true }));
+		const warn = vi.spyOn(ui.notifications, "warn");
+		expect(await executeRoll({ actorId: "gerrin", tags: [], type: "sacrifice" })).toBeUndefined();
+		expect(options).toBeUndefined();
+		expect(warn).toHaveBeenCalledWith("LITM.Ui.sacrifice_unpaid_new");
+		warn.mockRestore();
 	});
 });

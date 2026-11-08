@@ -151,10 +151,12 @@ unit-tested):
   the Narrator notes in `SecretGraceApp` (a GM-only button by the hero sheet's
   Roll, and beside a Sacrifice's "Secret Grace Bonus"), one tier each; a moment
   can be scratched to keep it as history without counting it.
-  It is not a status effect, so it never counts as Power. A Sacrifice with a
+  It is not a status effect, so it never counts as Power. The record only
+  helps the Narrator track it: the bonus is theirs to grant at any tier,
+  0 included. A Sacrifice with a
   Secret Grace Bonus of N scratches the first N live moments when its price
   is paid (`completePendingSacrifice`, from the debt's `graceBonus`), never
-  at the roll and never on Forgive;
+  at the roll, never on Forgive, never when nothing was left to pay;
   the Narrator's Fellowship party overview lists each Hero's live moments.
   Enforced in the template
   (`disabled`), in `#handleTypeChange` / `#handleMightChange` /
@@ -182,7 +184,11 @@ unit-tested):
   adds no Power: its formula is `2d6 + @sacrificeBonus`, and its theme cards
   take the tag column's place. It rolls no tags and no Action (`executeRoll`
   drops them, so nothing is burned or used up); the dialog keeps the called
-  Action, so switching back restores it.
+  Action, so switching back restores it. `executeRoll` also refuses a
+  Sacrifice while the Hero still owes one, which covers approved rolls that
+  never passed `rollRefusal`. A debt has one payer, the seat
+  `resolveSharedRollOwner` would pick (`sacrificePayerId`), so two owners
+  can't pay it twice; any Narrator may still forgive.
 - Selection entries carrying `narrator: true` stay locked for non-GMs in both
   `makeTagDecorator` and `LitmRollDialog#canModifyTag`.
 
