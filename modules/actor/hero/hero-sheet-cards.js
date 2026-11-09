@@ -34,9 +34,6 @@ export class HeroSheetCards extends PrintedCardsMixin(HeroSheet) {
 	/** Panel fold state; seeded from the client setting, then kept here so a re-render never snaps back. */
 	#panelCollapsed = null;
 
-	/** @type {ResizeObserver|null} */
-	#resizeObserver = null;
-
 	/** Apply a panel state to the sheet root and the toggle's ARIA. */
 	#applyPanelCollapsed(collapsed) {
 		// Only the art layout has a panel to fold (and a toggle to unfold it).
@@ -66,7 +63,7 @@ export class HeroSheetCards extends PrintedCardsMixin(HeroSheet) {
 		Promise.allSettled(folds.map((a) => a.finished)).then(() =>
 			root.classList.remove(HeroSheetCards.PANEL_ANIMATING_CLASS),
 		);
-		this.#measureDescription();
+		this._measureDescription();
 		await game.settings.set(
 			"litmv2",
 			"heroPanelCollapsed",
@@ -80,8 +77,9 @@ export class HeroSheetCards extends PrintedCardsMixin(HeroSheet) {
 	 * any render, full or partial, leaves it right. While hidden (folded
 	 * panel, minimised window) the box keeps its last state and the name,
 	 * still shown in the folded header, is only a label.
+	 * @override
 	 */
-	#measureDescription() {
+	_measureDescription() {
 		const button = this.element.querySelector(".litm--hero-name__toggle");
 		// The "click to toggle" tooltip shows only where a click does something.
 		const offerToggle = (el, on) => {
@@ -101,9 +99,7 @@ export class HeroSheetCards extends PrintedCardsMixin(HeroSheet) {
 			return;
 		}
 		const box = body.parentElement;
-		const clampPx = Number.parseFloat(getComputedStyle(body).fontSize) * 6;
-		// Measured against the clamp, not the live box: some layouts leave it unclamped.
-		const short = body.scrollHeight <= clampPx;
+		const short = this._descriptionIsShort(body);
 		box.classList.toggle("is-short", short);
 		// The wide layout leaves the description unclamped: nothing to toggle.
 		const canToggle =
@@ -278,19 +274,7 @@ export class HeroSheetCards extends PrintedCardsMixin(HeroSheet) {
 		this.#panelCollapsed ??=
 			game.settings.get("litmv2", "heroPanelCollapsed") || emptyPanel;
 		this.#applyPanelCollapsed(this.#panelCollapsed);
-		if (!this.element.querySelector(".litm--hero-description")) return;
-		this.#measureDescription();
-		// Resizing can cross the clamp or the wide breakpoint without a re-render.
-		this.#resizeObserver ??= new ResizeObserver(() =>
-			this.#measureDescription(),
-		);
-		this.#resizeObserver.observe(this.element);
-	}
-
-	/** @override */
-	_onClose(options) {
-		this.#resizeObserver?.disconnect();
-		this.#resizeObserver = null;
-		super._onClose(options);
+		// Again, now the fold is applied: the mixin measured before it.
+		this._measureDescription();
 	}
 }

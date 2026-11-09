@@ -375,7 +375,6 @@ const themeIcon = (theme, cards) =>
 		? levelIcon(theme.system?.level)
 		: theme.img;
 
-/** The scene's own tags, headed as on the roller's Story tab. */
 /**
  * A Cards theme card shows its enabled tags, scratched ones too, which the
  * decorator locks; a disabled tag is out of play, scratched or not. Classic
@@ -400,6 +399,7 @@ const rollEffects = (actor, cards) =>
 		THEME_ITEM_TYPES.has(e.parent?.type) ? isOnThemeCard(e, cards) : e.active,
 	);
 
+/** The scene's own tags, headed as on the roller's Story tab. */
 const SCENE_STORY_GROUP = () => ({
 	themeName: t("LITM.Tags.story"),
 	icon: "fa-solid fa-tags",
