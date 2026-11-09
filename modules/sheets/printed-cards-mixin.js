@@ -3,7 +3,8 @@
  * class turns on the printed-card face (litmv2.css §25b), and a card with a
  * `data-flip-key` and a `.theme-card__back` turns over to its note through
  * the `flipThemeCard` action. Flip state lives on the sheet instance, not in
- * data, so it survives re-renders but not a reopen.
+ * data, so it survives re-renders but not a reopen. It also keeps the
+ * description's clamp measured (`_measureDescription`) as the sheet resizes.
  *
  * @param {typeof foundry.applications.api.ApplicationV2} Base
  * @returns {typeof foundry.applications.api.ApplicationV2}
@@ -84,6 +85,31 @@ export function PrintedCardsMixin(Base) {
 				?.setAttribute("aria-pressed", String(flipped));
 		}
 
+		/** @type {ResizeObserver|null} */
+		#resizeObserver = null;
+
+		/** Whether a description body fits its clamp (6em in litmv2.css §25).
+		 *  Against the clamp, not the live box, which some layouts leave unclamped. */
+		_descriptionIsShort(body) {
+			const clampPx = Number.parseFloat(getComputedStyle(body).fontSize) * 6;
+			return body.scrollHeight <= clampPx;
+		}
+
+		/** A description that fits its clamp gets no fade and no toggle. */
+		_measureDescription() {
+			const box = this.element.querySelector(".litm--hero-description");
+			const body = box?.querySelector(".theme-card__description-body");
+			if (!body || body.offsetParent === null) return;
+			const short = this._descriptionIsShort(body);
+			box.classList.toggle("is-short", short);
+			box.classList.toggle("is-static", short);
+			if (short) delete box.dataset.tooltip;
+			else
+				box.dataset.tooltip = game.i18n.localize(
+					"LITM.Ui.click_toggle_description",
+				);
+		}
+
 		/** @override */
 		async _onRender(context, options) {
 			await super._onRender(context, options);
@@ -92,6 +118,19 @@ export function PrintedCardsMixin(Base) {
 			))
 				if (this.#flipped.has(card.dataset.flipKey))
 					this.#applyFlip(card, true);
+			this._measureDescription();
+			// Resizing can cross the clamp or a breakpoint without a re-render.
+			this.#resizeObserver ??= new ResizeObserver(() =>
+				this._measureDescription(),
+			);
+			this.#resizeObserver.observe(this.element);
+		}
+
+		/** @override */
+		_onClose(options) {
+			this.#resizeObserver?.disconnect();
+			this.#resizeObserver = null;
+			super._onClose(options);
 		}
 	};
 }
