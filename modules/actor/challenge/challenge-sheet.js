@@ -121,27 +121,9 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 
 		return {
 			...context,
-			headerFields: [
-				{
-					id: "category",
-					label: "LITM.Terms.category",
-					name: "system.category",
-					type: "text",
-					value: this.document._source.system.category,
-				},
-				{
-					id: "rating",
-					label: "LITM.Terms.rating",
-					name: "system.rating",
-					type: "number",
-					value: isPlay
-						? (sys.derivedRating ?? this.document._source.system.rating)
-						: this.document._source.system.rating,
-					min: "0",
-					max: "5",
-					step: "1",
-				},
-			],
+			// Edit mode sets the base rating with the play view's stars.
+			ratingStars: isPlay ? null : this.document._source.system.rating,
+			roleOptions: isPlay ? null : this.#roleOptions(),
 			// Edit-mode only — the conceal toggle is sheet chrome, not play UI
 			conceal: isPlay
 				? null
@@ -173,7 +155,14 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 			might,
 			mightOptions: MIGHT_OPTIONS,
 			addons,
-			derivedCategories: sys.derivedCategories || [],
+			// Play header: each role with the edit pills' tooltip, so the
+			// Narrator can recall a role's meaning without switching modes.
+			roleChips: (sys.derivedRoles ?? []).map((role, i) => ({
+				label: sys.derivedCategories[i],
+				hint: CONFIG.litmv2.challengeRoles?.includes(role)
+					? ChallengeSheet.#roleHint(role)
+					: "",
+			})),
 		};
 	}
 
@@ -297,8 +286,113 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 	/*  Event Handlers & Actions                    */
 	/* -------------------------------------------- */
 
-	static async #onSubmitChallengeForm(_event, _form, formData) {
+	/** @override */
+	_configureRenderOptions(options) {
+		super._configureRenderOptions(options);
+		// Edit mode skips the header on incremental renders. Redraw it anyway
+		// once it no longer shows the saved roles or rating: after another
+		// GM's change, after a star click, or to draw a new custom role's pill.
+		// An unticked custom pill still matches, so it stays until reopened.
+		if (
+			this._isEditMode &&
+			this.rendered &&
+			!options.parts.includes("header") &&
+			ChallengeSheet.headerIsStale(this.element, this.document._source.system)
+		) {
+			options.parts.push("header");
+		}
+	}
+
+	/**
+	 * Whether the edit header's stars and checked role pills differ from the
+	 * saved rating and roles.
+	 * @param {HTMLElement} element  The sheet element
+	 * @param {{rating: number, category: string}} saved
+	 * @returns {boolean}
+	 */
+	static headerIsStale(element, { rating, category }) {
+		const stars = element.querySelectorAll(
+			'.litm--rating-star[aria-pressed="true"]',
+		).length;
+		const shown = new Set(
+			[...element.querySelectorAll("input[data-role]:checked")].map(
+				(p) => p.dataset.role,
+			),
+		);
+		const roles = ChallengeData.parseRoles(category);
+		return (
+			stars !== rating ||
+			shown.size !== roles.length ||
+			roles.some((r) => !shown.has(r))
+		);
+	}
+
+	/**
+	 * The Roles picker's options:the book's roles in order, then this
+	 * Challenge's custom roles, each marked when chosen.
+	 * @returns {{value: string, label: string, selected: boolean}[]}
+	 */
+	#roleOptions() {
+		const chosen = ChallengeData.parseRoles(
+			this.document._source.system.category,
+		);
+		const known = CONFIG.litmv2.challengeRoles ?? [];
+		return [...known, ...chosen.filter((r) => !known.includes(r))].map(
+			(value) => ({
+				value,
+				label: ChallengeData.roleLabel(value),
+				// What the role is, with sample Threats and Consequences; a
+				// custom role has none.
+				hint: known.includes(value) ? ChallengeSheet.#roleHint(value) : "",
+				selected: chosen.includes(value),
+			}),
+		);
+	}
+
+	/**
+	 * A book role's tooltip: what it is, then its sample Threats and
+	 * Consequences, as escaped HTML for `data-tooltip-html`.
+	 * @param {string} role  A `CONFIG.litmv2.challengeRoles` key
+	 * @returns {string}
+	 */
+	static #roleHint(role) {
+		const t = (key) => foundry.utils.escapeHTML(game.i18n.localize(key));
+		const { base, vignette } = CONFIG.litmv2.assets.icons;
+		const summary = t(`LITM.ChallengeRoleHints.${role}.summary`);
+		const threats = t(`LITM.ChallengeRoleHints.${role}.threats`);
+		const consequences = t(`LITM.ChallengeRoleHints.${role}.consequences`);
+		return [
+			`<p>${summary}</p>`,
+			`<p><strong>${t("LITM.Terms.threats")}:</strong> ${threats}</p>`,
+			`<p><img class="litm--inline-icon" src="${base}${vignette}" alt="" aria-hidden="true" /> <strong>${t("LITM.Terms.consequences")}:</strong> ${consequences}</p>`,
+		].join("");
+	}
+
+	/**
+	 * The roles to store after a change in the Roles picker: the checked pills
+	 * plus a custom one typed after them, in the comma-separated string the
+	 * field has always stored. `null` when the change came from elsewhere, so
+	 * editing the name or description never rewrites roles from pills that
+	 * may be stale (Edit mode does not redraw the header for others' changes).
+	 * @param {HTMLFormElement} form
+	 * @param {EventTarget|null} target  The control that triggered the submit
+	 * @param {string} [custom]          The custom-role text
+	 * @returns {string|null}
+	 */
+	static rolesFromForm(form, target, custom = "") {
+		if (!target?.dataset?.role && target?.name !== "customRole") return null;
+		const picked = [...form.querySelectorAll("input[data-role]")]
+			.filter((p) => p.checked)
+			.map((p) => p.dataset.role);
+		return ChallengeData.parseRoles([...picked, custom].join(",")).join(",");
+	}
+
+	static async #onSubmitChallengeForm(event, form, formData) {
 		const submitData = formData.object;
+		const custom = String(submitData.customRole ?? "");
+		delete submitData.customRole;
+		const roles = ChallengeSheet.rolesFromForm(form, event?.target, custom);
+		if (roles !== null) submitData["system.category"] = roles;
 		keepUnrenderedArrayKeys(submitData, this.document, "system.limits");
 
 		await this._updateEmbeddedFromForm(submitData);
