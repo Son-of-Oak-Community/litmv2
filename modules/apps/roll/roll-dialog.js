@@ -2175,6 +2175,19 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#dispatchUpdate();
 	}
 
+	/**
+	 * The Hero's Secret Grace changed while its bonus was granted: the bonus
+	 * follows the new tier, since it is used whole or not at all (Vol. II p.78).
+	 * Nothing granted stays nothing. The caller re-renders.
+	 */
+	followSecretGrace() {
+		if (!game.user.isGM || !this.#sacrificeBonus) return;
+		const tier = secretGraceTier(this.actor) || 0;
+		if (tier === this.#sacrificeBonus) return;
+		this.#sacrificeBonus = tier;
+		this.#dispatchUpdate();
+	}
+
 	#handleSacrificeStatusNameChange(target) {
 		if (!this.isOwner) {
 			target.value = this.#sacrificeStatusName;

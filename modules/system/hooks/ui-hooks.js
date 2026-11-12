@@ -270,7 +270,10 @@ function _renderRollDialogHudOnPlayers() {
 			const dialog = game.user.isGM && actor.sheet?.hasRollDialog
 				? actor.sheet.rollDialogInstance
 				: null;
-			if (dialog?.rendered && dialog.type === "sacrifice") dialog.render();
+			if (dialog?.rendered && dialog.type === "sacrifice") {
+				dialog.followSecretGrace();
+				dialog.render();
+			}
 		}
 		if (!(FLAGS.pendingSacrifice in flags || `-=${FLAGS.pendingSacrifice}` in flags))
 			return;

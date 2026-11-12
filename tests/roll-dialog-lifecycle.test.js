@@ -408,6 +408,29 @@ describe("the roller's Sacrifice switch", () => {
 		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
 	});
 
+	it("keeps a granted grace at the Hero's tier as it changes, whole or none", async () => {
+		const moments = [
+			{ id: "a", text: "Spared the wolf" },
+			{ id: "b", text: "Fed the stranger" },
+		];
+		actor.getFlag = vi.fn((_scope, key) =>
+			key === "secretGrace" ? moments : { ownerId: "player", narrator: true },
+		);
+		const dialog = calledRoll();
+		dialog.setType("sacrifice");
+		dialog.followSecretGrace();
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
+		await dialog.receiveUpdate({ actorId: actor.id, sacrificeBonus: 2 });
+		// Only the Narrator's window holds the Hero's record.
+		game.user = { id: "gm", isGM: true };
+		moments[0].scratched = true;
+		dialog.followSecretGrace();
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(1);
+		moments[1].scratched = true;
+		dialog.followSecretGrace();
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
+	});
+
 	it("drops the Narrator's grace when the roll ends unrolled", async () => {
 		const dialog = calledRoll();
 		dialog.setType("sacrifice");
