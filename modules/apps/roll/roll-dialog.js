@@ -1467,27 +1467,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			isGroupRoll: this.isGroupRoll,
 			title: this.rollName,
 			type: this.type,
-			// A Sacrifice is a Quick outcome (p.159): the move bar keeps saying so.
-			moveType: this.type === "sacrifice" ? "quick" : this.type,
 			isSacrifice: this.type === "sacrifice",
-			canProposeSacrifice: this.canProposeSacrifice,
 			// The Narrator watches a Sacrifice the way they watch any roll: the
 			// player's own view, read-only — but for the grace, which is theirs.
 			showSacrifice: isOwner || isGMViewer,
 			canEditSacrifice: isOwner,
-			// Secret Grace is the Narrator's alone, on every roll: unlike Might,
-			// not even a player's own unprompted roll lets them set it.
-			canSetGrace: game.user.isGM,
+			// Secret Grace is the Narrator's alone, on every roll, and only they
+			// see it before the roll: the player reads it off the roll card.
 			sacrificeBonus: this.#sacrificeBonus,
-			// The Narrator grants it as a Secret Grace; the player just sees a
-			// bonus. Only the Narrator is shown the Hero's current tier.
 			heroGraceTier: game.user.isGM ? secretGraceTier(this.actor) : null,
 			graceLabel: graceBonusLabel(),
-			graceHint: t(
-				game.user.isGM
-					? "LITM.Ui.sacrifice_grace_hint"
-					: "LITM.Ui.sacrifice_bonus_hint",
-			),
+			graceHint: t("LITM.Ui.sacrifice_grace_hint"),
 			mitigationBanner:
 				this.type === "mitigate" ? mitigationBannerText(this.#mitigation) : "",
 			narratorCall: isNarratorControlled(this.#narratorCall)
@@ -1502,7 +1492,6 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			modifier: this.#modifier,
 			might: this.#might,
 			mightRange: Array.from({ length: 13 }, (_, i) => i - 6),
-			graceRange: Array.from({ length: 7 }, (_, i) => i),
 			tradePower: this.#tradePower,
 			canHedge: this.totalPower >= 2,
 			canCaution: this.totalPower <= 2,
@@ -2118,6 +2107,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// adds. The move bar stays: it is still a Quick outcome, and the
 		// Narrator may still change the move.
 		toggle(".litm--roll-dialog-might", isSacrifice);
+		// The player sees no bonus before the roll, so neither the grace nor a
+		// total that would give it away; Modifiers is left with nothing then.
+		const hideBonus = isSacrifice && !game.user.isGM;
+		toggle(".litm--roll-dialog-modifiers, .litm--roll-dialog-total-power", hideBonus);
 		toggle(".litm--sacrifice-grace", !isSacrifice);
 		toggle(".litm--sacrifice-level-fieldset", !isSacrifice);
 		toggle(".litm--roll-dialog-tags-fieldset, .litm--roll-dialog-tabs", isSacrifice);
@@ -2376,9 +2369,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 		if (this.#totalPowerEl) {
 			const trade = this.#tradePower;
-			// A Sacrifice rolls 2d6 + its Secret Grace bonus, nothing else.
+			// A Sacrifice rolls 2d6 + its Secret Grace bonus, nothing else. The
+			// player's total is hidden then, and must not hold the number either.
 			if (this.type === "sacrifice")
-				this.#totalPowerEl.textContent = this.#sacrificeBonus;
+				this.#totalPowerEl.textContent = game.user.isGM ? this.#sacrificeBonus : "";
 			else if (trade) {
 				const rollPower = totalPower + trade;
 				const spendPower = Math.max(totalPower - trade, 1);

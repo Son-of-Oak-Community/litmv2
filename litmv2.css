@@ -2195,8 +2195,12 @@ section.standard-form.litm-theme-browser-body {
 }
 
 /* The Narrator's view of the Hero's Secret Grace, at the end of the label row. */
-.litm--sacrifice-grace .litm--might-label-row .hint {
-	margin-inline: auto var(--spacer-4);
+/* The dove that opens the Hero's Secret Grace: the sheets' regular button,
+   right after its name, with room above the grace options. */
+.litm--sacrifice-grace .litm--might-label-row {
+	justify-content: flex-start;
+	gap: var(--spacer-8);
+	margin-bottom: var(--spacer-4);
 }
 
 /* A Secret Grace moment the Narrator scratched: kept for history, not counted. */

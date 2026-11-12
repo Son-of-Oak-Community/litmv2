@@ -143,17 +143,17 @@ unit-tested):
 
 - **Narrator's half** — move type and Might. Locked for non-GMs whenever the
   roll carries a narrator stamp (`canEditNarratorFields`). The Secret Grace
-  (0 to +6) the Narrator may tell a Sacrifice to add (p.159) is stricter: the
-  Narrator's alone on every roll, called or not; the player sees it locked,
-  labelled "Bonus", and it always starts at 0 so a pre-filled value never
-  shows the player the Hero has one. The Hero's own Secret Grace (Vol. II
+  the Narrator may tell a Sacrifice to add (p.159) is stricter: the
+  Narrator's alone on every roll, called or not, and the player is not shown
+  it at all before the roll (no control, no total; the Modifiers fieldset
+  hides) — they read it, as "Bonus", on the roll card. Like a status it is used
+  whole or not at all: the control offers none or the Hero's full tier, never
+  part of it. It always starts at 0. The Hero's own Secret Grace (Vol. II
   p.78) is the `secretGrace` actor flag (`secret-grace.js`): moments of grace
   the Narrator notes in `SecretGraceApp` (a GM-only button by the hero sheet's
   Roll, and beside a Sacrifice's "Secret Grace Bonus"), one tier each; a moment
   can be scratched to keep it as history without counting it.
-  It is not a status effect, so it never counts as Power. The record only
-  helps the Narrator track it: the bonus is theirs to grant at any tier,
-  0 included. A Sacrifice with a
+  It is not a status effect, so it never counts as Power. A Sacrifice with a
   Secret Grace Bonus of N scratches the first N live moments when its price
   is paid (`completePendingSacrifice`, from the debt's `graceBonus`), never
   at the roll, never on Forgive, never when nothing was left to pay;

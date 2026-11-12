@@ -119,32 +119,36 @@
 			</div>
 			{{!-- Secret Grace, p.159: "At the Narrator's option, they may tell you
 			     to add a number to the total before you roll." Shown in place of
-			     Might during a Sacrifice, which adds no Power. Only the Narrator
-			     sets it, on any roll; the player sees it locked. --}}
+			     Might during a Sacrifice, which adds no Power, and to the
+			     Narrator alone: the player learns the number from the roll card.
+			     Like a status, it is used whole or not at all — the Hero's tier,
+			     or nothing (Vol. II p.78). --}}
+			{{#if isGM}}
 			<div class="litm--sacrifice-grace hidden">
 				<div class="litm--might-label-row">
 					<span class="litm--might-name-wrapper" data-tooltip="{{graceHint}}">
 						{{graceLabel}}
 						<i class="fa-solid fa-circle-info" aria-hidden="true"></i>
 					</span>
-					{{!-- The Narrator's view: the Hero's Secret Grace, and its window. --}}
-					{{#if (ne heroGraceTier null)}}
-					<span class="hint">{{localize "LITM.Ui.secret_grace_hero_tier" tier=heroGraceTier}}</span>
-					<button type="button" class="noflex icon fa-solid fa-dove" data-action="openSecretGrace"
-						data-tooltip="{{localize 'LITM.Ui.sacrifice_grace'}}" aria-label="{{localize 'LITM.Ui.sacrifice_grace'}}"></button>
-					{{/if}}
+					<button type="button" class="noflex" data-action="openSecretGrace"
+						data-tooltip="{{localize 'LITM.Ui.sacrifice_grace'}}" aria-label="{{localize 'LITM.Ui.sacrifice_grace'}}">
+						<i class="fa-solid fa-dove" aria-hidden="true"></i>
+					</button>
 				</div>
-				<div class="litm--might-radio-row litm--grace-radio-row {{#unless canSetGrace}}is-locked{{/unless}}"
-					role="radiogroup" aria-label="{{graceLabel}}">
-					{{#each graceRange}}
-					<label class="litm--segmented-option litm--might-option litm--grace-option {{#if (eq ../sacrificeBonus this)}}is-active{{/if}}">
-						<input type="radio" name="sacrificeBonus" value="{{this}}" {{checked (eq ../sacrificeBonus this)}}
-							{{#unless @root.canSetGrace}}disabled aria-disabled="true"{{/unless}} />
-						<span>{{#if (gt this 0)}}+{{/if}}{{this}}</span>
+				<div class="litm--might-radio-row litm--grace-radio-row" role="radiogroup" aria-label="{{graceLabel}}">
+					<label class="litm--segmented-option litm--might-option litm--grace-option {{#unless sacrificeBonus}}is-active{{/unless}}">
+						<input type="radio" name="sacrificeBonus" value="0" {{checked (not sacrificeBonus)}} />
+						<span>{{localize "LITM.Ui.trade_none"}}</span>
 					</label>
-					{{/each}}
+					<label class="litm--segmented-option litm--might-option litm--grace-option {{#if sacrificeBonus}}is-active{{/if}} {{#unless heroGraceTier}}is-disabled{{/unless}}"
+						data-tooltip="{{localize 'LITM.Ui.secret_grace_hero_tier' tier=heroGraceTier}}">
+						<input type="radio" name="sacrificeBonus" value="{{heroGraceTier}}" {{checked sacrificeBonus}}
+							{{#unless heroGraceTier}}disabled aria-disabled="true"{{/unless}} />
+						<span>+{{heroGraceTier}}</span>
+					</label>
 				</div>
 			</div>
+			{{/if}}
 			<template class="litm--might-tooltip-template">
 				<div class="litm--might-tooltip">
 					<h3 class="litm--might-tooltip-title">{{localize "LITM.Ui.might_scale_title"}}</h3>
