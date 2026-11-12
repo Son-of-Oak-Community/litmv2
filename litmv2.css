@@ -2115,6 +2115,129 @@ section.standard-form.litm-theme-browser-body {
 	font-size: var(--font-size-16);
 }
 
+/* Challenge Rating in edit mode: the play view's stars as buttons. */
+.litm-actor [data-application-part="header"] .litm--rating-field {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-4);
+
+	& > .litm--roles-label {
+		margin-inline-end: var(--spacer-4);
+	}
+}
+
+.litm--rating-star {
+	all: unset;
+	display: inline-flex;
+	padding: var(--spacer-2);
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+
+	& .rating-star {
+		width: 20px;
+		height: 20px;
+		transition: opacity var(--transition-fast) ease;
+	}
+
+	&:hover .rating-star.empty {
+		opacity: 0.5;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--color-warm-1);
+	}
+}
+
+/* A role in the play header carries the same tooltip as its edit pill. */
+.litm--role-name[data-tooltip-html] {
+	cursor: help;
+
+	&:is(:hover, :focus-visible) {
+		color: var(--color-text-primary);
+	}
+}
+
+/* A book role's tooltip: what it is, then sample Threats and Consequences. */
+#tooltip.litm--role-tooltip {
+	max-width: 22rem;
+	text-align: start;
+
+	& p {
+		margin: 0 0 var(--spacer-4);
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
+}
+
+/* Challenge Roles (Core Book p.110): a row of toggle pills under the
+   Rating, the custom-role input at its end. A chosen pill takes a checked
+   checkbox's colours, which read in both themes. */
+.litm-actor [data-application-part="header"] .litm--roles-field {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacer-4) var(--spacer-8);
+	margin-top: var(--spacer-8);
+
+	& > .litm--roles-label {
+		margin-inline-end: var(--spacer-4);
+	}
+
+	& > input[name="customRole"] {
+		flex: 1 1 8rem;
+		min-width: 8rem;
+		height: auto;
+		padding: var(--spacer-2) var(--spacer-8);
+		font-size: var(--font-size-13);
+	}
+}
+
+.litm--role-pill {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	padding: var(--spacer-2) var(--spacer-8);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-pill);
+	font-size: var(--font-size-13);
+	line-height: 1.4;
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	transition:
+		background var(--transition-fast) ease,
+		border-color var(--transition-fast) ease,
+		color var(--transition-fast) ease;
+
+	&:hover {
+		border-color: var(--color-warm-1);
+		color: var(--color-text-primary);
+	}
+
+	/* The pill's fill carries the state; the checkbox stays for the keyboard. */
+	& > input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: 0;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+	}
+
+	&:has(input:checked) {
+		background: var(--color-warm-1);
+		border-color: var(--color-warm-1);
+		color: var(--color-dark-1);
+	}
+
+	&:has(input:focus-visible) {
+		outline: 2px solid var(--color-warm-1);
+		outline-offset: 2px;
+	}
+}
+
 /* Conceal-name toggle sits on the name row; centered against the name input,
    which carries a bottom margin the checkbox must mirror */
 .litm-actor [data-application-part="header"].img-name .litm--conceal-toggle {

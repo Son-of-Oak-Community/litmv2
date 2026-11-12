@@ -34,8 +34,9 @@
 				{{> systems/litmv2/templates/partials/rating-star.html cssClass=(ifThen @checked "filled" "empty")}}
 				{{/progress-buttons}}
 			</div>
-			{{#if derivedCategories.length}}
-			<span class="category">{{join derivedCategories ", "}}</span>
+			{{#if roleChips.length}}
+			<span class="category">{{#each roleChips}}<span class="litm--role-name"
+				{{#if hint}}data-tooltip-html="{{hint}}" data-tooltip-direction="UP" data-tooltip-class="litm--role-tooltip" tabindex="0"{{/if}}>{{label}}</span>{{#unless @last}}, {{/unless}}{{/each}}</span>
 			{{/if}}
 		</div>
 		{{else if (eq type "journey")}}
