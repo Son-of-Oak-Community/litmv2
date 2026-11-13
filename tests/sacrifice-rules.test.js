@@ -3,6 +3,7 @@ import {
 	effectiveSacrificeLevel,
 	hasPainfulSacrificeTarget,
 	isThemeSpent,
+	storyThemeMaySacrifice,
 } from "../modules/apps/roll/sacrifice-rules.js";
 
 // A Painful sacrifice scratches a theme's power tags, so a theme whose power
@@ -127,5 +128,14 @@ describe("effectiveSacrificeLevel", () => {
 		expect(effectiveSacrificeLevel("grave", "success")).toBe("scarring");
 		expect(effectiveSacrificeLevel("scarring", "success")).toBe("painful");
 		expect(effectiveSacrificeLevel("painful", "success")).toBe("painfulOne");
+	});
+});
+
+describe("storyThemeMaySacrifice", () => {
+	it("allows a story theme for a Painful price only", () => {
+		expect(storyThemeMaySacrifice("painful")).toBe(true);
+		expect(storyThemeMaySacrifice("scarring")).toBe(false);
+		// A Grave Miracle lessens to Scarring, which would replace the theme.
+		expect(storyThemeMaySacrifice("grave")).toBe(false);
 	});
 });

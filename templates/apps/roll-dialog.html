@@ -313,9 +313,10 @@
 			{{#if sacrificeThemeHint}}<p class="hint">{{sacrificeThemeHint}}</p>{{/if}}
 			<div class="litm--sacrifice-theme-grid {{#if (eq sacrificeLevel 'painful')}}painful-mode{{/if}}" role="radiogroup" aria-label="{{localize 'LITM.Ui.sacrifice_choose_theme'}}">
 				{{#each sacrificeThemes as |t|}}
-				<fieldset class="theme-card {{#if t.selected}}is-selected{{/if}} {{#if t.spent}}is-spent{{/if}}"
+				<fieldset class="theme-card {{#if t.selected}}is-selected{{/if}} {{#if t.spent}}is-spent{{/if}} {{#if t.storyThemeHidden}}hidden{{/if}}"
 					data-action="selectSacrificeTheme"
 					data-theme-id="{{t.id}}"
+					{{#if t.storyTheme}}data-story-theme="true"{{/if}}
 					data-spent="{{#if t.spent}}true{{else}}false{{/if}}"
 					role="radio"
 					{{#if @root.canEditSacrifice}}tabindex="0"{{else}}aria-disabled="true"{{/if}}

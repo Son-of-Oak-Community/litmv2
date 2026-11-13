@@ -52,7 +52,11 @@ import {
 	graceBonusLabel,
 	secretGraceTier,
 } from "../../actor/hero/secret-grace.js";
-import { hasPainfulSacrificeTarget, isThemeSpent } from "./sacrifice-rules.js";
+import {
+	hasPainfulSacrificeTarget,
+	isThemeSpent,
+	storyThemeMaySacrifice,
+} from "./sacrifice-rules.js";
 
 export { resolveRollDialogOwnership };
 
@@ -337,16 +341,21 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const isPainful = level === "painful";
 		const grid = root.querySelector(".litm--sacrifice-theme-grid");
 		grid?.classList.toggle("painful-mode", isPainful);
-		if (!isPainful) return;
 		const cards = [
 			...root.querySelectorAll("[data-action='selectSacrificeTheme']"),
 		];
+		const storyOk = storyThemeMaySacrifice(level);
+		for (const card of cards)
+			if (card.dataset.storyTheme) card.classList.toggle("hidden", !storyOk);
 		const selected = cards.find(
 			(c) => c.dataset.themeId === this.#sacrificeThemeId,
 		);
-		// A spent theme can't pay a Painful price: unselect it rather than
-		// choosing another theme for the player.
-		if (selected?.dataset.spent === "true")
+		// A spent theme can't pay a Painful price, nor a story theme a higher
+		// one: unselect it rather than choosing another theme for the player.
+		if (
+			(isPainful && selected?.dataset.spent === "true") ||
+			(!storyOk && selected?.dataset.storyTheme)
+		)
 			this.#applySacrificeThemeSelection(null);
 	}
 
@@ -356,6 +365,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (!themeId || themeId === this.#sacrificeThemeId) return;
 		// A spent theme is not a valid Painful target — nothing left to scratch.
 		if (this.#sacrificeLevel === "painful" && target.dataset.spent === "true")
+			return;
+		if (target.dataset.storyTheme && !storyThemeMaySacrifice(this.#sacrificeLevel))
 			return;
 		this.#applySacrificeThemeSelection(themeId);
 		this.#dispatchUpdate();
@@ -488,7 +499,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			tradePower: this.#tradePower,
 			sacrificeLevel: isSacrifice ? this.#sacrificeLevel : undefined,
 			sacrificeBonus: isSacrifice ? this.#sacrificeBonus : 0,
-			sacrificeThemeId: isSacrifice ? this.#sacrificeThemeId : undefined,
+			// Only a theme this level may stake: a story theme picked under
+			// Painful does not ride along when the level is raised.
+			sacrificeThemeId: isSacrifice
+				? this.#sacrificeThemeItems().some((i) => i.id === this.#sacrificeThemeId)
+					? this.#sacrificeThemeId
+					: null
+				: undefined,
 			sacrificeStatusName:
 				isSacrifice && this.#sacrificeLevel === "grave"
 					? this.#sacrificeStatusName
@@ -1515,7 +1532,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sacrificeStatusName: this.#sacrificeStatusName,
 			maxStatusTier: maxStatusTier(),
 			// The theme selector serves a different rhetorical purpose per
-			// level — Painful scratches it, Scarring removes it, Grave only
+			// level — Painful scratches it, Scarring replaces it, Grave only
 			// touches it on Miracle. The legend/hint reflect that intent.
 			sacrificeThemeLegend: t(
 				this.#sacrificeLevel === "grave"
@@ -2199,22 +2216,36 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	/** The hero's sacrificeable themes (its own themes + story themes, never the
 	 *  fellowship theme), unsorted. Spent-ness is computed by {@link isThemeSpent}. */
-	#sacrificeThemeItems() {
+	/**
+	 * The themes a Sacrifice at `level` may name. A story theme is a story tag
+	 * grown into a theme (Core Book p.163): its tags can be scratched for a
+	 * Painful price, but it has no Quest or Promise to replace it by (p.192),
+	 * so Scarring — and Grave, which a Miracle lessens to Scarring — take the
+	 * Hero's own themes only.
+	 * @param {string} [level]
+	 */
+	#sacrificeThemeItems(level = this.#sacrificeLevel) {
 		if (!this.actor) return [];
 		return this.actor.items.filter(
 			(i) =>
 				(i.type === "theme" && !i.system.isFellowship) ||
-				i.type === "story_theme",
+				(i.type === "story_theme" && storyThemeMaySacrifice(level)),
 		);
 	}
 
 	#ensureSacrificeThemeSelected() {
-		const themes = this.#sacrificeThemeItems().sort((a, b) => a.sort - b.sort);
+		// Every level's cards are rendered, story themes hidden while the level
+		// refuses them: a level switch toggles them without a re-render.
+		const themes = this.#sacrificeThemeItems("painful").sort(
+			(a, b) => a.sort - b.sort,
+		);
 		if (themes.length === 0) return [];
 		// Never auto-select: the player names the theme they risk. Only drop a
-		// choice that is gone, or spent under Painful.
+		// choice that is gone, spent under Painful, or a story theme above it.
 		const isPainful = this.#sacrificeLevel === "painful";
-		const current = themes.find((t) => t.id === this.#sacrificeThemeId);
+		const current = this.#sacrificeThemeItems().find(
+			(t) => t.id === this.#sacrificeThemeId,
+		);
 		if (!current || (isPainful && isThemeSpent(current)))
 			this.#sacrificeThemeId = null;
 		const trackPips = (value, length = 3) =>
@@ -2269,6 +2300,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					},
 				],
 				spent,
+				storyTheme: theme.type === "story_theme",
+				storyThemeHidden:
+					theme.type === "story_theme" &&
+					!storyThemeMaySacrifice(this.#sacrificeLevel),
 				selected: theme.id === this.#sacrificeThemeId,
 			};
 		});

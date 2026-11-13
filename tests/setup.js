@@ -137,6 +137,7 @@ class StubChatMessage {
 class StubAppV2 {
 	static DEFAULT_OPTIONS = {};
 	static PARTS = {};
+	_onClose() {}
 }
 class StubDialogV2 extends StubAppV2 {
 	static confirm = () => Promise.resolve(false);

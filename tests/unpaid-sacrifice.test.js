@@ -300,6 +300,73 @@ describe("completePendingSacrifice", () => {
 		expect(hero.grace.every((m) => !m.scratched)).toBe(true);
 	});
 
+	// Core Book p.159 and p.192: a Scarring price replaces the theme, through
+	// the Replace wizard, and is paid only once the player confirms it there.
+	describe("a Scarring price", () => {
+		let savedLitm;
+		let opened;
+		const scarredHero = (wizardDone) => {
+			const hero = gracedHero();
+			hero.flag = { level: "scarring", outcome: "snc", themeId: "t", messageId: "m1", graceBonus: 1 };
+			hero.deleteEmbeddedDocuments = vi.fn();
+			hero.items = { get: () => ({ id: "t", type: "theme", name: "Ranger", effects: [] }) };
+			game.litmv2 = {
+				...savedLitm,
+				ThemeEvolutionWizard: class {
+					constructor(options) {
+						opened = options;
+						this.done = Promise.resolve(wizardDone);
+					}
+					render() {}
+				},
+			};
+			return hero;
+		};
+		beforeEach(() => {
+			savedLitm = game.litmv2;
+			opened = null;
+			wait.mockResolvedValue(true);
+		});
+		afterEach(() => {
+			game.litmv2 = savedLitm;
+		});
+
+		it("replaces the theme in the Replace wizard, then clears the debt", async () => {
+			const hero = scarredHero(true);
+			expect(await completePendingSacrifice(hero)).toBe(true);
+			expect(opened).toEqual({ actorId: "gerrin", themeId: "t", forceReplace: true });
+			expect(hero.deleteEmbeddedDocuments).not.toHaveBeenCalled();
+			expect(hero.unsetFlag).toHaveBeenCalled();
+			expect(hero.grace.map((m) => m.scratched)).toEqual([true, false]);
+		});
+
+		it("still owes the Sacrifice when the wizard closes unconfirmed", async () => {
+			const hero = scarredHero(false);
+			const owed = hero.flag;
+			expect(await completePendingSacrifice(hero)).toBe(false);
+			expect(hero.flag).toEqual(owed);
+			expect(hero.grace.every((m) => !m.scratched)).toBe(true);
+		});
+
+		it("loses a story theme a debt recorded before named, without the wizard", async () => {
+			const hero = scarredHero(true);
+			hero.items = { get: () => ({ id: "t", type: "story_theme", name: "Lantern", effects: [] }) };
+			expect(await completePendingSacrifice(hero)).toBe(true);
+			expect(opened).toBeNull();
+			expect(hero.deleteEmbeddedDocuments).toHaveBeenCalledWith("Item", ["t"]);
+			expect(hero.unsetFlag).toHaveBeenCalled();
+		});
+
+		it("lessens to Painful on a Miracle: no wizard", async () => {
+			const hero = scarredHero(true);
+			hero.flag.outcome = "success";
+			const theme = { id: "t", name: "Ranger", effects: [], updateEmbeddedDocuments: vi.fn() };
+			hero.items = { get: () => theme };
+			expect(await completePendingSacrifice(hero)).toBe(true);
+			expect(opened).toBeNull();
+		});
+	});
+
 	it("settles a Miracle with no tag left to scratch, without a dialog", async () => {
 		const hero = graveHero();
 		hero.flag = { level: "painful", outcome: "success", themeId: "t", messageId: "m1" };

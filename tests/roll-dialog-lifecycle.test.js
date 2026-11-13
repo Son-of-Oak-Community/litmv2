@@ -367,6 +367,40 @@ describe("Sacrifice theme choice", () => {
 		expect(warn).not.toHaveBeenCalled();
 	});
 
+	// Core Book p.163/p.192: a story theme can pay a Painful price, but has no
+	// Quest or Promise to be replaced by, so Scarring and Grave refuse it.
+	it("takes a story theme for Painful only", () => {
+		actor.items = [{ id: "lantern", type: "story_theme", system: {}, effects: [] }];
+		const at = (sacrificeLevel) =>
+			makeDialog({
+				type: "sacrifice",
+				sacrificeLevel,
+				sacrificeThemeId: "lantern",
+			}).extractRollData({}).sacrificeThemeId;
+		expect(
+			makeDialog({ type: "sacrifice", sacrificeLevel: "painful", sacrificeThemeId: "lantern" })
+				.sacrificeThemeMissing(),
+		).toBe(false);
+		expect(at("painful")).toBe("lantern");
+		// Nothing left to name above Painful: the Hero rolls without a theme,
+		// and the story theme is not staked.
+		for (const level of ["scarring", "grave"]) {
+			const dialog = makeDialog({ type: "sacrifice", sacrificeLevel: level, sacrificeThemeId: "lantern" });
+			expect(dialog.sacrificeThemeMissing()).toBe(false);
+			expect(at(level)).toBeNull();
+		}
+	});
+
+	it("still asks for a Hero theme on Scarring when a story theme is all that was picked", () => {
+		actor.items.push({ id: "lantern", type: "story_theme", system: {}, effects: [] });
+		const dialog = makeDialog({
+			type: "sacrifice",
+			sacrificeLevel: "scarring",
+			sacrificeThemeId: "lantern",
+		});
+		expect(dialog.sacrificeThemeMissing({ quiet: true })).toBe(true);
+	});
+
 	it("lets a Hero with no theme left roll one", () => {
 		actor.items = [];
 		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(false);

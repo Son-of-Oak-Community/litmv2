@@ -5,6 +5,7 @@ import { levelIcon, localize as t } from "../../utils.js";
 import { resolveSharedRollOwner } from "./roll-authority.js";
 import { effectiveSacrificeLevel } from "./sacrifice-rules.js";
 import { spendSecretGrace } from "../../actor/hero/secret-grace.js";
+import { ThemeEvolutionWizard } from "../theme-evolution.js";
 
 /**
  * Paying a Sacrifice (Core Book p.159). The price a Sacrifice roll leaves owing
@@ -206,6 +207,8 @@ async function askToPay({ actor, debt, content, pay = () => true, dialog = {} })
 }
 
 function notifyPaid(actor, effective, result) {
+	// The Replace wizard has announced the new theme already.
+	if (result.replaced) return;
 	if (result.nothing) {
 		ui.notifications.info(
 			game.i18n.format("LITM.Ui.sacrifice_nothing_to_pay", { name: actor.name }),
@@ -225,12 +228,10 @@ function notifyPaid(actor, effective, result) {
 			}),
 		);
 	} else if (result.themeName) {
-		const notifKey =
-			effective === "scarring"
-				? "LITM.Ui.sacrifice_theme_removed"
-				: "LITM.Ui.sacrifice_theme_scratched";
 		ui.notifications.info(
-			game.i18n.format(notifKey, { theme: result.themeName }),
+			game.i18n.format("LITM.Ui.sacrifice_theme_scratched", {
+				theme: result.themeName,
+			}),
 		);
 	}
 }
@@ -284,7 +285,7 @@ async function confirmAndApplySacrifice(
 	}
 	const confirmKey =
 		effective === "scarring"
-			? "LITM.Ui.sacrifice_confirm_scarring"
+			? "LITM.Ui.sacrifice_confirm_scarring_replace"
 			: "LITM.Ui.sacrifice_confirm_painful";
 	const answer = await askToPay({
 		actor,
@@ -292,7 +293,41 @@ async function confirmAndApplySacrifice(
 		content: `${await sacrificeThemeHeader(theme)}${dialogContent(confirmKey, { theme: theme.name, name: actor.name })}`,
 	});
 	if (answer !== true) return answer;
+	if (effective === "scarring") return replaceSacrificedTheme(actor, theme);
 	return applyThemeSacrifice(actor, effective, { themeId });
+}
+
+/**
+ * A Scarring price replaces the theme (Core Book p.159), and replacing a
+ * theme is the p.192 procedure: Promise for the replacement and for each
+ * extra the theme carried, then a new nascent theme — title tag, weakness
+ * tag and Quest — in its place. The Replace wizard does exactly that, so
+ * the price is paid there, and only once the player confirms it. Closing
+ * the wizard leaves the Sacrifice owed.
+ * @param {Actor} actor
+ * @param {Item} theme
+ * @returns {Promise<{themeName: string, replaced: true}|null>}
+ */
+async function replaceSacrificedTheme(actor, theme) {
+	const themeName = theme.name;
+	// A story theme can no longer be staked on Scarring, but a debt recorded
+	// before that still names one. It has no Quest or Promise to replace it
+	// by, so it is simply lost.
+	if (theme.type !== "theme") {
+		await actor.deleteEmbeddedDocuments("Item", [theme.id]);
+		ui.notifications.info(
+			game.i18n.format("LITM.Ui.sacrifice_story_theme_lost", { theme: themeName }),
+		);
+		return { themeName, replaced: true };
+	}
+	const Wizard = game.litmv2?.ThemeEvolutionWizard ?? ThemeEvolutionWizard;
+	const wizard = new Wizard({
+		actorId: actor.id,
+		themeId: theme.id,
+		forceReplace: true,
+	});
+	await wizard.render(true);
+	return (await wizard.done) ? { themeName, replaced: true } : null;
 }
 
 /**
@@ -374,13 +409,14 @@ async function pickSacrificeTag(actor, theme, live, debt) {
 
 /**
  * Apply the consequence of a sacrifice roll to a hero. The price is paid by
- * a theme for painful/scarring and by a status at the world's top tier — the
- * one that kills or transforms — for grave.
+ * a theme's tags for painful and by a status at the world's top tier — the
+ * one that kills or transforms — for grave. Scarring replaces the theme
+ * through the Replace wizard instead ({@link replaceSacrificedTheme}).
  * Performs document mutations only; notifications are shown by the caller.
  * @param {Actor} actor
- * @param {"painfulOne"|"painful"|"scarring"|"grave"} level - The *effective* price level
+ * @param {"painfulOne"|"painful"|"grave"} level - The *effective* price level
  * @param {object} [opts]
- * @param {string} [opts.themeId]   Required for painfulOne/painful/scarring
+ * @param {string} [opts.themeId]   Required for painfulOne/painful
  * @param {string} [opts.tagId]     Required for painfulOne — the one tag to scratch
  * @param {string} [opts.statusName] Required for grave
  * @returns {Promise<{themeName?: string, tagName?: string, statusName?: string}|null>}
@@ -407,18 +443,14 @@ async function applyThemeSacrifice(
 		return { themeName, tagName: tag.name };
 	}
 
-	if (level === "painful") {
-		const powerEffects = theme.effects.filter((e) =>
-			POWER_TAG_TYPES.has(e.type),
+	const powerEffects = theme.effects.filter((e) =>
+		POWER_TAG_TYPES.has(e.type),
+	);
+	if (powerEffects.length) {
+		await theme.updateEmbeddedDocuments(
+			"ActiveEffect",
+			powerEffects.map((e) => ({ _id: e.id, "system.isScratched": true })),
 		);
-		if (powerEffects.length) {
-			await theme.updateEmbeddedDocuments(
-				"ActiveEffect",
-				powerEffects.map((e) => ({ _id: e.id, "system.isScratched": true })),
-			);
-		}
-	} else if (level === "scarring") {
-		await actor.deleteEmbeddedDocuments("Item", [theme.id]);
 	}
 
 	return { themeName };

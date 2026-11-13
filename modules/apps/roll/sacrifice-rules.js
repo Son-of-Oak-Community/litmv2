@@ -50,3 +50,14 @@ export function effectiveSacrificeLevel(level, outcomeLabel) {
 	if (level === "scarring") return "painful";
 	return "painfulOne";
 }
+
+/**
+ * Whether a Sacrifice at `level` may name a story theme. Only Painful: a story
+ * theme's tags can be scratched (Core Book p.159), but it has no Quest or
+ * Promise to replace it by (p.192), and a Grave Miracle lessens to Scarring.
+ * @param {"painful"|"scarring"|"grave"} level
+ * @returns {boolean}
+ */
+export function storyThemeMaySacrifice(level) {
+	return level === "painful";
+}
