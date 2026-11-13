@@ -343,6 +343,7 @@
 						{{/each}}
 					</ul>
 					{{/if}}
+					{{#if t.tracks.length}}
 					<div class="theme-card-tracks">
 						{{#each t.tracks}}
 						<div class="theme-card-track">
@@ -357,6 +358,7 @@
 						</div>
 						{{/each}}
 					</div>
+					{{/if}}
 					{{#if t.quest}}<blockquote class="theme-card__quest">{{t.quest}}</blockquote>{{/if}}
 				</fieldset>
 				{{/each}}

@@ -2282,7 +2282,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				weaknessTags,
 				specialImprovements,
 				hasTags: powerTags.length + weaknessTags.length > 0,
-				tracks: [
+				// A story theme has no Quest tracks or Improve (Core Book p.163).
+				tracks: theme.type === "story_theme" ? [] : [
 					{
 						label: game.i18n.localize("LITM.Themes.abandon"),
 						pips: trackPips(theme.system?.quest?.tracks?.abandon?.value),
