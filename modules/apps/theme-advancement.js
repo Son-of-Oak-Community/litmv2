@@ -3,6 +3,7 @@ import {
 	powerTagEffect,
 	weaknessTagEffect,
 } from "../active-effects/effect-factories.js";
+import { NASCENT_POWER_TAGS } from "../item/theme/theme-data.js";
 import { findThemebookByName, toQuestionOptions } from "../utils.js";
 
 export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -136,7 +137,8 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		);
 
 		const improveValue = theme.system?.improve?.value || 0;
-		const nascentImprovements = theme.system?.nascentImprovements || 0;
+		const isNascent = !!theme.system?.isNascent;
+		const tagsOwed = isNascent ? theme.system.nascentPending || 0 : 0;
 
 		return {
 			actorId: this.actorId,
@@ -152,9 +154,10 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			weaknessQuestionOptions,
 			powerQuestionTexts,
 			weaknessQuestionTexts,
-			canSelect: improveValue >= CONFIG.litmv2.improveThreshold,
-			nascentImprovements,
-			restrictedToPowerTag: nascentImprovements > 0,
+			canSelect:
+				tagsOwed > 0 || improveValue >= CONFIG.litmv2.improveThreshold,
+			// A nascent theme only ever gains power tags (Core Book p.192).
+			restrictedToPowerTag: isNascent,
 		};
 	}
 
@@ -170,8 +173,10 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 	 */
 	static #getAdvancableTheme() {
 		const theme = ThemeAdvancementApp.#getTheme.call(this);
+		if (!theme) return null;
+		const owed = theme.system?.isNascent && theme.system.nascentPending > 0;
 		if (
-			!theme ||
+			!owed &&
 			(theme.system?.improve?.value || 0) < CONFIG.litmv2.improveThreshold
 		)
 			return null;
@@ -179,19 +184,27 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 	}
 
 	/**
-	 * Spend improvement track: reset to 0 and fire the advancement hook.
-	 * If the theme is nascent and this improvement added a power tag, also
-	 * decrement the nascent counter (Core Book p.192).
+	 * Spend what paid for this improvement and fire the advancement hook. A
+	 * power tag a nascent theme owed (Core Book p.192) settles that debt and
+	 * leaves the Improve track alone; anything else spends the full track.
+	 * A theme that now has three power tags is no longer nascent.
+	 * The new tag is already on `theme` when this runs.
 	 */
 	static async #spendImprove(
 		theme,
 		updateData = {},
 		{ addedPowerTag = false } = {},
 	) {
-		updateData["system.improve.value"] = 0;
-		const nascent = theme.system?.nascentImprovements || 0;
-		if (addedPowerTag && nascent > 0) {
-			updateData["system.nascentImprovements"] = nascent - 1;
+		const owed = theme.system?.nascentPending || 0;
+		if (addedPowerTag && owed > 0)
+			updateData["system.nascentPending"] = owed - 1;
+		else updateData["system.improve.value"] = 0;
+		if (
+			(theme.system?.nascentImprovements || 0) > 0 &&
+			(theme.system?.powerTagCount ?? 0) >= NASCENT_POWER_TAGS
+		) {
+			updateData["system.nascentImprovements"] = 0;
+			updateData["system.nascentPending"] = 0;
 		}
 		await theme.update(updateData);
 		Hooks.callAll("litm.themeAdvanced", theme.actor, theme, updateData);

@@ -17,6 +17,7 @@ import {
 	toTiers,
 } from "../apps/story-tags/story-tag-helpers.js";
 import { completeTrackUpdate } from "../system/chat.js";
+import { markImprove } from "../item/theme/nascent-theme.js";
 import { ACTOR_TAG_TYPES, FLAGS, THEME_TAG_TYPES } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
 import {
@@ -893,6 +894,16 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const doc = item || this.document;
 		const currentValue = foundry.utils.getProperty(doc, attrib);
 		const newValue = boxIndex < currentValue ? boxIndex : boxIndex + 1;
+
+		// A nascent theme takes a power tag for an Improve mark (p.192).
+		if (
+			attrib === "system.improve.value" &&
+			newValue > currentValue &&
+			item?.system?.nascentTagsToOwe > 0
+		) {
+			await markImprove(item, this.document);
+			return;
+		}
 
 		// Write + celebrate when a track reaches its maximum
 		await completeTrackUpdate(doc, attrib, newValue, this.document);
