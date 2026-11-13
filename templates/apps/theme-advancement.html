@@ -1,11 +1,8 @@
 <section class="standard-form theme-advancement scrollable">
-	<input type="hidden" name="actorId" value="{{actorId}}" />
-	<input type="hidden" name="themeId" value="{{themeId}}" />
-
 	<header class="img-name">
 		<img src="{{theme.img}}" alt="{{theme.name}}" data-tooltip="{{theme.name}}" />
 		<div class="flexcol gap-xs">
-			<h2 style="margin: 0">{{theme.name}}</h2>
+			<h2>{{theme.name}}</h2>
 			{{#if themebookName}}
 			<p class="hint">{{localize "LITM.Terms.themebook"}}: {{themebookName}}</p>
 			{{else}}
@@ -14,106 +11,155 @@
 		</div>
 	</header>
 
+	{{#unless canSelect}}
+	<p class="hint">{{localize "LITM.Ui.improve_needed" count=(improve-threshold)}}</p>
+	{{else}}
+
 	{{#if restrictedToPowerTag}}
 	<p class="hint">{{localize "LITM.Ui.nascent_must_add_power_tag"}}</p>
+	<input type="hidden" name="option" value="power" />
+	{{else}}
+	<fieldset class="litm-theme-evolution__path">
+		<legend>{{localize "LITM.Ui.improve_path"}}</legend>
+		<div class="litm-theme-evolution__path-choices" role="radiogroup" aria-label="{{localize 'LITM.Ui.improve_path'}}">
+			{{#each options as |opt|}}
+			<label class="litm-theme-evolution__path-choice" data-mode="{{opt.value}}">
+				<input type="radio" name="option" value="{{opt.value}}" {{checked (eq opt.value ../defaultOption)}} />
+				<span class="litm-theme-evolution__path-icon" aria-hidden="true"><i class="{{opt.icon}}"></i></span>
+				<span class="litm-theme-evolution__path-label">{{opt.label}}</span>
+				<span class="litm-theme-evolution__path-consequence">{{opt.consequence}}</span>
+			</label>
+			{{/each}}
+		</div>
+	</fieldset>
 	{{/if}}
 
-	<fieldset {{#if restrictedToPowerTag}}disabled{{/if}}>
-		<legend>{{localize "LITM.Ui.special_improvements"}}</legend>
-		{{#if canSelect}}
-		{{#if inactiveSpecialImprovements.length}}
+	<fieldset data-show-when="power">
+		<legend>{{localize "LITM.Ui.improve_option_power"}}</legend>
 		<div class="form-group">
-			<select data-role="inactive-special-improvement-select"
-				aria-label="{{localize 'LITM.Ui.special_improvements'}}" style="flex: 1">
-				{{selectOptions inactiveSpecialImprovements blank="—"}}
-			</select>
-			<button type="button" data-action="activateSpecialImprovement"
-				data-tooltip="{{localize 'LITM.Ui.activate_improvement'}}"
-				aria-label="{{localize 'LITM.Ui.activate_improvement'}}">
-				<i class="fa-solid fa-check" aria-hidden="true"></i>
-			</button>
-		</div>
-		{{/if}}
-		{{#if specialImprovementOptions.length}}
-		<div class="form-group">
-			<select data-role="special-improvement-select" data-descriptions="{{toJSON specialImprovementDescriptions}}"
-				aria-label="{{localize 'LITM.Ui.special_improvements'}}" style="flex: 1">
-				{{selectOptions specialImprovementOptions blank="—"}}
-			</select>
-			<button type="button" data-action="addSpecialImprovement"
-				data-tooltip="{{localize 'LITM.Ui.add_improvement'}}"
-				aria-label="{{localize 'LITM.Ui.add_improvement'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
-		</div>
-		<p class="hint" data-role="special-improvement-description" style="margin: 0" hidden></p>
-		{{else}}
-		<p class="hint">{{localize "LITM.Ui.no_themebook_improvements"}}</p>
-		{{/if}}
-		{{else}}
-		<p class="hint">{{localize "LITM.Ui.improve_needed" count=(improve-threshold)}}</p>
-		{{/if}}
-	</fieldset>
-
-	<fieldset>
-		<legend>{{localize "LITM.Tags.power_tags"}}</legend>
-		{{#if canSelect}}
-		{{#if inactivePowerTags.length}}
-		<div class="form-group">
-			<select data-role="inactive-power-tag-select" aria-label="{{localize 'LITM.Tags.power_tags'}}" style="flex: 1">
-				{{selectOptions inactivePowerTags blank="—"}}
-			</select>
-			<button type="button" data-action="activatePowerTag"
-				data-tooltip="{{localize 'LITM.Ui.activate_tag'}}"
-				aria-label="{{localize 'LITM.Ui.activate_tag'}}">
-				<i class="fa-solid fa-check" aria-hidden="true"></i>
-			</button>
-		</div>
-		{{/if}}
-		<div class="form-group">
-			<select data-role="power-tag-question-select" data-questions="{{toJSON powerQuestionTexts}}"
-				aria-label="{{localize 'LITM.Ui.power_tag_questions'}}" class="noflex" style="width: fit-content">
+			<select name="powerQuestion" data-questions="{{toJSON powerQuestionTexts}}"
+				aria-label="{{localize 'LITM.Ui.power_tag_questions'}}" class="noflex">
 				{{selectOptions powerQuestionOptions blank="—"}}
 			</select>
-			<input type="text" style="flex: 1" placeholder="{{localize 'LITM.Ui.name_power'}}" aria-label="{{localize 'LITM.Ui.name_power'}}" />
-			<button type="button" data-action="addPowerTag" data-tooltip="{{localize 'LITM.Ui.add_tag'}}"
-				aria-label="{{localize 'LITM.Ui.add_tag'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
+			<input type="text" name="powerName" placeholder="{{localize 'LITM.Ui.name_power'}}" aria-label="{{localize 'LITM.Ui.name_power'}}" />
 		</div>
-		{{else}}
-		<p class="hint">{{localize "LITM.Ui.improve_needed" count=(improve-threshold)}}</p>
+		{{#if inactivePowerTags.length}}
+		<div class="form-group">
+			<label>{{localize "LITM.Ui.activate_tag"}}</label>
+			<select name="activatePower">
+				{{selectOptions inactivePowerTags blank="—"}}
+			</select>
+		</div>
 		{{/if}}
 	</fieldset>
 
-	<fieldset {{#if restrictedToPowerTag}}disabled{{/if}}>
-		<legend>{{localize "LITM.Tags.weakness_tags"}}</legend>
-		{{#if canSelect}}
-		{{#if inactiveWeaknessTags.length}}
+	<fieldset data-show-when="weakness" hidden>
+		<legend>{{localize "LITM.Ui.improve_option_weakness"}}</legend>
 		<div class="form-group">
-			<select data-role="inactive-weakness-tag-select" aria-label="{{localize 'LITM.Tags.weakness_tags'}}" style="flex: 1">
-				{{selectOptions inactiveWeaknessTags blank="—"}}
-			</select>
-			<button type="button" data-action="activateWeaknessTag"
-				data-tooltip="{{localize 'LITM.Ui.activate_tag'}}"
-				aria-label="{{localize 'LITM.Ui.activate_tag'}}">
-				<i class="fa-solid fa-check" aria-hidden="true"></i>
-			</button>
-		</div>
-		{{/if}}
-		<div class="form-group">
-			<select data-role="weakness-tag-question-select" data-questions="{{toJSON weaknessQuestionTexts}}"
-				aria-label="{{localize 'LITM.Ui.weakness_tag_questions'}}" class="noflex" style="width: fit-content">
+			<select name="weaknessQuestion" data-questions="{{toJSON weaknessQuestionTexts}}"
+				aria-label="{{localize 'LITM.Ui.weakness_tag_questions'}}" class="noflex">
 				{{selectOptions weaknessQuestionOptions blank="—"}}
 			</select>
-			<input type="text" style="flex: 1" placeholder="{{localize 'LITM.Ui.name_weakness'}}" aria-label="{{localize 'LITM.Ui.name_weakness'}}" />
-			<button type="button" data-action="addWeaknessTag"
-				data-tooltip="{{localize 'LITM.Ui.add_tag'}}" aria-label="{{localize 'LITM.Ui.add_tag'}}">
-				<i class="fa-solid fa-plus" aria-hidden="true"></i>
-			</button>
+			<input type="text" name="weaknessName" placeholder="{{localize 'LITM.Ui.name_weakness'}}" aria-label="{{localize 'LITM.Ui.name_weakness'}}" />
 		</div>
-		{{else}}
-		<p class="hint">{{localize "LITM.Ui.improve_needed" count=(improve-threshold)}}</p>
+		{{#if activeWeaknessTags.length}}
+		<div class="form-group">
+			<label>{{localize "LITM.Ui.improve_remove_weakness"}}</label>
+			<select name="removeWeakness">
+				{{selectOptions activeWeaknessTags blank="—"}}
+			</select>
+		</div>
+		<p class="hint">{{localize "LITM.Ui.improve_remove_weakness_hint"}}</p>
+		{{/if}}
+		{{#if inactiveWeaknessTags.length}}
+		<div class="form-group">
+			<label>{{localize "LITM.Ui.activate_tag"}}</label>
+			<select name="activateWeakness">
+				{{selectOptions inactiveWeaknessTags blank="—"}}
+			</select>
+		</div>
 		{{/if}}
 	</fieldset>
+
+	<fieldset data-show-when="special" hidden>
+		<legend>{{localize "LITM.Ui.special_improvements"}}</legend>
+		{{#if specialImprovementOptions.length}}
+		<div class="form-group">
+			<label>{{localize "LITM.Ui.add_improvement"}}</label>
+			<select name="special" data-descriptions="{{toJSON specialImprovementDescriptions}}">
+				{{selectOptions specialImprovementOptions blank="—"}}
+			</select>
+		</div>
+		<p class="hint" data-role="special-improvement-description" hidden></p>
+		{{/if}}
+		{{#if inactiveSpecialImprovements.length}}
+		<div class="form-group">
+			<label>{{localize "LITM.Ui.activate_improvement"}}</label>
+			<select name="activateSpecial">
+				{{selectOptions inactiveSpecialImprovements blank="—"}}
+			</select>
+		</div>
+		{{/if}}
+	</fieldset>
+
+	<fieldset data-show-when="reset" hidden>
+		<legend>{{localize "LITM.Ui.improve_option_reset"}}</legend>
+		<div class="form-group">
+			<label for="{{theme.id}}-reset-abandon">{{localize "LITM.Themes.abandon"}} ({{tracks.abandon.value}})</label>
+			<input type="checkbox" id="{{theme.id}}-reset-abandon" name="resetAbandon" />
+		</div>
+		<div class="form-group">
+			<label for="{{theme.id}}-reset-milestone">{{localize "LITM.Themes.milestone"}} ({{tracks.milestone.value}})</label>
+			<input type="checkbox" id="{{theme.id}}-reset-milestone" name="resetMilestone" />
+		</div>
+	</fieldset>
+
+	<fieldset data-show-when="promise" hidden>
+		<legend>{{localize "LITM.Hero.promise"}}</legend>
+		<div class="litm-theme-evolution__promise-summary">
+			<span class="litm-theme-evolution__promise-cell">
+				<span class="litm-theme-evolution__promise-cell-label">{{localize "LITM.Ui.evolution_promise_gained"}}</span>
+				<strong class="litm-theme-evolution__promise-cell-value">1</strong>
+			</span>
+			<i class="fa-solid fa-arrow-right-long litm-theme-evolution__promise-arrow" aria-hidden="true"></i>
+			<span class="litm-theme-evolution__promise-cell">
+				<span class="litm-theme-evolution__promise-cell-label">{{localize "LITM.Ui.evolution_promise_after"}}</span>
+				<strong class="litm-theme-evolution__promise-cell-value">{{promiseAfter}} / 5</strong>
+			</span>
+		</div>
+		{{#if promiseReachesMof}}
+		<p class="litm-theme-evolution__mof">
+			<i class="fa-solid fa-sun" aria-hidden="true"></i>
+			{{localize "LITM.Ui.evolution_promise_reaches_mof"}}
+		</p>
+		{{/if}}
+		{{#if promiseBanked}}
+		<p class="hint">{{localize "LITM.Ui.evolution_promise_banked" n=1}}</p>
+		{{/if}}
+	</fieldset>
+
+	{{#if rewritable.length}}
+	<fieldset>
+		<legend>{{localize "LITM.Ui.improve_rewrite_legend"}}</legend>
+		<p class="hint">{{localize "LITM.Ui.improve_rewrite_hint"}}</p>
+		<div class="form-group">
+			<select name="rewriteTag" class="noflex" aria-label="{{localize 'LITM.Ui.improve_rewrite_legend'}}">
+				{{selectOptions rewritable valueAttr="id" labelAttr="name" blank="—"}}
+			</select>
+			<input type="text" name="rewriteName" placeholder="{{localize 'LITM.Ui.improve_rewrite_placeholder'}}"
+				aria-label="{{localize 'LITM.Ui.improve_rewrite_placeholder'}}" />
+		</div>
+	</fieldset>
+	{{/if}}
+	{{/unless}}
+
+	<footer class="form-footer">
+		<button type="button" data-action="cancel">{{localize "LITM.Ui.cancel"}}</button>
+		{{#if canSelect}}
+		<button type="button" data-action="confirm" class="bright">
+			<i class="fa-solid fa-check" aria-hidden="true"></i>
+			{{localize "LITM.Ui.confirm"}}
+		</button>
+		{{/if}}
+	</footer>
 </section>

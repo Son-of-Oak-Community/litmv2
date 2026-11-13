@@ -112,6 +112,24 @@ describe("applyDroppedTheme", () => {
 		expect(created).toHaveLength(6);
 	});
 
+	// The new theme starts nascent and owes nothing yet (p.192).
+	it("does not carry the replaced theme's owed power tags over", async () => {
+		const actor = fakeActor({ system: { promise: 0, pendingPromise: 0 } });
+		const target = fakeTheme({ name: "Target", power: 0, weakness: 1 });
+		target.system.nascentPending = 2;
+		const source = fakeTheme({ name: "Source", power: 2, weakness: 1 });
+		actor.items = [target];
+
+		await applyDroppedTheme({ actor, theme: target, dropped: source });
+
+		expect(target.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				"system.nascentImprovements": 2,
+				"system.nascentPending": 0,
+			}),
+		);
+	});
+
 	// Core Book p.192: Promise for "each power tag beyond the third, each
 	// weakness tag beyond the first, and each Special Improvement you have in
 	// the theme you are replacing" — the replaced theme, not the dropped one.

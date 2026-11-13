@@ -376,7 +376,10 @@ export class ThemeSheet extends LitmItemSheet {
 			this.document.system?.nascentTagsToOwe > 0
 		) {
 			const owner = this.document.parent;
-			if (owner) await markImprove(this.document, owner);
+			if (owner)
+				await markImprove(this.document, owner, undefined, {
+					marks: newValue - currentValue,
+				});
 			return;
 		}
 

@@ -149,6 +149,19 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 		);
 	}
 
+	/** Power tags this theme is owed and the player has not added yet. */
+	get owedPowerTags() {
+		return this.isNascent ? this.nascentPending : 0;
+	}
+
+	/** Whether the theme can take an improvement now: an owed tag, or a full Improve track. */
+	get canAdvance() {
+		return (
+			this.owedPowerTags > 0 ||
+			(this.improve?.value ?? 0) >= CONFIG.litmv2.improveThreshold
+		);
+	}
+
 	/** Power tags a nascent theme still needs, beyond those already owed. */
 	get nascentTagsToOwe() {
 		if (!this.isNascent) return 0;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeAdvancementApp } from "../modules/apps/theme-advancement.js";
-import { markImprove } from "../modules/item/theme/nascent-theme.js";
+import { markImprove, settleNascent } from "../modules/item/theme/nascent-theme.js";
 import { ThemeData } from "../modules/item/theme/theme-data.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
@@ -94,6 +94,15 @@ describe("markImprove", () => {
 		expect(theme.update).toHaveBeenCalledWith({ "system.improve.value": 1 });
 	});
 
+	// Clicking the third box from 0 is three marks: two owed tags, then one
+	// Improve mark.
+	it("owes a tag per mark, and puts the marks left over on the track", async () => {
+		const { owner, theme } = themeWith();
+		await markImprove(theme, owner, undefined, { marks: 3 });
+		expect(theme.system.nascentPending).toBe(2);
+		expect(theme.system.improve.value).toBe(1);
+	});
+
 	it("marks Improve as usual on a normal theme", async () => {
 		const { owner, theme } = themeWith({ power: 2, improve: 1 });
 		await markImprove(theme, owner);
@@ -106,13 +115,12 @@ describe("adding an owed power tag", () => {
 		game.actors.get = vi.fn(() => owner);
 		const app = new ThemeAdvancementApp({ actorId: owner.id, themeId: theme.id });
 		app.close = vi.fn();
-		const container = {
-			querySelector: (selector) =>
-				selector.includes("select") ? { value: "" } : { value: name },
+		foundry.applications.ux = {
+			FormDataExtended: class {
+				object = { option: "weakness", powerName: name };
+			},
 		};
-		return ThemeAdvancementApp.DEFAULT_OPTIONS.actions.addPowerTag.call(app, {}, {
-			closest: () => container,
-		});
+		return ThemeAdvancementApp.DEFAULT_OPTIONS.actions.confirm.call(app);
 	}
 
 	it("settles one owed tag without a full Improve track", async () => {
@@ -137,5 +145,33 @@ describe("adding an owed power tag", () => {
 		const { owner, theme } = themeWith({ improve: 1 });
 		await addPowerTag(theme, owner);
 		expect(theme.createEmbeddedDocuments).not.toHaveBeenCalled();
+	});
+});
+
+describe("leaving the nascent stage", () => {
+	it("ends at the third power tag, however it was added", async () => {
+		const { theme } = themeWith({ power: 2, pending: 1 });
+		await settleNascent(theme);
+		expect(theme.system.nascentImprovements).toBe(0);
+		expect(theme.system.nascentPending).toBe(0);
+	});
+
+	it("does not come back when the theme later loses a power tag", async () => {
+		const { theme } = themeWith({ power: 2 });
+		await settleNascent(theme);
+		theme.effects.splice(1, 1);
+		expect(theme.system.powerTagCount).toBe(2);
+		expect(theme.system.isNascent).toBe(false);
+	});
+
+	it("leaves a theme still short of three power tags nascent", async () => {
+		const { theme } = themeWith({ power: 1 });
+		await settleNascent(theme);
+		expect(theme.update).not.toHaveBeenCalled();
+	});
+
+	it("owes nothing once it is no longer nascent, whatever was stored", () => {
+		const { theme } = themeWith({ power: 2, pending: 1 });
+		expect(theme.system.owedPowerTags).toBe(0);
 	});
 });

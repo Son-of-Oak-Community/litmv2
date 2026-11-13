@@ -454,6 +454,8 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const data = item.toObject();
 		data.system.powerTags = item.system.powerTags;
 		data.system.weaknessTags = item.system.weaknessTags;
+		// Getters don't survive toObject(); the tracks partial reads this one.
+		data.system.owedPowerTags = item.system.owedPowerTags ?? 0;
 		data.themeTag = item.system.themeTag;
 		data.levelLabel = game.i18n.localize(`LITM.Terms.${data.system.level}`);
 		data.levelIcon = levelIcon(data.system.level);
@@ -901,7 +903,9 @@ export class LitmActorSheet extends LitmSheetMixin(
 			newValue > currentValue &&
 			item?.system?.nascentTagsToOwe > 0
 		) {
-			await markImprove(item, this.document);
+			await markImprove(item, this.document, undefined, {
+				marks: newValue - currentValue,
+			});
 			return;
 		}
 

@@ -28,7 +28,7 @@
 			{{/progress-buttons}}
 		</div>
 		<label>{{localize "LITM.Ui.improve"}}</label>
-		{{#if system.nascentPending}}
+		{{#if system.owedPowerTags}}
 		{{!-- A nascent theme's Improve marks are owed as power tags (p.192). --}}
 		<button type="button" class="litm--track-action" data-action="openThemeAdvancement" data-item-id="{{_id}}"
 			data-tooltip="{{localize 'LITM.Ui.nascent_add_power_tag'}}" aria-label="{{localize 'LITM.Ui.nascent_add_power_tag'}}">
