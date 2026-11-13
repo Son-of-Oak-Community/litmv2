@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	canEditNarratorFields,
 	canEditTradePower,
+	canToggleSacrifice,
 	canInitiateRoll,
 	isNarratorControlled,
 	requiresRollApproval,
@@ -232,5 +233,23 @@ describe("canInitiateRoll", () => {
 
 	it("defaults to permitted when the setting is unavailable", () => {
 		expect(canInitiateRoll({})).toBe(true);
+	});
+});
+
+describe("canToggleSacrifice", () => {
+	it("is the roller's on any move, called or not", () => {
+		for (const type of ["quick", "tracked", "mitigate", "sacrifice"])
+			expect(canToggleSacrifice({ isOwner: true, type })).toBe(true);
+	});
+
+	it("is never the Narrator's or a watcher's", () => {
+		expect(canToggleSacrifice({ isOwner: false, type: "quick" })).toBe(false);
+	});
+
+	it("is not offered on a camp action or Acting Together", () => {
+		expect(canToggleSacrifice({ isOwner: true, type: "campAction" })).toBe(false);
+		expect(
+			canToggleSacrifice({ isOwner: true, type: "quick", isGroupRoll: true }),
+		).toBe(false);
 	});
 });

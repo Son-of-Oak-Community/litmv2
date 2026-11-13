@@ -9,6 +9,7 @@ import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import {
 	getStoryTagSidebar,
+	levelIcon,
 	localize as t,
 	viewLinkedRefAction,
 } from "../../utils.js";
@@ -21,6 +22,7 @@ import { LitmRoll } from "./roll.js";
 import {
 	canEditNarratorFields,
 	canEditTradePower,
+	canToggleSacrifice,
 	isNarratorControlled,
 	requiresRollApproval,
 	showsRollSettings,
@@ -45,7 +47,16 @@ import {
 	resolveRollDialogOwnership,
 } from "./roll-pipeline.js";
 import { RollSync } from "./roll-sync.js";
-import { hasPainfulSacrificeTarget, isThemeSpent } from "./sacrifice-rules.js";
+import { refuseUnpaidSacrifice } from "./roll-request.js";
+import {
+	graceBonusLabel,
+	secretGraceTier,
+} from "../../actor/hero/secret-grace.js";
+import {
+	hasPainfulSacrificeTarget,
+	isThemeSpent,
+	storyThemeMaySacrifice,
+} from "./sacrifice-rules.js";
 
 export { resolveRollDialogOwnership };
 
@@ -87,6 +98,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			toggleRollTag: LitmRollDialog.#onToggleRollTag,
 			selectSacrificeTheme: LitmRollDialog.#onSelectSacrificeTheme,
 			setSacrificeLevel: LitmRollDialog.#onSetSacrificeLevel,
+			openSecretGrace: LitmRollDialog.#onOpenSecretGrace,
 		},
 	};
 
@@ -110,9 +122,16 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		return executeRoll(data);
 	}
 
-	static async _onSubmit(_event, _form, formData, { narrator = false } = {}) {
+	static async _onSubmit(
+		_event,
+		_form,
+		formData,
+		{ narrator = false, checked = false } = {},
+	) {
 		if (!this.isOwner || this.localOnly) return;
-		if (this.painfulSacrificeHasNoTarget()) return;
+		// `checked`: the Narrator's Roll command already ran the gate, to send
+		// its refusal back.
+		if (!checked && this.rollRefusal({ narrator })) return;
 		// A double press would post two cards and run post-roll bookkeeping
 		// twice: two Improve marks for one invoked weakness.
 		if (submitting.has(this)) return;
@@ -141,7 +160,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	static async #onSendToNarrator(_event, _target) {
 		if (!this.isOwner || this.localOnly) return;
-		if (this.painfulSacrificeHasNoTarget()) return;
+		if (this.rollRefusal()) return;
 		const formData = new foundry.applications.ux.FormDataExtended(this.element);
 		const rollData = this.extractRollData(formData);
 		await this._createModerationRequest(rollData);
@@ -184,6 +203,94 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	/**
+	 * Why this roll can't go ahead, or null: the one gate Roll, Send to
+	 * Narrator and the Narrator's Roll command all pass, so the rules agree
+	 * across them. Each refusal warns. Rolls made by calling
+	 * `LitmRollDialog.roll` directly skip it, like every other dialog rule.
+	 * @param {object} [options]
+	 * @param {boolean} [options.narrator] The Narrator pressed Roll.
+	 * @returns {"sacrificeTheme"|"sacrifice"|"unpaidSacrifice"|null}
+	 */
+	rollRefusal({ narrator = false } = {}) {
+		// A player's client running the Narrator's Roll stays quiet: the
+		// refusal goes back to the Narrator, who pressed it.
+		const quiet = narrator && !game.user.isGM;
+		// All themes spent first: no theme can be picked then, so "choose a
+		// theme" would be the wrong advice.
+		if (this.painfulSacrificeHasNoTarget({ quiet })) return "sacrifice";
+		if (this.sacrificeThemeMissing({ quiet })) return "sacrificeTheme";
+		if (
+			this.blockedByUnpaidSacrifice({
+				byNarrator: narrator || game.user.isGM,
+			})
+		)
+			return "unpaidSacrifice";
+		return null;
+	}
+
+	/**
+	 * A Hero still owing a Sacrifice can't roll again until it is paid; see
+	 * {@link refuseUnpaidSacrifice}. Warns and returns true when blocked.
+	 * @param {object} [options]
+	 * @param {boolean} [options.byNarrator]
+	 * @param {boolean} [options.tellNarrator]
+	 * @returns {boolean}
+	 */
+	blockedByUnpaidSacrifice({
+		byNarrator = game.user.isGM,
+		tellNarrator = true,
+	} = {}) {
+		return refuseUnpaidSacrifice(this.#rollingHeroes(), {
+			byNarrator,
+			newSacrifice: this.type === "sacrifice",
+			tellNarrator,
+		});
+	}
+
+	/** The Heroes this roll is for: Acting Together's participants, else the actor. */
+	#rollingHeroes() {
+		if (!this.isGroupRoll) return [this.actor];
+		return this.#participantIds.map((id) => game.actors.get(id));
+	}
+
+	/**
+	 * A Sacrifice names the theme it risks (every level: Painful and Scarring
+	 * pay with it, a lessened Grave becomes Scarring), and nothing picks it for
+	 * the player — a stray click on Roll must not stake a theme they never
+	 * chose. Warns and returns true while none is chosen. Public, like
+	 * {@link painfulSacrificeHasNoTarget}.
+	 * @returns {boolean}
+	 */
+	sacrificeThemeMissing({ quiet = false } = {}) {
+		if (!this.#awaitsSacrificeTheme()) return false;
+		if (!quiet)
+			ui.notifications?.warn(t("LITM.Ui.sacrifice_choose_theme_warning"));
+		return true;
+	}
+
+	/** A Hero with no theme left has none to choose, and still rolls (Grave pays with a status). */
+	#awaitsSacrificeTheme() {
+		if (this.type !== "sacrifice") return false;
+		const themes = this.#sacrificeThemeItems();
+		// A chosen theme deleted since the last render counts as none chosen.
+		return (
+			themes.length > 0 && !themes.some((i) => i.id === this.#sacrificeThemeId)
+		);
+	}
+
+	/** Roll (and Send to Narrator) wait for the Sacrifice's theme; see
+	 *  {@link sacrificeThemeMissing}. Selection changes don't re-render, so
+	 *  this runs by hand wherever the type, level or theme changes. */
+	#syncRollButtons() {
+		// Left pressable when every theme is spent, so Roll can say why.
+		const waiting = this.#awaitsSacrificeTheme() && !this.#painfulAllSpent();
+		for (const button of this.element?.querySelectorAll(
+			"button[type='submit'], [data-action='sendToNarrator']",
+		) ?? [])
+			button.disabled = waiting;
+	}
+
+	/**
 	 * Guard against a Painful sacrifice that can't pay its price. Painful
 	 * scratches a theme's power tags, so it needs a theme with something left to
 	 * scratch; when every theme is already spent the sacrifice would cost
@@ -193,13 +300,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	 * {@link extractRollData}.
 	 * @returns {boolean}
 	 */
-	painfulSacrificeHasNoTarget() {
+	painfulSacrificeHasNoTarget({ quiet = false } = {}) {
+		if (!this.#painfulAllSpent()) return false;
+		if (!quiet) ui.notifications?.warn(t("LITM.Ui.sacrifice_all_spent_warning"));
+		return true;
+	}
+
+	#painfulAllSpent() {
 		if (this.type !== "sacrifice" || this.#sacrificeLevel !== "painful")
 			return false;
 		const themes = this.#sacrificeThemeItems();
-		if (themes.length === 0 || hasPainfulSacrificeTarget(themes)) return false;
-		ui.notifications?.warn(t("LITM.Ui.sacrifice_all_spent_warning"));
-		return true;
+		return themes.length > 0 && !hasPainfulSacrificeTarget(themes);
 	}
 
 	static #onSetSacrificeLevel(_event, target) {
@@ -214,7 +325,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	/** Reflect the active sacrifice level in the rendered grid: highlight the
 	 *  level chip, mark the theme grid (.painful-mode disables spent cards via
-	 *  CSS), and bump the selection off a now-invalid spent theme. Level
+	 *  CSS), and clear the selection off a now-invalid spent theme. Level
 	 *  changes don't re-render, so this runs by hand; shared by the click and
 	 *  keyboard level handlers. */
 	#applySacrificeLevelToDom(level) {
@@ -225,20 +336,27 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		)) {
 			label.classList.toggle("is-active", label.dataset.level === level);
 		}
+		for (const terms of root.querySelectorAll(".litm--sacrifice-terms"))
+			terms.classList.toggle("hidden", terms.dataset.level !== level);
 		const isPainful = level === "painful";
 		const grid = root.querySelector(".litm--sacrifice-theme-grid");
 		grid?.classList.toggle("painful-mode", isPainful);
-		if (!isPainful) return;
 		const cards = [
 			...root.querySelectorAll("[data-action='selectSacrificeTheme']"),
 		];
+		const storyOk = storyThemeMaySacrifice(level);
+		for (const card of cards)
+			if (card.dataset.storyTheme) card.classList.toggle("hidden", !storyOk);
 		const selected = cards.find(
 			(c) => c.dataset.themeId === this.#sacrificeThemeId,
 		);
-		if (selected?.dataset.spent === "true") {
-			const live = cards.find((c) => c.dataset.spent !== "true");
-			if (live) this.#applySacrificeThemeSelection(live.dataset.themeId);
-		}
+		// A spent theme can't pay a Painful price, nor a story theme a higher
+		// one: unselect it rather than choosing another theme for the player.
+		if (
+			(isPainful && selected?.dataset.spent === "true") ||
+			(!storyOk && selected?.dataset.storyTheme)
+		)
+			this.#applySacrificeThemeSelection(null);
 	}
 
 	static #onSelectSacrificeTheme(_event, target) {
@@ -248,18 +366,21 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// A spent theme is not a valid Painful target — nothing left to scratch.
 		if (this.#sacrificeLevel === "painful" && target.dataset.spent === "true")
 			return;
+		if (target.dataset.storyTheme && !storyThemeMaySacrifice(this.#sacrificeLevel))
+			return;
 		this.#applySacrificeThemeSelection(themeId);
 		this.#dispatchUpdate();
 	}
 
 	/** Set the sacrifice theme (the private field is the source of truth, same
 	 *  principle as #selectionMap) and reflect it in the rendered card grid.
-	 *  Shared by the click handler and the level switch (which may need to bump
+	 *  Shared by the click handler and the level switch (which may need to clear
 	 *  selection off a spent theme). */
 	#applySacrificeThemeSelection(themeId) {
 		this.#sacrificeThemeId = themeId;
 		const root = this.element;
 		if (!root) return;
+		this.#syncRollButtons();
 		for (const card of root.querySelectorAll(
 			"[data-action='selectSacrificeTheme']",
 		)) {
@@ -367,7 +488,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			actorId: this.actorId,
 			syncSession: this.syncSession,
 			type,
-			tags,
+			// A Sacrifice adds no Power (p.159): tags picked before the switch
+			// are neither invoked, burned nor used up.
+			tags: isSacrifice ? [] : tags,
 			title: this.rollName,
 			speaker: this.speaker,
 			// Mirrors the `totalPower` getter, which is what the dialog displays.
@@ -375,12 +498,20 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			might: this.#might,
 			tradePower: this.#tradePower,
 			sacrificeLevel: isSacrifice ? this.#sacrificeLevel : undefined,
-			sacrificeThemeId: isSacrifice ? this.#sacrificeThemeId : undefined,
+			sacrificeBonus: isSacrifice ? this.#sacrificeBonus : 0,
+			// Only a theme this level may stake: a story theme picked under
+			// Painful does not ride along when the level is raised.
+			sacrificeThemeId: isSacrifice
+				? this.#sacrificeThemeItems().some((i) => i.id === this.#sacrificeThemeId)
+					? this.#sacrificeThemeId
+					: null
+				: undefined,
 			sacrificeStatusName:
 				isSacrifice && this.#sacrificeLevel === "grave"
 					? this.#sacrificeStatusName
 					: undefined,
-			actionUuid: this.#actionUuid,
+			// Kept while the switch is on, so turning it off brings the Action back.
+			actionUuid: isSacrifice ? null : this.#actionUuid,
 			mitigation: type === "mitigate" ? this.#mitigation : null,
 			// Acting Together: the outcome lands on the whole group (p.157), so
 			// the card carries who was in it and the GM's apply flow offers them
@@ -412,6 +543,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	#modifier = 0;
 	#might = 0;
+	/** The number the Narrator tells a Sacrifice to add (p.159); no Power is. */
+	#sacrificeBonus = 0;
+	/** The move a Sacrifice replaced, to go back to. shortcut: kept on this
+	 *  client only, so after a reload a called roll's way back is Quick. */
+	#moveBeforeSacrifice = null;
 	#tradePower = 0;
 	#sacrificeLevel = "painful";
 	#sacrificeThemeId = null;
@@ -510,6 +646,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// sacrifice, mirroring the Roll button's behaviour in hero-sheet.
 		if (this.#actionUuid && this.type === "sacrifice") {
 			this.type = "quick";
+			// As `setType`: Secret Grace never outlives the Sacrifice.
+			this.#sacrificeBonus = 0;
 			this.updatePresence(true).catch(console.error);
 		}
 		this.rollName = "";
@@ -564,6 +702,44 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	/**
+	 * Whether this client may turn the roll into a Sacrifice, or back: the
+	 * roller's switch on a Quick outcome, never a move the Narrator calls.
+	 * @returns {boolean}
+	 */
+	get canProposeSacrifice() {
+		return canToggleSacrifice({
+			isOwner: this.isOwner && !this.localOnly,
+			type: this.type,
+			isGroupRoll: this.isGroupRoll,
+		});
+	}
+
+	/** The Narrator's window on the Hero's Secret Grace (Vol. II p.78). */
+	static #onOpenSecretGrace() {
+		game.litmv2.SecretGraceApp?.open(this.actor);
+	}
+
+	/**
+	 * Whether this client may pick `type` on the move bar. The move is the
+	 * Narrator's half, but for Sacrifice, which is the roller's: on a called
+	 * roll it is Sacrifice or the move the Narrator called, and nothing else.
+	 * @param {string} type
+	 * @returns {boolean}
+	 */
+	#canPickType(type) {
+		if (type === "sacrifice") return this.canProposeSacrifice;
+		if (this.canSetNarratorFields) return true;
+		return this.canProposeSacrifice && type === this.#calledMove();
+	}
+
+	/** The move this roll is, or was before the roller made it a Sacrifice. */
+	#calledMove() {
+		return this.type === "sacrifice"
+			? (this.#moveBeforeSacrifice ?? "quick")
+			: this.type;
+	}
+
+	/**
 	 * Whether pressing Roll asks the Narrator rather than rolling.
 	 * @returns {boolean}
 	 */
@@ -611,8 +787,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	} = {}) {
 		this.#cachedTotalPower = null;
 		if (ownerId) this.ownerId = ownerId;
-		// A called roll is never a sacrifice — p.150 makes that price the
-		// player's to elect, never the Narrator's to demand.
+		// A call never starts as a Sacrifice: that price is the player's to
+		// elect (p.159), with the switch in Modifiers, never the
+		// Narrator's to demand.
 		this.type = !type || type === "sacrifice" ? "quick" : type;
 		this.#sacrificeThemeId = null;
 		this.#sacrificeStatusName = "";
@@ -621,6 +798,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#actionUuid = actionUuid || null;
 		this.#actionDoc = null;
 		this.#might = 0;
+		this.#sacrificeBonus = 0;
 		this.#modifier = 0;
 		this.#tradePower = 0;
 		this.#sojournBonus = 0;
@@ -643,31 +821,33 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	setType(type) {
 		if (!type) return;
 		// The move on a called roll is the Narrator's. The same gate the radio
-		// bar and `#handleTypeChange` apply belongs here too: the hero sheet's
-		// Sacrifice button calls straight through, which would otherwise let a
-		// roller silently turn the Narrator's Quick outcome into a Sacrifice on
-		// the shared object they are both looking at.
+		// bar and `#handleTypeChange` apply belongs here too: callers reach this
+		// setter directly, which would otherwise let a roller silently change
+		// the Narrator's move on the shared object they are both looking at.
 		//
 		// Reactions are the exception. A Consequence landing mid-call is not the
 		// player overriding the Narrator's judgement, it is a different roll they
 		// are entitled to make (p.147) — and it arrives through this same setter
 		// from the chat card, so refusing it would make reacting impossible
 		// while a call is open.
-		if (type !== "mitigate" && !this.canSetNarratorFields) {
+		// So is a Sacrifice: the roller elects it (p.159), on a called roll
+		// too, and may go back to the called move — see {@link #canPickType}.
+		if (type !== "mitigate" && !this.#canPickType(type)) {
 			ui.notifications?.info(t("LITM.Ui.roll_move_is_narrators"));
 			return;
 		}
 		// Mitigation context only makes sense for a reaction; drop it when the
 		// player switches away so no stale "Reacting to…" banner survives.
-		if (type !== "mitigate") this.#mitigation = null;
+		// A Sacrifice set aside for now keeps it, to go back to.
+		if (type !== "mitigate" && type !== "sacrifice") this.#mitigation = null;
 		// Likewise the sojourn bonus belongs to a camp action only.
 		if (type !== "campAction") this.#sojournBonus = 0;
-		// Sacrifice is its own ritual — clear any pending action so the
-		// dialog never shows the action strip alongside the sacrifice grid.
-		if (type === "sacrifice") {
-			this.#actionUuid = null;
-			this.#actionDoc = null;
-		}
+		// Secret Grace always starts at 0, entering or leaving a Sacrifice: a
+		// value filled in from the Hero's record would show the player it
+		// exists (Vol. II p.78 — never say where the number comes from).
+		if (type !== this.type) this.#sacrificeBonus = 0;
+		if (type === "sacrifice" && this.type !== "sacrifice")
+			this.#moveBeforeSacrifice = this.type;
 		this.type = type;
 		// Re-render rather than poke the DOM: the move is named in three places
 		// that all read `type` out of the render context — the segmented bar,
@@ -1114,7 +1294,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		const isOwner = this.isOwner;
 		const isGMViewer = game.user.isGM && !isOwner;
 
-		const actionContext = buildActionContext({ action: this.#actionDoc });
+		// A Sacrifice hides the Action strip; the Action stays for the way back.
+		const actionContext =
+			this.type === "sacrifice"
+				? null
+				: buildActionContext({ action: this.#actionDoc });
 
 		const { shared, gmTagGroups, storyTagGroups } = this.#buildTagGroups({
 			isOwner,
@@ -1259,11 +1443,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sceneActorTagGroups,
 			contributedTagGroups,
 			ownerTabs,
-			rollTypes: {
-				quick: "LITM.Ui.roll_quick",
-				tracked: "LITM.Ui.roll_tracked",
-				mitigate: "LITM.Ui.roll_mitigate",
-			},
+			// Sacrifice first, Quick the default (p.159). Acting Together has no
+			// single Hero to pay a price, so it never offers one.
+			rollTypes: [
+				...(this.isGroupRoll ? [] : ["sacrifice"]),
+				"quick",
+				"tracked",
+				"mitigate",
+			].map((key) => ({
+				key,
+				label: `LITM.Ui.roll_${key}`,
+				disabled: !this.#canPickType(key),
+			})),
 			storyTagGroups,
 			gmTagGroups,
 			concealedTags,
@@ -1293,6 +1484,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			isGroupRoll: this.isGroupRoll,
 			title: this.rollName,
 			type: this.type,
+			isSacrifice: this.type === "sacrifice",
+			// The Narrator watches a Sacrifice the way they watch any roll: the
+			// player's own view, read-only — but for the grace, which is theirs.
+			showSacrifice: isOwner || isGMViewer,
+			canEditSacrifice: isOwner,
+			// Secret Grace is the Narrator's alone, on every roll, and only they
+			// see it before the roll: the player reads it off the roll card.
+			sacrificeBonus: this.#sacrificeBonus,
+			heroGraceTier: game.user.isGM ? secretGraceTier(this.actor) : null,
+			graceLabel: graceBonusLabel(),
+			graceHint: t("LITM.Ui.sacrifice_grace_hint"),
 			mitigationBanner:
 				this.type === "mitigate" ? mitigationBannerText(this.#mitigation) : "",
 			narratorCall: isNarratorControlled(this.#narratorCall)
@@ -1314,19 +1516,23 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sacrificeLevelOptions: ["painful", "scarring", "grave"].map((key) => ({
 				value: key,
 				label: t(`LITM.Ui.sacrifice_${key}`),
+				// Core Book p.159: what the level achieves, what it costs, and
+				// what a Miracle lessens the cost to.
+				gain: t(`LITM.Ui.sacrifice_${key}_gain`),
 				description: game.i18n.format(`LITM.Ui.sacrifice_${key}_price`, {
 					tier: maxStatusTier(),
 				}),
+				miracle: t(`LITM.Ui.sacrifice_${key}_miracle`),
 				selected: this.#sacrificeLevel === key,
 			})),
-			// #ensureSacrificeThemeSelected auto-selects a valid theme (assigning
-			// this.#sacrificeThemeId — the source of truth, read at submit time)
-			// and flags the chosen card via `selected` in its return value.
+			// #ensureSacrificeThemeSelected drops an invalid choice (never picks
+			// one) and flags the chosen card via `selected` in its return value;
+			// this.#sacrificeThemeId is the source of truth, read at submit time.
 			sacrificeThemes,
 			sacrificeStatusName: this.#sacrificeStatusName,
 			maxStatusTier: maxStatusTier(),
 			// The theme selector serves a different rhetorical purpose per
-			// level — Painful scratches it, Scarring removes it, Grave only
+			// level — Painful scratches it, Scarring replaces it, Grave only
 			// touches it on Miracle. The legend/hint reflect that intent.
 			sacrificeThemeLegend: t(
 				this.#sacrificeLevel === "grave"
@@ -1343,6 +1549,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	_onFirstRender(context, options) {
 		super._onFirstRender(context, options);
+		// Say so as the window opens — called, joined or started — rather than
+		// only when Roll is refused. Nothing was refused yet, so the Narrator
+		// is not told. Only the seat that presses Roll hears it: a player
+		// watching Acting Together, which the Narrator rolls, is not held.
+		if (!this.localOnly && this.isOwner)
+			this.blockedByUnpaidSacrifice({ tellNarrator: false });
 
 		// The Narrator's X ends a roll they called for the whole table, like
 		// Cancel roll; their own roll already ends on close. On a roll the
@@ -1369,6 +1581,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				this.#handleTradePowerChange(target);
 			} else if (target.matches("input[name='sacrificeLevel']")) {
 				this.#handleSacrificeLevelChange(target);
+			} else if (target.matches("input[name='sacrificeBonus']")) {
+				this.#handleSacrificeBonusChange(target);
 			} else if (target.matches("input[name='sacrificeStatusName']")) {
 				this.#handleSacrificeStatusNameChange(target);
 			} else if (target.matches("input[name='type']")) {
@@ -1388,6 +1602,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#hedgeRadioEl = null;
 		this.#cautionRadioEl = null;
 		Hooks.callAll("litm.rollDialogRendered", this.actor, this);
+		this.#syncRollButtons();
 
 		// Might scale tooltip (depends on elements recreated each render)
 		const mightLabel = this.element.querySelector(".litm--might-name-wrapper");
@@ -1451,14 +1666,34 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			if (canSetNarratorFields) input.removeAttribute("aria-disabled");
 			else input.setAttribute("aria-disabled", "true");
 		};
-		for (const input of this.element.querySelectorAll("input[name='type']"))
-			lock(input);
+		for (const input of this.element.querySelectorAll("input[name='type']")) {
+			const pickable = this.#canPickType(input.value);
+			input.disabled = !pickable;
+			if (pickable) input.removeAttribute("aria-disabled");
+			else input.setAttribute("aria-disabled", "true");
+		}
 		for (const input of this.element.querySelectorAll("input[name='might']"))
 			lock(input);
+		// Secret Grace is the Narrator's on every roll, called or not.
+		for (const input of this.element.querySelectorAll(
+			"input[name='sacrificeBonus']",
+		)) {
+			input.disabled = !game.user.isGM;
+			if (game.user.isGM) input.removeAttribute("aria-disabled");
+			else input.setAttribute("aria-disabled", "true");
+		}
 		for (const bar of this.element.querySelectorAll(
 			".litm--roll-type-bar, .litm--might-radio-row",
 		)) {
-			if (bar.classList.contains("litm--trade-power-bar")) continue;
+			// Hedge/Caution and the Sacrifice level are the roller's; Secret
+			// Grace is locked above; the move bar locks option by option.
+			if (
+				bar.classList.contains("litm--move-bar") ||
+				bar.classList.contains("litm--trade-power-bar") ||
+				bar.classList.contains("litm--sacrifice-level-bar") ||
+				bar.classList.contains("litm--grace-radio-row")
+			)
+				continue;
 			bar.classList.toggle("is-locked", !canSetNarratorFields);
 		}
 	}
@@ -1736,6 +1971,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.clearSelections();
 		this.#modifier = 0;
 		this.#might = 0;
+		this.#sacrificeBonus = 0;
+		this.#moveBeforeSacrifice = null;
 		this.#tradePower = 0;
 		this.#sacrificeLevel = "painful";
 		this.#sacrificeThemeId = null;
@@ -1773,6 +2010,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			for (const entry of this.#selectionMap.values()) entry.narrator = false;
 			// Might judged this action; the next roll starts from Equal.
 			this.#might = 0;
+			// Nor the Narrator's Secret Grace, which was for this Sacrifice.
+			this.#sacrificeBonus = 0;
 			this.#cachedTotalPower = null;
 		}
 		this.invalidateSync();
@@ -1862,7 +2101,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// to `setType`, whose gate deliberately lets a reaction through: the
 		// bar offers `mitigate` too, and on a called roll it is not the
 		// roller's to pick.
-		if (!this.canSetNarratorFields) {
+		if (!this.#canPickType(target.value)) {
 			this.#restoreRadio("type", this.type);
 			return;
 		}
@@ -1874,35 +2113,29 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 	#toggleSacrificeMode(isSacrifice) {
 		if (!this.element) return;
-		// Hide might/modifier and total power for sacrifice rolls
-		const mightFieldset = this.element
-			.querySelector(".litm--roll-dialog-might")
-			?.closest("fieldset");
-		const totalPowerEl = this.element.querySelector(
-			".litm--roll-dialog-total-power",
-		);
-		const sacrificeFieldset = this.element.querySelector(
-			".litm--sacrifice-level-fieldset",
-		);
-		const tagsFieldset = this.element.querySelector(
-			".litm--roll-dialog-tags-fieldset",
-		);
-		// The owner-view tag-category nav lives in the same column wrapper
-		// as the tags fieldset — hide them together so the column collapses
-		// entirely during sacrifice rolls instead of leaving an orphan nav.
-		const tagsColumn = this.element.querySelector(
+		const root = this.element;
+		const toggle = (selector, hidden) => {
+			for (const el of root.querySelectorAll(selector))
+				el.classList.toggle("hidden", hidden);
+		};
+		// A Sacrifice adds no Power (p.159): Might gives way to the Narrator's
+		// Secret Grace, and the tags to the theme cards, which take the tag
+		// column's place. The total stays, reading the Grace bonus the roll
+		// adds. The move bar stays: it is still a Quick outcome, and the
+		// Narrator may still change the move.
+		toggle(".litm--roll-dialog-might", isSacrifice);
+		// The player sees no bonus before the roll, so neither the grace nor a
+		// total that would give it away; Modifiers is left with nothing then.
+		const hideBonus = isSacrifice && !game.user.isGM;
+		toggle(".litm--roll-dialog-modifiers, .litm--roll-dialog-total-power", hideBonus);
+		toggle(".litm--sacrifice-grace", !isSacrifice);
+		toggle(".litm--sacrifice-level-fieldset", !isSacrifice);
+		toggle(".litm--roll-dialog-tags-fieldset, .litm--roll-dialog-tabs", isSacrifice);
+		// Only the roller has theme cards; anyone else's tag column is empty.
+		toggle(
 			".litm--roll-dialog-tags-column",
+			isSacrifice && !root.querySelector(".litm--sacrifice-theme-fieldset"),
 		);
-		const typeBar = this.element.querySelector(".litm--roll-type-bar");
-		if (mightFieldset) mightFieldset.classList.toggle("hidden", isSacrifice);
-		if (totalPowerEl) totalPowerEl.classList.toggle("hidden", isSacrifice);
-		if (sacrificeFieldset)
-			sacrificeFieldset.classList.toggle("hidden", !isSacrifice);
-		if (tagsFieldset) tagsFieldset.classList.toggle("hidden", isSacrifice);
-		if (tagsColumn) tagsColumn.classList.toggle("hidden", isSacrifice);
-		// Sacrifice is its own ritual — quick/tracked/mitigate make no sense
-		// during it. Hide the roll-type bar entirely in sacrifice mode.
-		if (typeBar) typeBar.classList.toggle("hidden", isSacrifice);
 		// Toggle level-specific subfields (theme selector + grave status input)
 		this.#toggleSacrificeSubfields(isSacrifice ? this.#sacrificeLevel : null);
 	}
@@ -1924,12 +2157,17 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// Grave-only: status name input for the top-tier status on fail/snc.
 		if (graveFieldset)
 			graveFieldset.classList.toggle("hidden", level !== "grave");
+		this.#syncRollButtons();
 	}
 
 	// Mirrors #onSetSacrificeLevel (the data-action click handler) but is the
 	// KEYBOARD path: arrow-key navigation on the sacrificeLevel radio group
 	// fires `change` without a click, so this is not a removable duplicate.
 	#handleSacrificeLevelChange(target) {
+		if (!this.isOwner) {
+			this.#restoreRadio("sacrificeLevel", this.#sacrificeLevel);
+			return;
+		}
 		const level = target.value;
 		if (!level || level === this.#sacrificeLevel) return;
 		this.#sacrificeLevel = level;
@@ -1938,34 +2176,78 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		this.#dispatchUpdate();
 	}
 
+	/** The Narrator's Secret Grace for a Sacrifice: theirs alone, on any roll. */
+	#handleSacrificeBonusChange(target) {
+		if (!game.user.isGM) {
+			this.#restoreRadio("sacrificeBonus", this.#sacrificeBonus);
+			return;
+		}
+		this.#sacrificeBonus = Number(target.value) || 0;
+		for (const label of this.element.querySelectorAll(".litm--grace-option"))
+			label.classList.toggle(
+				"is-active",
+				label.querySelector("input")?.value === String(this.#sacrificeBonus),
+			);
+		this.#updateTotalPower();
+		this.#dispatchUpdate();
+	}
+
+	/**
+	 * The Hero's Secret Grace changed while its bonus was granted: the bonus
+	 * follows the new tier, since it is used whole or not at all (Vol. II p.78).
+	 * Nothing granted stays nothing. The caller re-renders.
+	 */
+	followSecretGrace() {
+		if (!game.user.isGM || !this.#sacrificeBonus) return;
+		const tier = secretGraceTier(this.actor) || 0;
+		if (tier === this.#sacrificeBonus) return;
+		this.#sacrificeBonus = tier;
+		this.#dispatchUpdate();
+	}
+
 	#handleSacrificeStatusNameChange(target) {
+		if (!this.isOwner) {
+			target.value = this.#sacrificeStatusName;
+			return;
+		}
 		this.#sacrificeStatusName = target.value || "";
 		this.#dispatchUpdate();
 	}
 
 	/** The hero's sacrificeable themes (its own themes + story themes, never the
 	 *  fellowship theme), unsorted. Spent-ness is computed by {@link isThemeSpent}. */
-	#sacrificeThemeItems() {
+	/**
+	 * The themes a Sacrifice at `level` may name. A story theme is a story tag
+	 * grown into a theme (Core Book p.163): its tags can be scratched for a
+	 * Painful price, but it has no Quest or Promise to replace it by (p.192),
+	 * so Scarring — and Grave, which a Miracle lessens to Scarring — take the
+	 * Hero's own themes only.
+	 * @param {string} [level]
+	 */
+	#sacrificeThemeItems(level = this.#sacrificeLevel) {
 		if (!this.actor) return [];
 		return this.actor.items.filter(
 			(i) =>
 				(i.type === "theme" && !i.system.isFellowship) ||
-				i.type === "story_theme",
+				(i.type === "story_theme" && storyThemeMaySacrifice(level)),
 		);
 	}
 
 	#ensureSacrificeThemeSelected() {
-		const themes = this.#sacrificeThemeItems().sort((a, b) => a.sort - b.sort);
+		// Every level's cards are rendered, story themes hidden while the level
+		// refuses them: a level switch toggles them without a re-render.
+		const themes = this.#sacrificeThemeItems("painful").sort(
+			(a, b) => a.sort - b.sort,
+		);
 		if (themes.length === 0) return [];
-		// Auto-select. Painful can't target a spent theme, so prefer the first
-		// live one; only fall back to a spent theme if every theme is spent.
+		// Never auto-select: the player names the theme they risk. Only drop a
+		// choice that is gone, spent under Painful, or a story theme above it.
 		const isPainful = this.#sacrificeLevel === "painful";
-		const current = themes.find((t) => t.id === this.#sacrificeThemeId);
-		const currentInvalid = !current || (isPainful && isThemeSpent(current));
-		if (currentInvalid) {
-			const firstLive = isPainful ? themes.find((t) => !isThemeSpent(t)) : null;
-			this.#sacrificeThemeId = (firstLive ?? themes[0]).id;
-		}
+		const current = this.#sacrificeThemeItems().find(
+			(t) => t.id === this.#sacrificeThemeId,
+		);
+		if (!current || (isPainful && isThemeSpent(current)))
+			this.#sacrificeThemeId = null;
 		const trackPips = (value, length = 3) =>
 			Array.from({ length }, (_, i) => ({ filled: i < (value ?? 0) }));
 		return themes.map((theme) => {
@@ -1977,7 +2259,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 						!e.disabled &&
 						!e.system?.isTitleTag,
 				)
-				.map((e) => e.name);
+				.map((e) => ({ name: e.name, scratched: !!e.system?.isScratched }));
+			const titleScratched = !!theme.system?.themeTag?.system?.isScratched;
 			const spent = isThemeSpent(theme);
 			const weaknessTags = effects
 				.filter((e) => e.type === "weakness_tag" && !e.disabled)
@@ -1989,15 +2272,18 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			return {
 				id: theme.id,
 				name: theme.name,
+				titleScratched,
 				themebook: theme.system?.themebook || "",
 				level,
+				icon: level ? levelIcon(level) : null,
 				levelLabel: level ? game.i18n.localize(`LITM.Terms.${level}`) : "",
 				quest: theme.system?.quest?.description || "",
 				powerTags,
 				weaknessTags,
 				specialImprovements,
 				hasTags: powerTags.length + weaknessTags.length > 0,
-				tracks: [
+				// A story theme has no Quest tracks or Improve (Core Book p.163).
+				tracks: theme.type === "story_theme" ? [] : [
 					{
 						label: game.i18n.localize("LITM.Themes.abandon"),
 						pips: trackPips(theme.system?.quest?.tracks?.abandon?.value),
@@ -2015,6 +2301,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 					},
 				],
 				spent,
+				storyTheme: theme.type === "story_theme",
+				storyThemeHidden:
+					theme.type === "story_theme" &&
+					!storyThemeMaySacrifice(this.#sacrificeLevel),
 				selected: theme.id === this.#sacrificeThemeId,
 			};
 		});
@@ -2128,7 +2418,11 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 
 		if (this.#totalPowerEl) {
 			const trade = this.#tradePower;
-			if (trade) {
+			// A Sacrifice rolls 2d6 + its Secret Grace bonus, nothing else. The
+			// player's total is hidden then, and must not hold the number either.
+			if (this.type === "sacrifice")
+				this.#totalPowerEl.textContent = game.user.isGM ? this.#sacrificeBonus : "";
+			else if (trade) {
 				const rollPower = totalPower + trade;
 				const spendPower = Math.max(totalPower - trade, 1);
 				this.#totalPowerEl.innerHTML = `${totalPower} <span class="litm--trade-annotation">(${t("LITM.Terms.roll")}: ${rollPower >= 0 ? "+" : ""}${rollPower}, ${t("LITM.Ui.spend_power")}: ${spendPower})</span>`;
@@ -2221,6 +2515,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			type: this.type,
 			modifier: this.#modifier,
 			might: this.#might,
+			sacrificeBonus: this.#sacrificeBonus,
 			tradePower: this.#tradePower,
 			sacrificeLevel: this.#sacrificeLevel,
 			sacrificeThemeId: this.#sacrificeThemeId,
@@ -2263,12 +2558,25 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		]) {
 			if (!this.isOwner) state[key] = this.#sync.view[key];
 		}
+		// Secret Grace is the Narrator's alone, called roll or not. A player's
+		// client may only send the reset to 0 that `setType` makes as the move
+		// changes.
+		const graceReset =
+			state.type !== this.#sync.view.type && state.sacrificeBonus === 0;
+		if (!game.user.isGM && !graceReset)
+			state.sacrificeBonus = this.#sync.view.sacrificeBonus;
 		for (const key of ["type", "might"]) {
 			// The explicit reaction entry point is allowed to change the move
-			// even on a called roll. The radio handler still rejects player edits.
+			// even on a called roll, and so is the roller's Sacrifice switch
+			// between Quick and Sacrifice. The radio handler still rejects
+			// player edits.
 			const reaction =
 				key === "type" && this.isOwner && this.type === "mitigate";
-			if (!this.canSetNarratorFields && !reaction)
+			const sacrificeSwitch =
+				key === "type" &&
+				this.canProposeSacrifice &&
+				(state.type === "sacrifice" || this.#sync.view.type === "sacrifice");
+			if (!this.canSetNarratorFields && !reaction && !sacrificeSwitch)
 				state[key] = this.#sync.view[key];
 		}
 		if (!this.isOwner && !game.user.isGM) {
@@ -2405,6 +2713,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		type,
 		modifier,
 		might,
+		sacrificeBonus,
 		tradePower,
 		sacrificeLevel,
 		sacrificeThemeId,
@@ -2424,6 +2733,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (type !== undefined) this.type = type;
 		if (modifier !== undefined) this.#modifier = modifier;
 		if (might !== undefined) this.#might = might;
+		if (sacrificeBonus !== undefined) this.#sacrificeBonus = sacrificeBonus;
 		if (tradePower !== undefined) this.#tradePower = tradePower;
 		if (sacrificeLevel !== undefined) this.#sacrificeLevel = sacrificeLevel;
 		if (sacrificeThemeId !== undefined)

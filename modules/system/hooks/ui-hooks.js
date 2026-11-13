@@ -1,10 +1,16 @@
 import { LitmRollDialog } from "../../apps/roll/roll-dialog.js";
+import {
+	paymentDialogId,
+	pendingSacrifice,
+} from "../../apps/roll/sacrifice-price.js";
+import { SecretGraceApp } from "../../apps/secret-grace-app.js";
 import { SceneTagDialog } from "../../apps/story-tags/scene-tag-dialog.js";
 import {
 	classifyTagStringMatch,
 	tagDragData,
 } from "../../item/action/tag-string.js";
 import { getStoryTagSidebar, localize as t } from "../../utils.js";
+import { FLAGS } from "../config.js";
 
 export function registerUiHooks() {
 	_iconOnlyHeaderButtons();
@@ -247,7 +253,46 @@ function _renderRollDialogHudOnPlayers() {
 		game.litmv2.callForRollHud?.render?.();
 		game.litmv2.rollDialogHud?.render?.();
 		game.litmv2.campingHud?.render?.();
+		game.litmv2.sacrificeHud?.render?.();
 	});
+	// An owed Sacrifice lives on the Hero: the ribbon follows the flag, and so
+	// does each of that Hero's Sacrifice cards on screen, whose Complete button
+	// shows only while the card is the open debt.
+	Hooks.on("updateActor", (actor, changes) => {
+		const flags = changes.flags?.litmv2 ?? {};
+		// The Narrator's Secret Grace window and a Sacrifice's tier hint follow
+		// the Hero's record.
+		if (FLAGS.secretGrace in flags || `-=${FLAGS.secretGrace}` in flags) {
+			foundry.applications.instances
+				.get(SecretGraceApp.idFor(actor))
+				?.render();
+			// Only the Narrator's Sacrifice window shows the tier.
+			const dialog = game.user.isGM && actor.sheet?.hasRollDialog
+				? actor.sheet.rollDialogInstance
+				: null;
+			if (dialog?.rendered && dialog.type === "sacrifice") {
+				dialog.followSecretGrace();
+				dialog.render();
+			}
+		}
+		if (!(FLAGS.pendingSacrifice in flags || `-=${FLAGS.pendingSacrifice}` in flags))
+			return;
+		game.litmv2.sacrificeHud?.render?.();
+		// Settled from another client: a payment dialog still open here is moot.
+		if (!pendingSacrifice(actor))
+			foundry.applications.instances.get(paymentDialogId(actor))?.close();
+		// Only two cards can change: the one showing Complete now, and the new debt's.
+		const debtId = pendingSacrifice(actor)?.messageId;
+		for (const li of ui.chat?.element?.querySelectorAll(".message[data-message-id]") ?? []) {
+			const { messageId } = li.dataset;
+			if (messageId !== debtId && !li.querySelector("[data-click='complete-sacrifice']"))
+				continue;
+			const message = game.messages.get(messageId);
+			if (message?.rolls?.[0]?.options?.actorId === actor.id)
+				ui.chat.updateMessage(message);
+		}
+	});
+	Hooks.on("deleteActor", () => game.litmv2.sacrificeHud?.render?.());
 	// The camp entry follows the session flag and hides while this client's
 	// camp window is open.
 	for (const hook of [

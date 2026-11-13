@@ -47,12 +47,12 @@ export class HeroSheet extends LitmActorSheet {
 		tag: "form",
 		actions: {
 			openRollDialog: HeroSheet.#onOpenRollDialog,
-			openSacrificeRoll: HeroSheet.#onOpenSacrificeRoll,
 			openActionsApp: HeroSheet.#onOpenActionsApp,
 			addStoryTag: LitmActorSheet._onAddStoryTag,
 			addStoryTheme: LitmActorSheet._onAddStoryTheme,
 			addMomentOfFulfillment: HeroSheet.#onAddMomentOfFulfillment,
 			removeMomentOfFulfillment: HeroSheet.#onRemoveMomentOfFulfillment,
+			openSecretGrace: HeroSheet.#onOpenSecretGrace,
 			removeEffect: LitmActorSheet._onRemoveEffect,
 			toggleEffectVisibility: LitmActorSheet._onToggleEffectVisibility,
 			scratchTag: HeroSheet.#onScratchTag,
@@ -324,6 +324,8 @@ export class HeroSheet extends LitmActorSheet {
 			storyThemes,
 			backpack,
 			statuses,
+			// The Secret Grace is the Narrator's alone (Vol. II p.78).
+			showSecretGrace: game.user.isGM,
 			relationshipEntries,
 			relationshipVisible,
 			lostRelationships,
@@ -502,11 +504,6 @@ export class HeroSheet extends LitmActorSheet {
 		this.renderRollDialog();
 	}
 
-	static #onOpenSacrificeRoll(_event, _target) {
-		this.renderRollDialog();
-		this.rollDialogInstance?.setType("sacrifice");
-	}
-
 	/**
 	 * Find relationship effects with empty names and mark them for deletion.
 	 * @param {Actor} actor - The hero actor document
@@ -565,6 +562,10 @@ export class HeroSheet extends LitmActorSheet {
 	 */
 	static async #onAddMomentOfFulfillment() {
 		await this.document.system.recordMomentOfFulfillment();
+	}
+
+	static #onOpenSecretGrace() {
+		game.litmv2.SecretGraceApp.open(this.document);
 	}
 
 	/**

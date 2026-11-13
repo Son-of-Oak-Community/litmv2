@@ -29,6 +29,7 @@ beforeEach(() => {
 		getFlag: vi.fn(() => ({ ownerId: "player", narrator: true })),
 		setFlag: vi.fn(),
 		unsetFlag: vi.fn(),
+		items: [{ id: "theme", type: "theme", system: {}, effects: [] }],
 	};
 	game.actors.get.mockReturnValue(actor);
 	foundry.applications.api.ApplicationV2.prototype.close = async function () {
@@ -260,6 +261,7 @@ describe("the Narrator's Roll and Cancel on the roller's client", () => {
 		dialog.submit = vi.fn(async () => {});
 		dialog.close = vi.fn();
 		dialog.painfulSacrificeHasNoTarget = () => false;
+		dialog.sacrificeThemeMissing = () => false;
 		actor.sheet = { hasRollDialog: true, rollDialogInstance: dialog };
 		return dialog;
 	}
@@ -273,7 +275,10 @@ describe("the Narrator's Roll and Cancel on the roller's client", () => {
 	it("rolls past approval, and cancels by closing", async () => {
 		const dialog = openDialog();
 		await command({ command: "roll" });
-		expect(dialog.submit).toHaveBeenCalledWith({ narrator: true });
+		expect(dialog.submit).toHaveBeenCalledWith({
+			narrator: true,
+			checked: true,
+		});
 		await command({ command: "cancel" });
 		expect(dialog.close).toHaveBeenCalled();
 	});
@@ -331,5 +336,200 @@ describe("the Narrator cancelling a roll whose owner is away", () => {
 		);
 		expect(dialog.narratorCall).toBeNull();
 		expect(dialog.getSelection("tag").narrator).toBe(false);
+	});
+});
+
+describe("Sacrifice theme choice", () => {
+	// Nothing picks the theme a Sacrifice risks: a stray Roll must not stake
+	// a theme the player never chose.
+	it("refuses a Sacrifice until a theme is chosen", () => {
+		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(true);
+		expect(
+			makeDialog({
+				type: "sacrifice",
+				sacrificeThemeId: "theme",
+			}).sacrificeThemeMissing(),
+		).toBe(false);
+		expect(makeDialog({ type: "quick" }).sacrificeThemeMissing()).toBe(false);
+	});
+
+	it("counts a chosen theme deleted since as none chosen", () => {
+		expect(
+			makeDialog({ type: "sacrifice", sacrificeThemeId: "gone" }).sacrificeThemeMissing(),
+		).toBe(true);
+	});
+
+	it("keeps the Narrator's refused Roll off the player's screen", () => {
+		const warn = vi.spyOn(ui.notifications, "warn");
+		expect(makeDialog({ type: "sacrifice" }).rollRefusal({ narrator: true })).toBe(
+			"sacrificeTheme",
+		);
+		expect(warn).not.toHaveBeenCalled();
+	});
+
+	// Core Book p.163/p.192: a story theme can pay a Painful price, but has no
+	// Quest or Promise to be replaced by, so Scarring and Grave refuse it.
+	it("takes a story theme for Painful only", () => {
+		actor.items = [{ id: "lantern", type: "story_theme", system: {}, effects: [] }];
+		const at = (sacrificeLevel) =>
+			makeDialog({
+				type: "sacrifice",
+				sacrificeLevel,
+				sacrificeThemeId: "lantern",
+			}).extractRollData({}).sacrificeThemeId;
+		expect(
+			makeDialog({ type: "sacrifice", sacrificeLevel: "painful", sacrificeThemeId: "lantern" })
+				.sacrificeThemeMissing(),
+		).toBe(false);
+		expect(at("painful")).toBe("lantern");
+		// Nothing left to name above Painful: the Hero rolls without a theme,
+		// and the story theme is not staked.
+		for (const level of ["scarring", "grave"]) {
+			const dialog = makeDialog({ type: "sacrifice", sacrificeLevel: level, sacrificeThemeId: "lantern" });
+			expect(dialog.sacrificeThemeMissing()).toBe(false);
+			expect(at(level)).toBeNull();
+		}
+	});
+
+	it("still asks for a Hero theme on Scarring when a story theme is all that was picked", () => {
+		actor.items.push({ id: "lantern", type: "story_theme", system: {}, effects: [] });
+		const dialog = makeDialog({
+			type: "sacrifice",
+			sacrificeLevel: "scarring",
+			sacrificeThemeId: "lantern",
+		});
+		expect(dialog.sacrificeThemeMissing({ quiet: true })).toBe(true);
+	});
+
+	it("lets a Hero with no theme left roll one", () => {
+		actor.items = [];
+		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(false);
+	});
+});
+
+// p.159: a Sacrifice is a Quick outcome the player elects, so on a called roll
+// the roller may switch Quick to Sacrifice and back, but no further.
+describe("the roller's Sacrifice switch", () => {
+	const calledRoll = () => {
+		const dialog = makeDialog();
+		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
+		dialog.updatePresence = vi.fn(async () => {});
+		return dialog;
+	};
+
+	it("turns the Narrator's called Quick outcome into a Sacrifice and back", () => {
+		const dialog = calledRoll();
+		dialog.setType("sacrifice");
+		expect(dialog.type).toBe("sacrifice");
+		dialog.setType("quick");
+		expect(dialog.type).toBe("quick");
+	});
+
+	it("leaves the rest of the move to the Narrator", () => {
+		const dialog = calledRoll();
+		dialog.setType("tracked");
+		expect(dialog.type).toBe("quick");
+	});
+
+	it("starts every Sacrifice's grace at 0, whatever the Hero holds", () => {
+		const dialog = calledRoll();
+		actor.getFlag = vi.fn((_scope, key) =>
+			key === "secretGrace"
+				? [{ id: "m", text: "Spared the wolf", spent: false }]
+				: { ownerId: "player", narrator: true },
+		);
+		dialog.setType("sacrifice");
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
+	});
+
+	it("keeps a granted grace at the Hero's tier as it changes, whole or none", async () => {
+		const moments = [
+			{ id: "a", text: "Spared the wolf" },
+			{ id: "b", text: "Fed the stranger" },
+		];
+		actor.getFlag = vi.fn((_scope, key) =>
+			key === "secretGrace" ? moments : { ownerId: "player", narrator: true },
+		);
+		const dialog = calledRoll();
+		dialog.setType("sacrifice");
+		dialog.followSecretGrace();
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
+		await dialog.receiveUpdate({ actorId: actor.id, sacrificeBonus: 2 });
+		// Only the Narrator's window holds the Hero's record.
+		game.user = { id: "gm", isGM: true };
+		moments[0].scratched = true;
+		dialog.followSecretGrace();
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(1);
+		moments[1].scratched = true;
+		dialog.followSecretGrace();
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
+	});
+
+	it("drops the Narrator's grace when the roll ends unrolled", async () => {
+		const dialog = calledRoll();
+		dialog.setType("sacrifice");
+		await dialog.receiveUpdate({ actorId: actor.id, sacrificeBonus: 4 });
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(4);
+		dialog.endSharedRoll();
+		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
+	});
+
+	it("rolls no tags and no Action as a Sacrifice, and keeps the called Action", () => {
+		const dialog = makeDialog();
+		dialog.configureSharedRoll({
+			ownerId: "player",
+			narratorUserId: "gm",
+			actionUuid: "Item.sneak",
+		});
+		dialog.updatePresence = vi.fn(async () => {});
+		dialog.setSelection("tag-1", "scratched", "player");
+		dialog.setType("sacrifice");
+		expect(dialog.extractRollData({})).toMatchObject({ tags: [], actionUuid: null });
+		dialog.setType("quick");
+		expect(dialog.extractRollData({}).actionUuid).toBe("Item.sneak");
+	});
+
+	it("is Sacrifice or the called move, on a called roll of any move", () => {
+		const dialog = makeDialog({ type: "tracked" });
+		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm", type: "tracked" });
+		dialog.updatePresence = vi.fn(async () => {});
+		dialog.setType("tracked");
+		expect(dialog.type).toBe("tracked");
+		dialog.setType("sacrifice");
+		expect(dialog.type).toBe("sacrifice");
+		dialog.setType("quick");
+		expect(dialog.type).toBe("sacrifice");
+		dialog.setType("tracked");
+		expect(dialog.type).toBe("tracked");
+	});
+
+	it("is a move of its own on the roller's own roll, from any move", () => {
+		const dialog = makeDialog({ type: "tracked" });
+		dialog.updatePresence = vi.fn(async () => {});
+		dialog.setType("sacrifice");
+		expect(dialog.type).toBe("sacrifice");
+	});
+
+	it("is never the Narrator's to pick for the player", () => {
+		game.user = { id: "gm", isGM: true };
+		const dialog = makeDialog();
+		dialog.updatePresence = vi.fn(async () => {});
+		expect(dialog.canProposeSacrifice).toBe(false);
+		dialog.setType("sacrifice");
+		expect(dialog.type).toBe("quick");
+	});
+
+	it("is not the switch of a Narrator watching the roll", () => {
+		game.user = { id: "gm", isGM: true };
+		expect(calledRoll().canProposeSacrifice).toBe(false);
+	});
+
+	it("rolls the Narrator's number with a Sacrifice", async () => {
+		const { resolveRollFormula } = await import(
+			"../modules/apps/roll/roll-pipeline.js"
+		);
+		expect(resolveRollFormula({ type: "sacrifice" })).toBe(
+			"2d6 + @sacrificeBonus",
+		);
 	});
 });

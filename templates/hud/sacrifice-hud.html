@@ -1,0 +1,17 @@
+{{#each entries}}
+{{!-- Only the Hero's owners can pay, so only they get a button; the rest of
+the table sees the debt. --}}
+{{#if canPay}}<button type="button"{{else}}<div{{/if}} class="litm-roll-dialog-hud__item" data-actor-id="{{actorId}}">
+    <img class="litm-roll-dialog-hud__img" src="{{img}}" alt="" />
+    <span class="litm-roll-dialog-hud__text">
+        <span class="litm-roll-dialog-hud__title">{{localize "LITM.Ui.sacrifice_debt"}}</span>
+        <span class="litm-roll-dialog-hud__meta">{{owes}}</span>
+    </span>
+    {{#if canPay}}
+    <span class="litm-roll-dialog-hud__action">
+        <i class="fa-solid fa-hand-holding-heart" aria-hidden="true"></i>
+        {{localize "LITM.Ui.sacrifice_pay"}}
+    </span>
+    {{/if}}
+{{#if canPay}}</button>{{else}}</div>{{/if}}
+{{/each}}

@@ -190,6 +190,20 @@
 				</div>
 			</section>
 			{{/if}}
+
+			{{#if hero.secretGrace}}
+			<section class="litm-party-overview__section">
+				<h3>{{localize "LITM.Ui.sacrifice_grace"}} {{hero.secretGrace.tier}} {{> "systems/litmv2/templates/partials/hidden-mark.html"}}</h3>
+				<ul class="plain litm--grace-moments">
+					{{#each hero.secretGrace.moments as |moment|}}
+					<li class="flexrow gap-sm">
+						<i class="noflex fa-solid fa-dove" aria-hidden="true"></i>
+						<span>{{moment.text}}</span>
+					</li>
+					{{/each}}
+				</ul>
+			</section>
+			{{/if}}
 		</article>
 		{{/each}}
 		</div>

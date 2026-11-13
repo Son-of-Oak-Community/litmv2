@@ -2194,15 +2194,23 @@ section.standard-form.litm-theme-browser-body {
 	opacity: 0.75;
 }
 
-/* Sacrifice trigger — warm/dire styling on the Roll-adjacent button.
-   Click sets the dialog's type to sacrifice and opens it. */
-.litm--sacrifice-button {
-	border-color: var(--color-litm-weakness-text);
-	color: var(--color-litm-weakness-text);
+/* The Narrator's view of the Hero's Secret Grace, at the end of the label row. */
+/* The dove that opens the Hero's Secret Grace: the sheets' regular button,
+   right after its name, with room above the grace options. */
+.litm--sacrifice-grace .litm--might-label-row {
+	justify-content: flex-start;
+	gap: var(--spacer-8);
+	margin-bottom: var(--spacer-4);
 }
 
-.litm--sacrifice-button:hover {
-	background: var(--color-warm-1-10);
+/* A Secret Grace moment the Narrator scratched: kept for history, not counted. */
+.litm--grace-scratched {
+	text-decoration: line-through;
+}
+
+/* The Sacrifice move, first on the move bar: it reads dire (p.159). */
+.litm--sacrifice-switch {
+	color: var(--color-litm-weakness-text);
 }
 
 /* Sacrifice rite — a transient inscription that appears when another player
@@ -2287,6 +2295,26 @@ section.standard-form.litm-theme-browser-body {
 
 .litm--sacrifice-rite.is-visible {
 	opacity: 1;
+}
+
+/* The chosen level's terms (Core Book p.159): what it achieves, its price,
+   and what a Miracle lessens it to. Read before committing to a level. */
+.litm--sacrifice-terms {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var(--spacer-4) var(--spacer-8);
+	margin: var(--spacer-8) 0 0;
+}
+
+.litm--sacrifice-terms dt {
+	font-weight: 600;
+	color: var(--color-text-secondary);
+	/* Foundry's `dl dt` shadow doubles the labels on parchment. */
+	text-shadow: none;
+}
+
+.litm--sacrifice-terms dd {
+	margin: 0;
 }
 
 /* Sacrifice theme picker — a responsive grid of regular .theme-cards.
@@ -3302,6 +3330,13 @@ section.standard-form.litm-theme-browser-body {
 	cursor: not-allowed;
 }
 
+/* The chosen move stays legible when this client can't change it, e.g. the
+   Narrator watching a player's Sacrifice. */
+.litm--roll-type-option.is-disabled.is-active {
+	opacity: 1;
+	cursor: default;
+}
+
 /* Grid: settings beside the tag column when wide enough.
    align-content: start keeps the two grid items at the top of the
    available height so the cells don't get visually stretched when the
@@ -3769,6 +3804,21 @@ section.standard-form.litm-theme-browser-body {
 /* A camp can run for hours; the roll strip's pulse is for a short-lived roll. */
 .litm-camping-hud .litm-roll-dialog-hud__item {
 	animation: none;
+}
+
+/* Unpaid Sacrifices sit on top: a debt outlasts both the camp and the roll,
+   so it does not pulse either. A player who doesn't own the Hero gets the
+   entry as plain text, not a button. */
+.litm-sacrifice-hud {
+	order: -4;
+}
+
+.litm-sacrifice-hud .litm-roll-dialog-hud__item {
+	animation: none;
+}
+
+.litm-sacrifice-hud div.litm-roll-dialog-hud__item {
+	cursor: default;
 }
 
 .litm-camping-hud__icon {

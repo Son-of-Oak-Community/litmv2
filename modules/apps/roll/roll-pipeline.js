@@ -9,6 +9,7 @@ import { Sockets } from "../../system/sockets.js";
 import { localize as t } from "../../utils.js";
 import { LitmRoll } from "./roll.js";
 import { canInitiateRoll } from "./roll-authority.js";
+import { pendingSacrifice, recordPendingSacrifice } from "./sacrifice-price.js";
 
 /**
  * Roll execution + post-roll bookkeeping, lifted out of the dialog so the
@@ -56,10 +57,11 @@ export function buildRollPreview({ tags, modifier = 0, might = 0 }) {
  */
 export function resolveRollFormula(args) {
 	const { type } = args;
-	// Sacrifice rolls use only 2d6 — no Power is added.
+	// Sacrifice rolls add no Power — only the number the Narrator may tell
+	// the roller to add (p.159).
 	const defaultFormula =
 		type === "sacrifice"
-			? "2d6"
+			? "2d6 + @sacrificeBonus"
 			: "2d6 + (@scratchedValue + @powerValue + @positiveStatusValue - @weaknessValue - @negativeStatusValue + @modifier + @mightOffset + @tradePower)";
 
 	return typeof CONFIG.litmv2.roll.formula === "function"
@@ -87,11 +89,27 @@ export function executeRoll({
 	sacrificeLevel,
 	sacrificeThemeId,
 	sacrificeStatusName,
+	sacrificeBonus = 0,
 	actionUuid = null,
 	mitigation = null,
 	participantIds = [],
 	syncSession = null,
 }) {
+	if (type === "sacrifice") {
+		// One price at a time (p.159). The dialog refuses this too, but an
+		// approved roll arrives here without it and would overwrite the debt.
+		const hero = game.actors.get(actorId);
+		if (pendingSacrifice(hero)) {
+			ui.notifications?.warn(
+				game.i18n.format("LITM.Ui.sacrifice_unpaid_new", { name: hero.name }),
+			);
+			return;
+		}
+		// A Sacrifice adds no Power: nothing is invoked, burned or used up,
+		// and the card must not list a Might the dice never got.
+		tags = [];
+		modifier = might = tradePower = 0;
+	}
 	tags = LitmRoll.captureConcealment(tags);
 	const {
 		scratchedTags,
@@ -119,8 +137,10 @@ export function executeRoll({
 		might,
 	});
 
+	sacrificeBonus = type === "sacrifice" ? Math.trunc(Number(sacrificeBonus)) || 0 : 0;
 	const formula = resolveRollFormula({
 		type,
+		sacrificeBonus,
 		scratchedTags,
 		powerTags,
 		weaknessTags,
@@ -163,6 +183,7 @@ export function executeRoll({
 			modifier: Number(modifier) || 0,
 			mightOffset,
 			tradePower: Number(tradePower) || 0,
+			sacrificeBonus,
 		},
 		{
 			actorId,
@@ -182,6 +203,7 @@ export function executeRoll({
 			sacrificeLevel,
 			sacrificeThemeId,
 			sacrificeStatusName,
+			sacrificeBonus,
 			mitigation,
 			// Acting Together (p.157): the outcome affects the entire group, so
 			// the card remembers who was in it. The GM apply flow reads this to
@@ -199,6 +221,10 @@ export function executeRoll({
 		.then(async (res) => {
 			Hooks.callAll("litm.roll", roll, res);
 			const actor = game.actors.get(actorId);
+			// The price is owed from the moment the dice land (p.159), on the Hero
+			// rather than the card, so clearing chat does not cancel it.
+			if (type === "sacrifice")
+				await recordPendingSacrifice(actor, roll, res)?.catch(console.error);
 			// The card is already posted. A bookkeeping failure (a scratch the
 			// roller can't write, say) must not skip the reset below, or the dialog
 			// stays open and armed and Roll posts a second card for the same roll.

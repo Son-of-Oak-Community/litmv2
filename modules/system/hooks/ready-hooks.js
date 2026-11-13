@@ -2,6 +2,7 @@ import { WelcomeOverlay } from "../../apps/welcome/welcome-overlay.js";
 import { CallForRollHud } from "../../hud/call-for-roll-hud.js";
 import { CampingHud } from "../../hud/camping-hud.js";
 import { RollDialogHud } from "../../hud/roll-dialog-hud.js";
+import { SacrificeHud } from "../../hud/sacrifice-hud.js";
 import { error } from "../../logger.js";
 import { getStoryTagSidebar } from "../../utils.js";
 import { FLAGS } from "../config.js";
@@ -44,6 +45,8 @@ function _setupRollDialogHud() {
 		game.litmv2.callForRollHud = callHud;
 		const campingHud = new CampingHud();
 		game.litmv2.campingHud = campingHud;
+		const sacrificeHud = new SacrificeHud();
+		game.litmv2.sacrificeHud = sacrificeHud;
 
 		const unsetPromises = [];
 		for (const actor of game.actors) {
@@ -66,6 +69,7 @@ function _setupRollDialogHud() {
 		callHud.render();
 		hud.render();
 		campingHud.render();
+		sacrificeHud.render();
 	});
 }
 

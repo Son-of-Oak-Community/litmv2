@@ -170,7 +170,7 @@ describe("roll concealment across persisted and rendered paths", () => {
 			isOwner: true,
 			requiresApproval: true,
 			actor: { id: "hero", name: "Hero" },
-			painfulSacrificeHasNoTarget: () => false,
+			rollRefusal: () => null,
 			extractRollData: () => ({ type: "quick", tags: [secret] }),
 			suspendForModeration: vi.fn(),
 			_createModerationRequest:

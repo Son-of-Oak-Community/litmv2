@@ -1,0 +1,7 @@
+{{!-- The theme a Sacrifice risks, headed as the sheet heads it: its Might
+(level) icon beside the title tag. Shared by the roll dialog, the chat card
+and the payment dialog. Takes name, icon, levelLabel, scratched. --}}
+<div class="flexrow noflex gap-sm">
+	{{#if icon}}<img class="noflex icon-md" src="{{icon}}" alt="{{levelLabel}}" data-tooltip="{{levelLabel}}" />{{/if}}
+	<span class="noflex litm-power_tag litm-title_tag {{#if scratched}}scratched{{/if}}" data-text="{{name}}">{{name}}</span>
+</div>

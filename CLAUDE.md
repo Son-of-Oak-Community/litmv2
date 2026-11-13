@@ -141,11 +141,27 @@ CallForRollApp (GM)  -- picks WHO is rolling, and optionally WHICH Action
 The authority split lives in `modules/apps/roll/roll-authority.js` (pure,
 unit-tested):
 
-- **Narrator's half** — move type and Might. Locked for non-GMs whenever the roll
-  carries a narrator stamp (`canEditNarratorFields`). Enforced in the template
-  (`disabled`), in `#handleTypeChange` / `#handleMightChange`, which revert, and
-  in `setType`, which the hero sheet's Sacrifice button calls directly; the
-  markup is not the boundary. **The GM may set the move and the Might on any
+- **Narrator's half** — move type and Might. Locked for non-GMs whenever the
+  roll carries a narrator stamp (`canEditNarratorFields`). The Secret Grace
+  the Narrator may tell a Sacrifice to add (p.159) is stricter: the
+  Narrator's alone on every roll, called or not, and the player is not shown
+  it at all before the roll (no control, no total; the Modifiers fieldset
+  hides) — they read it, as "Bonus", on the roll card. Like a status it is used
+  whole or not at all: the control offers none or the Hero's full tier, never
+  part of it. It always starts at 0. The Hero's own Secret Grace (Vol. II
+  p.78) is the `secretGrace` actor flag (`secret-grace.js`): moments of grace
+  the Narrator notes in `SecretGraceApp` (a GM-only button by the hero sheet's
+  Roll, and beside a Sacrifice's "Secret Grace Bonus"), one tier each; a moment
+  can be scratched to keep it as history without counting it.
+  It is not a status effect, so it never counts as Power. A Sacrifice with a
+  Secret Grace Bonus of N scratches the first N live moments when its price
+  is paid (`completePendingSacrifice`, from the debt's `graceBonus`), never
+  at the roll, never on Forgive, never when nothing was left to pay;
+  the Narrator's Fellowship party overview lists each Hero's live moments.
+  Enforced in the template
+  (`disabled`), in `#handleTypeChange` / `#handleMightChange` /
+  `#handleSacrificeBonusChange`, which revert, and in `setType`; the markup is
+  not the boundary. **The GM may set the move and the Might on any
   roll, called or not** — judging Might is the Narrator's job (p.272), so the
   settings column renders for them even as a non-owner viewer. That is a
   deliberate widening of the pre-branch behaviour, where the column was
@@ -154,8 +170,25 @@ unit-tested):
   takes it all from the dialog's own fields, because `FormDataExtended` skips
   `:disabled` controls — reading Might off the form would drop exactly the value
   the Narrator had just set, and `modifier`/`title` have no form control at all.
-- **Roller's half** — their own tags, modifier, Trade Power. Trade Power is
-  additionally off for a group roll (`canEditTradePower`).
+- **Roller's half** — their own tags, modifier, Trade Power, and
+  **Sacrifice**. Trade Power is additionally off for a group roll
+  (`canEditTradePower`). Sacrifice is its own move, first on the move bar,
+  with Quick still the default. The player elects it (p.159), so it is the
+  roller's option on that bar (`canToggleSacrifice`), never the Narrator's for
+  them: from any move on their own roll, and on a called roll of any move it
+  is Sacrifice or the called move, nothing else. The move a Sacrifice
+  replaced is kept to go back to (`#moveBeforeSacrifice`, this client only),
+  Reaction context included. `#canPickType` is the per-option
+  rule the template, `#handleTypeChange` and `setType` share. It never appears
+  on Acting Together. A Sacrifice
+  adds no Power: its formula is `2d6 + @sacrificeBonus`, and its theme cards
+  take the tag column's place. It rolls no tags and no Action (`executeRoll`
+  drops them, so nothing is burned or used up); the dialog keeps the called
+  Action, so switching back restores it. `executeRoll` also refuses a
+  Sacrifice while the Hero still owes one, which covers approved rolls that
+  never passed `rollRefusal`. A debt has one payer, the seat
+  `resolveSharedRollOwner` would pick (`sacrificePayerId`), so two owners
+  can't pay it twice; any Narrator may still forgive.
 - Selection entries carrying `narrator: true` stay locked for non-GMs in both
   `makeTagDecorator` and `LitmRollDialog#canModifyTag`.
 
@@ -304,8 +337,9 @@ consequences to each of them is still a decision, not an automatic fan-out.
   the main-screen control, the sidebar's window-header entry, `R` — is therefore
   gated on `isGM` alone and never on this setting, even though `canInitiateRoll`
   would answer the same today; a test pins that. It gates *instigation* only.
-  Joining an open roll, being called into one, reacting, camp actions and
-  Sacrifice stay open regardless.
+  Joining an open roll, being called into one, reacting and camp actions stay
+  open regardless. Sacrifice is the roller's move inside the roll window,
+  so with the setting off a player asks for the roll and picks it there.
 
   Instigation splits two ways, and the split is deliberate. The **hero-sheet
   Roll button and `R`** — the same gesture, one with a mouse — stay available

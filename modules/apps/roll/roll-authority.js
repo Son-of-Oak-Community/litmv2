@@ -52,6 +52,30 @@ export function canEditNarratorFields({
 }
 
 /**
+ * Whether this client may turn the roll into a Sacrifice, or back.
+ *
+ * Core Book p.159: a Sacrifice is a type of Quick outcome the player elects —
+ * "choose your level of Sacrifice" — and the Narrator then says what it can
+ * achieve. So it is the roller's choice, not a move in the Narrator's half:
+ * it stays theirs on a called roll, whatever move was called — Sacrifice or
+ * that move. A camp action is not a roll to sacrifice on. Acting Together has
+ * no single Hero to pay the price, so it never offers one.
+ *
+ * @param {object} args
+ * @param {boolean} [args.isOwner]
+ * @param {string} [args.type] The roll's current type.
+ * @param {boolean} [args.isGroupRoll]
+ * @returns {boolean}
+ */
+export function canToggleSacrifice({
+	isOwner = false,
+	type = "quick",
+	isGroupRoll = false,
+} = {}) {
+	return !!isOwner && !isGroupRoll && type !== "campAction";
+}
+
+/**
  * Whether this client may trade Power for position (Hedge / Caution).
  *
  * Owner-only as before, and never in a group roll: Acting Together resolves

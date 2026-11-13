@@ -135,9 +135,11 @@ export class Sockets {
 						ui.notifications?.info(t("LITM.Ui.roll_cancelled_by_narrator"));
 						dialog.close();
 					} else if (command === "roll") {
-						if (dialog.painfulSacrificeHasNoTarget())
-							return refuse("sacrifice");
-						dialog.submit({ narrator: true })?.catch(console.error);
+						const reason = dialog.rollRefusal({ narrator: true });
+						if (reason) return refuse(reason);
+						dialog
+							.submit({ narrator: true, checked: true })
+							?.catch(console.error);
 					}
 					return;
 				}
@@ -159,15 +161,27 @@ export class Sockets {
 			},
 		);
 
+		// A player was refused a roll for a Hero still owing a Sacrifice.
+		Sockets.on("unpaidSacrifice", ({ senderId, data: { actorIds = [] } }) => {
+			if (!game.user.isGM) return;
+			ui.notifications?.warn(
+				game.i18n.format("LITM.Ui.sacrifice_unpaid_gm", {
+					user: game.users.get(senderId)?.name ?? "",
+					name: game.i18n
+						.getListFormatter()
+						.format(actorIds.map((id) => game.actors.get(id)?.name ?? "")),
+				}),
+			);
+		});
+
 		Sockets.on("narratorRollCommandRefused", ({ data: { userId, reason } }) => {
 			if (userId !== game.userId) return;
-			ui.notifications?.warn(
-				t(
-					reason === "sacrifice"
-						? "LITM.Ui.sacrifice_all_spent_warning"
-						: "LITM.Ui.roll_window_closed",
-				),
-			);
+			const key = {
+				sacrifice: "LITM.Ui.sacrifice_all_spent_warning",
+				unpaidSacrifice: "LITM.Ui.sacrifice_unpaid_new_called",
+				sacrificeTheme: "LITM.Ui.sacrifice_choose_theme_warning",
+			}[reason];
+			ui.notifications?.warn(t(key ?? "LITM.Ui.roll_window_closed"));
 		});
 
 		Sockets.on(

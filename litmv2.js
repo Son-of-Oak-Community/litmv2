@@ -19,6 +19,7 @@ import { DoubleSix } from "./modules/apps/dice.js";
 import { CallForRollApp } from "./modules/apps/roll/call-for-roll.js";
 import { LitmRoll } from "./modules/apps/roll/roll.js";
 import { LitmRollDialog } from "./modules/apps/roll/roll-dialog.js";
+import { SecretGraceApp } from "./modules/apps/secret-grace-app.js";
 import { SpendPowerApp } from "./modules/apps/spend-power.js";
 import { StoryTagSidebar } from "./modules/apps/story-tags/story-tag-sidebar.js";
 import { StoryTagsStore } from "./modules/apps/story-tags/story-tags-store.js";
@@ -78,6 +79,8 @@ Hooks.once("init", () => {
 	 * - `StoryTagApp`, `SpendPowerApp`, `ApplyActionMenuApp`,
 	 *   `ThemeAdvancementApp`, `ThemeEvolutionWizard`, `WelcomeOverlay` —
 	 *   replaceable app classes
+	 * - `SecretGraceApp` — the Narrator's window on a Hero's Secret Grace
+	 *   (Vol. II p.78): `SecretGraceApp.open(actor)`
 	 * - `ContentSources` — compendium loading and status seeding entry point
 	 * - `storyTags` — set at ready time to the sidebar tab instance
 	 * - `rollDialogHud` — mutable reference to the active roll-dialog HUD
@@ -106,6 +109,7 @@ Hooks.once("init", () => {
 			return id ? (game.actors?.get(id) ?? null) : null;
 		},
 		LitmRollDialog,
+		SecretGraceApp,
 		LitmRoll,
 		CallForRollApp,
 		WelcomeOverlay,
