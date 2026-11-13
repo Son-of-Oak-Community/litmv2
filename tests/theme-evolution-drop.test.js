@@ -112,6 +112,24 @@ describe("applyDroppedTheme", () => {
 		expect(created).toHaveLength(6);
 	});
 
+	// The new theme starts nascent and owes nothing yet (p.192).
+	it("does not carry the replaced theme's owed power tags over", async () => {
+		const actor = fakeActor({ system: { promise: 0, pendingPromise: 0 } });
+		const target = fakeTheme({ name: "Target", power: 0, weakness: 1 });
+		target.system.nascentPending = 2;
+		const source = fakeTheme({ name: "Source", power: 2, weakness: 1 });
+		actor.items = [target];
+
+		await applyDroppedTheme({ actor, theme: target, dropped: source });
+
+		expect(target.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				"system.nascentImprovements": 2,
+				"system.nascentPending": 0,
+			}),
+		);
+	});
+
 	// Core Book p.192: Promise for "each power tag beyond the third, each
 	// weakness tag beyond the first, and each Special Improvement you have in
 	// the theme you are replacing" — the replaced theme, not the dropped one.
@@ -364,5 +382,32 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		);
 		expect(ui.notifications.info).toHaveBeenCalledTimes(1);
 		expect(wizard.close).toHaveBeenCalled();
+	});
+});
+
+// p.192: a new theme is its title tag, one weakness tag and a Quest.
+describe("ThemeEvolutionWizard Replace", () => {
+	it.each([
+		["weakness tag", { weakness: "" }, "LITM.Ui.evolution_weakness_required"],
+		["Quest", { quest: "  " }, "LITM.Ui.evolution_quest_required"],
+	])("refuses a new theme without its %s", async (_label, blank, warning) => {
+		const theme = fakeTheme({ name: "Old" });
+		const actor = fakeActor({ system: { promise: 0 } });
+		actor.items = Object.assign([theme], { get: vi.fn(() => theme) });
+		game.actors.get = vi.fn(() => actor);
+		const wizard = new ThemeEvolutionWizard({ actorId: actor.id, themeId: theme.id });
+		wizard.close = vi.fn();
+		Object.defineProperty(wizard, "element", { value: { querySelector: () => null } });
+		foundry.applications.ux = {
+			...originalUx,
+			FormDataExtended: class {
+				object = { mode: "replace", name: "New", themebook: "Book", level: "origin", quest: "Q", weakness: "Restless", ...blank };
+			},
+		};
+		await ThemeEvolutionWizard.DEFAULT_OPTIONS.actions.confirm.call(wizard);
+		expect(ui.notifications.warn).toHaveBeenCalledWith(warning);
+		expect(theme.update).not.toHaveBeenCalled();
+		expect(actor.update).not.toHaveBeenCalled();
+		expect(wizard.close).not.toHaveBeenCalled();
 	});
 });

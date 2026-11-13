@@ -5,6 +5,9 @@ import {
 	POWER_TAG_TYPES,
 } from "../../system/config.js";
 
+/** Power tags, title tag included, that end a theme's nascent stage (p.192). */
+export const NASCENT_POWER_TAGS = 3;
+
 export class ThemeData extends foundry.abstract.TypeDataModel {
 	static requiresTitleTag = true;
 
@@ -38,11 +41,18 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 					integer: true,
 				}),
 			}),
-			// Count of pending nascent-theme power-tag adds (Core Book p.192).
-			// Set to 2 by ThemeEvolutionWizard on replacement; the next two
-			// Improve advancements on this theme must add a power tag, after
-			// which it behaves as a normal theme again.
+			// Marks a nascent theme (Core Book p.192): non-zero from a Replace
+			// until the theme has NASCENT_POWER_TAGS power tags, title tag
+			// included. See {@link ThemeData#isNascent}.
 			nascentImprovements: new fields.NumberField({
+				initial: 0,
+				min: 0,
+				max: 2,
+				integer: true,
+			}),
+			// Improve points a nascent theme turned into "add a power tag" that
+			// the player has not added yet.
+			nascentPending: new fields.NumberField({
 				initial: 0,
 				min: 0,
 				max: 2,
@@ -119,6 +129,46 @@ export class ThemeData extends foundry.abstract.TypeDataModel {
 
 	get themeTag() {
 		return [...this.parent.effects].find((e) => e.system.isTitleTag) ?? null;
+	}
+
+	/** The theme's gained power tags, title tag included. */
+	get powerTagCount() {
+		return this.parent.effects.filter(
+			(e) => POWER_TAG_TYPES.has(e.type) && !e.disabled,
+		).length;
+	}
+
+	/**
+	 * A replaced theme starts with its title tag only (Core Book p.192). Until
+	 * it has three power tags, each Improve it would mark is a new power tag
+	 * instead; then it is a normal theme again.
+	 */
+	get isNascent() {
+		return (
+			this.nascentImprovements > 0 && this.powerTagCount < NASCENT_POWER_TAGS
+		);
+	}
+
+	/** Power tags this theme is owed and the player has not added yet. */
+	get owedPowerTags() {
+		return this.isNascent ? this.nascentPending : 0;
+	}
+
+	/** Whether the theme can take an improvement now: an owed tag, or a full Improve track. */
+	get canAdvance() {
+		return (
+			this.owedPowerTags > 0 ||
+			(this.improve?.value ?? 0) >= CONFIG.litmv2.improveThreshold
+		);
+	}
+
+	/** Power tags a nascent theme still needs, beyond those already owed. */
+	get nascentTagsToOwe() {
+		if (!this.isNascent) return 0;
+		return Math.max(
+			0,
+			NASCENT_POWER_TAGS - this.powerTagCount - this.nascentPending,
+		);
 	}
 
 	nextAvailableQuestion(tagType, themebook) {

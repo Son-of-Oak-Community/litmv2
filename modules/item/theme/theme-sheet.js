@@ -4,6 +4,7 @@ import {
 	weaknessTagEffect,
 } from "../../active-effects/effect-factories.js";
 import { error } from "../../logger.js";
+import { markImprove } from "./nascent-theme.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
 import { getThemeLevels } from "../../system/config.js";
 import {
@@ -366,6 +367,20 @@ export class ThemeSheet extends LitmItemSheet {
 			newValue = boxIndex;
 		} else {
 			newValue = boxIndex + 1;
+		}
+
+		// A nascent theme takes a power tag for an Improve mark (p.192).
+		if (
+			field === "system.improve.value" &&
+			newValue > currentValue &&
+			this.document.system?.nascentTagsToOwe > 0
+		) {
+			const owner = this.document.parent;
+			if (owner)
+				await markImprove(this.document, owner, undefined, {
+					marks: newValue - currentValue,
+				});
+			return;
 		}
 
 		try {

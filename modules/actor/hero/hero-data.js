@@ -2,7 +2,7 @@ import {
 	countsTowardLimit,
 	dedupeTitleTags,
 } from "../../active-effects/effect-queries.js";
-import { completeTrackUpdate, fireTrackCompletion } from "../../system/chat.js";
+import { fireTrackCompletion } from "../../system/chat.js";
 import {
 	ACTOR_TAG_TYPES,
 	ACTOR_TYPES,
@@ -10,6 +10,7 @@ import {
 	ITEM_TYPES,
 	THEME_TAG_TYPES,
 } from "../../system/config.js";
+import { markImprove } from "../../item/theme/nascent-theme.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import { findFellowshipTheme } from "../../utils.js";
@@ -118,13 +119,7 @@ async function markThemeImprove(theme, owner, actor, tag) {
 		}
 		return null;
 	}
-	return completeTrackUpdate(
-		theme,
-		"system.improve.value",
-		theme.system.improve.value + 1,
-		owner,
-		actor,
-	);
+	return markImprove(theme, owner, actor);
 }
 
 export class HeroData extends LimitsMixin(

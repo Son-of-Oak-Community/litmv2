@@ -2,6 +2,7 @@ import { reconcileTagEffects } from "../../active-effects/effect-factories.js";
 import { startsHiddenOn } from "../../active-effects/effect-queries.js";
 import { parseTagString } from "../../item/action/tag-string.js";
 import { LitmItem } from "../../item/litm-item.js";
+import { settleNascent } from "../../item/theme/nascent-theme.js";
 import { error } from "../../logger.js";
 import { getDefaultItemIcon, levelIcon } from "../../utils.js";
 
@@ -9,6 +10,7 @@ export function registerItemHooks() {
 	_prepareThemeOnCreate();
 	_migrateLegacyItemOnCreate();
 	_syncTitleTagOnRename();
+	_settleNascentThemeOnTagChange();
 	_syncThemeImageOnLevelChange();
 	_syncAddonEffectsOnUpdate();
 	_cleanupAddonEffectsOnDelete();
@@ -71,6 +73,24 @@ function _syncTitleTagOnRename() {
 		if (!titleTag || titleTag.name === data.name) return;
 		titleTag.update({ name: data.name }).catch(console.error);
 	});
+}
+
+/**
+ * A replaced theme stops being nascent at its third power tag (Core Book
+ * p.192), however the tag arrives: the advancement window, the sheet's edit
+ * mode, a drop. Written once, by the user who made the change.
+ */
+function _settleNascentThemeOnTagChange() {
+	const settle = (effect, userId) => {
+		if (userId !== game.userId) return;
+		settleNascent(effect.parent).catch(console.error);
+	};
+	Hooks.on("createActiveEffect", (effect, _options, userId) =>
+		settle(effect, userId),
+	);
+	Hooks.on("updateActiveEffect", (effect, _changed, _options, userId) =>
+		settle(effect, userId),
+	);
 }
 
 const LEVEL_FIELD = { theme: "level", themebook: "theme_level" };

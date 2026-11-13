@@ -5907,6 +5907,20 @@ input.litm--single-use::after {
 	width: auto;
 }
 
+/* Question picker beside the tag name, as at Hero Creation. */
+.litm-theme-advancement .form-group:has(> select.noflex) {
+	flex-wrap: nowrap;
+}
+
+.litm-theme-advancement .form-group > select.noflex {
+	width: fit-content;
+	max-width: 50%;
+}
+
+.litm-theme-advancement .form-group > select.noflex + input {
+	flex: 1;
+}
+
 /* ========================================
   15b. Theme Evolution Wizard
    Path picker as a segmented choice: hero-weight buttons with icon,
