@@ -430,6 +430,12 @@ export async function applyPromiseToActor(actor, promiseGained) {
  * Apply the full transformation in a defined order so the title-tag
  * auto-sync (item-hooks.js) and any track-completion hooks fire on
  * documents in a coherent state.
+ *
+ * `onCommit` is called once a Replace has destroyed the old theme: its tags
+ * deleted, or, for a theme with none to delete, its name and shape
+ * replaced. From then on the theme is lost whatever happens next, so a
+ * caller waiting on the transformation (a Scarring Sacrifice's price)
+ * counts it as done even if a later write fails. It may be called twice.
  */
 async function applyTransformation({
 	actor,
@@ -445,6 +451,7 @@ async function applyTransformation({
 	keepOldTitleAsPower = false,
 	oldName = "",
 	newWeakness = "",
+	onCommit = () => {},
 }) {
 	// Fellowship themes never mark Promise (Core Book p.193).
 	const promiseGained = isFellowship ? 0 : 1 + traded.length;
@@ -468,7 +475,7 @@ async function applyTransformation({
 		await theme.deleteEmbeddedDocuments("ActiveEffect", tradedEffectIds);
 	}
 	if (mode === "replace") {
-		await wipeNonTitleTagEffects(theme);
+		await wipeNonTitleTagEffects(theme, { onDeleted: onCommit });
 	}
 
 	// Apply the theme shape update. Title-tag auto-sync (item-hooks.js)
@@ -484,6 +491,7 @@ async function applyTransformation({
 		renames,
 	});
 	await theme.update(update);
+	if (mode === "replace") onCommit();
 
 	if (mode === "replace") {
 		await seedReplacementTheme(theme, {
@@ -653,7 +661,12 @@ async function submitExpand({
  * @returns {Promise<boolean>} True once the theme was replaced; false when
  *   the drop was refused and nothing changed.
  */
-export async function applyDroppedTheme({ actor, theme, dropped }) {
+export async function applyDroppedTheme({
+	actor,
+	theme,
+	dropped,
+	onCommit = () => {},
+}) {
 	const isFellowship = !!theme.system?.isFellowship;
 	if (!isFellowship && dropped.system?.isFellowship) {
 		ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_kind_mismatch"));
@@ -680,8 +693,11 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 	// Fellowship themes never mark Promise (Core Book p.193).
 	const promiseGained = isFellowship ? 0 : 1 + totalTradeCap(replacedCaps);
 
-	await wipeNonTitleTagEffects(theme);
+	// As applyTransformation: the old theme is lost once its tags are gone,
+	// or once its name and shape are replaced.
+	await wipeNonTitleTagEffects(theme, { onDeleted: onCommit });
 	await theme.update(update);
+	onCommit();
 
 	if (toCreate.length) {
 		await theme.createEmbeddedDocuments("ActiveEffect", toCreate);
@@ -945,8 +961,24 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		if (!confirmed) return false;
 
 		this._submitting = true;
+		let committed = false;
 		try {
-			const applied = await applyDroppedTheme({ actor, theme, dropped: item });
+			let applied;
+			try {
+				applied = await applyDroppedTheme({
+					actor,
+					theme,
+					dropped: item,
+					onCommit: () => {
+						committed = true;
+					},
+				});
+			} catch (err) {
+				// As #onConfirm: the old theme is gone, so the replacement
+				// happened, unfinished.
+				if (committed) this.#replacedUnfinished();
+				throw err;
+			}
 			// A refused drop changed nothing: leave the wizard and its chat card be.
 			if (!applied) return false;
 			await markSourceMessageResolved(this.messageId);
@@ -1112,25 +1144,45 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			allRevisable,
 		});
 
-		await applyTransformation({
-			actor,
-			theme,
-			mode,
-			newName,
-			newThemebook,
-			newLevel,
-			newQuest,
-			traded,
-			renames,
-			isFellowship,
-			keepOldTitleAsPower,
-			oldName: theme.name,
-			newWeakness,
-		});
+		let committed = false;
+		try {
+			await applyTransformation({
+				actor,
+				theme,
+				mode,
+				newName,
+				newThemebook,
+				newLevel,
+				newQuest,
+				traded,
+				renames,
+				isFellowship,
+				keepOldTitleAsPower,
+				oldName: theme.name,
+				newWeakness,
+				onCommit: () => {
+					committed = true;
+				},
+			});
+		} catch (err) {
+			if (committed) this.#replacedUnfinished();
+			throw err;
+		}
 		await markSourceMessageResolved(this.messageId);
 		this.#settle(true);
 		this.close();
 		theme.sheet?.render(true, { focus: true });
+	}
+
+	/**
+	 * A Replace that failed after the old theme was destroyed: it happened,
+	 * unfinished. Say so, and count it done, so a Scarring price waiting on
+	 * `done` is not owed again for a theme already lost.
+	 */
+	#replacedUnfinished() {
+		ui.notifications?.error(t("LITM.Ui.evolution_replace_unfinished"));
+		this.#settle(true);
+		this.close();
 	}
 
 	_onClose(options) {
