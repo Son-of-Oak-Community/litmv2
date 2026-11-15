@@ -11,6 +11,7 @@ Foundry source is symlinked at `./foundry/` (client code in `public/`, CSS at `p
 ## Commands
 
 - `npm test` — Vitest unit-test suite
+- `npm run test:shuffle -- --sequence.seed=N` — the suite serially in a shuffled order, as CI runs it. Most files share one module graph per worker (`isolate: false`); a file that mocks modules is isolated automatically, and one that patches shared state opts in with a `// vitest-isolate: <why>` comment (`vitest.config.js`)
 - `npm run i18n:check` — find missing/superfluous localization keys
 - `npm run i18n:diff` — translator diagnostic; diffs each non-English language against `lang/en.json`
 

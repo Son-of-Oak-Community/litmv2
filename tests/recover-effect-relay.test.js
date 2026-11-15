@@ -1,3 +1,4 @@
+// vitest-isolate: Sockets binds game.socket.on once per module graph.
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sockets } from "../modules/system/sockets.js";
 

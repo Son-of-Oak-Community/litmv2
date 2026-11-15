@@ -1,3 +1,4 @@
+// vitest-isolate: Sockets binds game.socket.on once per module graph.
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { scratchOnce } from "../modules/active-effects/scratchable-mixin.js";
 import { Sockets } from "../modules/system/sockets.js";

@@ -1,33 +1,25 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { defineConfig } from "vitest/config";
 
-const isolatedTests = [
-	"tests/camping-hud.test.js",
-	"tests/camping-scene.test.js",
-	"tests/call-for-roll-resolve-action.test.js",
-	"tests/chat-actions-dispatch.test.js",
-	"tests/enrichment-escaping.test.js",
-	"tests/gain-improvement-relay.test.js",
-	"tests/hero-sheet-roll-initiation.test.js",
-	"tests/html-escaping.test.js",
-	"tests/legacy-import.test.js",
-	"tests/post-roll-scratch-relay.test.js",
-	"tests/roll-dialog-hud.test.js",
-	"tests/roll-submit-close.test.js",
-	"tests/spend-power-parse-uuid.test.js",
-	"tests/spend-power-scratch-single-use.test.js",
-	"tests/spend-power-service-partial.test.js",
-	"tests/spend-power-service-recover.test.js",
-	"tests/spend-power-service-spent-flag.test.js",
-	"tests/spend-power-service-status.test.js",
-	"tests/spend-power-service-success.test.js",
-	"tests/spend-power-service-tier-clamp.test.js",
-	"tests/spend-power-service-unlinked.test.js",
-	"tests/spend-power-tier-cap.test.js",
-	"tests/spend-power-typed-syntax.test.js",
-	"tests/tag-string-sync-enrich.test.js",
-	"tests/tours-roll-preview.test.js",
-	"tests/unpaid-sacrifice.test.js",
-];
+/**
+ * Most test files share one module graph per worker (`isolate: false`),
+ * which is where the suite's speed comes from. A file runs isolated when it
+ * would leak into the files after it:
+ * - it swaps modules out (`vi.mock`, `vi.doMock`, `vi.unmock`,
+ *   `vi.resetModules`), detected here; or
+ * - it relies on module state a shared file may already have set, or patches
+ *   a shared prototype. Such a file says so with a comment naming the reason:
+ *   `// vitest-isolate: <why>`.
+ * New files are sorted automatically; there is no list to keep.
+ */
+const ISOLATE =
+	/\bvi\.(?:mock|doMock|unmock|resetModules)\(|\/\/\s*vitest-isolate:/;
+
+const isolatedTests = readdirSync("tests", { recursive: true })
+	.filter((name) => name.endsWith(".test.js"))
+	.map((name) => `tests/${name}`)
+	.filter((path) => ISOLATE.test(readFileSync(path, "utf8")))
+	.sort();
 
 export default defineConfig({
 	test: {
@@ -36,8 +28,8 @@ export default defineConfig({
 				test: {
 					name: "shared",
 					environment: "node",
-					exclude: isolatedTests,
 					include: ["tests/**/*.test.js"],
+					exclude: ["**/node_modules/**", ...isolatedTests],
 					isolate: false,
 					setupFiles: ["tests/setup.js"],
 				},

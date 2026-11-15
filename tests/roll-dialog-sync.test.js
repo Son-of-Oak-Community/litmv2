@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LitmRollDialog } from "../modules/apps/roll/roll-dialog.js";
 import { Sockets } from "../modules/system/sockets.js";
 
@@ -25,10 +25,18 @@ beforeEach(() => {
 			messages.push(structuredClone({ ...data, senderId: game.user.id }));
 	});
 	game.actors.get.mockReturnValue(null);
+	// "Helping Each Other" resolves tags to an ally; later tests must not
+	// inherit that (mockReset restores the stub's own `() => null`).
+	foundry.utils.fromUuidSync.mockReset();
+	// requestReseat arms a 5 s fallback. A real one would fire in whichever
+	// file runs next in this worker; fake ones end with the test.
+	vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+});
+afterEach(() => {
+	vi.useRealTimers();
 });
 const last = () => messages.at(-1);
 const controls = (dialog) => {
-	foundry.applications.api.ApplicationV2.prototype._onFirstRender = () => {};
 	let change;
 	dialog.element = {
 		addEventListener: (event, listener) => {
