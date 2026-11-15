@@ -250,8 +250,10 @@ describe("completePendingSacrifice", () => {
 
 	it("clears the debt only once the price is on", async () => {
 		const hero = graveHero();
+		const owed = hero.flag;
 		hero.system.addStatus = vi.fn(() => {
-			expect(hero.flag).toBeDefined();
+			// Still owed while the price goes on, and claimed by the one paying it.
+			expect(hero.flag).toEqual({ ...owed, payingUserId: "player" });
 		});
 		wait.mockResolvedValue(true);
 		expect(await completePendingSacrifice(hero)).toBe(true);

@@ -51,11 +51,12 @@ describe("hero_limit onChange", () => {
 		CONFIG.litmv2 ??= {};
 		LitmSettings.register();
 
-		const call = game.settings.register.mock.calls.find(
+		const calls = game.settings.register.mock.calls.filter(
 			([, key]) => key === "hero_limit",
 		);
-		expect(call).toBeDefined();
-		const [, , definition] = call;
+		expect(calls).toHaveLength(1);
+		const [[namespace, , definition]] = calls;
+		expect(namespace).toBe("litmv2");
 		expect(definition.range).toEqual({ min: 1, max: 9, step: 1 });
 
 		definition.onChange(12);
