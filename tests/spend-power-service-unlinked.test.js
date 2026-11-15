@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	applySpendIntent,
 	handleApplyStatusAsGM,
@@ -7,33 +7,26 @@ import {
 import { makeTagStringRe } from "../modules/system/config.js";
 import { Sockets } from "../modules/system/sockets.js";
 import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
+import {
+	actionRollMessage,
+	fakeAction,
+	fakeBlessed,
+	fakeStatus,
+	inflictIntent,
+	reduceIntent,
+	scratchIntent,
+	wireActors,
+	wireMessage,
+} from "./__helpers__/spend-power.js";
 
 // An unlinked token's actor is synthetic: it has the world actor's id but is
 // its own document, with its own effects and its own uuid. Every Spend Power
 // write that names an actor must therefore resolve by uuid, locally and on the
 // GM's client after a relay — resolving by id writes to the world actor (every
 // copy, plus the sidebar column) or silently misses a token-only effect.
-vi.mock("../modules/system/sockets.js", () => ({
-	Sockets: { dispatch: vi.fn() },
-}));
 
 const WORLD_UUID = "Actor.bandit";
 const TOKEN_UUID = "Scene.s1.Token.t1.Actor.bandit";
-
-/** status_tag effect whose system quacks like StatusTagData for reduce. */
-function fakeStatus({ id, name, tier }) {
-	const effect = fakeEffect({ id, name, type: "status_tag" });
-	effect.system = {
-		currentTier: tier,
-		calculateReduction: vi.fn((by) => {
-			const tiers = Array(6).fill(false);
-			if (tier - by > 0) tiers[tier - by - 1] = true;
-			return tiers;
-		}),
-		reduceTier: vi.fn(async () => {}),
-	};
-	return effect;
-}
 
 /**
  * A world actor "bandit" and one unlinked token's synthetic copy of it: same
@@ -66,6 +59,7 @@ function banditWithToken({ owned = true } = {}) {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
 	game.users.activeGM = null;
 	game.user.isGM = false;
 	game.user.id = "player-1";
@@ -73,69 +67,19 @@ beforeEach(() => {
 	foundry.utils.fromUuidSync.mockReset();
 });
 
-function wireWorld(...actors) {
-	const byId = Object.fromEntries(actors.map((a) => [a.id, a]));
-	game.actors.get = vi.fn((id) => byId[id] ?? null);
-}
-
-const statusIntent = (reductions) => ({
-	options: [
-		{
-			kind: "statusPicker",
-			optionId: "reduce_status",
-			label: "LITM.Effects.reduce.action",
-			cost: 1,
-			reductions,
-		},
-	],
-	messageId: null,
-	alreadySpent: 0,
-	targetActorId: null,
-});
-
-const scratchIntent = (chips) => ({
-	options: [
-		{
-			kind: "scratchPicker",
-			optionId: "scratch_tag",
-			label: "LITM.Effects.scratch.action",
-			cost: 2,
-			chips,
-		},
-	],
-	messageId: null,
-	alreadySpent: 0,
-	targetActorId: null,
-});
-
-const inflictIntent = (extra) => ({
-	options: [
-		{
-			kind: "default",
-			optionId: "inflict_status",
-			label: "LITM.Effects.inflict.action",
-			cost: 1,
-			hasTier: true,
-			draggable: true,
-			entries: [{ name: "dazed", tier: 2, isSingleUse: false }],
-			targetActorId: null,
-			...extra,
-		},
-	],
-	messageId: null,
-	alreadySpent: 0,
-	targetActorId: null,
+afterEach(() => {
+	vi.restoreAllMocks();
 });
 
 describe("reduce on an unlinked token", () => {
 	it("reduces the token's own status, not the world actor's", async () => {
-		const { world, token, worldStatus, tokenStatus } = banditWithToken();
+		const { world, worldStatus, tokenStatus } = banditWithToken();
 		const hero = fakeActor({ id: "h1" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 
 		const { results } = await applySpendIntent(
 			hero,
-			statusIntent([
+			reduceIntent([
 				{
 					effectId: "s1",
 					name: "enraged",
@@ -151,18 +95,17 @@ describe("reduce on an unlinked token", () => {
 		});
 		expect(worldStatus.system.reduceTier).not.toHaveBeenCalled();
 		expect(results[0].power).toBe(1);
-		expect(token).toBeDefined();
 	});
 
 	it("relays the token's uuid when the player can't write it", async () => {
 		const { world } = banditWithToken({ owned: false });
 		const hero = fakeActor({ id: "h1" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 		game.users.activeGM = { id: "gm-1" };
 
 		await applySpendIntent(
 			hero,
-			statusIntent([
+			reduceIntent([
 				{
 					effectId: "s1",
 					name: "enraged",
@@ -187,11 +130,11 @@ describe("reduce on an unlinked token", () => {
 	it("skips, without billing or touching the world actor, when the token has vanished", async () => {
 		const { world, worldStatus } = banditWithToken();
 		const hero = fakeActor({ id: "h1" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 
 		const { results, totalSpent } = await applySpendIntent(
 			hero,
-			statusIntent([
+			reduceIntent([
 				{
 					effectId: "s1",
 					name: "enraged",
@@ -210,11 +153,11 @@ describe("reduce on an unlinked token", () => {
 	it("still resolves by id when the intent carries no uuid", async () => {
 		const { world, worldStatus } = banditWithToken();
 		const hero = fakeActor({ id: "h1" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 
 		await applySpendIntent(
 			hero,
-			statusIntent([
+			reduceIntent([
 				{ effectId: "s1", name: "enraged", actorId: "bandit", tiers: 1 },
 			]),
 		);
@@ -230,7 +173,7 @@ describe("applyStatusAsGM relay handler on an unlinked token", () => {
 
 	it("reduces on the token actor named by uuid", async () => {
 		const { world, worldStatus, tokenStatus } = banditWithToken();
-		wireWorld(world);
+		wireActors(world);
 
 		await handleApplyStatusAsGM({
 			op: "reduce",
@@ -249,7 +192,7 @@ describe("applyStatusAsGM relay handler on an unlinked token", () => {
 
 	it("adds the status on the token actor named by uuid", async () => {
 		const { world, token } = banditWithToken();
-		wireWorld(world);
+		wireActors(world);
 
 		await handleApplyStatusAsGM({
 			op: "add",
@@ -269,7 +212,7 @@ describe("applyStatusAsGM relay handler on an unlinked token", () => {
 
 	it("whispers the player instead of falling back to the world actor when the token has vanished", async () => {
 		const { world, worldStatus } = banditWithToken();
-		wireWorld(world);
+		wireActors(world);
 
 		await handleApplyStatusAsGM({
 			op: "reduce",
@@ -294,7 +237,7 @@ describe("scratch on an unlinked token", () => {
 		tokenOnly.parent = token;
 		token.effects.push(tokenOnly);
 		const hero = fakeActor({ id: "h1" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 
 		const { results, totalSpent } = await applySpendIntent(
 			hero,
@@ -321,7 +264,7 @@ describe("scratch on an unlinked token", () => {
 		sameIdOnWorld.parent = world;
 		world.effects.push(sameIdOnWorld);
 		const hero = fakeActor({ id: "h1" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 
 		const { totalSpent } = await applySpendIntent(
 			hero,
@@ -344,7 +287,7 @@ describe("inflict on an unlinked token", () => {
 	it("adds the status to the token's actor", async () => {
 		const { world, token } = banditWithToken();
 		const hero = fakeActor({ id: "h1" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 
 		const { results } = await applySpendIntent(
 			hero,
@@ -362,7 +305,7 @@ describe("inflict on an unlinked token", () => {
 	it("relays the token's uuid when the player can't write it", async () => {
 		const { world } = banditWithToken({ owned: false });
 		const hero = fakeActor({ id: "h1" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 		game.users.activeGM = { id: "gm-1" };
 
 		await applySpendIntent(
@@ -384,7 +327,7 @@ describe("inflict on an unlinked token", () => {
 	it("skips, without billing, when the token has vanished", async () => {
 		const { world } = banditWithToken();
 		const hero = fakeActor({ id: "h1" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 
 		const { results } = await applySpendIntent(
 			hero,
@@ -404,41 +347,16 @@ describe("action success on an unlinked token", () => {
 		CONFIG.litmv2.tagStringRe = makeTagStringRe();
 	});
 
-	/** Roll message carrying the actionUuid flag and applied-success bookkeeping. */
 	function wireRoll() {
-		const flags = {
-			actionUuid: "Item.act1",
-			appliedSuccesses: [],
-			appliedSuccessCosts: {},
-		};
-		const message = {
-			id: "m1",
-			getFlag: vi.fn((_scope, key) => flags[key]),
-			update: vi.fn(async () => {}),
-			setFlag: vi.fn(async () => {}),
-		};
-		game.messages.get = vi.fn((id) => (id === "m1" ? message : null));
-		foundry.utils.fromUuid.mockResolvedValue({
-			type: "action",
-			name: "Sever Blessing",
-			system: {
-				successes: [{ id: "succ1", verb: "weaken", text: "Strip [Blessed-3]" }],
-			},
-		});
+		const message = wireMessage(actionRollMessage());
+		foundry.utils.fromUuid.mockResolvedValue(fakeAction());
 		return message;
 	}
 
 	/** World bandit and its token, each carrying a Blessed-3 status. */
 	function blessedBandit({ owned = true } = {}) {
-		const blessed = () =>
-			fakeEffect({
-				id: "b1",
-				type: "status_tag",
-				name: "Blessed",
-				system: { tiers: [false, false, true, false, false, false] },
-			});
-		const worldStatus = blessed();
-		const tokenStatus = blessed();
+		const worldStatus = fakeBlessed({ id: "b1" });
+		const tokenStatus = fakeBlessed({ id: "b1" });
 		const world = fakeActor({
 			id: "bandit",
 			name: "Bandit",
@@ -469,7 +387,7 @@ describe("action success on an unlinked token", () => {
 	it("applies to the token picked on the target row, not the world actor", async () => {
 		const { world, worldStatus, tokenStatus } = blessedBandit();
 		const hero = fakeActor({ id: "h1", name: "Gerrin" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 		wireRoll();
 		game.user.isGM = true;
 
@@ -482,7 +400,7 @@ describe("action success on an unlinked token", () => {
 	it("relays the picked token's uuid when the player can't write it", async () => {
 		const { world } = blessedBandit({ owned: false });
 		const hero = fakeActor({ id: "h1", name: "Gerrin" });
-		wireWorld(hero, world);
+		wireActors(hero, world);
 		wireRoll();
 		game.users.activeGM = { id: "gm-1" };
 
@@ -518,7 +436,7 @@ describe("action success on an unlinked token", () => {
 		it("applies to the token actor named by uuid", async () => {
 			const { world, worldStatus, tokenStatus } = blessedBandit();
 			const hero = fakeActor({ id: "h1", name: "Gerrin" });
-			wireWorld(hero, world);
+			wireActors(hero, world);
 			wireRoll();
 
 			await handleApplySuccessAsGM(relay());
@@ -530,7 +448,7 @@ describe("action success on an unlinked token", () => {
 		it("bails, rather than applying to the world actor, when the token has vanished", async () => {
 			const { world, worldStatus } = blessedBandit();
 			const hero = fakeActor({ id: "h1", name: "Gerrin" });
-			wireWorld(hero, world);
+			wireActors(hero, world);
 			const message = wireRoll();
 
 			await handleApplySuccessAsGM(

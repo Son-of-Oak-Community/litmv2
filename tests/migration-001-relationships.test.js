@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { migrate } from "../modules/system/migrations/001-legacy-effects.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
@@ -113,6 +113,11 @@ describe("migration 001: a failed create keeps its legacy data", () => {
 		});
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		vi.spyOn(console, "warn").mockImplementation(() => {});
+	});
+	// The console is shared with the files after this one (isolate: false).
+	afterEach(() => {
+		console.error.mockRestore?.();
+		console.warn.mockRestore?.();
 	});
 
 	it("keeps the stash and legacy field of a hero whose create failed, and cleans the rest", async () => {

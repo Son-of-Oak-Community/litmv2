@@ -15,8 +15,11 @@ import { localize as t } from "../utils.js";
  * Delete every non-title power tag and every weakness tag from the theme,
  * and clear the surviving title tag's question pointer.
  * @param {Item} theme
+ * @param {object} [options]
+ * @param {() => void} [options.onDeleted]  Called once tags were deleted:
+ *   from then on the old theme is lost, whatever happens next.
  */
-export async function wipeNonTitleTagEffects(theme) {
+export async function wipeNonTitleTagEffects(theme, { onDeleted } = {}) {
 	const wipeIds = [...theme.effects]
 		.filter(
 			(e) =>
@@ -26,6 +29,7 @@ export async function wipeNonTitleTagEffects(theme) {
 		.map((e) => e.id);
 	if (wipeIds.length) {
 		await theme.deleteEmbeddedDocuments("ActiveEffect", wipeIds);
+		onDeleted?.();
 	}
 	// The surviving title tag still carries the OLD themebook's question
 	// index — reset it so the new theme starts with a clean slot. The

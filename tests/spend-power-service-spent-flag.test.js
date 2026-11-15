@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applySpendIntent } from "../modules/apps/spend-power-service.js";
+import { Sockets } from "../modules/system/sockets.js";
 import { fakeActor } from "./__helpers__/factories.js";
-
-vi.mock("../modules/system/sockets.js", () => ({
-	Sockets: { dispatch: vi.fn() },
-}));
+import {
+	counterOption,
+	rollMessage,
+	spendIntent,
+} from "./__helpers__/spend-power.js";
 
 // Two Spend Power windows can sit open on one roll. Each read `spentPower` when
 // it opened, so the second to submit must add to what the first wrote, not to
@@ -12,43 +14,23 @@ vi.mock("../modules/system/sockets.js", () => ({
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
 	game.users.activeGM = null;
 	game.user.isGM = false;
 });
 
-/** A roll message whose spentPower flag is whatever the test says it is now. */
-function rollMessage(spentPower) {
-	const flags = { spentPower };
-	const message = {
-		id: "m1",
-		getFlag: vi.fn((_scope, key) => flags[key]),
-		setFlag: vi.fn(async (_scope, key, value) => {
-			flags[key] = value;
-		}),
-	};
-	game.messages.get = vi.fn((id) => (id === "m1" ? message : null));
-	return message;
-}
-
-const counterIntent = (alreadySpent, count) => ({
-	options: [
-		{
-			kind: "counter",
-			optionId: "discover_detail",
-			label: "LITM.Effects.discover.action",
-			cost: 1,
-			count,
-		},
-	],
-	messageId: "m1",
-	alreadySpent,
-	targetActorId: null,
+afterEach(() => {
+	vi.restoreAllMocks();
 });
+
+/** An intent for `count` Discover a Detail, opened when `alreadySpent` was paid. */
+const counterIntent = (alreadySpent, count) =>
+	spendIntent(counterOption(count), { messageId: "m1", alreadySpent });
 
 describe("applySpendIntent — spentPower flag", () => {
 	it("adds to the flag as it stands at write time, not as the dialog opened", async () => {
 		// The dialog opened with 0 spent; another window has since written 2.
-		const message = rollMessage(2);
+		const message = rollMessage({ spentPower: 2 });
 		const hero = fakeActor({ id: "h1" });
 
 		await applySpendIntent(hero, counterIntent(0, 1));
@@ -57,7 +39,7 @@ describe("applySpendIntent — spentPower flag", () => {
 	});
 
 	it("two windows opened on the same roll accumulate instead of overwriting", async () => {
-		const message = rollMessage(0);
+		const message = rollMessage({ spentPower: 0 });
 		const hero = fakeActor({ id: "h1" });
 
 		// Both windows read alreadySpent = 0 when they opened.
@@ -79,7 +61,7 @@ describe("applySpendIntent — spentPower flag", () => {
 	});
 
 	it("treats a roll that never spent anything as 0", async () => {
-		const message = rollMessage(undefined);
+		const message = rollMessage();
 		const hero = fakeActor({ id: "h1" });
 
 		await applySpendIntent(hero, counterIntent(0, 2));

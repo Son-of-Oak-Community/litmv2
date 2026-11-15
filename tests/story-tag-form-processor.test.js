@@ -6,6 +6,7 @@ import {
 } from "../modules/apps/story-tags/story-tag-form-processor.js";
 import { LitmConfig } from "../modules/system/config.js";
 import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
+import { setGM, setPlayer } from "./__helpers__/users.js";
 
 // The sidebar submits the whole form on any change. A form rendered before a
 // concurrent change still carries the old value of every row the user never
@@ -20,7 +21,7 @@ beforeEach(() => {
 	CONFIG.litmv2 = Object.create(LitmConfig);
 	CONFIG.litmv2.heroLimit = 5;
 	CONFIG.litmv2._maxStatusTierOverride = null;
-	game.user = { isGM: true, id: "gm" };
+	setGM();
 });
 
 afterEach(() => {
@@ -366,7 +367,7 @@ describe("applyLimitUpdates", () => {
 	});
 
 	it("does nothing for a player", async () => {
-		game.user = { isGM: false, id: "p" };
+		setPlayer("p");
 		const form = { story: { L1: { label: "Ruin", max: "7" } } };
 
 		const result = await applyLimitUpdates(form, storyLimits(), noActor, {});

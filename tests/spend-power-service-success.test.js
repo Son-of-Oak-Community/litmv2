@@ -1,67 +1,43 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	applyActionSuccess,
 	handleApplySuccessAsGM,
 } from "../modules/apps/spend-power-service.js";
 import { makeTagStringRe } from "../modules/system/config.js";
+import { Sockets } from "../modules/system/sockets.js";
 import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
-
-// applySuccess (chat-actions) dispatches the GM relay through Sockets; mock
-// the module so tests can assert the relayed path without a live socket.
-vi.mock("../modules/system/sockets.js", () => ({
-	Sockets: { dispatch: vi.fn() },
-}));
+import {
+	actionRollMessage,
+	fakeAction,
+	fakeBlessed,
+	wireActors,
+	wireMessage,
+} from "./__helpers__/spend-power.js";
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
 	CONFIG.litmv2.tagStringRe = makeTagStringRe();
 	game.users.activeGM = null;
 	game.user.isGM = false;
 });
 
-/** Roll message carrying the actionUuid flag and applied-success bookkeeping. */
-function fakeRollMessage({ applied = [], costs = {} } = {}) {
-	const flags = {
-		actionUuid: "Item.act1",
-		appliedSuccesses: applied,
-		appliedSuccessCosts: costs,
-	};
-	return {
-		id: "m1",
-		getFlag: vi.fn((_scope, key) => flags[key]),
-		update: vi.fn(async () => {}),
-		setFlag: vi.fn(async () => {}),
-	};
-}
-
-/** Action item with a single weaken success: [Blessed-3] → fixed cost 3. */
-function fakeAction() {
-	return {
-		type: "action",
-		name: "Sever Blessing",
-		system: {
-			successes: [{ id: "succ1", verb: "weaken", text: "Strip [Blessed-3]" }],
-		},
-	};
-}
+afterEach(() => {
+	vi.restoreAllMocks();
+});
 
 function wire({ message, action, actors = {} }) {
-	game.messages.get = vi.fn((id) => (id === message.id ? message : null));
+	wireMessage(message);
 	foundry.utils.fromUuid.mockResolvedValue(action);
-	game.actors.get = vi.fn((id) => actors[id] ?? null);
+	wireActors(...Object.values(actors));
 }
 
 describe("applyActionSuccess — applied path", () => {
 	it("applies to the target, persists both flags in one update, and posts the chat card", async () => {
-		const status = fakeEffect({
-			id: "s1",
-			type: "status_tag",
-			name: "Blessed",
-			system: { tiers: [false, false, true, false, false, false] },
-		});
+		const status = fakeBlessed();
 		const target = fakeActor({ id: "c1", name: "Beast", effects: [status] });
 		const hero = fakeActor({ id: "h1", name: "Gerrin" });
-		const message = fakeRollMessage();
+		const message = actionRollMessage();
 		wire({ message, action: fakeAction(), actors: { c1: target, h1: hero } });
 		game.user.isGM = true; // GM client — permission guard passes
 
@@ -86,15 +62,10 @@ describe("applyActionSuccess — applied path", () => {
 	});
 
 	it("bails on the race guard without touching the target", async () => {
-		const status = fakeEffect({
-			id: "s1",
-			type: "status_tag",
-			name: "Blessed",
-			system: { tiers: [false, false, true, false, false, false] },
-		});
+		const status = fakeBlessed();
 		const target = fakeActor({ id: "c1", name: "Beast", effects: [status] });
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage({
+		const message = actionRollMessage({
 			applied: ["succ1"],
 			costs: { succ1: 3 },
 		});
@@ -117,15 +88,10 @@ describe("applyActionSuccess — applied path", () => {
 	it("treats a costs-only record as applied (clobbered-array heal)", async () => {
 		// A concurrent writer can replace the appliedSuccesses array and lose
 		// an entry; the merge-safe appliedSuccessCosts object still has it.
-		const status = fakeEffect({
-			id: "s1",
-			type: "status_tag",
-			name: "Blessed",
-			system: { tiers: [false, false, true, false, false, false] },
-		});
+		const status = fakeBlessed();
 		const target = fakeActor({ id: "c1", name: "Beast", effects: [status] });
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage({ applied: [], costs: { succ1: 3 } });
+		const message = actionRollMessage({ applied: [], costs: { succ1: 3 } });
 		wire({ message, action: fakeAction(), actors: { c1: target } });
 		game.user.isGM = true;
 
@@ -144,7 +110,7 @@ describe("applyActionSuccess — applied path", () => {
 	it("returns status 'nothing' when the applier finds no matching effect", async () => {
 		const target = fakeActor({ id: "c1", name: "Beast", effects: [] });
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage();
+		const message = actionRollMessage();
 		wire({ message, action: fakeAction(), actors: { c1: target } });
 		game.user.isGM = true;
 
@@ -163,13 +129,7 @@ describe("applyActionSuccess — applied path", () => {
 
 describe("applyActionSuccess — relayed path (player client)", () => {
 	it("relays to the GM: no flags, no chat card, 0 charged", async () => {
-		const { Sockets } = await import("../modules/system/sockets.js");
-		const status = fakeEffect({
-			id: "s1",
-			type: "status_tag",
-			name: "Blessed",
-			system: { tiers: [false, false, true, false, false, false] },
-		});
+		const status = fakeBlessed();
 		const target = fakeActor({
 			id: "c1",
 			name: "Beast",
@@ -177,7 +137,7 @@ describe("applyActionSuccess — relayed path (player client)", () => {
 			effects: [status],
 		});
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage();
+		const message = actionRollMessage();
 		wire({ message, action: fakeAction(), actors: { c1: target } });
 		game.users.activeGM = { id: "gm-1" }; // player client + GM online
 
@@ -225,15 +185,10 @@ describe("handleApplySuccessAsGM — GM socket handler", () => {
 	}
 
 	it("applies to the relayed target and persists the flags on the player's message", async () => {
-		const status = fakeEffect({
-			id: "s1",
-			type: "status_tag",
-			name: "Blessed",
-			system: { tiers: [false, false, true, false, false, false] },
-		});
+		const status = fakeBlessed();
 		const target = fakeActor({ id: "c1", name: "Beast", effects: [status] });
 		const hero = fakeActor({ id: "h1", name: "Gerrin" });
-		const message = fakeRollMessage();
+		const message = actionRollMessage();
 		wire({ message, action: fakeAction(), actors: { c1: target, h1: hero } });
 
 		await handleApplySuccessAsGM(relayPayload());
@@ -254,15 +209,10 @@ describe("handleApplySuccessAsGM — GM socket handler", () => {
 	});
 
 	it("respects the appliedSuccesses race guard silently (no whisper)", async () => {
-		const status = fakeEffect({
-			id: "s1",
-			type: "status_tag",
-			name: "Blessed",
-			system: { tiers: [false, false, true, false, false, false] },
-		});
+		const status = fakeBlessed();
 		const target = fakeActor({ id: "c1", name: "Beast", effects: [status] });
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage({
+		const message = actionRollMessage({
 			applied: ["succ1"],
 			costs: { succ1: 3 },
 		});
@@ -278,7 +228,7 @@ describe("handleApplySuccessAsGM — GM socket handler", () => {
 	it("whispers the acting player when nothing was applied", async () => {
 		const target = fakeActor({ id: "c1", name: "Beast", effects: [] });
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage();
+		const message = actionRollMessage();
 		wire({ message, action: fakeAction(), actors: { c1: target, h1: hero } });
 
 		await handleApplySuccessAsGM(relayPayload());
@@ -303,7 +253,7 @@ describe("handleApplySuccessAsGM — GM socket handler", () => {
 			max: 5,
 		}));
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage();
+		const message = actionRollMessage();
 		const action = {
 			type: "action",
 			name: "Push On",
@@ -326,7 +276,7 @@ describe("handleApplySuccessAsGM — GM socket handler", () => {
 
 	it("bails silently when the relayed target no longer resolves", async () => {
 		const hero = fakeActor({ id: "h1" });
-		const message = fakeRollMessage();
+		const message = actionRollMessage();
 		wire({ message, action: fakeAction(), actors: { h1: hero } }); // no c1
 
 		await handleApplySuccessAsGM(relayPayload({ targetActorId: "c1" }));
@@ -343,12 +293,7 @@ describe("handleApplySuccessAsGM — GM socket handler", () => {
 		// back-to-back. Without per-message serialization both pipelines read
 		// the flags before either writes, and the array (replaced wholesale on
 		// update) keeps only the last writer's entry.
-		const blessed = fakeEffect({
-			id: "s1",
-			type: "status_tag",
-			name: "Blessed",
-			system: { tiers: [false, false, true, false, false, false] },
-		});
+		const blessed = fakeBlessed();
 		const cursed = fakeEffect({
 			id: "s2",
 			type: "status_tag",

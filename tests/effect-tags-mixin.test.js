@@ -169,6 +169,8 @@ describe("EffectTagsMixin.addStatus", () => {
 	});
 
 	describe("stacking onto an existing status with a limitId", () => {
+		// What marking tier 2 onto a status already at tier 1 comes to.
+		const MARKED_TIER_2 = [false, true, false, false, false, false];
 		const unlinked = (limitId = null) =>
 			fakeEffect({
 				type: "status_tag",
@@ -176,9 +178,7 @@ describe("EffectTagsMixin.addStatus", () => {
 				system: {
 					limitId,
 					tiers: [true, false, false, false, false, false],
-					calculateMark: vi
-						.fn()
-						.mockReturnValue([false, true, false, false, false, false]),
+					calculateMark: vi.fn().mockReturnValue(MARKED_TIER_2),
 				},
 			});
 
@@ -194,20 +194,24 @@ describe("EffectTagsMixin.addStatus", () => {
 				_id: existing.id,
 				"system.limitId": "limit-1",
 			});
-			expect(update["system.tiers"]).toBeDefined();
+			// The stack is whatever calculateMark makes of the tier asked for.
+			expect(existing.system.calculateMark).toHaveBeenCalledWith(2);
+			expect(update["system.tiers"]).toEqual(MARKED_TIER_2);
 		});
 
 		it("keeps an existing link to a different limit", async () => {
 			// One status feeds one limit. A status already counting towards another
 			// limit stays put; the stack still lands.
-			const actor = fakeActor({ effects: [unlinked("limit-other")] });
+			const existing = unlinked("limit-other");
+			const actor = fakeActor({ effects: [existing] });
 			const model = buildModel(actor);
 
 			await model.addStatus("Wounded", { tier: 2, limitId: "limit-1" });
 
 			const [, [update]] = actor.updateEmbeddedDocuments.mock.calls[0];
 			expect("system.limitId" in update).toBe(false);
-			expect(update["system.tiers"]).toBeDefined();
+			expect(existing.system.calculateMark).toHaveBeenCalledWith(2);
+			expect(update["system.tiers"]).toEqual(MARKED_TIER_2);
 		});
 
 		it("leaves a status already linked to that limit alone", async () => {

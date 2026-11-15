@@ -67,93 +67,163 @@ const hasProperty = (obj, path) => {
 const fromUuidSync = vi.fn(() => null);
 const fromUuid = vi.fn(async () => null);
 
-// --- foundry.data.* ---
-// Just enough that `class Foo extends foundry.data.ActiveEffectTypeDataModel`
-// parses. defineSchema is only called when Foundry boots; tests that hit
-// static methods don't need real field types.
-class StubDataModel {
-	static defineSchema() {
-		return {};
+// --- Stub classes: one identity per worker ---
+// Most test files share a module graph (isolate: false in vitest.config.js),
+// so a module is evaluated once per worker and keeps the classes it extended
+// then (LitmRollDialog extends the first file's StubAppV2). This file runs
+// again for every test file, so the classes are built once and reused, and
+// only their per-file state is reset below. Rebuilding them per file left
+// later files patching classes no module inherits from.
+globalThis.__litmStubClasses ??= (() => {
+	// --- foundry.data.* ---
+	// Just enough that `class Foo extends foundry.data.ActiveEffectTypeDataModel`
+	// parses. defineSchema is only called when Foundry boots; tests that hit
+	// static methods don't need real field types.
+	class StubDataModel {
+		static defineSchema() {
+			return {};
+		}
+		static migrateData(source) {
+			return source;
+		}
+		constructor(source = {}) {
+			Object.assign(this, source);
+		}
+		prepareDerivedData() {}
 	}
-	static migrateData(source) {
-		return source;
-	}
-	constructor(source = {}) {
-		Object.assign(this, source);
-	}
-	prepareDerivedData() {}
-}
 
-class StubField {
-	constructor(options = {}) {
-		this.options = options;
+	class StubField {
+		constructor(options = {}) {
+			this.options = options;
+		}
 	}
-}
 
-// --- foundry.dice.Roll ---
-// LitmRoll extends this. We never instantiate it in unit tests; we only call
-// static methods like calculatePower, so an empty base class is fine.
-class StubRoll {}
+	// --- foundry.dice.Roll ---
+	// LitmRoll extends this. We never instantiate it in unit tests; we only call
+	// static methods like calculatePower, so an empty base class is fine.
+	class StubRoll {}
 
-// --- foundry.documents.Actor ---
-// LitmActor extends this. Mirrors core's allApplicableEffects (own effects +
-// item effects gated on `effect.transfer`) so overrides that call
-// `super.allApplicableEffects()` behave like the real document.
-class StubActor {
-	constructor(source = {}) {
-		Object.assign(this, { effects: [], items: [], ...source });
-	}
-	static migrateData(source) {
-		return source;
-	}
-	*allApplicableEffects() {
-		for (const effect of this.effects) yield effect;
-		for (const item of this.items) {
-			for (const effect of item.effects) {
-				if (effect.transfer) yield effect;
+	// --- foundry.documents.Actor ---
+	// LitmActor extends this. Mirrors core's allApplicableEffects (own effects +
+	// item effects gated on `effect.transfer`) so overrides that call
+	// `super.allApplicableEffects()` behave like the real document.
+	class StubActor {
+		constructor(source = {}) {
+			Object.assign(this, { effects: [], items: [], ...source });
+		}
+		static migrateData(source) {
+			return source;
+		}
+		*allApplicableEffects() {
+			for (const effect of this.effects) yield effect;
+			for (const item of this.items) {
+				for (const effect of item.effects) {
+					if (effect.transfer) yield effect;
+				}
 			}
 		}
 	}
-}
 
-// --- foundry.documents.Item ---
-// LitmItem extends this; the legacy-effects world migration imports LitmItem
-// for its tag builders. Never instantiated in unit tests.
-class StubItem {}
+	// --- foundry.documents.Item ---
+	// LitmItem extends this; the legacy-effects world migration imports LitmItem
+	// for its tag builders. Never instantiated in unit tests.
+	class StubItem {}
 
-// --- foundry.documents.ChatMessage ---
-// spend-power-service posts "action applied" cards and GM-relay whispers
-// through ChatMessage.create; tests assert on the calls.
-class StubChatMessage {
-	static create = vi.fn(async (data) => data);
-	static getSpeaker = vi.fn(({ actor } = {}) => ({ actor: actor?.id ?? null }));
-}
-
-// --- foundry.applications.* ---
-// Several utility modules transitively import ApplicationV2 / DialogV2 /
-// HandlebarsApplicationMixin at module-load time. They never get rendered in
-// unit tests, but their classes still have to *exist* for the imports to
-// resolve. Stub classes + a passthrough mixin do the job.
-class StubAppV2 {
-	static DEFAULT_OPTIONS = {};
-	static PARTS = {};
-	_onClose() {}
-}
-class StubDialogV2 extends StubAppV2 {
-	static confirm = () => Promise.resolve(false);
-	static prompt = () => Promise.resolve(null);
-	static input = () => Promise.resolve(null);
-	static wait = () => Promise.resolve(null);
-}
-class StubDocumentSheetV2 extends StubAppV2 {
-	async _prepareContext() {
-		return {};
+	// --- foundry.documents.ChatMessage ---
+	// spend-power-service posts "action applied" cards and GM-relay whispers
+	// through ChatMessage.create; tests assert on the calls.
+	class StubChatMessage {
+		static create = vi.fn(async (data) => data);
+		static getSpeaker = vi.fn(({ actor } = {}) => ({
+			actor: actor?.id ?? null,
+		}));
 	}
-}
-const HandlebarsApplicationMixin = (Base) =>
-	class extends Base {
+
+	// --- foundry.applications.* ---
+	// Several utility modules transitively import ApplicationV2 / DialogV2 /
+	// HandlebarsApplicationMixin at module-load time. They never get rendered in
+	// unit tests, but their classes still have to *exist* for the imports to
+	// resolve. Stub classes + a passthrough mixin do the job.
+	class StubAppV2 {
+		static DEFAULT_OPTIONS = {};
 		static PARTS = {};
+		// No-op lifecycle, so tests drive a dialog without patching the
+		// prototype (a patch would outlive the file under isolate: false).
+		async close() {
+			this.rendered = false;
+		}
+		_onFirstRender() {}
+		_onRender() {}
+		_onClose() {}
+	}
+	class StubDialogV2 extends StubAppV2 {
+		static confirm = () => Promise.resolve(false);
+		static prompt = () => Promise.resolve(null);
+		static input = () => Promise.resolve(null);
+		static wait = () => Promise.resolve(null);
+	}
+	class StubDocumentSheetV2 extends StubAppV2 {
+		async _prepareContext() {
+			return {};
+		}
+	}
+	const HandlebarsApplicationMixin = (Base) =>
+		class extends Base {
+			static PARTS = {};
+		};
+
+	return {
+		StubDataModel,
+		StubField,
+		StubRoll,
+		StubActor,
+		StubItem,
+		StubChatMessage,
+		StubAppV2,
+		StubDialogV2,
+		StubDocumentSheetV2,
+		HandlebarsApplicationMixin,
 	};
+})();
+const {
+	StubDataModel,
+	StubField,
+	StubRoll,
+	StubActor,
+	StubItem,
+	StubChatMessage,
+	StubAppV2,
+	StubDialogV2,
+	StubDocumentSheetV2,
+	HandlebarsApplicationMixin,
+} = globalThis.__litmStubClasses;
+
+// Per-file state on the shared classes. A test may assign or replace a
+// static (`Actor.create = …`, `DialogV2.confirm = …`); each file starts from
+// the statics the classes were built with, snapshotted on the first run.
+globalThis.__litmStubStatics ??= new Map(
+	[
+		StubDataModel,
+		StubField,
+		StubRoll,
+		StubActor,
+		StubItem,
+		StubChatMessage,
+		StubAppV2,
+		StubDialogV2,
+		StubDocumentSheetV2,
+	].map((cls) => [cls, Object.getOwnPropertyDescriptors(cls)]),
+);
+const stubStatics = globalThis.__litmStubStatics;
+for (const [cls, own] of stubStatics) {
+	for (const key of Reflect.ownKeys(cls)) if (!(key in own)) delete cls[key];
+	Object.defineProperties(cls, own);
+}
+// Fresh mocks, so call history doesn't carry over either.
+StubChatMessage.create = vi.fn(async (data) => data);
+StubChatMessage.getSpeaker = vi.fn(({ actor } = {}) => ({
+	actor: actor?.id ?? null,
+}));
 
 let randomIdCounter = 0;
 const randomID = () => `test-id-${++randomIdCounter}`;

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { HeroData } from "../modules/actor/hero/hero-data.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
+import { fakeHeroModel } from "./__helpers__/hero.js";
+import { stubSettings } from "./__helpers__/settings.js";
 
 // HeroData composes EffectTagsMixin + extends foundry.abstract.TypeDataModel.
 // We use `new HeroData()` so private class brand and field initialisers fire
@@ -14,12 +15,12 @@ const makeHero = ({
 	fellowshipId = "",
 	fellowshipActor = null,
 } = {}) => {
-	const actor = fakeActor({ type: "hero", items, effects });
-	const model = new HeroData();
-	model.parent = actor;
-	model.fellowshipId = fellowshipId;
 	// limit is touched by prepareDerivedData; pre-seed so the call doesn't NPE
-	model.limit = { value: 5, max: 5 };
+	const { model, actor } = fakeHeroModel({
+		actor: { items, effects },
+		fellowshipId,
+		limit: { value: 5, max: 5 },
+	});
 	if (fellowshipActor) {
 		actor.system.fellowshipActor = fellowshipActor;
 		game.actors.get.mockReturnValue(fellowshipActor);
@@ -30,11 +31,7 @@ const makeHero = ({
 beforeEach(() => {
 	vi.clearAllMocks();
 	// Enable the fellowship path by default — useFellowship reads from settings.
-	game.settings.get.mockImplementation((_ns, key) => {
-		if (key === "use_fellowship") return true;
-		if (key === "hero_limit") return 5;
-		return undefined;
-	});
+	stubSettings({ use_fellowship: true, hero_limit: 5 });
 });
 
 describe("HeroData.themes", () => {
@@ -270,7 +267,7 @@ describe("HeroData.scratchedTags", () => {
 
 describe("HeroData.fellowshipActor", () => {
 	it("returns null when useFellowship setting is false", () => {
-		game.settings.get.mockImplementation(() => false);
+		stubSettings({}, { fallback: false });
 		const { model } = makeHero({ fellowshipId: "anything" });
 		expect(model.fellowshipActor).toBeNull();
 	});

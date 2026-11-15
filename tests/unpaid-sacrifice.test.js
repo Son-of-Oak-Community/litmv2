@@ -10,6 +10,8 @@ import {
 } from "../modules/apps/roll/sacrifice-price.js";
 import { debtPrice } from "../modules/hud/sacrifice-hud.js";
 import { Sockets } from "../modules/system/sockets.js";
+import { withFlags } from "./__helpers__/flags.js";
+import { setGM, setPlayer } from "./__helpers__/users.js";
 
 vi.mock("../modules/system/sockets.js", () => ({
 	Sockets: { dispatch: vi.fn() },
@@ -18,21 +20,27 @@ vi.mock("../modules/system/sockets.js", () => ({
 // Core Book p.159: a Sacrifice's price is paid, not deferred. The debt is kept
 // on the Hero (flags.litmv2.pendingSacrifice), so a player whose Hero owes one
 // is refused the next roll and the Narrator is told; the Narrator is reminded.
-const hero = (id, { isOwner = true, owes = false } = {}) => ({
-	id,
-	name: id,
-	isOwner,
-	getFlag: (scope, key) =>
-		scope === "litmv2" && key === "pendingSacrifice" && owes
-			? { level: "painful", outcome: "snc", themeId: "t" }
-			: undefined,
-});
+const hero = (id, { isOwner = true, owes = false } = {}) =>
+	withFlags(
+		{ id, name: id, isOwner },
+		owes
+			? {
+					litmv2: {
+						pendingSacrifice: {
+							level: "painful",
+							outcome: "snc",
+							themeId: "t",
+						},
+					},
+				}
+			: {},
+	);
 
 describe("refuseUnpaidSacrifice", () => {
 	let warn;
 	beforeEach(() => {
 		warn = vi.spyOn(ui.notifications, "warn");
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 	});
 	afterEach(() => {
 		warn.mockRestore();
@@ -53,7 +61,7 @@ describe("refuseUnpaidSacrifice", () => {
 	});
 
 	it("only reminds the Narrator, never refuses them", () => {
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		const owing = hero("gerrin", { isOwner: false, owes: true });
 		expect(refuseUnpaidSacrifice(owing)).toBe(false);
 		expect(warn).toHaveBeenCalledWith("LITM.Ui.sacrifice_unpaid_reminder");
@@ -74,7 +82,7 @@ describe("refuseUnpaidSacrifice", () => {
 	});
 
 	it("refuses even the Narrator a new Sacrifice while one is owed", () => {
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		const owing = hero("gerrin", { isOwner: false, owes: true });
 		expect(refuseUnpaidSacrifice(owing, { newSacrifice: true })).toBe(true);
 		expect(warn).toHaveBeenCalledWith("LITM.Ui.sacrifice_unpaid_new");
@@ -100,7 +108,7 @@ describe("refuseUnpaidSacrifice", () => {
 			actorIds: ["gerrin"],
 		});
 
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		warn.mockClear();
 		refuseUnpaidSacrifice(group);
 		expect(warn).toHaveBeenCalledTimes(1);
@@ -155,6 +163,11 @@ describe("completePendingSacrifice", () => {
 			unsetFlag: vi.fn(async () => {
 				hero.flag = undefined;
 			}),
+			// Only the payment claim is written through update().
+			update: vi.fn(async (changes) => {
+				const value = changes["flags.litmv2.pendingSacrifice.payingUserId"];
+				if (hero.flag) hero.flag = { ...hero.flag, payingUserId: value };
+			}),
 			system: { addStatus: vi.fn() },
 			items: { get: () => null },
 			testUserPermission: (user) => user.id === "player" || user.isGM,
@@ -165,10 +178,13 @@ describe("completePendingSacrifice", () => {
 	let savedUsers;
 	// The Hero's player is online, so they are the one who pays.
 	const table = (...users) =>
-		Object.assign(users, { activeGM: users.find((u) => u.isGM) ?? null });
+		Object.assign(users, {
+			activeGM: users.find((u) => u.isGM) ?? null,
+			get: (id) => users.find((u) => u.id === id),
+		});
 	beforeEach(() => {
 		wait = vi.spyOn(foundry.applications.api.DialogV2, "wait");
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		savedUsers = game.users;
 		game.users = table(
 			{ id: "player", isGM: false, active: true },
@@ -231,7 +247,7 @@ describe("completePendingSacrifice", () => {
 
 	it("keeps the Secret Grace when the Narrator forgives the price", async () => {
 		const hero = gracedHero();
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		wait.mockImplementation(async ({ buttons }) =>
 			buttons.find((b) => b.action === "forgive").callback(),
 		);
@@ -242,8 +258,10 @@ describe("completePendingSacrifice", () => {
 
 	it("clears the debt only once the price is on", async () => {
 		const hero = graveHero();
+		const owed = hero.flag;
 		hero.system.addStatus = vi.fn(() => {
-			expect(hero.flag).toBeDefined();
+			// Still owed while the price goes on, and claimed by the one paying it.
+			expect(hero.flag).toEqual({ ...owed, payingUserId: "player" });
 		});
 		wait.mockResolvedValue(true);
 		expect(await completePendingSacrifice(hero)).toBe(true);
@@ -259,7 +277,102 @@ describe("completePendingSacrifice", () => {
 		});
 		wait.mockResolvedValue(true);
 		await expect(completePendingSacrifice(hero)).rejects.toThrow();
-		expect(hero.flag).toEqual(owed);
+		// Still owed, and no longer marked as being paid.
+		expect(hero.flag).toEqual({ ...owed, payingUserId: null });
+	});
+
+	// A Narrator forgiving while the player is mid-payment (a Scarring
+	// price's Replace wizard can stay open for minutes) would have the price
+	// both paid and forgiven.
+	it("marks the debt as being paid before the price goes on", async () => {
+		const hero = graveHero();
+		hero.system.addStatus = vi.fn(() => {
+			expect(hero.flag.payingUserId).toBe("player");
+		});
+		wait.mockResolvedValue(true);
+		expect(await completePendingSacrifice(hero)).toBe(true);
+		expect(hero.system.addStatus).toHaveBeenCalled();
+	});
+
+	it("asks the Narrator before forgiving a price the player is paying", async () => {
+		const hero = graveHero();
+		hero.flag.payingUserId = "player";
+		setGM();
+		wait.mockImplementation(async ({ buttons }) =>
+			buttons.find((b) => b.action === "forgive").callback(),
+		);
+		const confirm = vi
+			.spyOn(foundry.applications.api.DialogV2, "confirm")
+			.mockResolvedValue(false);
+		try {
+			expect(await completePendingSacrifice(hero)).toBe(false);
+			expect(confirm).toHaveBeenCalled();
+			expect(hero.unsetFlag).not.toHaveBeenCalled();
+			confirm.mockResolvedValue(true);
+			expect(await completePendingSacrifice(hero)).toBe(true);
+			expect(hero.unsetFlag).toHaveBeenCalled();
+		} finally {
+			confirm.mockRestore();
+		}
+	});
+
+	it("does not forgive a price the player finished paying while the Narrator was asked", async () => {
+		const hero = graveHero();
+		hero.flag.payingUserId = "player";
+		setGM();
+		wait.mockImplementation(async ({ buttons }) =>
+			buttons.find((b) => b.action === "forgive").callback(),
+		);
+		const confirm = vi
+			.spyOn(foundry.applications.api.DialogV2, "confirm")
+			.mockImplementation(async () => {
+				hero.flag = undefined; // the player's payment landed meanwhile
+				return true;
+			});
+		const info = vi.spyOn(ui.notifications, "info");
+		try {
+			expect(await completePendingSacrifice(hero)).toBe(false);
+			expect(info).toHaveBeenCalledWith("LITM.Ui.sacrifice_already_settled");
+			expect(info).not.toHaveBeenCalledWith("LITM.Ui.sacrifice_forgiven");
+		} finally {
+			confirm.mockRestore();
+			info.mockRestore();
+		}
+	});
+
+	// Foundry writes the mark as a nested key: if the debt was cleared while
+	// the write was on its way, it leaves a "debt" holding only the mark.
+	it("clears a debt left as only a mark when it was settled meanwhile", async () => {
+		const hero = graveHero();
+		hero.update = vi.fn(async (changes) => {
+			hero.flag = {
+				payingUserId: changes["flags.litmv2.pendingSacrifice.payingUserId"],
+			};
+		});
+		wait.mockResolvedValue(true);
+		expect(await completePendingSacrifice(hero)).toBe(false);
+		expect(hero.system.addStatus).not.toHaveBeenCalled();
+		expect(hero.flag).toBeUndefined();
+	});
+
+	it("forgives without asking when the player paying has gone", async () => {
+		const hero = graveHero();
+		hero.flag.payingUserId = "player";
+		game.users = table(
+			{ id: "player", isGM: false, active: false },
+			{ id: "gm", isGM: true, active: true },
+		);
+		setGM();
+		wait.mockImplementation(async ({ buttons }) =>
+			buttons.find((b) => b.action === "forgive").callback(),
+		);
+		const confirm = vi.spyOn(foundry.applications.api.DialogV2, "confirm");
+		try {
+			expect(await completePendingSacrifice(hero)).toBe(true);
+			expect(confirm).not.toHaveBeenCalled();
+		} finally {
+			confirm.mockRestore();
+		}
 	});
 
 	it("lets only one owner pay, and the Narrator only forgive while the player is on", async () => {
@@ -270,10 +383,10 @@ describe("completePendingSacrifice", () => {
 			{ id: "other", isGM: false, active: true },
 			{ id: "gm", isGM: true, active: true },
 		);
-		game.user = { id: "other", isGM: false };
+		setPlayer("other");
 		expect(await completePendingSacrifice(hero)).toBe(false);
 		expect(wait).not.toHaveBeenCalled();
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		wait.mockResolvedValue(null);
 		await completePendingSacrifice(hero);
 		expect(wait.mock.calls[0][0].buttons.map((b) => b.action)).toEqual([
@@ -301,7 +414,7 @@ describe("completePendingSacrifice", () => {
 			return true;
 		});
 		expect(await completePendingSacrifice(hero)).toBe(false);
-		expect(hero.flag).toEqual(owed);
+		expect(hero.flag).toEqual({ ...owed, payingUserId: null });
 		expect(hero.grace.every((m) => !m.scratched)).toBe(true);
 	});
 
@@ -374,7 +487,7 @@ describe("completePendingSacrifice", () => {
 			const hero = scarredHero(false);
 			const owed = hero.flag;
 			expect(await completePendingSacrifice(hero)).toBe(false);
-			expect(hero.flag).toEqual(owed);
+			expect(hero.flag).toEqual({ ...owed, payingUserId: null });
 			expect(hero.grace.every((m) => !m.scratched)).toBe(true);
 		});
 
@@ -493,7 +606,7 @@ describe("a copied Hero", () => {
 
 describe("requestRollFromNarrator", () => {
 	it("lets an owing Hero back into a roll already open for them", async () => {
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		const dialog = {};
 		const actor = {
 			...hero("gerrin", { owes: true }),

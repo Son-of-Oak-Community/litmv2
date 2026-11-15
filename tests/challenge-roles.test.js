@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ChallengeData } from "../modules/actor/challenge/challenge-data.js";
 import { ChallengeSheet } from "../modules/actor/challenge/challenge-sheet.js";
+import { fakeElement } from "./__helpers__/dom.js";
 
 // Typical Challenge Roles (Core Book p.110). The field keeps its old
 // comma-separated string: book roles as keys, custom ones as typed.
@@ -49,15 +50,27 @@ describe("Challenge roles", () => {
 		]);
 	});
 
+	// An addon's categories are a list already: an entry with a comma in it
+	// is one category, as it was before Roles.
+	it("keeps an addon category with a comma in it whole", () => {
+		expect(
+			ChallengeData.deriveRoles("", ["Spy, Thief", "Quarry"]).map(
+				(r) => r.role,
+			),
+		).toEqual(["quarry", "Spy, Thief"]);
+	});
+
 	describe("saving from the picker", () => {
-		const pill = (role, checked) => ({ dataset: { role }, checked });
-		const form = {
-			querySelectorAll: () => [
-				pill("quarry", true),
-				pill("mystery", false),
-				pill("Rival", true),
-			],
-		};
+		const pill = (role, checked) => fakeElement({ dataset: { role }, checked });
+		const form = fakeElement({
+			all: {
+				"input[data-role]": [
+					pill("quarry", true),
+					pill("mystery", false),
+					pill("Rival", true),
+				],
+			},
+		});
 
 		it("stores the checked pills plus the typed custom role", () => {
 			expect(
@@ -81,12 +94,15 @@ describe("Challenge roles", () => {
 	});
 
 	it("calls the edit header stale once it no longer shows the saved data", () => {
-		const header = (stars, roles) => ({
-			querySelectorAll: (sel) =>
-				sel.startsWith(".litm--rating-star")
-					? Array(stars).fill({})
-					: roles.map((role) => ({ dataset: { role } })),
-		});
+		const header = (stars, roles) =>
+			fakeElement({
+				all: {
+					'.litm--rating-star[aria-pressed="true"]': Array(stars).fill({}),
+					"input[data-role]:checked": roles.map((role) =>
+						fakeElement({ dataset: { role } }),
+					),
+				},
+			});
 		const saved = { rating: 2, category: "Quarry,Rival" };
 		expect(
 			ChallengeSheet.headerIsStale(header(2, ["Rival", "quarry"]), saved),

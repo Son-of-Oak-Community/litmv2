@@ -1,19 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { HeroData } from "../modules/actor/hero/hero-data.js";
-import { fakeActor } from "./__helpers__/factories.js";
+import { fakeHeroModel } from "./__helpers__/hero.js";
 
 // recordMomentOfFulfillment — Core Book p.193 promise mechanics, moved off
 // the hero sheet into the data layer. The stub base constructor only does
 // Object.assign; each test seeds the fields the method reads.
-const makeHero = ({ mof = [], promise = 0, pendingPromise = 0 } = {}) => {
-	const actor = fakeActor({ type: "hero" });
-	const model = new HeroData();
-	model.parent = actor;
-	model.mof = mof;
-	model.promise = promise;
-	model.pendingPromise = pendingPromise;
-	return { model, actor };
-};
+const makeHero = ({ mof = [], promise = 0, pendingPromise = 0 } = {}) =>
+	fakeHeroModel({ mof, promise, pendingPromise });
 
 beforeEach(() => {
 	vi.clearAllMocks();

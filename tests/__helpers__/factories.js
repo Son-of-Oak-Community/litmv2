@@ -4,6 +4,14 @@
 // - Actors expose allApplicableEffects() — own + embedded items' effects (we
 //   treat item effects as transferred for simplicity; tests can opt out by
 //   passing `transfer: false` on the item).
+//   Two conventions for "does this item's effect transfer" coexist, and they
+//   are not interchangeable. Here the switch is the item's `_transfer`, and an
+//   effect with no `transfer` of its own still flows. setup.js's StubActor
+//   (the base of the real LitmActor) mirrors Foundry: it yields an item's
+//   effect only when `effect.transfer` is truthy, which fakeEffect never sets.
+//   So a fakeActor is for code that reads effects through a document-like
+//   object, and a test of LitmActor#allApplicableEffects builds effects with
+//   `transfer: true` itself (see litm-actor-applicable-effects.test.js).
 // - All async-ish doc methods (createEmbeddedDocuments, updateEmbeddedDocuments,
 //   deleteEmbeddedDocuments) are vi.fn() so assertions can inspect calls.
 // - Effects carry a back-reference to their parent so resolveEffect /

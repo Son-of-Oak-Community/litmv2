@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
 	graceMoments,
 	markMomentOfGrace,
@@ -6,19 +6,13 @@ import {
 	spendSecretGrace,
 	toggleMomentOfGrace,
 } from "../modules/actor/hero/secret-grace.js";
+import { FLAGS } from "../modules/system/config.js";
+import { withFlags } from "./__helpers__/flags.js";
 
 // Vol. II p.78: one tier per moment of grace. A Sacrifice's Secret Grace
 // Bonus scratches that many moments, oldest first; scratched ones are kept.
-const hero = (moments) => {
-	const actor = {
-		moments,
-		getFlag: () => actor.moments,
-		setFlag: vi.fn(async (_scope, _key, value) => {
-			actor.moments = value;
-		}),
-	};
-	return actor;
-};
+const hero = (moments) =>
+	withFlags({}, { litmv2: { [FLAGS.secretGrace]: moments } });
 const moment = (scratched = false, id = "m") => ({
 	id,
 	text: "Spared the wolf",

@@ -17,3 +17,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      # Most files share one module graph per worker, so a test that leaks
+      # state can pass or fail by file order. A shuffled, serial run catches
+      # that; rerun locally with the same seed to reproduce a failure.
+      - name: Shuffled order (seed ${{ github.run_number }})
+        run: npm run test:shuffle -- --sequence.seed=${{ github.run_number }}

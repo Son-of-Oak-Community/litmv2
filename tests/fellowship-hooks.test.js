@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerFellowshipHooks } from "../modules/system/hooks/fellowship-hooks.js";
+import { setGM, setPlayer } from "./__helpers__/users.js";
 
 const FELLOWSHIP_ID = "fellowship-1";
 
@@ -21,7 +22,7 @@ beforeEach(() => {
 		settings[key] = value;
 	});
 
-	game.user = { id: "gm-1", isGM: true };
+	setGM("gm-1");
 	game.users.activeGM = game.user;
 	game.actors = { get: vi.fn(), find: vi.fn(), filter: vi.fn(() => []) };
 
@@ -68,7 +69,7 @@ describe("fellowship singleton on ready", () => {
 	});
 
 	it("does nothing for a player", async () => {
-		game.user = { id: "player-1", isGM: false };
+		setPlayer("player-1");
 		game.users.activeGM = otherGM;
 
 		await runReady();

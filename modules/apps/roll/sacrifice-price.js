@@ -97,6 +97,45 @@ function stillOwes(actor, debt) {
 }
 
 /**
+ * The debt's payment mark: the user paying it right now. Set once the payer
+ * answers Complete and before the price goes on, so a Narrator pressing
+ * Forgive in the meantime — a Scarring price's Replace wizard can stay open
+ * for minutes — is asked first rather than letting the price be both paid
+ * and forgiven. Released (null) when the payment is abandoned or fails.
+ */
+const PAYING_KEY = `flags.litmv2.${FLAGS.pendingSacrifice}.payingUserId`;
+
+function markPaying(actor, userId) {
+	return actor.update({ [PAYING_KEY]: userId });
+}
+
+/** Release this client's payment mark, if the debt still carries it. */
+async function releasePaying(actor) {
+	if (pendingSacrifice(actor)?.payingUserId === game.user.id)
+		await markPaying(actor, null);
+}
+
+/**
+ * Whether the Narrator may forgive now: always, unless another user who is
+ * still connected is paying this debt — then they are asked.
+ * @param {Actor} actor
+ * @returns {Promise<boolean>}
+ */
+async function mayForgive(actor) {
+	const id = pendingSacrifice(actor)?.payingUserId;
+	const payer = id && id !== game.user.id ? game.users.get(id) : null;
+	if (!payer?.active) return true;
+	return !!(await foundry.applications.api.DialogV2.confirm({
+		window: { title: t("LITM.Ui.sacrifice_forgive") },
+		content: dialogContent("LITM.Ui.sacrifice_forgive_while_paying", {
+			user: payer.name,
+			name: actor.name,
+		}),
+		rejectClose: false,
+	}));
+}
+
+/**
  * Ask the player to pay the Hero's owed price, apply it, and clear the debt.
  * @param {Actor} actor
  * @returns {Promise<boolean>} whether the price was paid
@@ -105,14 +144,23 @@ export async function completePendingSacrifice(actor) {
 	const pending = pendingSacrifice(actor);
 	if (!pending || !canSettleSacrifice(actor)) return false;
 	const effective = effectiveSacrificeLevel(pending.level, pending.outcome);
-	const result = await confirmAndApplySacrifice(actor, {
-		effective,
-		themeId: pending.themeId,
-		statusName: pending.statusName,
-		debt: pending,
-	});
+	let result;
+	try {
+		result = await confirmAndApplySacrifice(actor, {
+			effective,
+			themeId: pending.themeId,
+			statusName: pending.statusName,
+			debt: pending,
+		});
+	} catch (err) {
+		await releasePaying(actor);
+		throw err;
+	}
 	// Closed, settled elsewhere, or the theme or tag went first: still owed.
-	if (!result) return false;
+	if (!result) {
+		await releasePaying(actor);
+		return false;
+	}
 	// Cleared only once the price is on, so a payer who drops away mid-payment
 	// leaves the debt owed rather than gone unpaid.
 	await actor.unsetFlag("litmv2", FLAGS.pendingSacrifice);
@@ -202,12 +250,30 @@ async function askToPay({
 		modal: true,
 		...dialog,
 	});
-	if (answer == null) return null;
-	if (stillOwes(actor, debt)) return answer;
+	if (answer == null || settledMeanwhile(actor, debt)) return null;
+	if (answer === FORGIVE) {
+		if (!(await mayForgive(actor))) return null;
+		// The payer may have finished while the Narrator was asked.
+		return settledMeanwhile(actor, debt) ? null : answer;
+	}
+	await markPaying(actor, game.user.id);
+	// Settled while the mark was on its way. The mark's write then left a
+	// debt that is only a mark; clear it so it doesn't hold the Hero.
+	if (settledMeanwhile(actor, debt)) {
+		if (pendingSacrifice(actor))
+			await actor.unsetFlag("litmv2", FLAGS.pendingSacrifice);
+		return null;
+	}
+	return answer;
+}
+
+/** Tell this user the debt was settled elsewhere, if it was. */
+function settledMeanwhile(actor, debt) {
+	if (stillOwes(actor, debt)) return false;
 	ui.notifications.info(
 		game.i18n.format("LITM.Ui.sacrifice_already_settled", { name: actor.name }),
 	);
-	return null;
+	return true;
 }
 
 function notifyPaid(actor, _effective, result) {

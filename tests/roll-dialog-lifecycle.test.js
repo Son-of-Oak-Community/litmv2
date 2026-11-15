@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LitmRollDialog } from "../modules/apps/roll/roll-dialog.js";
 import { Sockets } from "../modules/system/sockets.js";
+import { fakeElement } from "./__helpers__/dom.js";
+import { setGM, setPlayer } from "./__helpers__/users.js";
 
 let actor;
 
@@ -17,7 +19,7 @@ function makeDialog(options = {}) {
 
 beforeEach(() => {
 	vi.restoreAllMocks();
-	game.user = { id: "player", isGM: false };
+	setPlayer();
 	game.users = {
 		get: (id) => ({ id, active: true, isGM: id === "gm" }),
 	};
@@ -32,9 +34,6 @@ beforeEach(() => {
 		items: [{ id: "theme", type: "theme", system: {}, effects: [] }],
 	};
 	game.actors.get.mockReturnValue(actor);
-	foundry.applications.api.ApplicationV2.prototype.close = async function () {
-		this.rendered = false;
-	};
 	vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
 });
 
@@ -69,7 +68,7 @@ describe("called-roll lifecycle", () => {
 	});
 
 	it("a Narrator closing their view neither ends nor unadvertises the player's call", async () => {
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		const dialog = makeDialog();
 		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
 		dialog.rendered = true;
@@ -87,19 +86,14 @@ describe("called-roll lifecycle", () => {
 	// the player started it only closes the Narrator's view.
 	describe("the Narrator's X", () => {
 		const clickX = (dialog) => {
-			foundry.applications.api.ApplicationV2.prototype._onFirstRender =
-				() => {};
-			let onClose;
-			dialog.window = {
-				close: { addEventListener: (_type, cb) => (onClose = cb) },
-			};
-			dialog.element = { addEventListener: () => {} };
+			dialog.window = { close: fakeElement() };
+			dialog.element = fakeElement();
 			dialog._onFirstRender({}, {});
-			onClose({ button: 0 });
+			dialog.window.close.emit("click", { button: 0 });
 		};
 
 		it("cancels a roll the Narrator called", () => {
-			game.user = { id: "gm", isGM: true };
+			setGM();
 			const dialog = makeDialog();
 			dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
 			clickX(dialog);
@@ -110,7 +104,7 @@ describe("called-roll lifecycle", () => {
 		});
 
 		it("leaves a roll the player started alone", () => {
-			game.user = { id: "gm", isGM: true };
+			setGM();
 			const dialog = makeDialog();
 			dialog.configureSharedRoll({ ownerId: "player" });
 			clickX(dialog);
@@ -175,7 +169,7 @@ describe("called-roll lifecycle", () => {
 	});
 
 	it("ends an already-hidden viewer when the owner's close socket arrives", () => {
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		const dialog = makeDialog();
 		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
 		dialog.setSelection("tag", "negative", "gm", { narrator: true });
@@ -199,13 +193,13 @@ describe("called-roll lifecycle", () => {
 	});
 
 	it("stamps Narrator selections from the sheet and refuses the player's edit", () => {
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		const dialog = makeDialog();
 		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
 		dialog.setCharacterTagState("tag", "negative");
 		expect(dialog.getSelection("tag").narrator).toBe(true);
 
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		dialog.setCharacterTagState("tag", "");
 		expect(dialog.getSelection("tag").state).toBe("negative");
 	});
@@ -222,7 +216,7 @@ describe("local-only roll previews", () => {
 	});
 
 	it("does not publish presence, broadcast changes or submit the demo roll", async () => {
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		const dialog = makeDialog({ ownerId: "gm", localOnly: true });
 		dialog.configureSharedRoll({ ownerId: "gm", narratorUserId: "gm" });
 		const extract = vi.spyOn(dialog, "extractRollData");
@@ -319,7 +313,7 @@ describe("the Narrator's Roll and Cancel on the roller's client", () => {
 
 describe("the Narrator cancelling a roll whose owner is away", () => {
 	it("ends the call on the Narrator's side too", async () => {
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		game.users = {
 			get: (id) => ({ id, active: id !== "player", isGM: id === "gm" }),
 		};
@@ -477,7 +471,7 @@ describe("the roller's Sacrifice switch", () => {
 		expect(dialog.extractRollData({}).sacrificeBonus).toBe(0);
 		await dialog.receiveUpdate({ actorId: actor.id, sacrificeBonus: 2 });
 		// Only the Narrator's window holds the Hero's record.
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		moments[0].scratched = true;
 		dialog.followSecretGrace();
 		expect(dialog.extractRollData({}).sacrificeBonus).toBe(1);
@@ -539,7 +533,7 @@ describe("the roller's Sacrifice switch", () => {
 	});
 
 	it("is never the Narrator's to pick for the player", () => {
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		const dialog = makeDialog();
 		dialog.updatePresence = vi.fn(async () => {});
 		expect(dialog.canProposeSacrifice).toBe(false);
@@ -548,7 +542,7 @@ describe("the roller's Sacrifice switch", () => {
 	});
 
 	it("is not the switch of a Narrator watching the roll", () => {
-		game.user = { id: "gm", isGM: true };
+		setGM();
 		expect(calledRoll().canProposeSacrifice).toBe(false);
 	});
 

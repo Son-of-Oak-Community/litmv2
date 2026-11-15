@@ -5,13 +5,15 @@ import {
 } from "../modules/apps/spend-power-service.js";
 import { Sockets } from "../modules/system/sockets.js";
 import { fakeActor } from "./__helpers__/factories.js";
-
-vi.mock("../modules/system/sockets.js", () => ({
-	Sockets: { dispatch: vi.fn() },
-}));
+import {
+	fakeTarget,
+	inflictIntent,
+	wireActors,
+} from "./__helpers__/spend-power.js";
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
 	game.users.activeGM = null;
 	game.user.isGM = false;
 	game.user.id = "player-1";
@@ -19,33 +21,21 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	delete CONFIG.litmv2.maxStatusTier;
 });
 
-function inflictIntent(tier, targetActorId) {
-	return {
-		options: [
-			{
-				kind: "default",
-				optionId: "inflict_status",
-				cost: 1,
-				hasTier: true,
-				draggable: true,
-				entries: [{ name: "enraged", tier, isSingleUse: false }],
-				targetActorId,
-			},
-		],
-		messageId: null,
-		alreadySpent: 0,
-		targetActorId: null,
-	};
-}
+/** Inflict [enraged-<tier>], on `targetActorId` or as a plain chat chip. */
+const inflictTier = (tier, targetActorId) =>
+	inflictIntent({
+		entries: [{ name: "enraged", tier, isSingleUse: false }],
+		targetActorId,
+	});
 
 function setup({ isOwner = true } = {}) {
-	const foe = fakeActor({ id: "c1", name: "Serpent", isOwner });
-	foe.system.addStatus = vi.fn(async () => {});
+	const foe = fakeTarget({ isOwner });
 	const hero = fakeActor({ id: "h1", name: "Gerrin" });
-	game.actors.get = vi.fn((id) => ({ h1: hero, c1: foe })[id] ?? null);
+	wireActors(hero, foe);
 	return { foe, hero };
 }
 
@@ -53,7 +43,7 @@ describe("applySpendIntent — Inflict tier is clamped to the status track", () 
 	it("caps an over-tall tier at the track depth, in the write and the charge", async () => {
 		const { foe, hero } = setup();
 
-		const { results } = await applySpendIntent(hero, inflictIntent(9, "c1"));
+		const { results } = await applySpendIntent(hero, inflictTier(9, "c1"));
 
 		expect(foe.system.addStatus).toHaveBeenCalledWith("enraged", {
 			tier: 6,
@@ -67,7 +57,7 @@ describe("applySpendIntent — Inflict tier is clamped to the status track", () 
 		CONFIG.litmv2.maxStatusTier = 8;
 		const { foe, hero } = setup();
 
-		const { results } = await applySpendIntent(hero, inflictIntent(9, "c1"));
+		const { results } = await applySpendIntent(hero, inflictTier(9, "c1"));
 
 		expect(foe.system.addStatus).toHaveBeenCalledWith("enraged", {
 			tier: 8,
@@ -79,7 +69,7 @@ describe("applySpendIntent — Inflict tier is clamped to the status track", () 
 	it.each([0, -3, "abc", undefined])("floors tier %j at 1", async (tier) => {
 		const { foe, hero } = setup();
 
-		const { results } = await applySpendIntent(hero, inflictIntent(tier, "c1"));
+		const { results } = await applySpendIntent(hero, inflictTier(tier, "c1"));
 
 		expect(foe.system.addStatus).toHaveBeenCalledWith("enraged", {
 			tier: 1,
@@ -92,7 +82,7 @@ describe("applySpendIntent — Inflict tier is clamped to the status track", () 
 		const { foe, hero } = setup({ isOwner: false });
 		game.users.activeGM = { id: "gm-1" };
 
-		const { results } = await applySpendIntent(hero, inflictIntent(9, "c1"));
+		const { results } = await applySpendIntent(hero, inflictTier(9, "c1"));
 
 		expect(foe.system.addStatus).not.toHaveBeenCalled();
 		expect(Sockets.dispatch).toHaveBeenCalledWith(
@@ -105,7 +95,7 @@ describe("applySpendIntent — Inflict tier is clamped to the status track", () 
 	it("clamps the draggable chip and its charge when no target is picked", async () => {
 		const { hero } = setup();
 
-		const { results } = await applySpendIntent(hero, inflictIntent(9, null));
+		const { results } = await applySpendIntent(hero, inflictTier(9, null));
 
 		expect(results[0].body).toContain("[enraged-6]");
 		expect(results[0].power).toBe(6);

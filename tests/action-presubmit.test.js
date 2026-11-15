@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bindActionPresubmit } from "../modules/sheets/action-presubmit.js";
+import { fakeElement } from "./__helpers__/dom.js";
 
 // The pointerdown guard behind both LitmSheetMixin and the story-tag sidebar:
 // submit the form, then replay the action, when an action button is pressed
@@ -14,14 +15,12 @@ const makeEvent = ({
 	action = "rollIt",
 	inProseMirrorToolbar = false,
 } = {}) => {
-	const actionBtn = {
+	const actionBtn = fakeElement({
 		dataset: { action, itemId: "i1" },
-		closest: vi.fn((sel) =>
-			sel === "prose-mirror" ? inProseMirrorToolbar : null,
-		),
-	};
+		closest: { "prose-mirror": inProseMirrorToolbar },
+	});
 	return {
-		target: { closest: vi.fn(() => actionBtn) },
+		target: fakeElement({ closest: () => actionBtn }),
 		preventDefault: vi.fn(),
 	};
 };
@@ -38,17 +37,14 @@ beforeEach(() => {
 	app = {
 		_suppressNextChange: false,
 		options: { actions: { rollIt: vi.fn() } },
-		element: {
-			addEventListener: vi.fn((type, fn, opts) => {
-				if (type === "pointerdown") handler = { fn, opts };
-			}),
-		},
+		element: fakeElement(),
 	};
 	globalThis.document = {
 		activeElement: null,
 		createElement: vi.fn(() => ({ dataset: {} })),
 	};
 	bindActionPresubmit(app, { getForm: () => form, submit });
+	handler = app.element.listeners.find(({ type }) => type === "pointerdown");
 });
 
 afterEach(() => {
@@ -57,14 +53,14 @@ afterEach(() => {
 
 describe("bindActionPresubmit", () => {
 	it("listens on pointerdown in the capture phase", () => {
-		expect(handler.opts).toEqual({ capture: true });
+		expect(handler.options).toEqual({ capture: true });
 	});
 
 	it("submits, suppresses the change submit, then replays the action", async () => {
-		focus({ tagName: "INPUT", closest: () => null });
+		focus(fakeElement({ tagName: "INPUT" }));
 		const event = makeEvent();
 
-		handler.fn(event);
+		handler.listener(event);
 		expect(event.preventDefault).toHaveBeenCalled();
 		expect(app._suppressNextChange).toBe(true);
 		expect(submit).toHaveBeenCalledWith(form);
@@ -80,9 +76,9 @@ describe("bindActionPresubmit", () => {
 	it("accepts an object action handler", async () => {
 		const objectHandler = vi.fn();
 		app.options.actions.rollIt = { handler: objectHandler };
-		focus({ tagName: "TEXTAREA", closest: () => null });
+		focus(fakeElement({ tagName: "TEXTAREA" }));
 
-		handler.fn(makeEvent());
+		handler.listener(makeEvent());
 		await flush();
 
 		expect(objectHandler).toHaveBeenCalledTimes(1);
@@ -90,29 +86,29 @@ describe("bindActionPresubmit", () => {
 
 	it("lets the click through when nothing in the form is focused", () => {
 		form.contains.mockReturnValue(false);
-		focus({ tagName: "INPUT", closest: () => null });
+		focus(fakeElement({ tagName: "INPUT" }));
 		const event = makeEvent();
 
-		handler.fn(event);
+		handler.listener(event);
 
 		expect(event.preventDefault).not.toHaveBeenCalled();
 		expect(submit).not.toHaveBeenCalled();
 	});
 
 	it("lets the click through when the focus is not a text control", () => {
-		focus({ tagName: "BUTTON", closest: () => null });
+		focus(fakeElement({ tagName: "BUTTON" }));
 		const event = makeEvent();
 
-		handler.fn(event);
+		handler.listener(event);
 
 		expect(event.preventDefault).not.toHaveBeenCalled();
 		expect(submit).not.toHaveBeenCalled();
 	});
 
 	it("treats a focused ProseMirror editor as a form input", async () => {
-		focus({ tagName: "DIV", closest: (sel) => sel === "prose-mirror" });
+		focus(fakeElement({ tagName: "DIV", closest: { "prose-mirror": true } }));
 
-		handler.fn(makeEvent());
+		handler.listener(makeEvent());
 		await flush();
 
 		expect(submit).toHaveBeenCalled();
@@ -120,10 +116,10 @@ describe("bindActionPresubmit", () => {
 	});
 
 	it("leaves ProseMirror's own toolbar buttons alone", () => {
-		focus({ tagName: "INPUT", closest: () => null });
+		focus(fakeElement({ tagName: "INPUT" }));
 		const event = makeEvent({ inProseMirrorToolbar: true });
 
-		handler.fn(event);
+		handler.listener(event);
 
 		expect(event.preventDefault).not.toHaveBeenCalled();
 		expect(submit).not.toHaveBeenCalled();
@@ -131,21 +127,21 @@ describe("bindActionPresubmit", () => {
 
 	it("does nothing when the app has no form yet", () => {
 		const event = makeEvent();
-		const unbound = { ...app, element: { addEventListener: vi.fn() } };
+		const unbound = { ...app, element: fakeElement() };
 		bindActionPresubmit(unbound, { getForm: () => null, submit });
-		const [, fn] = unbound.element.addEventListener.mock.calls[0];
-		focus({ tagName: "INPUT", closest: () => null });
+		const [{ listener }] = unbound.element.listeners;
+		focus(fakeElement({ tagName: "INPUT" }));
 
-		fn(event);
+		listener(event);
 
 		expect(event.preventDefault).not.toHaveBeenCalled();
 	});
 
 	it("skips the replay when the action is not registered", async () => {
 		app.options.actions = {};
-		focus({ tagName: "INPUT", closest: () => null });
+		focus(fakeElement({ tagName: "INPUT" }));
 
-		handler.fn(makeEvent());
+		handler.listener(makeEvent());
 		await flush();
 
 		expect(submit).toHaveBeenCalled();
