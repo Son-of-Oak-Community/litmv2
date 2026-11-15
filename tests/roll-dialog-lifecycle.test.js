@@ -32,9 +32,6 @@ beforeEach(() => {
 		items: [{ id: "theme", type: "theme", system: {}, effects: [] }],
 	};
 	game.actors.get.mockReturnValue(actor);
-	foundry.applications.api.ApplicationV2.prototype.close = async function () {
-		this.rendered = false;
-	};
 	vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
 });
 
@@ -87,8 +84,6 @@ describe("called-roll lifecycle", () => {
 	// the player started it only closes the Narrator's view.
 	describe("the Narrator's X", () => {
 		const clickX = (dialog) => {
-			foundry.applications.api.ApplicationV2.prototype._onFirstRender =
-				() => {};
 			let onClose;
 			dialog.window = {
 				close: { addEventListener: (_type, cb) => (onClose = cb) },

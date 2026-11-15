@@ -5,6 +5,7 @@
 	"scripts": {
 		"test": "vitest run",
 		"test:watch": "vitest",
+		"test:shuffle": "vitest run --no-file-parallelism --sequence.shuffle",
 		"format": "biome format --write .",
 		"lint": "biome lint .",
 		"check": "biome check .",

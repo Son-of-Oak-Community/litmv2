@@ -1,3 +1,4 @@
+// vitest-isolate: patches the Document prototype (importFromJSON).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LitmActor } from "../modules/actor/litm-actor.js";
 import { LitmItem } from "../modules/item/litm-item.js";
