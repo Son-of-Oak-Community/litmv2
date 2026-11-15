@@ -8,6 +8,8 @@ export const FLAGS = Object.freeze({
 	rollDialogOwner: "rollDialogOwner",
 	actionUuid: "actionUuid",
 	sceneTags: "sceneTags",
+	pendingSacrifice: "pendingSacrifice",
+	secretGrace: "secretGrace",
 });
 
 /** All theme-bound tag effect types (power, weakness, fellowship). */
@@ -259,6 +261,25 @@ export const LitmConfig = {
 
 	/** Maximum non-fellowship themes a hero can have. Mirrored from the world setting at ready. */
 	themeLimit: 4,
+
+	/**
+	 * Typical Challenge Roles (Core Book p.110). Keys are stored in
+	 * `ChallengeData#category` and labelled by `LITM.ChallengeRoles.<key>`;
+	 * any other text in that field is a custom role, shown as typed.
+	 */
+	challengeRoles: [
+		"aggressor",
+		"charge",
+		"countdown",
+		"influence",
+		"mystery",
+		"obstacle",
+		"pursuer",
+		"quarry",
+		"sapper",
+		"support",
+		"watcher",
+	],
 
 	/**
 	 * Improve marks needed before a theme can choose an advancement.

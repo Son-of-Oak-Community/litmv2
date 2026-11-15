@@ -35,3 +35,29 @@ export function isThemeSpent(theme) {
 export function hasPainfulSacrificeTarget(themes) {
 	return themes.some((theme) => !isThemeSpent(theme));
 }
+
+/**
+ * The price of a sacrifice once the roll is in — a Miracle ("success") lessens
+ * it by one level, Fate and In Vain pay it in full (Core Book p.159). A lessened
+ * Painful scratches one tag instead of every tag: "painfulOne".
+ * @param {"painful"|"scarring"|"grave"} level
+ * @param {"success"|"snc"|"consequences"} outcomeLabel
+ * @returns {"painfulOne"|"painful"|"scarring"|"grave"}
+ */
+export function effectiveSacrificeLevel(level, outcomeLabel) {
+	if (outcomeLabel !== "success") return level;
+	if (level === "grave") return "scarring";
+	if (level === "scarring") return "painful";
+	return "painfulOne";
+}
+
+/**
+ * Whether a Sacrifice at `level` may name a story theme. Only Painful: a story
+ * theme's tags can be scratched (Core Book p.159), but it has no Quest or
+ * Promise to replace it by (p.192), and a Grave Miracle lessens to Scarring.
+ * @param {"painful"|"scarring"|"grave"} level
+ * @returns {boolean}
+ */
+export function storyThemeMaySacrifice(level) {
+	return level === "painful";
+}

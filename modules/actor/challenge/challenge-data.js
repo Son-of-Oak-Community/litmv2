@@ -83,6 +83,66 @@ export class ChallengeData extends LimitsMixin(
 		};
 	}
 
+	/**
+	 * Split the stored `category` string into roles: a book role (Core Book
+	 * p.110, `CONFIG.litmv2.challengeRoles`) as its key, matched
+	 * case-insensitively so older typed text such as "Quarry" counts; anything
+	 * else as typed.
+	 * @param {string} value
+	 * @returns {string[]}
+	 */
+	static parseRoles(value) {
+		const known = CONFIG.litmv2?.challengeRoles ?? [];
+		const seen = new Set();
+		const roles = [];
+		for (const raw of String(value ?? "").split(",")) {
+			const text = raw.trim();
+			if (!text) continue;
+			const lower = text.toLowerCase();
+			// The key, or the role's name as this table reads it ("Здобич").
+			const role =
+				known.find(
+					(k) =>
+						k === lower || ChallengeData.roleLabel(k).toLowerCase() === lower,
+				) ?? text;
+			if (seen.has(role.toLowerCase())) continue;
+			seen.add(role.toLowerCase());
+			roles.push(role);
+		}
+		return roles;
+	}
+
+	/**
+	 * A Challenge's roles with its addons' categories, each once
+	 * (case-insensitive by label), sorted by label.
+	 * @param {string} category            The stored comma-separated roles
+	 * @param {string[]} addonCategories   The addons' categories
+	 * @returns {{role: string, label: string}[]}
+	 */
+	static deriveRoles(category, addonCategories = []) {
+		const seen = new Map();
+		for (const role of ChallengeData.parseRoles(
+			[category, ...addonCategories].join(","),
+		)) {
+			const label = ChallengeData.roleLabel(role);
+			const key = label.toLowerCase();
+			if (!seen.has(key)) seen.set(key, { role, label });
+		}
+		return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
+	}
+
+	/**
+	 * A role's display label: a book role localized, a custom one as typed.
+	 * @param {string} role
+	 * @returns {string}
+	 */
+	static roleLabel(role) {
+		const key = String(role).toLowerCase();
+		const known = CONFIG.litmv2?.challengeRoles ?? [];
+		if (!known.includes(key)) return role;
+		return game.i18n.localize(`LITM.ChallengeRoles.${key}`);
+	}
+
 	static migrateData(source, options) {
 		if (Array.isArray(source.limits)) {
 			for (const [index, limit] of source.limits.entries()) {
@@ -117,21 +177,15 @@ export class ChallengeData extends LimitsMixin(
 				addons.reduce((sum, a) => sum + (a.system.ratingBonus || 0), 0),
 		);
 
-		// Derived categories: base + addon categories, deduplicated (case-insensitive)
-		const allCategories = [
-			...this.category.split(","),
-			...addons.flatMap((a) => a.system.categories),
-		]
-			.map((c) => c?.trim())
-			.filter(Boolean);
-		const seen = new Map();
-		for (const c of allCategories) {
-			const key = c.toLowerCase();
-			if (!seen.has(key)) seen.set(key, c);
-		}
-		this.derivedCategories = [...seen.values()].sort((a, b) =>
-			a.localeCompare(b),
+		// Derived roles (the book's name for categories): base + addon
+		// categories. `derivedRoles` keeps a book role as its key, for its
+		// tooltip; `derivedCategories` is the display label of each.
+		const roles = ChallengeData.deriveRoles(
+			this.category,
+			addons.flatMap((a) => a.system.categories),
 		);
+		this.derivedRoles = roles.map((r) => r.role);
+		this.derivedCategories = roles.map((r) => r.label);
 
 		// Derived limits: merge by lowercase label, keep higher max.
 		// `this.limits` stays canonical (the schema-prepared own property); the

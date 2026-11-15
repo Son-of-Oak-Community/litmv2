@@ -2115,6 +2115,129 @@ section.standard-form.litm-theme-browser-body {
 	font-size: var(--font-size-16);
 }
 
+/* Challenge Rating in edit mode: the play view's stars as buttons. */
+.litm-actor [data-application-part="header"] .litm--rating-field {
+	display: flex;
+	align-items: center;
+	gap: var(--spacer-4);
+
+	& > .litm--roles-label {
+		margin-inline-end: var(--spacer-4);
+	}
+}
+
+.litm--rating-star {
+	all: unset;
+	display: inline-flex;
+	padding: var(--spacer-2);
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+
+	& .rating-star {
+		width: 20px;
+		height: 20px;
+		transition: opacity var(--transition-fast) ease;
+	}
+
+	&:hover .rating-star.empty {
+		opacity: 0.5;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--color-warm-1);
+	}
+}
+
+/* A role in the play header carries the same tooltip as its edit pill. */
+.litm--role-name[data-tooltip-html] {
+	cursor: help;
+
+	&:is(:hover, :focus-visible) {
+		color: var(--color-text-primary);
+	}
+}
+
+/* A book role's tooltip: what it is, then sample Threats and Consequences. */
+#tooltip.litm--role-tooltip {
+	max-width: 22rem;
+	text-align: start;
+
+	& p {
+		margin: 0 0 var(--spacer-4);
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
+}
+
+/* Challenge Roles (Core Book p.110): a row of toggle pills under the
+   Rating, the custom-role input at its end. A chosen pill takes a checked
+   checkbox's colours, which read in both themes. */
+.litm-actor [data-application-part="header"] .litm--roles-field {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacer-4) var(--spacer-8);
+	margin-top: var(--spacer-8);
+
+	& > .litm--roles-label {
+		margin-inline-end: var(--spacer-4);
+	}
+
+	& > input[name="customRole"] {
+		flex: 1 1 8rem;
+		min-width: 8rem;
+		height: auto;
+		padding: var(--spacer-2) var(--spacer-8);
+		font-size: var(--font-size-13);
+	}
+}
+
+.litm--role-pill {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	padding: var(--spacer-2) var(--spacer-8);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-pill);
+	font-size: var(--font-size-13);
+	line-height: 1.4;
+	color: var(--color-text-secondary);
+	cursor: pointer;
+	transition:
+		background var(--transition-fast) ease,
+		border-color var(--transition-fast) ease,
+		color var(--transition-fast) ease;
+
+	&:hover {
+		border-color: var(--color-warm-1);
+		color: var(--color-text-primary);
+	}
+
+	/* The pill's fill carries the state; the checkbox stays for the keyboard. */
+	& > input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: 0;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+	}
+
+	&:has(input:checked) {
+		background: var(--color-warm-1);
+		border-color: var(--color-warm-1);
+		color: var(--color-dark-1);
+	}
+
+	&:has(input:focus-visible) {
+		outline: 2px solid var(--color-warm-1);
+		outline-offset: 2px;
+	}
+}
+
 /* Conceal-name toggle sits on the name row; centered against the name input,
    which carries a bottom margin the checkbox must mirror */
 .litm-actor [data-application-part="header"].img-name .litm--conceal-toggle {
@@ -2194,15 +2317,23 @@ section.standard-form.litm-theme-browser-body {
 	opacity: 0.75;
 }
 
-/* Sacrifice trigger — warm/dire styling on the Roll-adjacent button.
-   Click sets the dialog's type to sacrifice and opens it. */
-.litm--sacrifice-button {
-	border-color: var(--color-litm-weakness-text);
-	color: var(--color-litm-weakness-text);
+/* The Narrator's view of the Hero's Secret Grace, at the end of the label row. */
+/* The dove that opens the Hero's Secret Grace: the sheets' regular button,
+   right after its name, with room above the grace options. */
+.litm--sacrifice-grace .litm--might-label-row {
+	justify-content: flex-start;
+	gap: var(--spacer-8);
+	margin-bottom: var(--spacer-4);
 }
 
-.litm--sacrifice-button:hover {
-	background: var(--color-warm-1-10);
+/* A Secret Grace moment the Narrator scratched: kept for history, not counted. */
+.litm--grace-scratched {
+	text-decoration: line-through;
+}
+
+/* The Sacrifice move, first on the move bar: it reads dire (p.159). */
+.litm--sacrifice-switch {
+	color: var(--color-litm-weakness-text);
 }
 
 /* Sacrifice rite — a transient inscription that appears when another player
@@ -2287,6 +2418,26 @@ section.standard-form.litm-theme-browser-body {
 
 .litm--sacrifice-rite.is-visible {
 	opacity: 1;
+}
+
+/* The chosen level's terms (Core Book p.159): what it achieves, its price,
+   and what a Miracle lessens it to. Read before committing to a level. */
+.litm--sacrifice-terms {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var(--spacer-4) var(--spacer-8);
+	margin: var(--spacer-8) 0 0;
+}
+
+.litm--sacrifice-terms dt {
+	font-weight: 600;
+	color: var(--color-text-secondary);
+	/* Foundry's `dl dt` shadow doubles the labels on parchment. */
+	text-shadow: none;
+}
+
+.litm--sacrifice-terms dd {
+	margin: 0;
 }
 
 /* Sacrifice theme picker — a responsive grid of regular .theme-cards.
@@ -3302,6 +3453,13 @@ section.standard-form.litm-theme-browser-body {
 	cursor: not-allowed;
 }
 
+/* The chosen move stays legible when this client can't change it, e.g. the
+   Narrator watching a player's Sacrifice. */
+.litm--roll-type-option.is-disabled.is-active {
+	opacity: 1;
+	cursor: default;
+}
+
 /* Grid: settings beside the tag column when wide enough.
    align-content: start keeps the two grid items at the top of the
    available height so the cells don't get visually stretched when the
@@ -3769,6 +3927,21 @@ section.standard-form.litm-theme-browser-body {
 /* A camp can run for hours; the roll strip's pulse is for a short-lived roll. */
 .litm-camping-hud .litm-roll-dialog-hud__item {
 	animation: none;
+}
+
+/* Unpaid Sacrifices sit on top: a debt outlasts both the camp and the roll,
+   so it does not pulse either. A player who doesn't own the Hero gets the
+   entry as plain text, not a button. */
+.litm-sacrifice-hud {
+	order: -4;
+}
+
+.litm-sacrifice-hud .litm-roll-dialog-hud__item {
+	animation: none;
+}
+
+.litm-sacrifice-hud div.litm-roll-dialog-hud__item {
+	cursor: default;
 }
 
 .litm-camping-hud__icon {
@@ -5905,6 +6078,20 @@ input.litm--single-use::after {
 .litm-theme-advancement .form-group button {
 	flex: 0 0 auto;
 	width: auto;
+}
+
+/* Question picker beside the tag name, as at Hero Creation. */
+.litm-theme-advancement .form-group:has(> select.noflex) {
+	flex-wrap: nowrap;
+}
+
+.litm-theme-advancement .form-group > select.noflex {
+	width: fit-content;
+	max-width: 50%;
+}
+
+.litm-theme-advancement .form-group > select.noflex + input {
+	flex: 1;
 }
 
 /* ========================================

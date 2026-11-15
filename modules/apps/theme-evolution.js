@@ -148,6 +148,20 @@ function enforceTradeCaps(html, context) {
 	}
 }
 
+/**
+ * Show the elements whose `data-show-when` lists `mode`, and hide the ones
+ * whose `data-hide-when` does. Each takes a space-separated list of modes.
+ */
+export function showForMode(html, mode) {
+	const listed = (value) => value.split(/\s+/).includes(mode);
+	for (const el of html.querySelectorAll("[data-show-when]")) {
+		el.hidden = !listed(el.dataset.showWhen);
+	}
+	for (const el of html.querySelectorAll("[data-hide-when]")) {
+		el.hidden = listed(el.dataset.hideWhen);
+	}
+}
+
 function applyModeVisibility(html, context) {
 	const { isFellowship } = context;
 	const caps = context.tradeCaps ?? { power: 0, weakness: 0, special: 0 };
@@ -158,15 +172,7 @@ function applyModeVisibility(html, context) {
 	// the replacement theme in expand mode, and to the current theme
 	// otherwise — the surrounding copy adapts in the template via mode
 	// switches on the labels.
-	for (const el of html.querySelectorAll("[data-show-when='expand']")) {
-		el.hidden = mode !== "expand";
-	}
-	for (const el of html.querySelectorAll("[data-hide-when='expand']")) {
-		el.hidden = mode === "expand";
-	}
-	for (const el of html.querySelectorAll("[data-hide-when='replace']")) {
-		el.hidden = mode === "replace";
-	}
+	showForMode(html, mode);
 
 	// Replace wipes the entire theme — name revisions are pointless, and
 	// the per-tag trade toggles don't apply (Promise math uses the rule
@@ -241,6 +247,7 @@ async function applyExpansion({
 	newThemebook,
 	newLevel,
 	newQuest,
+	newWeakness,
 }) {
 	// 1) Renormalize the milestone-completed theme: track to 0, new Quest.
 	await currentTheme.update({
@@ -264,6 +271,7 @@ async function applyExpansion({
 		isFellowship: false,
 		keepOldTitleAsPower: false,
 		oldName: targetTheme.name,
+		newWeakness,
 	});
 }
 
@@ -356,6 +364,7 @@ function buildThemeUpdate({
 	} else {
 		update["system.specialImprovements"] = [];
 		update["system.nascentImprovements"] = 2;
+		update["system.nascentPending"] = 0;
 		// A replaced theme is a wholly new nascent theme, so its Improve
 		// track starts fresh. Evolution preserves the track since the
 		// theme is the same one continuing in a new direction.
@@ -370,10 +379,13 @@ function buildThemeUpdate({
  * p.190) — optionally the discarded theme's title preserved as a regular
  * power tag.
  */
-async function seedReplacementTheme(theme, { keepOldTitleAsPower, oldName }) {
+async function seedReplacementTheme(
+	theme,
+	{ keepOldTitleAsPower, oldName, newWeakness },
+) {
 	const toCreate = [
 		weaknessTagEffect({
-			name: t("LITM.Ui.evolution_new_weakness_placeholder"),
+			name: newWeakness || t("LITM.Ui.evolution_new_weakness_placeholder"),
 			isActive: true,
 		}),
 	];
@@ -390,7 +402,7 @@ async function seedReplacementTheme(theme, { keepOldTitleAsPower, oldName }) {
  * onto an already-full track (no crossing, but the player needs to know).
  * Fellowship themes never reach this — the caller short-circuits.
  */
-async function applyPromiseToActor(actor, promiseGained) {
+export async function applyPromiseToActor(actor, promiseGained) {
 	const {
 		update: actorUpdate,
 		newPromise,
@@ -432,6 +444,7 @@ async function applyTransformation({
 	isFellowship,
 	keepOldTitleAsPower = false,
 	oldName = "",
+	newWeakness = "",
 }) {
 	// Fellowship themes never mark Promise (Core Book p.193).
 	const promiseGained = isFellowship ? 0 : 1 + traded.length;
@@ -473,7 +486,11 @@ async function applyTransformation({
 	await theme.update(update);
 
 	if (mode === "replace") {
-		await seedReplacementTheme(theme, { keepOldTitleAsPower, oldName });
+		await seedReplacementTheme(theme, {
+			keepOldTitleAsPower,
+			oldName,
+			newWeakness,
+		});
 	}
 
 	// Mark Promise on the hero. Per Core Book p.193, reaching 5 triggers
@@ -613,6 +630,7 @@ async function submitExpand({
 		newThemebook,
 		newLevel,
 		newQuest,
+		newWeakness: `${fd.weakness ?? ""}`.trim(),
 	});
 	await markSourceMessageResolved(messageId);
 	close();
@@ -657,6 +675,7 @@ export async function applyDroppedTheme({ actor, theme, dropped }) {
 		...kitThemeUpdate(dropped),
 		"system.improve.value": 0,
 		"system.nascentImprovements": 2,
+		"system.nascentPending": 0,
 	};
 	// Fellowship themes never mark Promise (Core Book p.193).
 	const promiseGained = isFellowship ? 0 : 1 + totalTradeCap(replacedCaps);
@@ -724,10 +743,24 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 
 	#dragDrop = null;
 
+	/** Settles {@link ThemeEvolutionWizard#done}. */
+	#settle;
+
 	constructor(options = {}) {
 		super(options);
 		this.actorId = options.actorId;
 		this.themeId = options.themeId;
+		// Replace is the only path, whatever the tracks say: a Scarring
+		// Sacrifice's price (Core Book p.159) is a theme replaced as p.192 does.
+		this.forceReplace = !!options.forceReplace;
+		/**
+		 * Resolves true once the theme was transformed, false when the wizard
+		 * closed without it — so a caller can wait on the player's answer.
+		 * @type {Promise<boolean>}
+		 */
+		this.done = new Promise((resolve) => {
+			this.#settle = resolve;
+		});
 		// Optional: chat message that triggered the wizard. On successful
 		// confirmation, we flag the message so its footer button hides.
 		this.messageId = options.messageId ?? null;
@@ -749,6 +782,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 	get title() {
 		const theme = getTheme(this);
 		if (!theme) return t("LITM.Ui.theme_evolution_title");
+		if (this.forceReplace) return t("LITM.Ui.theme_replacement_title");
 		const { defaultMode, milestoneFull, abandonFull } = availableModes(theme);
 		if (milestoneFull && abandonFull) {
 			return t("LITM.Ui.theme_transformation_title");
@@ -776,8 +810,12 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		}));
 
 		const isFellowship = !!theme.system.isFellowship;
-		const { defaultMode, milestoneFull, abandonFull } = availableModes(theme);
-		const showModeSelect = milestoneFull && abandonFull;
+		const modes = availableModes(theme);
+		const { milestoneFull, abandonFull } = modes;
+		const defaultMode = this.forceReplace ? "replace" : modes.defaultMode;
+		// Keeping the old title as a power tag belongs to Inexorable Failure
+		// (p.190), so a forced Replace offers no choice of path either.
+		const showModeSelect = !this.forceReplace && milestoneFull && abandonFull;
 		const revisable = getRevisableParts(theme);
 		const tradeCaps = getTradeCaps(revisable);
 		const totalCap = totalTradeCap(tradeCaps);
@@ -791,7 +829,10 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			this.themeId,
 		);
 		const expandAvailable =
-			!isFellowship && milestoneFull && otherThemes.length > 0;
+			!this.forceReplace &&
+			!isFellowship &&
+			milestoneFull &&
+			otherThemes.length > 0;
 
 		const modeOptions = [
 			{ value: "evolve", label: t("LITM.Ui.evolve_theme") },
@@ -909,6 +950,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			// A refused drop changed nothing: leave the wizard and its chat card be.
 			if (!applied) return false;
 			await markSourceMessageResolved(this.messageId);
+			this.#settle(true);
 			this.close();
 			theme.sheet?.render(true, { focus: true });
 			return true;
@@ -1002,7 +1044,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		}
 
 		const fd = new foundry.applications.ux.FormDataExtended(html).object;
-		const mode = fd.mode || currentMode(html);
+		const mode = this.forceReplace ? "replace" : fd.mode || currentMode(html);
 		const isFellowship = !!theme.system.isFellowship;
 		const newName = `${fd.name ?? ""}`.trim();
 		const newThemebook = `${fd.themebook ?? ""}`.trim();
@@ -1012,6 +1054,20 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		if (!newName) {
 			ui.notifications?.warn(t("LITM.Ui.evolution_name_required"));
 			return;
+		}
+
+		// A new theme — Replace, or the one Expand replaces — needs its one
+		// weakness tag and its Quest (Core Book p.192).
+		const newWeakness = `${fd.weakness ?? ""}`.trim();
+		if (mode !== "evolve") {
+			if (!newWeakness) {
+				ui.notifications?.warn(t("LITM.Ui.evolution_weakness_required"));
+				return;
+			}
+			if (!newQuest.trim()) {
+				ui.notifications?.warn(t("LITM.Ui.evolution_quest_required"));
+				return;
+			}
 		}
 
 		if (mode === "expand") {
@@ -1024,7 +1080,10 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 				newLevel,
 				newQuest,
 				messageId: this.messageId,
-				close: () => this.close(),
+				close: () => {
+					this.#settle(true);
+					this.close();
+				},
 			});
 		}
 
@@ -1066,10 +1125,18 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			isFellowship,
 			keepOldTitleAsPower,
 			oldName: theme.name,
+			newWeakness,
 		});
 		await markSourceMessageResolved(this.messageId);
+		this.#settle(true);
 		this.close();
 		theme.sheet?.render(true, { focus: true });
+	}
+
+	_onClose(options) {
+		super._onClose(options);
+		// Closed without a transformation: a no-op once `done` has settled.
+		this.#settle(false);
 	}
 }
 

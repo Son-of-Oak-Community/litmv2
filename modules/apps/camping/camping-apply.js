@@ -5,6 +5,7 @@ import {
 	StatusTagData,
 } from "../../active-effects/status-tag-data.js";
 import { parseTagString } from "../../item/action/tag-string.js";
+import { markImprove } from "../../item/theme/nascent-theme.js";
 import { completeTrackUpdate, fireTrackCompletion } from "../../system/chat.js";
 import { Sockets } from "../../system/sockets.js";
 import { findFellowshipTheme, getStoryTagSidebar } from "../../utils.js";
@@ -568,8 +569,10 @@ export async function applyOperations(operations) {
 	// Camp-mode Improves — `bumpTrack` already clamped newValue at the
 	// track max, so the third mark lands exactly on the boundary
 	// `detectTrackCompletion` checks.
+	// A nascent theme owes power tags for them (p.192), as anywhere else.
 	for (const { theme, owner, newValue } of operations.improves) {
-		await completeTrackUpdate(theme, TRACK_PATHS.improve, newValue, owner);
+		const marks = newValue - (theme.system?.improve?.value ?? 0);
+		if (marks > 0) await markImprove(theme, owner, undefined, { marks });
 	}
 
 	// Abandon / Milestone Quest marks from Reflect — same clamp +
@@ -601,6 +604,11 @@ export async function applyOperations(operations) {
 	// now the rare double-target case requires GM coordination.
 	const improveMax = trackMax("improve");
 	for (const { theme, owner, sourceHero } of operations.improvements) {
+		// A nascent theme gains a power tag for an improvement (p.192).
+		if (theme.system?.nascentTagsToOwe > 0) {
+			await markImprove(theme, owner, sourceHero);
+			continue;
+		}
 		const current = theme.system?.improve?.value ?? 0;
 		if (current < improveMax) {
 			await theme.update({ "system.improve.value": improveMax });

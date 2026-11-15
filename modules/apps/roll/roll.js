@@ -9,6 +9,8 @@ import { LitmSettings } from "../../system/settings.js";
 import { localize as t } from "../../utils.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 import { isTagConcealed, maskConcealedTags } from "./concealment.js";
+import { sacrificeThemeView } from "./sacrifice-price.js";
+import { graceBonusLabel } from "../../actor/hero/secret-grace.js";
 
 export class LitmRoll extends foundry.dice.Roll {
 	static CHAT_TEMPLATE = "systems/litmv2/templates/chat/message.html";
@@ -105,12 +107,11 @@ export class LitmRoll extends foundry.dice.Roll {
 		return { label: "consequences", description: "LITM.Ui.roll_failure" };
 	}
 
-	#getSacrificeThemeName() {
+	#getSacrificeTheme() {
 		const themeId = this.litm.sacrificeThemeId;
 		if (!themeId) return null;
-		const actor = this.actor;
-		const theme = actor?.items?.get(themeId);
-		return theme?.name || null;
+		const theme = this.actor?.items?.get(themeId);
+		return theme?.name ? sacrificeThemeView(theme) : null;
 	}
 
 	get modifier() {
@@ -138,7 +139,13 @@ export class LitmRoll extends foundry.dice.Roll {
 			modifier: isPrivate ? "???" : this.modifier,
 			tradePower: this.litm.tradePower || 0,
 			sacrificeLevel: this.litm.sacrificeLevel || null,
-			sacrificeThemeName: this.#getSacrificeThemeName(),
+			// The Narrator's Secret Grace on a Sacrifice (p.159), signed; empty at 0.
+			sacrificeBonus: this.litm.sacrificeBonus
+				? `${this.litm.sacrificeBonus > 0 ? "+" : ""}${this.litm.sacrificeBonus}`
+				: "",
+			// Rendered per viewer: the Narrator's Secret Grace is a bonus to players.
+			sacrificeBonusLabel: graceBonusLabel(),
+			sacrificeTheme: this.#getSacrificeTheme(),
 			// Grave's price is "a status at the tier that kills you", which
 			// tracks the world's track depth rather than a fixed 6.
 			maxStatusTier: maxStatusTier(),
@@ -158,15 +165,8 @@ export class LitmRoll extends foundry.dice.Roll {
 				(this.litm.weaknessTags ?? []).some((tag) =>
 					IMPROVE_MARKING_TAG_TYPES.has(tag.type),
 				),
-			// A Miracle on Painful lessens the price to nothing — there is
-			// no completion step to perform, so the button is suppressed.
-			canCompleteSacrifice:
-				this.litm.type === "sacrifice" &&
-				!this.litm.sacrificeCompleted &&
-				!(
-					this.litm.sacrificeLevel === "painful" &&
-					this.outcome?.label === "success"
-				),
+			// The render hook drops the button unless the card is the open debt.
+			canCompleteSacrifice: this.litm.type === "sacrifice",
 		};
 
 		return foundry.applications.handlebars.renderTemplate(template, chatData);

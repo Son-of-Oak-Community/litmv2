@@ -8,7 +8,7 @@ group header. Other tags render as inline chips that wrap. --}}
 		<section class="litm--tag-picker__group">
 			{{#if group.titleEntry}}
 			<label class="litm--tag-picker__header litm--tag-picker__header--selectable">
-				<input type="radio" name="picked" value="{{group.titleEntry.index}}" />
+				<input type="radio" name="picked" value="{{group.titleEntry.index}}" {{checked group.titleEntry.checked}} />
 				{{#if group.img}}<img class="litm--tag-picker__group-img" src="{{group.img}}" alt="" />{{/if}}
 				<span class="litm--tag-picker__title litm-{{group.titleEntry.type}}"
 					data-text="{{group.titleEntry.name}}">{{group.titleEntry.name}}</span>
@@ -24,7 +24,7 @@ group header. Other tags render as inline chips that wrap. --}}
 				{{#each group.entries as |entry|}}
 				<li>
 					<label class="litm--tag-picker__chip">
-						<input type="radio" name="picked" value="{{entry.index}}" />
+						<input type="radio" name="picked" value="{{entry.index}}" {{checked entry.checked}} />
 						<span class="litm--tag-picker__name litm-{{entry.type}}" data-text="{{entry.name}}">{{entry.name}}</span>
 					</label>
 				</li>

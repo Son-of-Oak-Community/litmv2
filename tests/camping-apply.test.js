@@ -1315,3 +1315,52 @@ describe("buildOperations — place of stay", () => {
 		expect(recap.placeOfStay.threats).toEqual([]);
 	});
 });
+
+// Core Book p.192: a replaced theme takes a power tag for an Improve mark,
+// in camp as anywhere else.
+describe("applyOperations — a nascent theme in camp", () => {
+	beforeEach(() => {
+		vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
+		Hooks.callAll.mockClear();
+	});
+
+	function nascentTheme() {
+		const theme = fakeItem({ type: "theme", effects: [] });
+		theme.system = {
+			improve: { value: 0 },
+			nascentPending: 0,
+			nascentTagsToOwe: 2,
+		};
+		const hero = fakeActor({ items: [theme] });
+		hero.system = { themes: [{ theme, tags: [] }] };
+		return { theme, hero };
+	}
+
+	it("owes a power tag for a camp-mode Improve mark", async () => {
+		const { theme, hero } = nascentTheme();
+		const state = defaultCampingState();
+		setActivity(state, hero.id, 0, "reflect");
+		setReflectTarget(state, hero.id, 0, theme.id);
+		const { operations } = buildOperations(state, world({ heroes: [hero] }));
+		await applyOperations(operations);
+
+		expect(theme.update).toHaveBeenCalledWith({ "system.nascentPending": 1 });
+		expect(theme.update).not.toHaveBeenCalledWith(
+			expect.objectContaining({ "system.improve.value": expect.anything() }),
+		);
+	});
+
+	it("owes a power tag for a sojourn improvement instead of filling Improve", async () => {
+		const { theme, hero } = nascentTheme();
+		const state = defaultCampingState();
+		setType(state, "sojourn");
+		setActivity(state, hero.id, 0, "reflect");
+		setReflectTarget(state, hero.id, 0, theme.id);
+		const { operations } = buildOperations(state, world({ heroes: [hero] }));
+		expect(operations.improvements).toHaveLength(1);
+		await applyOperations(operations);
+
+		expect(theme.update).toHaveBeenCalledWith({ "system.nascentPending": 1 });
+		expect(theme.update).not.toHaveBeenCalledWith({ "system.improve.value": 3 });
+	});
+});

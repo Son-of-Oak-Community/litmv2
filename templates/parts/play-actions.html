@@ -19,11 +19,12 @@
 			data-tooltip="{{localize 'LITM.Actions.app_title'}}" aria-label="{{localize 'LITM.Actions.app_title'}}">
 			<i class="fa-solid fa-scroll" aria-hidden="true"></i>
 		</button>
-		<button type="button" class="litm--sacrifice-button" data-action="openSacrificeRoll"
-			data-tooltip="{{localize 'LITM.Ui.roll_sacrifice'}}"
-			aria-label="{{localize 'LITM.Ui.roll_sacrifice'}}">
-			<i class="fa-solid fa-skull" aria-hidden="true"></i>
+		{{#if showSecretGrace}}
+		<button type="button" data-action="openSecretGrace"
+			data-tooltip="{{localize 'LITM.Ui.sacrifice_grace'}}" aria-label="{{localize 'LITM.Ui.sacrifice_grace'}}">
+			<i class="fa-solid fa-dove" aria-hidden="true"></i>
 		</button>
+		{{/if}}
 		{{#if showCamping}}
 		<button type="button" data-action="openCamping"
 			data-tooltip="{{localize 'LITM.Ui.camping_open'}}" aria-label="{{localize 'LITM.Ui.camping_open'}}">

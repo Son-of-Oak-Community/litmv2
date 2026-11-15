@@ -58,6 +58,14 @@ function _prepareCharacterOnCreate() {
 		const prototypeToken = tokenDefaults[data.type] ?? null;
 		if (prototypeToken) actor.updateSource({ prototypeToken });
 
+		// A duplicated or imported Hero must not bring an owed Sacrifice along:
+		// the debt names the original's card, which the copy can never pay.
+		if (actor.flags?.litmv2?.[FLAGS.pendingSacrifice])
+			actor.updateSource({
+				[`flags.litmv2.${FLAGS.pendingSacrifice}`]:
+					new foundry.data.operators.ForcedDeletion(),
+			});
+
 		// Fellowship actors default to OWNER permission for all players
 		if (data.type === "fellowship") {
 			actor.updateSource({

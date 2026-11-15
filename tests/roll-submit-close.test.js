@@ -17,10 +17,22 @@ describe("roll dialog submit closes only on success", () => {
 	it("keeps the window open when a guard refuses the roll", async () => {
 		const dialog = {
 			isOwner: true,
-			painfulSacrificeHasNoTarget: () => true,
+			rollRefusal: () => "sacrifice",
 			close: vi.fn(),
 		};
 		await LitmRollDialog._onSubmit.call(dialog, null, null, {});
+		expect(dialog.close).not.toHaveBeenCalled();
+	});
+
+	it("keeps the window open when an unpaid Sacrifice refuses the roll", async () => {
+		const dialog = {
+			isOwner: true,
+			rollRefusal: () => "unpaidSacrifice",
+			extractRollData: vi.fn(),
+			close: vi.fn(),
+		};
+		await LitmRollDialog._onSubmit.call(dialog, null, null, {});
+		expect(dialog.extractRollData).not.toHaveBeenCalled();
 		expect(dialog.close).not.toHaveBeenCalled();
 	});
 
@@ -28,7 +40,7 @@ describe("roll dialog submit closes only on success", () => {
 		const dialog = {
 			isOwner: true,
 			requiresApproval: true,
-			painfulSacrificeHasNoTarget: () => false,
+			rollRefusal: () => null,
 			extractRollData: () => ({ type: "quick", tags: [] }),
 			_createModerationRequest: vi.fn(),
 			suspendForModeration: vi.fn(),
@@ -42,7 +54,7 @@ describe("roll dialog submit closes only on success", () => {
 		const dialog = {
 			isOwner: true,
 			requiresApproval: true,
-			painfulSacrificeHasNoTarget: () => false,
+			rollRefusal: () => null,
 			extractRollData: () => ({ type: "quick", tags: [] }),
 			_createModerationRequest: vi.fn(),
 			close: vi.fn(),
