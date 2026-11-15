@@ -168,10 +168,21 @@ function rewriteTagString(text, replace) {
 /** Close the gaps a removed token leaves: doubled separators and spaces. */
 function tidyTagString(text) {
 	return text
-		.replace(/,\s*,/g, ",")
+		.replace(/,(?:\s*,)+/g, ",")
 		.replace(/^\s*,|,\s*$/g, "")
 		.replace(/ {2,}/g, " ")
 		.trim();
+}
+
+/**
+ * The text an effect is written into a tag string as when its name is one
+ * the markup cannot hold (a digit, say): not a token, so only its literal
+ * form finds it again.
+ */
+function literalTagRe(kind, name) {
+	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const suffix = kind === "status" ? "-\\d*" : "!?";
+	return new RegExp(`\\[${escaped}${suffix}\\]`, "gi");
 }
 
 /**
@@ -214,7 +225,11 @@ export function removeFromTagString(text, kind, name) {
 		removed = true;
 		return "";
 	});
-	return removed ? tidyTagString(rewritten) : text;
+	if (removed) return tidyTagString(rewritten);
+	// Nothing the parser reads as that tag. A name the markup cannot hold
+	// was still appended as text when its effect was created.
+	const literal = literalTagRe(kind, name);
+	return literal.test(text) ? tidyTagString(text.replace(literal, "")) : text;
 }
 
 /**

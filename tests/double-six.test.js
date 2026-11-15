@@ -11,11 +11,27 @@ let DoubleSix;
 
 /** Foundry's `Die#total` and label, cut down to what the term overrides. */
 class StubDie {
-	constructor({ number = 1, faces, results = [] } = {}) {
+	constructor({ number = 1, faces, results = [], options = {} } = {}) {
 		this.number = number;
 		this.faces = faces;
 		this.results = results;
+		this.options = options;
 		this._evaluated = results.length > 0;
+	}
+
+	/** Foundry rolls the results here; the fixtures bring their own. */
+	_evaluate() {
+		this._evaluated = true;
+		return this;
+	}
+
+	/** What Foundry stores on the chat message. */
+	toJSON() {
+		return {
+			number: this.number,
+			results: this.results,
+			options: this.options,
+		};
 	}
 
 	get total() {
@@ -38,11 +54,15 @@ class StubDie {
 	}
 }
 
+const results = (faces) => faces.map((result) => ({ result, active: true }));
+
+/** A term rolled now, landing on these faces. */
 const rolled = (...faces) =>
-	new DoubleSix({
-		number: faces.length,
-		results: faces.map((result) => ({ result, active: true })),
-	});
+	new DoubleSix({ number: faces.length, results: results(faces) })._evaluate();
+
+/** A term rebuilt from a chat message, as every client does on load. */
+const stored = (faces, options = {}) =>
+	new DoubleSix({ number: faces.length, results: results(faces), options });
 
 beforeAll(async () => {
 	foundry.dice.terms = { ...foundry.dice.terms, Die: StubDie };
@@ -95,12 +115,35 @@ describe("DoubleSix", () => {
 	it("leaves a discarded die out of the total", () => {
 		const term = new DoubleSix({
 			number: 2,
+			options: { pips: true },
 			results: [
 				{ result: 9, active: true },
 				{ result: 12, active: false },
 			],
 		});
 		expect(term.total).toBe(3);
+	});
+
+	it("honours a counted result and a negative number of dice", () => {
+		const counted = new DoubleSix({
+			number: 2,
+			options: { pips: true },
+			results: [
+				{ result: 9, active: true, count: 1 },
+				{ result: 8, active: true },
+			],
+		});
+		expect(counted.total).toBe(3);
+
+		const negative = new DoubleSix({
+			number: -2,
+			options: { pips: true },
+			results: [
+				{ result: 9, active: true },
+				{ result: 8, active: true },
+			],
+		});
+		expect(negative.total).toBe(-5);
 	});
 
 	it("has no total before it is rolled", () => {
@@ -121,6 +164,38 @@ describe("DoubleSix", () => {
 		expect(css[3]).toContain("min");
 		expect(css[0]).not.toContain("max");
 		expect(css[1]).not.toContain("min");
+	});
+
+	it("keeps counting pips once the roll is stored and loaded again", () => {
+		const reloaded = new DoubleSix(rolled(7, 7).toJSON());
+		expect(reloaded.total).toBe(2);
+		expect(reloaded.getResultLabel(reloaded.results[0])).toBe("1");
+	});
+
+	// A card posted before the die counted pips re-renders from its stored
+	// term. Its printed total and its outcome were worked out the old way, so
+	// the term must go on reading the old way or the card changes its result.
+	describe("a term rolled before it counted pips", () => {
+		it("keeps the total it was rolled with", () => {
+			expect(stored([7, 7]).total).toBe(7);
+			expect(stored([6, 6]).total).toBe(6);
+			expect(stored([1, 2]).total).toBe(2);
+		});
+
+		it("keeps showing its raw faces", () => {
+			const term = stored([7, 12]);
+			expect(term.results.map((r) => term.getResultLabel(r))).toEqual([
+				"7",
+				"12",
+			]);
+			expect(term.getResultCSS(term.results[1])).toContain("max");
+			expect(term.getResultCSS(term.results[0])).not.toContain("min");
+		});
+
+		it("is told apart by the stamp alone", () => {
+			expect(stored([7, 7], { pips: true }).total).toBe(2);
+			expect(stored([7, 7], { flavor: "x" }).total).toBe(7);
+		});
 	});
 
 	it("registers only when themed dice are on", async () => {

@@ -124,6 +124,26 @@ describe("removeFromTagString", () => {
 		expect(removeFromTagString("", "story", "rope")).toBe("");
 	});
 
+	it("leaves one separator behind adjacent copies", () => {
+		expect(removeFromTagString("[a], [fog], [fog], [b]", "story", "fog")).toBe(
+			"[a], [b]",
+		);
+	});
+
+	// A digit is not valid in a name, so `[level 2]` is text, not a token.
+	// The sheet still appends it when such an effect is created.
+	it("removes the text of a name the markup cannot hold", () => {
+		expect(removeFromTagString("[fog], [level 2]", "story", "level 2")).toBe(
+			"[fog]",
+		);
+		expect(removeFromTagString("[fog], [level 2!]", "story", "level 2")).toBe(
+			"[fog]",
+		);
+		expect(removeFromTagString("[plan 9-3], [fog]", "status", "plan 9")).toBe(
+			"[fog]",
+		);
+	});
+
 	it("keeps prose around the markup", () => {
 		expect(
 			removeFromTagString("A cold night. [fog] and [rope].", "story", "fog"),
