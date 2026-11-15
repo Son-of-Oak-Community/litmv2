@@ -4,7 +4,6 @@ import {
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ThemeBrowser } from "../../apps/theme-browser.js";
-import { liveGraceMoments, secretGraceTier } from "../hero/secret-grace.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import {
 	ACTOR_TYPES,
@@ -13,10 +12,8 @@ import {
 	ITEM_TYPES,
 } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
-import {
-	findFellowshipTheme,
-	levelIcon,
-} from "../../utils.js";
+import { findFellowshipTheme, levelIcon } from "../../utils.js";
+import { liveGraceMoments, secretGraceTier } from "../hero/secret-grace.js";
 
 /**
  * Summary data for each linked hero in the fellowship.
@@ -326,7 +323,7 @@ export class FellowshipSheet extends LitmActorSheet {
 
 		// Regular click: add to user's hero roll dialog
 		const hero = game.user.character;
-		if (!hero || hero.type !== "hero") return;
+		if (hero?.type !== "hero") return;
 
 		hero.sheet?.selectTagForRoll?.(tagType, tagId, tagName, {
 			shiftKey: event.shiftKey,

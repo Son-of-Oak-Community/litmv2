@@ -93,7 +93,9 @@ body.theme-dark .litm-journal .journal-entry-content {
 	background: none;
 }
 
-body.theme-dark .litm-journal :is(.notes, .themekit-big-box, .themekit-box, .tropes-wrapper .trope) {
+body.theme-dark
+	.litm-journal
+	:is(.notes, .themekit-big-box, .themekit-box, .tropes-wrapper .trope) {
 	--me-ink: #191813;
 	--me-red: #742a2b;
 	--me-brown: #724a32;

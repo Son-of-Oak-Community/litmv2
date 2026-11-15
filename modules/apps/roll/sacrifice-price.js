@@ -1,11 +1,11 @@
 import { maxStatusTier } from "../../active-effects/status-tag-data.js";
+import { spendSecretGrace } from "../../actor/hero/secret-grace.js";
 import { FLAGS, POWER_TAG_TYPES } from "../../system/config.js";
 import { dialogContent } from "../../system/renderers/renderer-utils.js";
 import { levelIcon, localize as t } from "../../utils.js";
+import { ThemeEvolutionWizard } from "../theme-evolution.js";
 import { resolveSharedRollOwner } from "./roll-authority.js";
 import { effectiveSacrificeLevel } from "./sacrifice-rules.js";
-import { spendSecretGrace } from "../../actor/hero/secret-grace.js";
-import { ThemeEvolutionWizard } from "../theme-evolution.js";
 
 /**
  * Paying a Sacrifice (Core Book p.159). The price a Sacrifice roll leaves owing
@@ -93,9 +93,7 @@ export function paymentDialogId(actor) {
 /** Whether `actor` still owes exactly the debt `debt` was read from. */
 function stillOwes(actor, debt) {
 	const now = pendingSacrifice(actor);
-	return (
-		!!now && now.messageId === debt.messageId && now.level === debt.level
-	);
+	return !!now && now.messageId === debt.messageId && now.level === debt.level;
 }
 
 /**
@@ -166,7 +164,13 @@ export function payPendingSacrifice(actor) {
  * @param {object} [options.dialog] Extra DialogV2 options (classes, position).
  * @returns {Promise<*>} pay's answer, FORGIVE, or null when cancelled or settled
  */
-async function askToPay({ actor, debt, content, pay = () => true, dialog = {} }) {
+async function askToPay({
+	actor,
+	debt,
+	content,
+	pay = () => true,
+	dialog = {},
+}) {
 	const answer = await foundry.applications.api.DialogV2.wait({
 		id: paymentDialogId(actor),
 		window: { title: t("LITM.Ui.sacrifice_confirm_title") },
@@ -206,12 +210,14 @@ async function askToPay({ actor, debt, content, pay = () => true, dialog = {} })
 	return null;
 }
 
-function notifyPaid(actor, effective, result) {
+function notifyPaid(actor, _effective, result) {
 	// The Replace wizard has announced the new theme already.
 	if (result.replaced) return;
 	if (result.nothing) {
 		ui.notifications.info(
-			game.i18n.format("LITM.Ui.sacrifice_nothing_to_pay", { name: actor.name }),
+			game.i18n.format("LITM.Ui.sacrifice_nothing_to_pay", {
+				name: actor.name,
+			}),
 		);
 	} else if (result.statusName) {
 		ui.notifications.info(
@@ -316,7 +322,9 @@ async function replaceSacrificedTheme(actor, theme) {
 	if (theme.type !== "theme") {
 		await actor.deleteEmbeddedDocuments("Item", [theme.id]);
 		ui.notifications.info(
-			game.i18n.format("LITM.Ui.sacrifice_story_theme_lost", { theme: themeName }),
+			game.i18n.format("LITM.Ui.sacrifice_story_theme_lost", {
+				theme: themeName,
+			}),
 		);
 		return { themeName, replaced: true };
 	}
@@ -443,9 +451,7 @@ async function applyThemeSacrifice(
 		return { themeName, tagName: tag.name };
 	}
 
-	const powerEffects = theme.effects.filter((e) =>
-		POWER_TAG_TYPES.has(e.type),
-	);
+	const powerEffects = theme.effects.filter((e) => POWER_TAG_TYPES.has(e.type));
 	if (powerEffects.length) {
 		await theme.updateEmbeddedDocuments(
 			"ActiveEffect",

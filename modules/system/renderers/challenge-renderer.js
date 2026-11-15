@@ -79,9 +79,13 @@ export async function renderChallenge(actor) {
 	const vignettes = actor.items.filter((i) => i.type === "vignette");
 	const might =
 		(sys.derivedMight ?? sys.might)?.filter((m) => m.description) ?? [];
-	const displayTags = playerVisibleTagString(sys.derivedTags || sys.tags, actor, {
-		limits: allLimits,
-	});
+	const displayTags = playerVisibleTagString(
+		sys.derivedTags || sys.tags,
+		actor,
+		{
+			limits: allLimits,
+		},
+	);
 	const hasLeft =
 		limits.length || displayTags || might.length || sys.specialFeatures;
 	const addonThreats = sys.addonThreats || [];

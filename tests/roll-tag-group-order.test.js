@@ -30,7 +30,12 @@ describe("roll tag groups by category", () => {
 					parent: null,
 					system: { targetHero: { id: "h1" } },
 				},
-				{ uuid: "e3", name: "Father's yew bow", type: "power_tag", parent: theme },
+				{
+					uuid: "e3",
+					name: "Father's yew bow",
+					type: "power_tag",
+					parent: theme,
+				},
 			],
 		};
 		hero.appliedEffects[1].parent = hero;
@@ -49,27 +54,45 @@ describe("roll tag groups by category", () => {
 	});
 
 	it("orders the roller's own Hero and Fellowship tabs the same way", () => {
-		const fx = (name, type) => ({ uuid: name, name, type, active: true, system: {} });
+		const fx = (name, type) => ({
+			uuid: name,
+			name,
+			type,
+			active: true,
+			system: {},
+		});
 		const dialog = {
 			getSelection: () => ({}),
 			actor: {
 				system: {
-					themes: [{ theme: { name: "Theme" }, tags: [fx("bow", "power_tag")] }],
-					storyThemes: [{ theme: { name: "Story Theme" }, tags: [fx("x", "power_tag")] }],
+					themes: [
+						{ theme: { name: "Theme" }, tags: [fx("bow", "power_tag")] },
+					],
+					storyThemes: [
+						{ theme: { name: "Story Theme" }, tags: [fx("x", "power_tag")] },
+					],
 					storyTags: [fx("rope", "story_tag")],
 					backpackItem: { name: "Backpack" },
 					statusEffects: [fx("hurt", "status_tag")],
 					relationships: [fx("friend", "relationship_tag")],
 					fellowship: {
-						themes: [{ theme: { name: "Fellowship" }, tags: [fx("bond", "fellowship_tag")] }],
+						themes: [
+							{
+								theme: { name: "Fellowship" },
+								tags: [fx("bond", "fellowship_tag")],
+							},
+						],
 						tags: [fx("camp", "story_tag"), fx("tired", "status_tag")],
 					},
 				},
 			},
 		};
-		const { characterTagGroups, fellowshipTagGroups } = buildOwnerContext(dialog, {
-			decorateTag: (tag) => tag,
-		});
+		const { characterTagGroups, fellowshipTagGroups } = buildOwnerContext(
+			dialog,
+			{
+				decorateTag: (tag) => tag,
+			},
+		);
 		expect(characterTagGroups.map((g) => g.themeName)).toEqual([
 			"LITM.Terms.statuses",
 			"Backpack",

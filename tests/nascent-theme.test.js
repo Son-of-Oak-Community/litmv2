@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeAdvancementApp } from "../modules/apps/theme-advancement.js";
-import { markImprove, settleNascent } from "../modules/item/theme/nascent-theme.js";
+import {
+	markImprove,
+	settleNascent,
+} from "../modules/item/theme/nascent-theme.js";
 import { ThemeData } from "../modules/item/theme/theme-data.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
@@ -18,13 +21,22 @@ import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 function themeWith({ power = 0, nascent = 2, pending = 0, improve = 0 } = {}) {
 	const owner = fakeActor({ type: "hero" });
 	const effects = [
-		fakeEffect({ type: "power_tag", name: "Title", system: { isTitleTag: true } }),
+		fakeEffect({
+			type: "power_tag",
+			name: "Title",
+			system: { isTitleTag: true },
+		}),
 		...Array.from({ length: power }, (_, i) =>
 			fakeEffect({ type: "power_tag", name: `power ${i}`, system: {} }),
 		),
 		fakeEffect({ type: "weakness_tag", name: "Restless", system: {} }),
 	];
-	const theme = fakeItem({ type: "theme", name: "Wanderer", parent: owner, effects });
+	const theme = fakeItem({
+		type: "theme",
+		name: "Wanderer",
+		parent: owner,
+		effects,
+	});
 	theme.system = new ThemeData({
 		nascentImprovements: nascent,
 		nascentPending: pending,
@@ -113,7 +125,10 @@ describe("markImprove", () => {
 describe("adding an owed power tag", () => {
 	function addPowerTag(theme, owner, name = "new tag") {
 		game.actors.get = vi.fn(() => owner);
-		const app = new ThemeAdvancementApp({ actorId: owner.id, themeId: theme.id });
+		const app = new ThemeAdvancementApp({
+			actorId: owner.id,
+			themeId: theme.id,
+		});
 		app.close = vi.fn();
 		foundry.applications.ux = {
 			FormDataExtended: class {

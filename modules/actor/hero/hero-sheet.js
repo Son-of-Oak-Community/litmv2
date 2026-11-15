@@ -6,14 +6,14 @@ import {
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ActionsApp } from "../../apps/actions-app.js";
-import { ThemeBrowser } from "../../apps/theme-browser.js";
-import { applyThemeTemplate } from "../../apps/theme-template.js";
 import { findBurnedSelection } from "../../apps/roll/burn-cap.js";
 import {
 	blockPlayerInitiatedRoll,
 	canUserInitiateRoll,
 } from "../../apps/roll/roll-pipeline.js";
 import { requestRollFromNarrator } from "../../apps/roll/roll-request.js";
+import { ThemeBrowser } from "../../apps/theme-browser.js";
+import { applyThemeTemplate } from "../../apps/theme-template.js";
 import { LitmActorSheet } from "../../sheets/base-actor-sheet.js";
 import { FLAGS } from "../../system/config.js";
 import { LitmSettings } from "../../system/settings.js";
@@ -175,7 +175,9 @@ export class HeroSheet extends LitmActorSheet {
 	 */
 	async #replaceThemeWith(theme, source) {
 		const confirmed = await foundry.applications.api.DialogV2.confirm({
-			window: { title: game.i18n.localize("LITM.Ui.theme_browser_replace_title") },
+			window: {
+				title: game.i18n.localize("LITM.Ui.theme_browser_replace_title"),
+			},
 			content: `<p>${game.i18n.format("LITM.Ui.theme_browser_replace_body", {
 				current: foundry.utils.escapeHTML(theme.name),
 				source: foundry.utils.escapeHTML(source.name),
@@ -723,7 +725,7 @@ export class HeroSheet extends LitmActorSheet {
 		const effectId = target.closest("[data-effect-id]")?.dataset.effectId;
 		if (!effectId) return;
 		const effect = resolveEffect(effectId, this.document);
-		if (!effect || effect.type !== "status_tag") return;
+		if (effect?.type !== "status_tag") return;
 
 		// Right-click reduces the highest filled tier by 1 (legacy contextmenu behavior).
 		if (event.button === 2) {

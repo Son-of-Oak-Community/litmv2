@@ -52,18 +52,18 @@ describe("Hero sheet roll initiation", () => {
 		game.settings.get.mockReturnValue(false);
 	});
 
-	it.each([
-		false,
-		true,
-	])("blocks a new sheet tag-click roll (shiftKey=%s) when player initiation is off", async (shiftKey) => {
-		const sheet = makeSheet();
-		await clickTag(sheet, { shiftKey });
-		expect(
-			sheet.rollDialogInstance.setCharacterTagState,
-		).not.toHaveBeenCalled();
-		expect(sheet.renderRollDialog).not.toHaveBeenCalled();
-		expect(ui.notifications.info).toHaveBeenCalled();
-	});
+	it.each([false, true])(
+		"blocks a new sheet tag-click roll (shiftKey=%s) when player initiation is off",
+		async (shiftKey) => {
+			const sheet = makeSheet();
+			await clickTag(sheet, { shiftKey });
+			expect(
+				sheet.rollDialogInstance.setCharacterTagState,
+			).not.toHaveBeenCalled();
+			expect(sheet.renderRollDialog).not.toHaveBeenCalled();
+			expect(ui.notifications.info).toHaveBeenCalled();
+		},
+	);
 
 	it("uses the same gate for the programmatic tag-selection entry", () => {
 		const sheet = makeSheet();

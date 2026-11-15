@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StoryTagSidebar } from "../modules/apps/story-tags/story-tag-sidebar.js";
 import { HeroData } from "../modules/actor/hero/hero-data.js";
+import { StoryTagSidebar } from "../modules/apps/story-tags/story-tag-sidebar.js";
 import { LitmConfig } from "../modules/system/config.js";
 import { ContentSources } from "../modules/system/content-sources.js";
 import { Sockets } from "../modules/system/sockets.js";

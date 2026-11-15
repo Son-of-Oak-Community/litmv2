@@ -3,6 +3,10 @@ import {
 	resolveTagActorId,
 } from "../../active-effects/effect-queries.js";
 import { maxStatusTier } from "../../active-effects/status-tag-data.js";
+import {
+	graceBonusLabel,
+	secretGraceTier,
+} from "../../actor/hero/secret-grace.js";
 import { ALL_TAG_TYPES, EFFECT_TAG_ORDER, FLAGS } from "../../system/config.js";
 import { renderAction } from "../../system/renderers/action-renderer.js";
 import { LitmSettings } from "../../system/settings.js";
@@ -46,12 +50,8 @@ import {
 	executeRoll,
 	resolveRollDialogOwnership,
 } from "./roll-pipeline.js";
-import { RollSync } from "./roll-sync.js";
 import { refuseUnpaidSacrifice } from "./roll-request.js";
-import {
-	graceBonusLabel,
-	secretGraceTier,
-} from "../../actor/hero/secret-grace.js";
+import { RollSync } from "./roll-sync.js";
 import {
 	hasPainfulSacrificeTarget,
 	isThemeSpent,
@@ -302,7 +302,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	 */
 	painfulSacrificeHasNoTarget({ quiet = false } = {}) {
 		if (!this.#painfulAllSpent()) return false;
-		if (!quiet) ui.notifications?.warn(t("LITM.Ui.sacrifice_all_spent_warning"));
+		if (!quiet)
+			ui.notifications?.warn(t("LITM.Ui.sacrifice_all_spent_warning"));
 		return true;
 	}
 
@@ -366,7 +367,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// A spent theme is not a valid Painful target — nothing left to scratch.
 		if (this.#sacrificeLevel === "painful" && target.dataset.spent === "true")
 			return;
-		if (target.dataset.storyTheme && !storyThemeMaySacrifice(this.#sacrificeLevel))
+		if (
+			target.dataset.storyTheme &&
+			!storyThemeMaySacrifice(this.#sacrificeLevel)
+		)
 			return;
 		this.#applySacrificeThemeSelection(themeId);
 		this.#dispatchUpdate();
@@ -502,7 +506,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// Only a theme this level may stake: a story theme picked under
 			// Painful does not ride along when the level is raised.
 			sacrificeThemeId: isSacrifice
-				? this.#sacrificeThemeItems().some((i) => i.id === this.#sacrificeThemeId)
+				? this.#sacrificeThemeItems().some(
+						(i) => i.id === this.#sacrificeThemeId,
+					)
 					? this.#sacrificeThemeId
 					: null
 				: undefined,
@@ -2127,10 +2133,16 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// The player sees no bonus before the roll, so neither the grace nor a
 		// total that would give it away; Modifiers is left with nothing then.
 		const hideBonus = isSacrifice && !game.user.isGM;
-		toggle(".litm--roll-dialog-modifiers, .litm--roll-dialog-total-power", hideBonus);
+		toggle(
+			".litm--roll-dialog-modifiers, .litm--roll-dialog-total-power",
+			hideBonus,
+		);
 		toggle(".litm--sacrifice-grace", !isSacrifice);
 		toggle(".litm--sacrifice-level-fieldset", !isSacrifice);
-		toggle(".litm--roll-dialog-tags-fieldset, .litm--roll-dialog-tabs", isSacrifice);
+		toggle(
+			".litm--roll-dialog-tags-fieldset, .litm--roll-dialog-tabs",
+			isSacrifice,
+		);
 		// Only the roller has theme cards; anyone else's tag column is empty.
 		toggle(
 			".litm--roll-dialog-tags-column",
@@ -2283,23 +2295,28 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 				specialImprovements,
 				hasTags: powerTags.length + weaknessTags.length > 0,
 				// A story theme has no Quest tracks or Improve (Core Book p.163).
-				tracks: theme.type === "story_theme" ? [] : [
-					{
-						label: game.i18n.localize("LITM.Themes.abandon"),
-						pips: trackPips(theme.system?.quest?.tracks?.abandon?.value),
-					},
-					{
-						label: game.i18n.localize("LITM.Ui.improve"),
-						pips: trackPips(
-							theme.system?.improve?.value,
-							CONFIG.litmv2.improveThreshold,
-						),
-					},
-					{
-						label: game.i18n.localize("LITM.Themes.milestone"),
-						pips: trackPips(theme.system?.quest?.tracks?.milestone?.value),
-					},
-				],
+				tracks:
+					theme.type === "story_theme"
+						? []
+						: [
+								{
+									label: game.i18n.localize("LITM.Themes.abandon"),
+									pips: trackPips(theme.system?.quest?.tracks?.abandon?.value),
+								},
+								{
+									label: game.i18n.localize("LITM.Ui.improve"),
+									pips: trackPips(
+										theme.system?.improve?.value,
+										CONFIG.litmv2.improveThreshold,
+									),
+								},
+								{
+									label: game.i18n.localize("LITM.Themes.milestone"),
+									pips: trackPips(
+										theme.system?.quest?.tracks?.milestone?.value,
+									),
+								},
+							],
 				spent,
 				storyTheme: theme.type === "story_theme",
 				storyThemeHidden:
@@ -2421,7 +2438,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// A Sacrifice rolls 2d6 + its Secret Grace bonus, nothing else. The
 			// player's total is hidden then, and must not hold the number either.
 			if (this.type === "sacrifice")
-				this.#totalPowerEl.textContent = game.user.isGM ? this.#sacrificeBonus : "";
+				this.#totalPowerEl.textContent = game.user.isGM
+					? this.#sacrificeBonus
+					: "";
 			else if (trade) {
 				const rollPower = totalPower + trade;
 				const spendPower = Math.max(totalPower - trade, 1);

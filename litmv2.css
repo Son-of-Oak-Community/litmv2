@@ -2260,9 +2260,8 @@ section.standard-form.litm-theme-browser-body {
 /* The header part intentionally skips incremental re-renders in edit mode
    (EDITOR_PARTS), so the alias input is always in the DOM and revealed by
    the checkbox state alone */
-.litm-actor .litm--conceal-name-row:not(
-		:has(input[name="system.concealName"]:checked)
-	)
+.litm-actor
+	.litm--conceal-name-row:not(:has(input[name="system.concealName"]:checked))
 	+ input[name="system.alias"] {
 	display: none;
 }
@@ -2867,7 +2866,7 @@ section.standard-form.litm-theme-browser-body {
 	   width instead. Play mode keeps min-content: the name there is
 	   static text, and tight is correct. */
 	.litm-hero-sheet:has([data-application-part="actions"][hidden])
-	.window-content {
+		.window-content {
 		grid-template-columns: max-content minmax(0, 1fr);
 	}
 	.litm-hero-sheet [data-application-part="description"] {
@@ -2882,7 +2881,7 @@ section.standard-form.litm-theme-browser-body {
 	   the natural description height while overflow visually clips
 	   elsewhere; the explicit override lets max-height win. */
 	.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
-	[data-application-part="description"] {
+		[data-application-part="description"] {
 		align-self: center;
 		height: 100%;
 		overflow-y: auto;
@@ -2923,9 +2922,8 @@ section.standard-form.litm-theme-browser-body {
    actively rendered — Camping is already in the strip in play mode. Edit
    mode renders an empty hidden stub for the actions PART, so the frame
    button remains visible there. */
-.litm-hero-sheet:has(
-		[data-application-part="actions"]:not([hidden])
-	) .window-header
+.litm-hero-sheet:has([data-application-part="actions"]:not([hidden]))
+	.window-header
 	> button[data-action="openCamping"] {
 	display: none;
 }
@@ -3424,7 +3422,8 @@ section.standard-form.litm-theme-browser-body {
    other input in a .standard-form lays out. Stacked .form-field columns
    (theme item sheet) deliberately don't get this rule — the bar stays
    left-aligned under its label there. */
-.standard-form .form-group
+.standard-form
+	.form-group
 	> .litm--roll-type-bar:has(.litm--segmented-option--icon) {
 	margin-left: auto;
 }
@@ -3866,7 +3865,9 @@ section.standard-form.litm-theme-browser-body {
 	white-space: nowrap;
 }
 
-.litm--roll-dialog-tabs [data-tab].active span:not(.litm--roll-dialog-tab-power) {
+.litm--roll-dialog-tabs
+	[data-tab].active
+	span:not(.litm--roll-dialog-tab-power) {
 	text-decoration: underline;
 	text-underline-offset: 0.2em;
 }
@@ -4348,10 +4349,10 @@ section.standard-form.litm-theme-browser-body {
 		align-items: center;
 		flex-wrap: nowrap;
 		border-bottom: 1px solid var(--color-litm-chat-border);
-		
+
 		.vignette-label {
 			font-weight: 700;
-    		font-size: var(--font-size-20);
+			font-size: var(--font-size-20);
 		}
 
 		.vignette-image {
@@ -5183,14 +5184,16 @@ section.standard-form.litm-theme-browser-body {
 
 /* Tags inside a hidden column: the column already reads as hidden — dimming
    them again is the compounding that made the sidebar unreadable. */
-.litm--story-tags .litm--actor-hidden
+.litm--story-tags
+	.litm--actor-hidden
 	.litm--tag-row.litm--tag-hidden
 	.litm--tag-item {
 	opacity: 1;
 }
 
 /* Compact button style — shared by visibility toggles, add-tag, and any tag-row buttons */
-.litm--story-tags .window-content
+.litm--story-tags
+	.window-content
 	button:not(.litm--add-actor-btn):not(.litm--action-bottom):not(
 		.litm--quick-add-btn
 	):not(.litm--load-scene-btn),
@@ -5267,13 +5270,15 @@ section.standard-form.litm-theme-browser-body {
 /* Restores hover feedback the rule above would otherwise swallow — it has the
    same specificity as the generic `:hover` at the top of this block but comes
    later, so the hover state needs restating. */
-.litm--story-tags .litm--tag-row.litm--tag-hidden
+.litm--story-tags
+	.litm--tag-row.litm--tag-hidden
 	.litm--visibility-toggle:hover {
 	color: var(--color-text-primary);
 }
 
 /* Always show toggle indicators when checked */
-.litm--story-tags .litm--tag-row:has(.litm--single-use:checked)
+.litm--story-tags
+	.litm--tag-row:has(.litm--single-use:checked)
 	.litm--single-use-label,
 .litm--story-tags
 	.litm--tag-row:has(.litm--scratch:checked)
@@ -6351,7 +6356,7 @@ input.litm--single-use::after {
 /* Trade cap reached for this row's kind: pill is unselected and locked
    until the player frees a slot by unchecking another. */
 .litm-theme-evolution__trade-row.is-trade-cap
-.litm-theme-evolution__trade-toggle {
+	.litm-theme-evolution__trade-toggle {
 	opacity: 0.4;
 	cursor: not-allowed;
 }

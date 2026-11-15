@@ -36,14 +36,14 @@ litmv2 is a tag-based RPG. Characters are defined by short descriptors (tags) th
 
 ### Tag Taxonomy
 
-| Type | Lives On | Polarity | Single-Use | Can Burn |
-|------|----------|----------|-----------|---------|
-| `power_tag` | theme/story_theme items | +1 | No | Yes (+3) |
-| `weakness_tag` | theme/story_theme items | -1 | No | No — invoking marks Improve |
-| `fellowship_tag` | fellowship theme item | +1 | Yes | No |
-| `relationship_tag` | hero actors | +1 default | Yes | No |
-| `story_tag` | backpack items (transfer) / actors | Context | Optional | Yes (unless single-use) |
-| `status_tag` | actors | Context (tier 1–6) | N/A | N/A |
+| Type               | Lives On                           | Polarity           | Single-Use | Can Burn                    |
+| ------------------ | ---------------------------------- | ------------------ | ---------- | --------------------------- |
+| `power_tag`        | theme/story_theme items            | +1                 | No         | Yes (+3)                    |
+| `weakness_tag`     | theme/story_theme items            | -1                 | No         | No — invoking marks Improve |
+| `fellowship_tag`   | fellowship theme item              | +1                 | Yes        | No                          |
+| `relationship_tag` | hero actors                        | +1 default         | Yes        | No                          |
+| `story_tag`        | backpack items (transfer) / actors | Context            | Optional   | Yes (unless single-use)     |
+| `status_tag`       | actors                             | Context (tier 1–6) | N/A        | N/A                         |
 
 - "Burn" is a roll-time action; "scratched" is the resulting persistent state. There is no "burned" state on a tag.
 - Statuses stack when reapplied (mark new tier; shift right if occupied). Only the highest positive and highest negative status count toward a roll.
@@ -78,10 +78,10 @@ litmv2 is a tag-based RPG. Characters are defined by short descriptors (tags) th
 
 ### Document Types
 
-| Document | Types |
-|----------|-------|
-| **Actor** | `hero`, `journey`, `challenge`, `fellowship`, `story_theme` |
-| **Item** | `theme`, `themebook`, `trope`, `backpack`, `story_theme`, `vignette`, `addon` |
+| Document         | Types                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| **Actor**        | `hero`, `journey`, `challenge`, `fellowship`, `story_theme`                                  |
+| **Item**         | `theme`, `themebook`, `trope`, `backpack`, `story_theme`, `vignette`, `addon`                |
 | **ActiveEffect** | `power_tag`, `weakness_tag`, `fellowship_tag`, `relationship_tag`, `story_tag`, `status_tag` |
 
 Data models live at `modules/<actor|item|active-effects>/{type}/{type}-data.js`. Custom doc classes: `LitmItem` (legacy tag→effect migration) and `LitmActiveEffect`.
@@ -235,7 +235,7 @@ carry a negative `order` (`mountPlayersHud` only guarantees presence). The strip
 is above the control, so the control never moves when a roll goes live. The
 story-tag sidebar keeps a secondary entry in its **window header** via
 `_getFrameButtons` — v14 renders those inline before the close button, unlike
-header *controls*, which go to the overflow menu. `R` toggles the picker for a
+header _controls_, which go to the overflow menu. `R` toggles the picker for a
 GM, and a GM with an assigned character still gets the picker rather than their
 own sheet. For a player, `R` opens or raises their roll and **never closes it**:
 closing as the owner ends the roll, and a stray key press must not throw away
@@ -295,7 +295,7 @@ The rules live in `modules/apps/roll/group-roll.js` (pure, unit-tested):
 
 - **One tag per Hero.** `findHeroTagConflict` keys off `tagActorId`, stamped on
   every selection by `resolveTagActorId` (effect → parent → Actor). Resolved from
-  the effect and *not* from who clicked: the GM owns the dialog, and contributor
+  the effect and _not_ from who clicked: the GM owns the dialog, and contributor
   metadata is only registered by non-owners. Relationship tags count against the
   Hero's one for free — they live on the Hero. Fellowship theme tags and the
   opposition's are exempt for free — they don't resolve to a participant.
@@ -332,18 +332,18 @@ consequences to each of them is still a decision, not an automatic fan-out.
 - `player_initiated_rolls` — **default on**, and it gates **players only**. GM
   initiation and player initiation are not two halves of one toggle: calling for
   a roll is an unconditional Narrator capability (p.269), and this setting
-  decides whether players may *also* reach for the dice unprompted. A table that
+  decides whether players may _also_ reach for the dice unprompted. A table that
   wants every roll to come from the Narrator turns it off. Every GM entry point —
   the main-screen control, the sidebar's window-header entry, `R` — is therefore
   gated on `isGM` alone and never on this setting, even though `canInitiateRoll`
-  would answer the same today; a test pins that. It gates *instigation* only.
+  would answer the same today; a test pins that. It gates _instigation_ only.
   Joining an open roll, being called into one, reacting and camp actions stay
   open regardless. Sacrifice is the roller's move inside the roll window,
   so with the setting off a player asks for the roll and picks it there.
 
   Instigation splits two ways, and the split is deliberate. The **hero-sheet
   Roll button and `R`** — the same gesture, one with a mouse — stay available
-  and *ask* for a roll: `requestRollFromNarrator` (`roll-request.js`) whispers
+  and _ask_ for a roll: `requestRollFromNarrator` (`roll-request.js`) whispers
   the Narrators a card whose one button calls the roll through `openSharedRoll`.
   Hiding the button instead left the player mute, and it was the only control in
   that row that vanished. **Sheet tag click and rolling an Action** still take
@@ -357,7 +357,7 @@ consequences to each of them is still a decision, not an automatic fan-out.
   builds a Setting from the registered default when nothing is stored and only
   `set()` writes, so the default reaches every world that never touched the
   toggle while preserving the choice of any table that did.
-- `require_roll_approval` gates *execution*: a player pressing Roll posts the
+- `require_roll_approval` gates _execution_: a player pressing Roll posts the
   existing moderation card instead of rolling, and the GM's approval executes it
   on the player's own client, so the resulting chat card is authored by the
   player. Same hardened path as the opt-in "Send to Narrator" button —
@@ -475,7 +475,7 @@ name — a cast list, not a row of tiles.
   the dimmed portrait belong to player-ownable characters. Challenges and
   Limits go through the same control without them — a Challenge reading
   "no player assigned" would read as a broken Hero. There is deliberately no
-  presence *dot*: the rows already contain a visually hidden radio, and a
+  presence _dot_: the rows already contain a visually hidden radio, and a
   second small circle on the right read as an unchecked one.
 - **Names are masked** (`system.maskedName ?? name`) and **portraits always
   resolve** (prototype token → actor image → `CONFIG.litmv2.assets.icons.defaultActor`).

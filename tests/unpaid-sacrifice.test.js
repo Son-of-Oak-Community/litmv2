@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { executeRoll } from "../modules/apps/roll/roll-pipeline.js";
 import {
 	refuseUnpaidSacrifice,
 	requestRollFromNarrator,
@@ -7,7 +8,6 @@ import {
 	completePendingSacrifice,
 	recordPendingSacrifice,
 } from "../modules/apps/roll/sacrifice-price.js";
-import { executeRoll } from "../modules/apps/roll/roll-pipeline.js";
 import { debtPrice } from "../modules/hud/sacrifice-hud.js";
 import { Sockets } from "../modules/system/sockets.js";
 
@@ -144,8 +144,14 @@ describe("completePendingSacrifice", () => {
 			id: "gerrin",
 			name: "Gerrin",
 			isOwner: true,
-			flag: { level: "grave", outcome: "snc", statusName: "Dead", messageId: "m1" },
-			getFlag: (_scope, key) => (key === "pendingSacrifice" ? hero.flag : undefined),
+			flag: {
+				level: "grave",
+				outcome: "snc",
+				statusName: "Dead",
+				messageId: "m1",
+			},
+			getFlag: (_scope, key) =>
+				key === "pendingSacrifice" ? hero.flag : undefined,
 			unsetFlag: vi.fn(async () => {
 				hero.flag = undefined;
 			}),
@@ -277,7 +283,13 @@ describe("completePendingSacrifice", () => {
 
 	it("owes the debt again when the theme went before the price landed", async () => {
 		const hero = gracedHero();
-		hero.flag = { level: "painful", outcome: "snc", themeId: "t", messageId: "m1", graceBonus: 1 };
+		hero.flag = {
+			level: "painful",
+			outcome: "snc",
+			themeId: "t",
+			messageId: "m1",
+			graceBonus: 1,
+		};
 		const owed = hero.flag;
 		hero.setFlag = vi.fn(async (_scope, key, value) => {
 			if (key === "pendingSacrifice") hero.flag = value;
@@ -295,7 +307,13 @@ describe("completePendingSacrifice", () => {
 
 	it("keeps the Secret Grace when nothing was left to pay", async () => {
 		const hero = gracedHero();
-		hero.flag = { level: "painful", outcome: "snc", themeId: "gone", messageId: "m1", graceBonus: 2 };
+		hero.flag = {
+			level: "painful",
+			outcome: "snc",
+			themeId: "gone",
+			messageId: "m1",
+			graceBonus: 2,
+		};
 		expect(await completePendingSacrifice(hero)).toBe(true);
 		expect(hero.grace.every((m) => !m.scratched)).toBe(true);
 	});
@@ -307,9 +325,17 @@ describe("completePendingSacrifice", () => {
 		let opened;
 		const scarredHero = (wizardDone) => {
 			const hero = gracedHero();
-			hero.flag = { level: "scarring", outcome: "snc", themeId: "t", messageId: "m1", graceBonus: 1 };
+			hero.flag = {
+				level: "scarring",
+				outcome: "snc",
+				themeId: "t",
+				messageId: "m1",
+				graceBonus: 1,
+			};
 			hero.deleteEmbeddedDocuments = vi.fn();
-			hero.items = { get: () => ({ id: "t", type: "theme", name: "Ranger", effects: [] }) };
+			hero.items = {
+				get: () => ({ id: "t", type: "theme", name: "Ranger", effects: [] }),
+			};
 			game.litmv2 = {
 				...savedLitm,
 				ThemeEvolutionWizard: class {
@@ -334,7 +360,11 @@ describe("completePendingSacrifice", () => {
 		it("replaces the theme in the Replace wizard, then clears the debt", async () => {
 			const hero = scarredHero(true);
 			expect(await completePendingSacrifice(hero)).toBe(true);
-			expect(opened).toEqual({ actorId: "gerrin", themeId: "t", forceReplace: true });
+			expect(opened).toEqual({
+				actorId: "gerrin",
+				themeId: "t",
+				forceReplace: true,
+			});
 			expect(hero.deleteEmbeddedDocuments).not.toHaveBeenCalled();
 			expect(hero.unsetFlag).toHaveBeenCalled();
 			expect(hero.grace.map((m) => m.scratched)).toEqual([true, false]);
@@ -350,7 +380,14 @@ describe("completePendingSacrifice", () => {
 
 		it("loses a story theme a debt recorded before named, without the wizard", async () => {
 			const hero = scarredHero(true);
-			hero.items = { get: () => ({ id: "t", type: "story_theme", name: "Lantern", effects: [] }) };
+			hero.items = {
+				get: () => ({
+					id: "t",
+					type: "story_theme",
+					name: "Lantern",
+					effects: [],
+				}),
+			};
 			expect(await completePendingSacrifice(hero)).toBe(true);
 			expect(opened).toBeNull();
 			expect(hero.deleteEmbeddedDocuments).toHaveBeenCalledWith("Item", ["t"]);
@@ -360,7 +397,12 @@ describe("completePendingSacrifice", () => {
 		it("lessens to Painful on a Miracle: no wizard", async () => {
 			const hero = scarredHero(true);
 			hero.flag.outcome = "success";
-			const theme = { id: "t", name: "Ranger", effects: [], updateEmbeddedDocuments: vi.fn() };
+			const theme = {
+				id: "t",
+				name: "Ranger",
+				effects: [],
+				updateEmbeddedDocuments: vi.fn(),
+			};
 			hero.items = { get: () => theme };
 			expect(await completePendingSacrifice(hero)).toBe(true);
 			expect(opened).toBeNull();
@@ -369,7 +411,12 @@ describe("completePendingSacrifice", () => {
 
 	it("settles a Miracle with no tag left to scratch, without a dialog", async () => {
 		const hero = graveHero();
-		hero.flag = { level: "painful", outcome: "success", themeId: "t", messageId: "m1" };
+		hero.flag = {
+			level: "painful",
+			outcome: "success",
+			themeId: "t",
+			messageId: "m1",
+		};
 		hero.items = { get: () => ({ name: "Ranger", effects: [] }) };
 		const info = vi.spyOn(ui.notifications, "info");
 		expect(await completePendingSacrifice(hero)).toBe(true);
@@ -485,7 +532,12 @@ describe("executeRoll for a Sacrifice", () => {
 		CONFIG.litmv2 = saved.config;
 		game.actors.get.mockReset();
 	});
-	const burned = { uuid: "Actor.gerrin.Item.t.ActiveEffect.e", name: "Bow", type: "power_tag", state: "scratched" };
+	const burned = {
+		uuid: "Actor.gerrin.Item.t.ActiveEffect.e",
+		name: "Bow",
+		type: "power_tag",
+		state: "scratched",
+	};
 
 	it("invokes, burns and uses up no tag", async () => {
 		game.actors.get.mockReturnValue(hero("gerrin", { isOwner: false }));
@@ -495,14 +547,22 @@ describe("executeRoll for a Sacrifice", () => {
 
 	it("records no Might or modifier the dice never got", async () => {
 		game.actors.get.mockReturnValue(hero("gerrin", { isOwner: false }));
-		await executeRoll({ actorId: "gerrin", tags: [], type: "sacrifice", might: 3, modifier: 2 });
+		await executeRoll({
+			actorId: "gerrin",
+			tags: [],
+			type: "sacrifice",
+			might: 3,
+			modifier: 2,
+		});
 		expect(options).toMatchObject({ might: 0, modifier: 0, totalPower: 0 });
 	});
 
 	it("refuses a second Sacrifice while the first is owed, as an approved roll would", async () => {
 		game.actors.get.mockReturnValue(hero("gerrin", { owes: true }));
 		const warn = vi.spyOn(ui.notifications, "warn");
-		expect(await executeRoll({ actorId: "gerrin", tags: [], type: "sacrifice" })).toBeUndefined();
+		expect(
+			await executeRoll({ actorId: "gerrin", tags: [], type: "sacrifice" }),
+		).toBeUndefined();
 		expect(options).toBeUndefined();
 		expect(warn).toHaveBeenCalledWith("LITM.Ui.sacrifice_unpaid_new");
 		warn.mockRestore();

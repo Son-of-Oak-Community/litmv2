@@ -5,10 +5,10 @@ import {
 	weaknessTagEffect,
 } from "../../active-effects/effect-factories.js";
 import { POWER_TAG_TYPES, THEME_TAG_TYPES } from "../../system/config.js";
-import { loadThemeCatalog } from "../theme-catalog.js";
 import { ContentSources } from "../../system/content-sources.js";
 import { Sockets } from "../../system/sockets.js";
 import { levelIcon, localize as t } from "../../utils.js";
+import { loadThemeCatalog } from "../theme-catalog.js";
 
 const THEME_SLOTS = 4;
 
@@ -232,9 +232,13 @@ export class HeroCreationData {
 			...e,
 			themeLevel: e.level,
 			sourceLabel: e.sourceLabel || "World",
-			tagTooltip: e.sourceLabel ? "" : HeroCreationData.#worldTagTooltip(e.uuid),
+			tagTooltip: e.sourceLabel
+				? ""
+				: HeroCreationData.#worldTagTooltip(e.uuid),
 		});
-		this._cache.themekits = catalog.filter((e) => e.kind === "kit").map(toEntry);
+		this._cache.themekits = catalog
+			.filter((e) => e.kind === "kit")
+			.map(toEntry);
 		this._cache.themebooks = catalog
 			.filter((e) => e.kind === "book")
 			.map(toEntry);

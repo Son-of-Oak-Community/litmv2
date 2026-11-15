@@ -343,7 +343,9 @@ describe("Sacrifice theme choice", () => {
 	// Nothing picks the theme a Sacrifice risks: a stray Roll must not stake
 	// a theme the player never chose.
 	it("refuses a Sacrifice until a theme is chosen", () => {
-		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(true);
+		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(
+			true,
+		);
 		expect(
 			makeDialog({
 				type: "sacrifice",
@@ -355,22 +357,27 @@ describe("Sacrifice theme choice", () => {
 
 	it("counts a chosen theme deleted since as none chosen", () => {
 		expect(
-			makeDialog({ type: "sacrifice", sacrificeThemeId: "gone" }).sacrificeThemeMissing(),
+			makeDialog({
+				type: "sacrifice",
+				sacrificeThemeId: "gone",
+			}).sacrificeThemeMissing(),
 		).toBe(true);
 	});
 
 	it("keeps the Narrator's refused Roll off the player's screen", () => {
 		const warn = vi.spyOn(ui.notifications, "warn");
-		expect(makeDialog({ type: "sacrifice" }).rollRefusal({ narrator: true })).toBe(
-			"sacrificeTheme",
-		);
+		expect(
+			makeDialog({ type: "sacrifice" }).rollRefusal({ narrator: true }),
+		).toBe("sacrificeTheme");
 		expect(warn).not.toHaveBeenCalled();
 	});
 
 	// Core Book p.163/p.192: a story theme can pay a Painful price, but has no
 	// Quest or Promise to be replaced by, so Scarring and Grave refuse it.
 	it("takes a story theme for Painful only", () => {
-		actor.items = [{ id: "lantern", type: "story_theme", system: {}, effects: [] }];
+		actor.items = [
+			{ id: "lantern", type: "story_theme", system: {}, effects: [] },
+		];
 		const at = (sacrificeLevel) =>
 			makeDialog({
 				type: "sacrifice",
@@ -378,21 +385,33 @@ describe("Sacrifice theme choice", () => {
 				sacrificeThemeId: "lantern",
 			}).extractRollData({}).sacrificeThemeId;
 		expect(
-			makeDialog({ type: "sacrifice", sacrificeLevel: "painful", sacrificeThemeId: "lantern" })
-				.sacrificeThemeMissing(),
+			makeDialog({
+				type: "sacrifice",
+				sacrificeLevel: "painful",
+				sacrificeThemeId: "lantern",
+			}).sacrificeThemeMissing(),
 		).toBe(false);
 		expect(at("painful")).toBe("lantern");
 		// Nothing left to name above Painful: the Hero rolls without a theme,
 		// and the story theme is not staked.
 		for (const level of ["scarring", "grave"]) {
-			const dialog = makeDialog({ type: "sacrifice", sacrificeLevel: level, sacrificeThemeId: "lantern" });
+			const dialog = makeDialog({
+				type: "sacrifice",
+				sacrificeLevel: level,
+				sacrificeThemeId: "lantern",
+			});
 			expect(dialog.sacrificeThemeMissing()).toBe(false);
 			expect(at(level)).toBeNull();
 		}
 	});
 
 	it("still asks for a Hero theme on Scarring when a story theme is all that was picked", () => {
-		actor.items.push({ id: "lantern", type: "story_theme", system: {}, effects: [] });
+		actor.items.push({
+			id: "lantern",
+			type: "story_theme",
+			system: {},
+			effects: [],
+		});
 		const dialog = makeDialog({
 			type: "sacrifice",
 			sacrificeLevel: "scarring",
@@ -403,7 +422,9 @@ describe("Sacrifice theme choice", () => {
 
 	it("lets a Hero with no theme left roll one", () => {
 		actor.items = [];
-		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(false);
+		expect(makeDialog({ type: "sacrifice" }).sacrificeThemeMissing()).toBe(
+			false,
+		);
 	});
 });
 
@@ -484,14 +505,21 @@ describe("the roller's Sacrifice switch", () => {
 		dialog.updatePresence = vi.fn(async () => {});
 		dialog.setSelection("tag-1", "scratched", "player");
 		dialog.setType("sacrifice");
-		expect(dialog.extractRollData({})).toMatchObject({ tags: [], actionUuid: null });
+		expect(dialog.extractRollData({})).toMatchObject({
+			tags: [],
+			actionUuid: null,
+		});
 		dialog.setType("quick");
 		expect(dialog.extractRollData({}).actionUuid).toBe("Item.sneak");
 	});
 
 	it("is Sacrifice or the called move, on a called roll of any move", () => {
 		const dialog = makeDialog({ type: "tracked" });
-		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm", type: "tracked" });
+		dialog.configureSharedRoll({
+			ownerId: "player",
+			narratorUserId: "gm",
+			type: "tracked",
+		});
 		dialog.updatePresence = vi.fn(async () => {});
 		dialog.setType("tracked");
 		expect(dialog.type).toBe("tracked");

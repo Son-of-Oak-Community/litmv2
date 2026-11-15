@@ -1,6 +1,5 @@
 import { createLegacyActorEffects } from "../../actor/litm-actor.js";
 import { error } from "../../logger.js";
-import { Sockets } from "../sockets.js";
 import {
 	findFellowshipTheme,
 	getStoryTagSidebar,
@@ -12,6 +11,7 @@ import {
 	FLAGS,
 	THEME_TAG_TYPES,
 } from "../config.js";
+import { Sockets } from "../sockets.js";
 
 export function registerActorHooks() {
 	_prepareCharacterOnCreate();
@@ -155,7 +155,7 @@ function _validateFellowshipThemes() {
 		if (item.system.isFellowship) return;
 
 		const actor = item.actor;
-		if (!actor || actor.type !== "fellowship") return;
+		if (actor?.type !== "fellowship") return;
 
 		const existingFellowship = actor.items.find(
 			(i) => i.type === "theme" && i.system.isFellowship && i.id !== item.id,
@@ -173,7 +173,7 @@ function _validateFellowshipThemes() {
 		if (item.type !== "theme" || !data.system?.isFellowship) return;
 
 		const actor = item.parent;
-		if (!actor || actor.type !== "fellowship") return;
+		if (actor?.type !== "fellowship") return;
 
 		const existingFellowship = findFellowshipTheme(actor);
 
@@ -301,7 +301,7 @@ const HERO_ITEM_LIMITS = {
 function _enforceHeroItemLimits() {
 	Hooks.on("preCreateItem", (item, _data, _options, _userId) => {
 		const actor = item.parent;
-		if (!actor || actor.type !== "hero") return;
+		if (actor?.type !== "hero") return;
 
 		const limit = HERO_ITEM_LIMITS[item.type];
 		if (!limit) return;
@@ -320,7 +320,7 @@ function _enforceHeroItemLimits() {
 function _enforceStoryThemeActorLimits() {
 	Hooks.on("preCreateItem", (item) => {
 		const actor = item.parent;
-		if (!actor || actor.type !== "story_theme") return;
+		if (actor?.type !== "story_theme") return;
 
 		if (item.type !== "story_theme") {
 			ui.notifications.warn(t("LITM.Ui.warn_story_theme_actor_item_type"));

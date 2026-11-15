@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	canEditNarratorFields,
 	canEditTradePower,
-	canToggleSacrifice,
 	canInitiateRoll,
+	canToggleSacrifice,
 	isNarratorControlled,
 	requiresRollApproval,
 	resolveSharedRollOwner,
@@ -247,7 +247,9 @@ describe("canToggleSacrifice", () => {
 	});
 
 	it("is not offered on a camp action or Acting Together", () => {
-		expect(canToggleSacrifice({ isOwner: true, type: "campAction" })).toBe(false);
+		expect(canToggleSacrifice({ isOwner: true, type: "campAction" })).toBe(
+			false,
+		);
 		expect(
 			canToggleSacrifice({ isOwner: true, type: "quick", isGroupRoll: true }),
 		).toBe(false);

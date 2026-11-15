@@ -114,7 +114,7 @@ function _syncStoryThemeItemToActor() {
 		if (userId !== game.userId) return;
 		if (item.type !== "story_theme") return;
 		const actor = item.parent;
-		if (!actor || actor.type !== "story_theme") return;
+		if (actor?.type !== "story_theme") return;
 
 		const updates = {};
 		if ("name" in data && actor.name !== data.name) updates.name = data.name;
@@ -128,7 +128,7 @@ function _syncAddonEffectsOnUpdate() {
 		if (userId !== game.userId) return;
 		if (item.type !== "addon") return;
 		const actor = item.parent;
-		if (!actor || actor.documentName !== "Actor") return;
+		if (actor?.documentName !== "Actor") return;
 		resyncAddonEffects(actor, item).catch(console.error);
 	});
 }
@@ -138,7 +138,7 @@ function _cleanupAddonEffectsOnDelete() {
 		if (userId !== game.userId) return;
 		if (item.type !== "addon") return;
 		const actor = item.parent;
-		if (!actor || actor.documentName !== "Actor") return;
+		if (actor?.documentName !== "Actor") return;
 		const addonEffects = actor.effects
 			.filter((e) => e.getFlag("litmv2", "addonId") === item.id)
 			.map((e) => e.id);

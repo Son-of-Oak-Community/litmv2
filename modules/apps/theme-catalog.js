@@ -65,7 +65,8 @@ export async function loadThemeCatalog({ isFellowship } = {}) {
 export function toCatalogEntry(entry, { kind, pack }) {
 	const id = entry._id ?? entry.id;
 	const uuid =
-		entry.uuid || (pack && id ? `Compendium.${pack.collection}.Item.${id}` : "");
+		entry.uuid ||
+		(pack && id ? `Compendium.${pack.collection}.Item.${id}` : "");
 	if (!uuid) return null;
 	const system = entry.system ?? {};
 	return {
@@ -88,7 +89,8 @@ export function toCatalogEntry(entry, { kind, pack }) {
 export function sortCatalog(entries) {
 	return [...entries].sort(
 		(a, b) =>
-			a.name.localeCompare(b.name) || (a.kind === b.kind ? 0 : a.kind === "kit" ? -1 : 1),
+			a.name.localeCompare(b.name) ||
+			(a.kind === b.kind ? 0 : a.kind === "kit" ? -1 : 1),
 	);
 }
 
@@ -99,7 +101,10 @@ export function sortCatalog(entries) {
  * @param {{text?: string, kind?: ""|"kit"|"book", level?: string}} [filters]
  * @returns {ThemeCatalogEntry[]}
  */
-export function filterThemeCatalog(entries, { text = "", kind = "", level = "" } = {}) {
+export function filterThemeCatalog(
+	entries,
+	{ text = "", kind = "", level = "" } = {},
+) {
 	const needle = text.trim().toLowerCase();
 	return entries.filter((e) => {
 		if (kind && e.kind !== kind) return false;

@@ -7,10 +7,10 @@ import {
 } from "../item/action/action-rules.js";
 import { applySuccess } from "../item/action/chat-actions.js";
 import { error, warn } from "../logger.js";
-import { StoryTagsStore } from "./story-tags/story-tags-store.js";
 import { FLAGS } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
 import { getStoryTagSidebar, localize as t } from "../utils.js";
+import { StoryTagsStore } from "./story-tags/story-tags-store.js";
 
 /**
  * An inflicted status tier, held to 1..the world's track depth. The Spend
@@ -230,8 +230,7 @@ export async function applyActionSuccess({
 	const actionUuid = message?.getFlag("litmv2", FLAGS.actionUuid);
 	if (!actionUuid) return { spent: 0, status: "invalid" };
 	const action = await foundry.utils.fromUuid(actionUuid);
-	if (!action || action.type !== "action")
-		return { spent: 0, status: "invalid" };
+	if (action?.type !== "action") return { spent: 0, status: "invalid" };
 
 	const success = (action.system.successes ?? []).find(
 		(o) => o.id === successKey,

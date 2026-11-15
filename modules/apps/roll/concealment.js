@@ -34,14 +34,24 @@
  */
 export function maskConcealedTags(
 	tags,
-	{ concealedActorIds, resolveActorId, isEffectHidden, maskName, isGM = false } = {},
+	{
+		concealedActorIds,
+		resolveActorId,
+		isEffectHidden,
+		maskName,
+		isGM = false,
+	} = {},
 ) {
 	if (!tags?.length) return tags ?? [];
 	if (isGM) return tags;
 	let masked = false;
 	const result = tags.map((tag) => {
 		if (
-			!isTagConcealed(tag, { concealedActorIds, resolveActorId, isEffectHidden })
+			!isTagConcealed(tag, {
+				concealedActorIds,
+				resolveActorId,
+				isEffectHidden,
+			})
 		)
 			return tag;
 		masked = true;

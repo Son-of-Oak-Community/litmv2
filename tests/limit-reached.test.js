@@ -455,7 +455,13 @@ describe("status writes recalc through one ActiveEffect choke point", () => {
 			system: { limitId: "lim-1", tiers: tiers(2), isHidden: true },
 			parent: actor,
 		});
-		dispatch("updateActiveEffect", linked, { system: { isHidden: true } }, {}, ME);
+		dispatch(
+			"updateActiveEffect",
+			linked,
+			{ system: { isHidden: true } },
+			{},
+			ME,
+		);
 		expect(actor.system.recalculateLimitValues).toHaveBeenCalledTimes(1);
 	});
 
@@ -624,7 +630,9 @@ describe("recalculateLimitValues: hidden statuses", () => {
 		});
 
 	it("leaves a hidden status out on an actor a player owns", async () => {
-		const { actor, model } = buildActor({ effects: [status(1), hiddenStatus(3)] });
+		const { actor, model } = buildActor({
+			effects: [status(1), hiddenStatus(3)],
+		});
 		actor.hasPlayerOwner = true;
 
 		await model.recalculateLimitValues();

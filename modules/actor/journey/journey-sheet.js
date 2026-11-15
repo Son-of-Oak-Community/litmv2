@@ -61,8 +61,13 @@ export class JourneySheet extends TagStringSyncMixin(LitmActorSheet) {
 			playTags: this.system.tags,
 			limits: this.system.limits ?? [],
 		});
-		const limitedView = this.document.testUserPermission(game.user, 'LIMITED', { exact: true });
-		const hasObserverPermission = this.document.testUserPermission(game.user, 'OBSERVER');
+		const limitedView = this.document.testUserPermission(game.user, "LIMITED", {
+			exact: true,
+		});
+		const hasObserverPermission = this.document.testUserPermission(
+			game.user,
+			"OBSERVER",
+		);
 
 		// Prepare vignette items
 		const generalConsequenceId = this.system.generalConsequences;

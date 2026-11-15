@@ -103,7 +103,10 @@ describe("ChallengeData.toggleLimitHidden", () => {
 	it("reveals a limit saved before the field existed (it counts as hidden)", async () => {
 		const model = makeModel([limit, other]);
 		await model.toggleLimitHidden("lim-1");
-		expect(model.setLimits).toHaveBeenCalledWith([{ ...limit, hidden: false }, other]);
+		expect(model.setLimits).toHaveBeenCalledWith([
+			{ ...limit, hidden: false },
+			other,
+		]);
 	});
 
 	it("hides a revealed limit again", async () => {

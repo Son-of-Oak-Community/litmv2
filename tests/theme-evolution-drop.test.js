@@ -402,10 +402,15 @@ describe("ThemeEvolutionWizard forced Replace", () => {
 
 	it("offers only Replace, even on a theme whose Milestone is full", async () => {
 		const theme = fakeTheme({ name: "Ranger" });
-		theme.system.quest.tracks = { milestone: { value: 3 }, abandon: { value: 0 } };
+		theme.system.quest.tracks = {
+			milestone: { value: 3 },
+			abandon: { value: 0 },
+		};
 		const free = await wizardOn(theme)._prepareContext();
 		expect(free.defaultMode).toBe("evolve");
-		const forced = await wizardOn(theme, { forceReplace: true })._prepareContext();
+		const forced = await wizardOn(theme, {
+			forceReplace: true,
+		})._prepareContext();
 		expect(forced).toMatchObject({
 			defaultMode: "replace",
 			showModeSelect: false,
@@ -427,8 +432,16 @@ describe("ThemeEvolutionWizard forced Replace", () => {
 		["every kind of extra", { power: 4, weakness: 2, specials: 1 }, 5],
 		["a nascent theme: title tag only", { power: 0, weakness: 1 }, 1],
 		["no weakness tag at all", { power: 2, weakness: 0 }, 1],
-		["a power tag not yet gained", { power: 3, weakness: 1, lockedPower: 1 }, 1],
-		["a Special Improvement not yet gained", { power: 2, weakness: 1, specials: 1, lockedSpecials: 1 }, 2],
+		[
+			"a power tag not yet gained",
+			{ power: 3, weakness: 1, lockedPower: 1 },
+			1,
+		],
+		[
+			"a Special Improvement not yet gained",
+			{ power: 2, weakness: 1, specials: 1, lockedSpecials: 1 },
+			2,
+		],
 		["a scratched power tag", { power: 3, weakness: 1, scratchedPower: 1 }, 2],
 	])("marks the right Promise for %s", async (_label, shape, promise) => {
 		const theme = fakeTheme({
@@ -436,24 +449,45 @@ describe("ThemeEvolutionWizard forced Replace", () => {
 			power: shape.power,
 			weakness: shape.weakness,
 			specials: [
-				...Array.from({ length: shape.specials ?? 0 }, (_, i) => ({ name: `s${i}`, isActive: true })),
-				...Array.from({ length: shape.lockedSpecials ?? 0 }, (_, i) => ({ name: `l${i}`, isActive: false })),
+				...Array.from({ length: shape.specials ?? 0 }, (_, i) => ({
+					name: `s${i}`,
+					isActive: true,
+				})),
+				...Array.from({ length: shape.lockedSpecials ?? 0 }, (_, i) => ({
+					name: `l${i}`,
+					isActive: false,
+				})),
 			],
 		});
-		const power = theme.effects.filter((e) => e.type === "power_tag" && !e.system.isTitleTag);
+		const power = theme.effects.filter(
+			(e) => e.type === "power_tag" && !e.system.isTitleTag,
+		);
 		for (const e of power.slice(0, shape.lockedPower ?? 0)) e.disabled = true;
-		for (const e of power.slice(0, shape.scratchedPower ?? 0)) e.system.isScratched = true;
-		theme.system.quest.tracks = { milestone: { value: 3 }, abandon: { value: 0 } };
+		for (const e of power.slice(0, shape.scratchedPower ?? 0))
+			e.system.isScratched = true;
+		theme.system.quest.tracks = {
+			milestone: { value: 3 },
+			abandon: { value: 0 },
+		};
 
 		const wizard = wizardOn(theme, { forceReplace: true });
 		const actor = game.actors.get();
 		wizard.close = vi.fn();
-		Object.defineProperty(wizard, "element", { value: { querySelector: () => null } });
+		Object.defineProperty(wizard, "element", {
+			value: { querySelector: () => null },
+		});
 		// The form asks to Evolve; a forced Replace must replace all the same.
 		foundry.applications.ux = {
 			...originalUx,
 			FormDataExtended: class {
-				object = { mode: "evolve", name: "New", themebook: "Book", level: "origin", quest: "Q", weakness: "W" };
+				object = {
+					mode: "evolve",
+					name: "New",
+					themebook: "Book",
+					level: "origin",
+					quest: "Q",
+					weakness: "W",
+				};
 			},
 		};
 		await ThemeEvolutionWizard.DEFAULT_OPTIONS.actions.confirm.call(wizard);
@@ -462,7 +496,11 @@ describe("ThemeEvolutionWizard forced Replace", () => {
 		await expect(wizard.done).resolves.toBe(true);
 		const [, created] = theme.createEmbeddedDocuments.mock.calls.at(-1);
 		expect(created.map((e) => e.type)).toEqual(["weakness_tag"]);
-		expect(theme.effects.filter((e) => e.type === "power_tag").map((e) => e.system.isTitleTag)).toEqual([true]);
+		expect(
+			theme.effects
+				.filter((e) => e.type === "power_tag")
+				.map((e) => e.system.isTitleTag),
+		).toEqual([true]);
 	});
 
 	it("reports a close without a transformation as not done", async () => {
@@ -482,13 +520,26 @@ describe("ThemeEvolutionWizard Replace", () => {
 		const actor = fakeActor({ system: { promise: 0 } });
 		actor.items = Object.assign([theme], { get: vi.fn(() => theme) });
 		game.actors.get = vi.fn(() => actor);
-		const wizard = new ThemeEvolutionWizard({ actorId: actor.id, themeId: theme.id });
+		const wizard = new ThemeEvolutionWizard({
+			actorId: actor.id,
+			themeId: theme.id,
+		});
 		wizard.close = vi.fn();
-		Object.defineProperty(wizard, "element", { value: { querySelector: () => null } });
+		Object.defineProperty(wizard, "element", {
+			value: { querySelector: () => null },
+		});
 		foundry.applications.ux = {
 			...originalUx,
 			FormDataExtended: class {
-				object = { mode: "replace", name: "New", themebook: "Book", level: "origin", quest: "Q", weakness: "Restless", ...blank };
+				object = {
+					mode: "replace",
+					name: "New",
+					themebook: "Book",
+					level: "origin",
+					quest: "Q",
+					weakness: "Restless",
+					...blank,
+				};
 			},
 		};
 		await ThemeEvolutionWizard.DEFAULT_OPTIONS.actions.confirm.call(wizard);

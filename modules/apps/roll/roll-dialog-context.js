@@ -124,9 +124,7 @@ export function makeTagDecorator({
 			hiddenFromPlayers:
 				isGM &&
 				(!!tag.system?.isHidden ||
-					hiddenActorIds.has(
-						tag.tagActorId ?? resolveTagActorId(tag.uuid),
-					)),
+					hiddenActorIds.has(tag.tagActorId ?? resolveTagActorId(tag.uuid))),
 		};
 	};
 }
@@ -284,7 +282,10 @@ const GROUP_ORDER = {
  */
 const groupsByCategory = (themeMap) =>
 	[...themeMap.values()]
-		.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.sort ?? 0) - (b.sort ?? 0))
+		.sort(
+			(a, b) =>
+				(a.order ?? 0) - (b.order ?? 0) || (a.sort ?? 0) - (b.sort ?? 0),
+		)
 		.map((g) => ({
 			...g,
 			tags: g.tags.toSorted(
@@ -402,7 +403,7 @@ export function buildContributedTagGroups(dialog, { decorateTag, isOwner }) {
  * @returns {object|null}
  */
 export function buildActionContext({ action }) {
-	if (!action || action.type !== "action") return null;
+	if (action?.type !== "action") return null;
 	const sys = action.system;
 	return {
 		uuid: action.uuid,

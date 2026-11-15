@@ -9,7 +9,13 @@ beforeAll(() => {
 	});
 });
 
-const fakeEffect = ({ id, name, type = "story_tag", system = {}, addonId }) => ({
+const fakeEffect = ({
+	id,
+	name,
+	type = "story_tag",
+	system = {},
+	addonId,
+}) => ({
 	id,
 	name,
 	type,
@@ -68,17 +74,19 @@ describe("resyncAddonEffects", () => {
 				flags: { litmv2: { addonId: "addon-1" } },
 			}),
 		]);
-		expect(actor.deleteEmbeddedDocuments).toHaveBeenCalledWith(
-			"ActiveEffect",
-			["old"],
-		);
+		expect(actor.deleteEmbeddedDocuments).toHaveBeenCalledWith("ActiveEffect", [
+			"old",
+		]);
 	});
 
 	it("creates them visible on a Challenge a player owns", async () => {
 		game.user.isGM = true;
 		const actor = fakeActor([]);
 
-		await resyncAddonEffects(actor, addon("[bramble]", { hasPlayerOwner: true }));
+		await resyncAddonEffects(
+			actor,
+			addon("[bramble]", { hasPlayerOwner: true }),
+		);
 
 		const [, created] = actor.createEmbeddedDocuments.mock.calls[0];
 		expect(created[0].system.isHidden).toBe(false);

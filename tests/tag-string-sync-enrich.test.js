@@ -14,7 +14,11 @@ describe("TagStringSyncMixin#_enrichTagString", () => {
 		game.user.isGM = false;
 	});
 
-	const effect = (name, type, isHidden) => ({ name, type, system: { isHidden } });
+	const effect = (name, type, isHidden) => ({
+		name,
+		type,
+		system: { isHidden },
+	});
 	const journey = {
 		allApplicableEffects: () => [
 			effect("fog", "story_tag", false),

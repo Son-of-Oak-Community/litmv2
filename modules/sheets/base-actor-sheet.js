@@ -16,8 +16,8 @@ import {
 	parseQuickAddInput,
 	toTiers,
 } from "../apps/story-tags/story-tag-helpers.js";
-import { completeTrackUpdate } from "../system/chat.js";
 import { markImprove } from "../item/theme/nascent-theme.js";
+import { completeTrackUpdate } from "../system/chat.js";
 import { ACTOR_TAG_TYPES, FLAGS, THEME_TAG_TYPES } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
 import {
@@ -594,14 +594,14 @@ export class LitmActorSheet extends LitmSheetMixin(
 		} else if (isStatus) {
 			// The play board has no inline name field, so ask for one up front.
 			const result = await foundry.applications.api.DialogV2.input({
-					window: { title: game.i18n.localize("LITM.Ui.add_status") },
-					content: `<div class="form-group">
+				window: { title: game.i18n.localize("LITM.Ui.add_status") },
+				content: `<div class="form-group">
 						<label for="litm-status-name">${game.i18n.localize("LITM.Ui.status_name")}</label>
 						<input id="litm-status-name" name="name" type="text" required autofocus />
 					</div>`,
-					ok: { label: game.i18n.localize("LITM.Ui.add_status") },
-					rejectClose: false,
-				});
+				ok: { label: game.i18n.localize("LITM.Ui.add_status") },
+				rejectClose: false,
+			});
 			const input = result?.name?.trim();
 			if (!input) return;
 			// Read "name-N" as the story-tag sidebar's quick-add does: a status
@@ -752,10 +752,12 @@ export class LitmActorSheet extends LitmSheetMixin(
 		const itemId = actionTarget?.dataset?.itemId;
 		const item = this.document.items.get(itemId);
 		if (!item) return;
-		
-		await item.update({ 'system.limitedPermissionHidden': !item.system.limitedPermissionHidden });
+
+		await item.update({
+			"system.limitedPermissionHidden": !item.system.limitedPermissionHidden,
+		});
 	}
-	
+
 	static async _onSendVignetteToChat(_event, target) {
 		const actionTarget = target.closest?.("[data-item-id]") ?? target;
 		const itemId = actionTarget?.dataset?.itemId;
@@ -766,7 +768,9 @@ export class LitmActorSheet extends LitmSheetMixin(
 			"systems/litmv2/templates/chat/vignette-display.html",
 			vignette,
 		);
-		const speaker = foundry.documents.ChatMessage.getSpeaker({ actor: this.document });
+		const speaker = foundry.documents.ChatMessage.getSpeaker({
+			actor: this.document,
+		});
 		// The card is stored once for everyone: never bake in a concealed name.
 		speaker.alias = this.document.system?.publicName ?? speaker.alias;
 

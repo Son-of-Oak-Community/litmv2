@@ -55,31 +55,29 @@ describe("migration 001: legacy theme tags", () => {
 		expect(AE.createDocuments).toHaveBeenCalledOnce();
 	});
 
-	it.each([
-		"status_tag",
-		"story_tag",
-		"relationship_tag",
-	])("converts a legacy theme whose only effect is an unrelated %s", async (type) => {
-		const item = legacyTheme([fakeEffect({ type })]);
+	it.each(["status_tag", "story_tag", "relationship_tag"])(
+		"converts a legacy theme whose only effect is an unrelated %s",
+		async (type) => {
+			const item = legacyTheme([fakeEffect({ type })]);
 
-		await run([item]);
+			await run([item]);
 
-		expect(AE.createDocuments).toHaveBeenCalledOnce();
-		const [created, ctx] = AE.createDocuments.mock.calls[0];
-		expect(ctx).toEqual({ parentUuid: item.uuid });
-		expect(created.map((e) => e.name)).toContain("Sword");
-		const [update] = doc.update.mock.calls[0];
-		expect(update.flags.litmv2).toHaveProperty("legacyTags");
-	});
+			expect(AE.createDocuments).toHaveBeenCalledOnce();
+			const [created, ctx] = AE.createDocuments.mock.calls[0];
+			expect(ctx).toEqual({ parentUuid: item.uuid });
+			expect(created.map((e) => e.name)).toContain("Sword");
+			const [update] = doc.update.mock.calls[0];
+			expect(update.flags.litmv2).toHaveProperty("legacyTags");
+		},
+	);
 
-	it.each([
-		"power_tag",
-		"weakness_tag",
-		"fellowship_tag",
-	])("leaves a legacy theme alone once it has a %s effect", async (type) => {
-		await run([legacyTheme([fakeEffect({ type })])]);
+	it.each(["power_tag", "weakness_tag", "fellowship_tag"])(
+		"leaves a legacy theme alone once it has a %s effect",
+		async (type) => {
+			await run([legacyTheme([fakeEffect({ type })])]);
 
-		expect(AE.createDocuments).not.toHaveBeenCalled();
-		expect(doc.update).not.toHaveBeenCalled();
-	});
+			expect(AE.createDocuments).not.toHaveBeenCalled();
+			expect(doc.update).not.toHaveBeenCalled();
+		},
+	);
 });

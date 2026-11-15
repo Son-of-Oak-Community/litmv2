@@ -451,8 +451,7 @@ describe("buildContext — Reflect rows", () => {
 		globalThis.game.actors = { filter: (fn) => [actor].filter(fn) };
 		const state = defaultCampingState();
 		setActivity(state, actor.id, 0, "reflect");
-		const [target] =
-			buildContext(state).heroes[0].activities[0].reflectTargets;
+		const [target] = buildContext(state).heroes[0].activities[0].reflectTargets;
 
 		expect(target).toMatchObject({
 			improve: 3,

@@ -2,6 +2,7 @@ import {
 	countsTowardLimit,
 	dedupeTitleTags,
 } from "../../active-effects/effect-queries.js";
+import { markImprove } from "../../item/theme/nascent-theme.js";
 import { fireTrackCompletion } from "../../system/chat.js";
 import {
 	ACTOR_TAG_TYPES,
@@ -10,7 +11,6 @@ import {
 	ITEM_TYPES,
 	THEME_TAG_TYPES,
 } from "../../system/config.js";
-import { markImprove } from "../../item/theme/nascent-theme.js";
 import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import { findFellowshipTheme } from "../../utils.js";

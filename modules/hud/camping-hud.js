@@ -8,12 +8,7 @@ import { mountPlayersHud } from "./players-hud.js";
 export function shouldShowCampPickup({ state, rendered }) {
 	// A camp being packed up is about to end; offering to rejoin it would
 	// reopen a session that is being discarded.
-	return !!(
-		state &&
-		state.phase === "active" &&
-		!state.packingUp &&
-		!rendered
-	);
+	return !!(state && state.phase === "active" && !state.packingUp && !rendered);
 }
 
 /**

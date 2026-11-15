@@ -28,7 +28,9 @@ const moment = (scratched = false, id = "m") => ({
 describe("Secret Grace", () => {
 	it("is one tier per unused moment, up to the top status tier", () => {
 		expect(secretGraceTier(hero([moment(), moment(), moment(true)]))).toBe(2);
-		expect(secretGraceTier(hero(Array.from({ length: 9 }, () => moment())))).toBe(6);
+		expect(
+			secretGraceTier(hero(Array.from({ length: 9 }, () => moment()))),
+		).toBe(6);
 		expect(secretGraceTier(hero(undefined))).toBe(0);
 	});
 
@@ -50,7 +52,11 @@ describe("Secret Grace", () => {
 	});
 
 	it("scratches as many moments as the bonus, oldest first", async () => {
-		const actor = hero([moment(true, "a"), moment(false, "b"), moment(false, "c")]);
+		const actor = hero([
+			moment(true, "a"),
+			moment(false, "b"),
+			moment(false, "c"),
+		]);
 		await spendSecretGrace(actor, 1);
 		expect(graceMoments(actor).map((m) => m.scratched)).toEqual([
 			true,

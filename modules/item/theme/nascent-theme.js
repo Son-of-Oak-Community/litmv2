@@ -15,7 +15,12 @@ import { NASCENT_POWER_TAGS } from "./theme-data.js";
  * @param {number} [options.marks=1]  How many Improve marks to make
  * @returns {Promise<object|null>} The trackInfo fired, or null
  */
-export async function markImprove(theme, owner, notifyActor, { marks = 1 } = {}) {
+export async function markImprove(
+	theme,
+	owner,
+	notifyActor,
+	{ marks = 1 } = {},
+) {
 	const owed = Math.min(marks, theme.system?.nascentTagsToOwe ?? 0);
 	if (owed > 0) {
 		await theme.update({

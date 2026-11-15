@@ -46,7 +46,11 @@ describe("camp scene label", () => {
 
 	it("falls back to the scene name without a navigation name", () => {
 		expect(
-			campSceneLabel({ name: "Simple Battle", navigation: true, visible: true }),
+			campSceneLabel({
+				name: "Simple Battle",
+				navigation: true,
+				visible: true,
+			}),
 		).toBe("Simple Battle");
 	});
 
@@ -58,16 +62,16 @@ describe("camp scene label", () => {
 	// Foundry's own rule: permission alone does not name a scene the GM left
 	// out of navigation.
 	it("hides a viewable map left out of navigation", () => {
-		expect(
-			campSceneLabel({ ...scene, navigation: false, visible: true }),
-		).toBe("");
+		expect(campSceneLabel({ ...scene, navigation: false, visible: true })).toBe(
+			"",
+		);
 	});
 
 	it("always names the scene for the GM", () => {
 		vi.stubGlobal("game", { ...game, user: { ...game.user, isGM: true } });
-		expect(
-			campSceneLabel({ ...scene, navigation: false, visible: true }),
-		).toBe("Battle");
+		expect(campSceneLabel({ ...scene, navigation: false, visible: true })).toBe(
+			"Battle",
+		);
 	});
 });
 

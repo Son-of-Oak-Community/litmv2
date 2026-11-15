@@ -13,7 +13,7 @@
 		"i18n:diff": "node scripts/lang-diff.js lang/en.json lang/de.json lang/es.json lang/cn.json lang/fr.json lang/no.json lang/ru.json lang/uk.json"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.4.15",
-		"vitest": "2.1.0"
+		"@biomejs/biome": "2.6.7",
+		"vitest": "5.1.0"
 	}
 }

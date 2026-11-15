@@ -12,7 +12,11 @@ describe("playerVisibleTagString", () => {
 		game.user.isGM = false;
 	});
 
-	const effect = (name, type, isHidden) => ({ name, type, system: { isHidden } });
+	const effect = (name, type, isHidden) => ({
+		name,
+		type,
+		system: { isHidden },
+	});
 	const actor = (...effects) => ({ allApplicableEffects: () => effects });
 
 	const challenge = actor(
@@ -21,7 +25,8 @@ describe("playerVisibleTagString", () => {
 		effect("enraged", "status_tag", true),
 		effect("wounded", "status_tag", false),
 	);
-	const text = "[coiled] [venomous] [enraged-3] [wounded-2] [-slow] [harm:4] [flee:3]";
+	const text =
+		"[coiled] [venomous] [enraged-3] [wounded-2] [-slow] [harm:4] [flee:3]";
 	const limits = [
 		{ label: "harm", hidden: false },
 		{ label: "flee", hidden: true },
@@ -35,13 +40,18 @@ describe("playerVisibleTagString", () => {
 
 	it("leaves no stray separators in a comma-separated string", () => {
 		expect(
-			playerVisibleTagString("[coiled], [venomous], [wounded-2], [enraged-3]", challenge),
+			playerVisibleTagString(
+				"[coiled], [venomous], [wounded-2], [enraged-3]",
+				challenge,
+			),
 		).toBe("[coiled], [wounded-2]");
 	});
 
 	it("treats a limit with no hidden flag as hidden", () => {
 		expect(
-			playerVisibleTagString("[harm:4]", actor(), { limits: [{ label: "harm" }] }),
+			playerVisibleTagString("[harm:4]", actor(), {
+				limits: [{ label: "harm" }],
+			}),
 		).toBe("");
 	});
 
@@ -61,7 +71,11 @@ describe("playerVisibleTagString", () => {
 
 // The Narrator's Challenge sheet keeps every chip and marks these keys hidden.
 describe("hiddenTagKeys", () => {
-	const effect = (name, type, isHidden) => ({ name, type, system: { isHidden } });
+	const effect = (name, type, isHidden) => ({
+		name,
+		type,
+		system: { isHidden },
+	});
 	const actor = (...effects) => ({ allApplicableEffects: () => effects });
 
 	it("keys hidden tags, statuses and unrevealed limits, not a name also shown", () => {
@@ -86,9 +100,14 @@ describe("hiddenTagKeys", () => {
 
 describe("tagChipHtml hidden", () => {
 	it("dims the chip and puts the eye-slash beside it, outside the dim", () => {
-		const html = tagChipHtml({ kind: "story", name: "venomous" }, { hidden: true });
+		const html = tagChipHtml(
+			{ kind: "story", name: "venomous" },
+			{ hidden: true },
+		);
 
-		expect(html).toMatch(/^<span class="litm--hidden-wrap"><span class="litm-tag litm--tag-hidden"/);
+		expect(html).toMatch(
+			/^<span class="litm--hidden-wrap"><span class="litm-tag litm--tag-hidden"/,
+		);
 		// The mark follows the chip's closing tag, so the dim can't reach it.
 		expect(html).toMatch(/venomous<\/span><i class="[^"]*litm--hidden-mark/);
 		expect(html.endsWith("</i></span>")).toBe(true);
@@ -100,10 +119,14 @@ describe("tagChipHtml hidden", () => {
 		{ kind: "weakness", name: "slow" },
 	])("dims every chip kind it is asked to hide: %j", (c) => {
 		const html = tagChipHtml(c, { hidden: true });
-		expect(html).toMatch(/^<span class="litm--hidden-wrap"><span class="[^"]*litm--tag-hidden/);
+		expect(html).toMatch(
+			/^<span class="litm--hidden-wrap"><span class="[^"]*litm--tag-hidden/,
+		);
 	});
 
 	it("leaves a visible chip alone", () => {
-		expect(tagChipHtml({ kind: "story", name: "coiled" })).not.toContain("litm--hidden");
+		expect(tagChipHtml({ kind: "story", name: "coiled" })).not.toContain(
+			"litm--hidden",
+		);
 	});
 });

@@ -195,7 +195,10 @@ describe("enrichPlainText", () => {
 	});
 
 	it("keeps tag, status and link markup for the enrichers", async () => {
-		await enrichPlainText("Inflict [wounded-3] on @UUID[Actor.abc]{Gerrin}", doc);
+		await enrichPlainText(
+			"Inflict [wounded-3] on @UUID[Actor.abc]{Gerrin}",
+			doc,
+		);
 		expect(enriched[0]).toBe("Inflict [wounded-3] on @UUID[Actor.abc]{Gerrin}");
 	});
 

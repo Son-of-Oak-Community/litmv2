@@ -103,7 +103,10 @@ function _onRenderCardDragStart(event) {
 	if (!card?.dataset?.dragUuid) return;
 	event.dataTransfer.setData(
 		"text/plain",
-		JSON.stringify({ type: card.dataset.dragType, uuid: card.dataset.dragUuid }),
+		JSON.stringify({
+			type: card.dataset.dragType,
+			uuid: card.dataset.dragUuid,
+		}),
 	);
 }
 

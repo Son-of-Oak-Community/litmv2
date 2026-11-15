@@ -6,16 +6,16 @@ Provenance and license for every font bundled with litmv2.
 
 The full OFL 1.1 text, with the copyright notices for every OFL font below, is in [`OFL.txt`](./OFL.txt).
 
-| Font | Files | Copyright |
-| --- | --- | --- |
-| Caveat | `caveat.ttf`, `caveat-b.ttf` | © 2014 The Caveat Project Authors (Pablo Impallari) |
-| Caveat Brush | `caveat-brush.ttf` | © 2015 Google Inc. (Pablo Impallari) |
-| Fraunces | `fraunces.ttf`, `fraunces-i.ttf` | © 2020 The Fraunces Project Authors |
-| Grenze | `grenze.ttf` (Medium), `grenze-b.ttf` (SemiBold) | © 2019 The Grenze Project Authors (Omnibus-Type) |
-| Labrada | `labrada.ttf`, `labrada-i.ttf` | © 2022 The Labrada Project Authors (Omnibus-Type) |
-| Luxurious Roman | `luxurious-roman.ttf` | © 2015–2021 The Luxurious Roman Project Authors (Robert E. Leuschke) |
-| Uncial Antiqua | `uncial-antiqua.ttf` | © 2011 Brian J. Bonislawsky DBA Astigmatic (AOETI) |
-| Ysgarth | `ysgarth.ttf` | © 2011 Neale Davidson, Pixel Sagas — relicensed OFL 1.1 by Pixel Sagas ([license page](https://www.pixelsagas.com/?page_id=8484)) |
+| Font            | Files                                            | Copyright                                                                                                                         |
+| --------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Caveat          | `caveat.ttf`, `caveat-b.ttf`                     | © 2014 The Caveat Project Authors (Pablo Impallari)                                                                               |
+| Caveat Brush    | `caveat-brush.ttf`                               | © 2015 Google Inc. (Pablo Impallari)                                                                                              |
+| Fraunces        | `fraunces.ttf`, `fraunces-i.ttf`                 | © 2020 The Fraunces Project Authors                                                                                               |
+| Grenze          | `grenze.ttf` (Medium), `grenze-b.ttf` (SemiBold) | © 2019 The Grenze Project Authors (Omnibus-Type)                                                                                  |
+| Labrada         | `labrada.ttf`, `labrada-i.ttf`                   | © 2022 The Labrada Project Authors (Omnibus-Type)                                                                                 |
+| Luxurious Roman | `luxurious-roman.ttf`                            | © 2015–2021 The Luxurious Roman Project Authors (Robert E. Leuschke)                                                              |
+| Uncial Antiqua  | `uncial-antiqua.ttf`                             | © 2011 Brian J. Bonislawsky DBA Astigmatic (AOETI)                                                                                |
+| Ysgarth         | `ysgarth.ttf`                                    | © 2011 Neale Davidson, Pixel Sagas — relicensed OFL 1.1 by Pixel Sagas ([license page](https://www.pixelsagas.com/?page_id=8484)) |
 
 ## Used with permission
 

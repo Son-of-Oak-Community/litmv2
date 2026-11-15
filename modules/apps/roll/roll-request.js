@@ -185,7 +185,7 @@ export async function sendRollRequest({ action }) {
 		ui.notifications.warn(t("LITM.Actions.gm_only"));
 		return null;
 	}
-	if (!action || action.type !== "action") return null;
+	if (action?.type !== "action") return null;
 
 	const owner = action.parent;
 	if (owner?.type === "hero")

@@ -12,14 +12,26 @@ import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 const originalUx = foundry.applications.ux;
 
 function setup({ fellowship = false, promise = 0, tracks = {} } = {}) {
-	const actor = fakeActor({ type: "hero", system: { promise, pendingPromise: 0 } });
+	const actor = fakeActor({
+		type: "hero",
+		system: { promise, pendingPromise: 0 },
+	});
 	const effects = [
-		fakeEffect({ type: "power_tag", name: "Title", system: { isTitleTag: true } }),
+		fakeEffect({
+			type: "power_tag",
+			name: "Title",
+			system: { isTitleTag: true },
+		}),
 		fakeEffect({ type: "power_tag", name: "Swift", system: {} }),
 		fakeEffect({ type: "power_tag", name: "Keen", system: {} }),
 		fakeEffect({ type: "weakness_tag", name: "Restless", system: {} }),
 	];
-	const theme = fakeItem({ type: "theme", name: "Wanderer", parent: actor, effects });
+	const theme = fakeItem({
+		type: "theme",
+		name: "Wanderer",
+		parent: actor,
+		effects,
+	});
 	theme.system = new ThemeData({
 		isFellowship: fellowship,
 		nascentImprovements: 0,
@@ -218,7 +230,10 @@ describe("choosing an improvement", () => {
 				object = { option: "promise" };
 			},
 		};
-		const app = new ThemeAdvancementApp({ actorId: actor.id, themeId: theme.id });
+		const app = new ThemeAdvancementApp({
+			actorId: actor.id,
+			themeId: theme.id,
+		});
 		app.close = vi.fn();
 		const button = { disabled: false, isConnected: true };
 		const { confirm: onConfirm } = ThemeAdvancementApp.DEFAULT_OPTIONS.actions;
@@ -279,14 +294,20 @@ describe("the improvement choices", () => {
 		swift.active = false;
 		keen.disabled = true;
 		keen.active = false;
-		const app = new ThemeAdvancementApp({ actorId: actor.id, themeId: theme.id });
+		const app = new ThemeAdvancementApp({
+			actorId: actor.id,
+			themeId: theme.id,
+		});
 		const context = await app._prepareContext();
 		expect(context.inactivePowerTags.map((o) => o.value)).toEqual([keen.id]);
 	});
 
 	it("adds a themebook Special Improvement the theme lacks, once", async () => {
 		const { actor, theme } = bookTheme();
-		const app = new ThemeAdvancementApp({ actorId: actor.id, themeId: theme.id });
+		const app = new ThemeAdvancementApp({
+			actorId: actor.id,
+			themeId: theme.id,
+		});
 		app.close = vi.fn();
 		const context = await app._prepareContext();
 		expect(context.specialImprovementOptions.map((o) => o.label)).toEqual([
@@ -309,7 +330,10 @@ describe("the improvement choices", () => {
 
 	it("never takes a Special Improvement twice", async () => {
 		const { actor, theme } = bookTheme();
-		const app = new ThemeAdvancementApp({ actorId: actor.id, themeId: theme.id });
+		const app = new ThemeAdvancementApp({
+			actorId: actor.id,
+			themeId: theme.id,
+		});
 		await app._prepareContext();
 		foundry.applications.ux = {
 			FormDataExtended: class {

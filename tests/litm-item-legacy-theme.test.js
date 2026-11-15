@@ -48,18 +48,17 @@ describe("LitmItem.createLegacyEffects (theme)", () => {
 		expect(item.update).toHaveBeenCalledTimes(1);
 	});
 
-	it.each([
-		"power_tag",
-		"weakness_tag",
-		"fellowship_tag",
-	])("leaves a theme that already has a %s alone", async (type) => {
-		const item = legacyTheme([fakeEffect({ type })]);
+	it.each(["power_tag", "weakness_tag", "fellowship_tag"])(
+		"leaves a theme that already has a %s alone",
+		async (type) => {
+			const item = legacyTheme([fakeEffect({ type })]);
 
-		await LitmItem.createLegacyEffects(item);
+			await LitmItem.createLegacyEffects(item);
 
-		expect(item.createEmbeddedDocuments).not.toHaveBeenCalled();
-		expect(item.update).not.toHaveBeenCalled();
-	});
+			expect(item.createEmbeddedDocuments).not.toHaveBeenCalled();
+			expect(item.update).not.toHaveBeenCalled();
+		},
+	);
 
 	it("does nothing without a legacy stash", async () => {
 		const item = legacyTheme();

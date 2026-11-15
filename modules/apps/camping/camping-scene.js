@@ -4,8 +4,8 @@ import {
 } from "../../active-effects/effect-factories.js";
 import { campSceneLabel } from "../../hud/camping-hud.js";
 import { error, warn } from "../../logger.js";
-import { ContentSources } from "../../system/content-sources.js";
 import { ACTOR_TYPES } from "../../system/config.js";
+import { ContentSources } from "../../system/content-sources.js";
 import { Sockets } from "../../system/sockets.js";
 import {
 	enrichPlainText,
@@ -27,8 +27,8 @@ import {
 	defaultCampingState,
 	isLockedByReady,
 	SETTERS,
-	stepOrder,
 	sojournPowerBonus,
+	stepOrder,
 } from "./camping-state.js";
 
 const FLAG_SCOPE = "litmv2";
@@ -373,7 +373,10 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		super._configureRenderOptions(options);
 		// The frame only reads the title on first render, and this singleton can
 		// rebind to another scene's camp while open.
-		if (this.hasFrame) (options.window ??= {}).title = this.title;
+		if (this.hasFrame) {
+			options.window ??= {};
+			options.window.title = this.title;
+		}
 	}
 
 	async close(options) {
@@ -495,7 +498,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
 		if (data?.type !== "Item") return;
 		const item = await foundry.documents.Item.implementation.fromDropData(data);
-		if (!item || item.type !== "vignette") return;
+		if (item?.type !== "vignette") return;
 		// Vignettes embedded on other documents (challenge/journey actors)
 		// are scoped to that parent — we need a world-level copy so the
 		// id we store remains resolvable from any client.
@@ -968,7 +971,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			if (!game.user.isGM) return;
 			if (effect.pack !== "world.litmv2-story-tags") return;
 			const state = readState();
-			if (!state || state.phase !== "active" || !state.campId) return;
+			if (state?.phase !== "active" || !state.campId) return;
 			if (effect.getFlag?.(FLAG_SCOPE, "campId")) return;
 			effect.updateSource({
 				[`flags.${FLAG_SCOPE}.campId`]: state.campId,
@@ -986,20 +989,25 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 		Hooks.on("litm.camping.open", ({ sceneId } = {}) => {
 			LitmCampingScene.open({ sceneId });
 		});
-		Hooks.on("litm.camping.saveOp", async ({ key, payload, sceneId, senderId }) => {
-			// Exactly one GM applies the op, matching scratchEffect /
-			// storyTagsUpdate. With every GM applying it, `rest-tier-delta`
-			// (which computes from the persisted value) double-applies.
-			if (game.user !== game.users.activeGM) return;
-			// The op names the scene its sender's camp lives on, which need not
-			// be the one this GM is viewing. A sender that predates the scene id
-			// gets the old behaviour; a scene that is gone drops the op.
-			// (`null`, not `undefined`: a default parameter would swap it for
-			// the viewed scene.)
-			const scene = sceneId ? (game.scenes?.get(sceneId) ?? null) : campScene();
-			const byGM = !!game.users.get(senderId)?.isGM;
-			await applyOpOnGM(key, payload, scene, byGM);
-		});
+		Hooks.on(
+			"litm.camping.saveOp",
+			async ({ key, payload, sceneId, senderId }) => {
+				// Exactly one GM applies the op, matching scratchEffect /
+				// storyTagsUpdate. With every GM applying it, `rest-tier-delta`
+				// (which computes from the persisted value) double-applies.
+				if (game.user !== game.users.activeGM) return;
+				// The op names the scene its sender's camp lives on, which need not
+				// be the one this GM is viewing. A sender that predates the scene id
+				// gets the old behaviour; a scene that is gone drops the op.
+				// (`null`, not `undefined`: a default parameter would swap it for
+				// the viewed scene.)
+				const scene = sceneId
+					? (game.scenes?.get(sceneId) ?? null)
+					: campScene();
+				const byGM = !!game.users.get(senderId)?.isGM;
+				await applyOpOnGM(key, payload, scene, byGM);
+			},
+		);
 		Hooks.on("litm.camping.lifecycle", async ({ action, sceneId } = {}) => {
 			// A second GM relays Begin Camp / Pack Up / Cancel here so they run
 			// in the active GM's queue, never beside it. Same single-applier

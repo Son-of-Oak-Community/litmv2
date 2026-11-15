@@ -4,8 +4,8 @@ import { MIGHT_OPTIONS } from "../../system/config.js";
 import {
 	enrichPlainText,
 	keepUnrenderedArrayKeys,
-	localize as t,
 	removeAtIndex,
+	localize as t,
 } from "../../utils.js";
 
 export class AddonSheet extends LitmItemSheet {

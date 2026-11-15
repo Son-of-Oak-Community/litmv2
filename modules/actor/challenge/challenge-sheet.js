@@ -90,8 +90,13 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 
 		const sys = this.system;
 		const isPlay = !this._isEditMode;
-		const hasObserverPermission = this.document.testUserPermission(game.user, 'OBSERVER');
-		const limitedView = this.document.testUserPermission(game.user, 'LIMITED', { exact: true });
+		const hasObserverPermission = this.document.testUserPermission(
+			game.user,
+			"OBSERVER",
+		);
+		const limitedView = this.document.testUserPermission(game.user, "LIMITED", {
+			exact: true,
+		});
 		if (limitedView) return this.#prepareLimitedContext(context);
 
 		const enriched = await this._enrichFields("description", "specialFeatures");

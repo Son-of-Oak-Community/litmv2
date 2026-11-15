@@ -148,16 +148,18 @@ export function playerVisibleTagString(text, actor, { limits = [] } = {}) {
 	const base = tagStringRe();
 	const flags = base.flags.includes("g") ? base.flags : `${base.flags}g`;
 	const re = new RegExp(base.source, flags);
-	return text
-		.replace(re, (...args) => {
-			const c = classifyTagStringMatch(args.slice(0, 5));
-			return hidden.has(tagKey(c)) ? "" : args[0];
-		})
-		// The same clean-up the sync mixin does when a tag is deleted.
-		.replace(/,\s*,/g, ",")
-		.replace(/^\s*,|,\s*$/g, "")
-		.replace(/ {2,}/g, " ")
-		.trim();
+	return (
+		text
+			.replace(re, (...args) => {
+				const c = classifyTagStringMatch(args.slice(0, 5));
+				return hidden.has(tagKey(c)) ? "" : args[0];
+			})
+			// The same clean-up the sync mixin does when a tag is deleted.
+			.replace(/,\s*,/g, ",")
+			.replace(/^\s*,|,\s*$/g, "")
+			.replace(/ {2,}/g, " ")
+			.trim()
+	);
 }
 
 /**

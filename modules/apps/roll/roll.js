@@ -1,5 +1,6 @@
 import { resolveTagActorId } from "../../active-effects/effect-queries.js";
 import { maxStatusTier } from "../../active-effects/status-tag-data.js";
+import { graceBonusLabel } from "../../actor/hero/secret-grace.js";
 import {
 	BURN_POWER,
 	IMPROVE_MARKING_TAG_TYPES,
@@ -10,7 +11,6 @@ import { localize as t } from "../../utils.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 import { isTagConcealed, maskConcealedTags } from "./concealment.js";
 import { sacrificeThemeView } from "./sacrifice-price.js";
-import { graceBonusLabel } from "../../actor/hero/secret-grace.js";
 
 export class LitmRoll extends foundry.dice.Roll {
 	static CHAT_TEMPLATE = "systems/litmv2/templates/chat/message.html";

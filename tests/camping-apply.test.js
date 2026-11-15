@@ -1361,6 +1361,8 @@ describe("applyOperations — a nascent theme in camp", () => {
 		await applyOperations(operations);
 
 		expect(theme.update).toHaveBeenCalledWith({ "system.nascentPending": 1 });
-		expect(theme.update).not.toHaveBeenCalledWith({ "system.improve.value": 3 });
+		expect(theme.update).not.toHaveBeenCalledWith({
+			"system.improve.value": 3,
+		});
 	});
 });

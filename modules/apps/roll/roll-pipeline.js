@@ -137,7 +137,8 @@ export function executeRoll({
 		might,
 	});
 
-	sacrificeBonus = type === "sacrifice" ? Math.trunc(Number(sacrificeBonus)) || 0 : 0;
+	sacrificeBonus =
+		type === "sacrifice" ? Math.trunc(Number(sacrificeBonus)) || 0 : 0;
 	const formula = resolveRollFormula({
 		type,
 		sacrificeBonus,

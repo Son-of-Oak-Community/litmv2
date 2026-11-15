@@ -21,7 +21,9 @@ describe("collectScratchableTags", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				tags: [{ id: "e1", name: "tonic", isSingleUse: false, isHidden: false }],
+				tags: [
+					{ id: "e1", name: "tonic", isSingleUse: false, isHidden: false },
+				],
 			},
 		]);
 	});
@@ -40,13 +42,22 @@ describe("collectScratchableTags", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				tags: [{ id: "e1", name: "tonic", isSingleUse: false, isHidden: false }],
+				tags: [
+					{ id: "e1", name: "tonic", isSingleUse: false, isHidden: false },
+				],
 			},
 			{
 				ownerId: "c1",
 				ownerName: "Bandit",
 				isOwn: false,
-				tags: [{ id: "e3", name: "reinforcements", isSingleUse: false, isHidden: false }],
+				tags: [
+					{
+						id: "e3",
+						name: "reinforcements",
+						isSingleUse: false,
+						isHidden: false,
+					},
+				],
 			},
 		]);
 	});
@@ -60,7 +71,14 @@ describe("collectScratchableTags", () => {
 				ownerId: "c1",
 				ownerName: "Bandit",
 				isOwn: false,
-				tags: [{ id: "e3", name: "reinforcements", isSingleUse: false, isHidden: false }],
+				tags: [
+					{
+						id: "e3",
+						name: "reinforcements",
+						isSingleUse: false,
+						isHidden: false,
+					},
+				],
 			},
 		]);
 	});
@@ -69,7 +87,11 @@ describe("collectScratchableTags", () => {
 	// to know which chips are single-use.
 	it("flags a hidden tag so the Narrator's picker can mark it", () => {
 		const hero = actor("h1", "Gerrin", [
-			{ id: "e1", name: "secret map", system: { isScratched: false, isHidden: true } },
+			{
+				id: "e1",
+				name: "secret map",
+				system: { isScratched: false, isHidden: true },
+			},
 		]);
 		const [own] = collectScratchableTags(hero, []);
 		expect(own.tags).toEqual([
@@ -162,7 +184,9 @@ describe("collectScratchableTags", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				tags: [{ id: "e1", name: "tonic", isSingleUse: false, isHidden: false }],
+				tags: [
+					{ id: "e1", name: "tonic", isSingleUse: false, isHidden: false },
+				],
 			},
 			{
 				ownerId: "",
@@ -170,8 +194,18 @@ describe("collectScratchableTags", () => {
 				isOwn: false,
 				isScene: true,
 				tags: [
-					{ id: "s1", name: "alarm raised", isSingleUse: false, isHidden: false },
-					{ id: "s2", name: "burning bridge", isSingleUse: false, isHidden: false },
+					{
+						id: "s1",
+						name: "alarm raised",
+						isSingleUse: false,
+						isHidden: false,
+					},
+					{
+						id: "s2",
+						name: "burning bridge",
+						isSingleUse: false,
+						isHidden: false,
+					},
 				],
 			},
 		]);
@@ -225,13 +259,22 @@ describe("collectScratchableTags", () => {
 				ownerId: "h1",
 				ownerName: "Gerrin",
 				isOwn: true,
-				tags: [{ id: "e0", name: "tonic", isSingleUse: false, isHidden: false }],
+				tags: [
+					{ id: "e0", name: "tonic", isSingleUse: false, isHidden: false },
+				],
 			},
 			{
 				ownerId: "c1",
 				ownerName: "Bandit",
 				isOwn: false,
-				tags: [{ id: "e3", name: "reinforcements", isSingleUse: false, isHidden: false }],
+				tags: [
+					{
+						id: "e3",
+						name: "reinforcements",
+						isSingleUse: false,
+						isHidden: false,
+					},
+				],
 			},
 		]);
 	});

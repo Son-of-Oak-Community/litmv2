@@ -104,7 +104,7 @@ async function _resolveTarget({
  * single-tag successes and the GM consequence menu.
  */
 function isTagChosen(chosenTags, tagIdx) {
-	return !chosenTags || chosenTags[tagIdx] !== false;
+	return chosenTags?.[tagIdx] !== false;
 }
 
 /**

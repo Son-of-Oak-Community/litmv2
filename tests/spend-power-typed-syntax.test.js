@@ -21,7 +21,8 @@ beforeAll(() => {
 
 function row(name, { tier, singleUse } = {}) {
 	const parts = { ".litm-spend-power__entry-name": { value: name } };
-	if (tier !== undefined) parts[".litm-spend-power__entry-tier"] = { value: tier };
+	if (tier !== undefined)
+		parts[".litm-spend-power__entry-tier"] = { value: tier };
 	if (singleUse !== undefined)
 		parts[".litm-spend-power__entry-single-use"] = { checked: singleUse };
 	return { parts, querySelector: (selector) => parts[selector] ?? null };

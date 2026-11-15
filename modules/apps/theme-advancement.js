@@ -4,7 +4,11 @@ import {
 	weaknessTagEffect,
 } from "../active-effects/effect-factories.js";
 import { NASCENT_POWER_TAGS } from "../item/theme/theme-data.js";
-import { findThemebookByName, localize as t, toQuestionOptions } from "../utils.js";
+import {
+	findThemebookByName,
+	localize as t,
+	toQuestionOptions,
+} from "../utils.js";
 import { applyPromiseToActor, showForMode } from "./theme-evolution.js";
 import { getRevisableParts, PROMISE_MAX } from "./theme-evolution-rules.js";
 
@@ -219,7 +223,7 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		rewriteSelect?.addEventListener("change", () => {
 			if (!rewriteInput) return;
 			rewriteInput.value = rewriteSelect.value
-				? rewriteSelect.selectedOptions[0]?.textContent ?? ""
+				? (rewriteSelect.selectedOptions[0]?.textContent ?? "")
 				: "";
 		});
 

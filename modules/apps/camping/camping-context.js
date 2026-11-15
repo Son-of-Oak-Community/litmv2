@@ -471,21 +471,23 @@ export function stepIsComplete(stepId, heroes) {
  */
 export function buildSceneStoryTags(campId) {
 	if (!campId) return [];
-	return StoryTagsStore.sceneStoryEffects
-		// The Narrator's sidebar starts new scene tags hidden; so does the banner.
-		.filter(
-			(e) => e.getFlag?.("litmv2", "campId") === campId && isEffectVisible(e),
-		)
-		.map((e) => ({
-			id: e.id,
-			name: e.name,
-			type: e.type,
-			isStatus: e.type === "status_tag",
-			isSingleUse: !!e.system?.isSingleUse,
-			currentTier: e.system?.currentTier ?? 0,
-			// Only the GM gets hidden ones (isEffectVisible above).
-			isHidden: !!e.system?.isHidden,
-		}));
+	return (
+		StoryTagsStore.sceneStoryEffects
+			// The Narrator's sidebar starts new scene tags hidden; so does the banner.
+			.filter(
+				(e) => e.getFlag?.("litmv2", "campId") === campId && isEffectVisible(e),
+			)
+			.map((e) => ({
+				id: e.id,
+				name: e.name,
+				type: e.type,
+				isStatus: e.type === "status_tag",
+				isSingleUse: !!e.system?.isSingleUse,
+				currentTier: e.system?.currentTier ?? 0,
+				// Only the GM gets hidden ones (isEffectVisible above).
+				isHidden: !!e.system?.isHidden,
+			}))
+	);
 }
 
 /**

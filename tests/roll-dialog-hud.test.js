@@ -21,16 +21,15 @@ describe("roll pickup", () => {
 		rendered: false,
 	};
 
-	it.each([
-		"narrator",
-		"participant",
-		"helper",
-	])("hides an open %s view and restores pickup after it closes", (userId) => {
-		expect(shouldShowRollPickup({ ...shared, userId, rendered: true })).toBe(
-			false,
-		);
-		expect(shouldShowRollPickup({ ...shared, userId })).toBe(true);
-	});
+	it.each(["narrator", "participant", "helper"])(
+		"hides an open %s view and restores pickup after it closes",
+		(userId) => {
+			expect(shouldShowRollPickup({ ...shared, userId, rendered: true })).toBe(
+				false,
+			);
+			expect(shouldShowRollPickup({ ...shared, userId })).toBe(true);
+		},
+	);
 
 	it("brings the owner back to a called roll they are not viewing", () => {
 		expect(shouldShowRollPickup({ ...shared, userId: "roller" })).toBe(true);
@@ -44,9 +43,12 @@ describe("roll pickup", () => {
 		{ userId: "roller", flag: { ownerId: "roller" } },
 		{ ownerActive: false },
 		{ flag: { ownerId: "roller", type: "sacrifice" } },
-	])("does not advertise unavailable or separately handled rolls: %j", (change) => {
-		expect(shouldShowRollPickup({ ...shared, ...change })).toBe(false);
-	});
+	])(
+		"does not advertise unavailable or separately handled rolls: %j",
+		(change) => {
+			expect(shouldShowRollPickup({ ...shared, ...change })).toBe(false);
+		},
+	);
 });
 
 describe("HUD lifecycle", () => {

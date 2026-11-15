@@ -263,19 +263,23 @@ function _renderRollDialogHudOnPlayers() {
 		// The Narrator's Secret Grace window and a Sacrifice's tier hint follow
 		// the Hero's record.
 		if (FLAGS.secretGrace in flags || `-=${FLAGS.secretGrace}` in flags) {
-			foundry.applications.instances
-				.get(SecretGraceApp.idFor(actor))
-				?.render();
+			foundry.applications.instances.get(SecretGraceApp.idFor(actor))?.render();
 			// Only the Narrator's Sacrifice window shows the tier.
-			const dialog = game.user.isGM && actor.sheet?.hasRollDialog
-				? actor.sheet.rollDialogInstance
-				: null;
+			const dialog =
+				game.user.isGM && actor.sheet?.hasRollDialog
+					? actor.sheet.rollDialogInstance
+					: null;
 			if (dialog?.rendered && dialog.type === "sacrifice") {
 				dialog.followSecretGrace();
 				dialog.render();
 			}
 		}
-		if (!(FLAGS.pendingSacrifice in flags || `-=${FLAGS.pendingSacrifice}` in flags))
+		if (
+			!(
+				FLAGS.pendingSacrifice in flags ||
+				`-=${FLAGS.pendingSacrifice}` in flags
+			)
+		)
 			return;
 		game.litmv2.sacrificeHud?.render?.();
 		// Settled from another client: a payment dialog still open here is moot.
@@ -283,9 +287,14 @@ function _renderRollDialogHudOnPlayers() {
 			foundry.applications.instances.get(paymentDialogId(actor))?.close();
 		// Only two cards can change: the one showing Complete now, and the new debt's.
 		const debtId = pendingSacrifice(actor)?.messageId;
-		for (const li of ui.chat?.element?.querySelectorAll(".message[data-message-id]") ?? []) {
+		for (const li of ui.chat?.element?.querySelectorAll(
+			".message[data-message-id]",
+		) ?? []) {
 			const { messageId } = li.dataset;
-			if (messageId !== debtId && !li.querySelector("[data-click='complete-sacrifice']"))
+			if (
+				messageId !== debtId &&
+				!li.querySelector("[data-click='complete-sacrifice']")
+			)
 				continue;
 			const message = game.messages.get(messageId);
 			if (message?.rolls?.[0]?.options?.actorId === actor.id)
@@ -343,7 +352,10 @@ function _refreshRollDialogOnActorContentChange() {
 	const rerender = (dialog) => {
 		if (!dialog || deferred.has(dialog)) return;
 		const active = document.activeElement;
-		if (active?.matches?.("input[type=text], textarea") && dialog.element?.contains(active)) {
+		if (
+			active?.matches?.("input[type=text], textarea") &&
+			dialog.element?.contains(active)
+		) {
 			deferred.add(dialog);
 			active.addEventListener(
 				"blur",

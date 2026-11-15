@@ -155,7 +155,9 @@ export const HIDDEN_CHIP_CLASS = "litm--tag-hidden";
  * @returns {string}
  */
 export function hiddenWrapHtml(dimmedChipHtml) {
-	const label = foundry.utils.escapeHTML(game.i18n.localize("LITM.Terms.hidden"));
+	const label = foundry.utils.escapeHTML(
+		game.i18n.localize("LITM.Terms.hidden"),
+	);
 	return `<span class="litm--hidden-wrap">${dimmedChipHtml}<i class="fa-solid fa-eye-slash litm--hidden-mark" role="img" data-tooltip="${label}" aria-label="${label}"></i></span>`;
 }
 

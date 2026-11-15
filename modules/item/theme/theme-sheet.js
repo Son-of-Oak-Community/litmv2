@@ -4,7 +4,6 @@ import {
 	weaknessTagEffect,
 } from "../../active-effects/effect-factories.js";
 import { error } from "../../logger.js";
-import { markImprove } from "./nascent-theme.js";
 import { LitmItemSheet } from "../../sheets/base-item-sheet.js";
 import { getThemeLevels } from "../../system/config.js";
 import {
@@ -13,6 +12,7 @@ import {
 	queryItemsFromPacks,
 	toQuestionOptions,
 } from "../../utils.js";
+import { markImprove } from "./nascent-theme.js";
 
 /** Maps tag type + fellowship context to the correct effect factory. */
 const TAG_FACTORIES = {

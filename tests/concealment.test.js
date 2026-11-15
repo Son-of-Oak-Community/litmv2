@@ -86,12 +86,16 @@ describe("maskConcealedTags", () => {
 		});
 
 		it("unmasks once the Narrator reveals it", () => {
-			const tags = [{ uuid: "e1", name: "sharp claws", effectHiddenAtRoll: true }];
+			const tags = [
+				{ uuid: "e1", name: "sharp claws", effectHiddenAtRoll: true },
+			];
 			expect(maskHidden(tags, { e1: false })[0].name).toBe("sharp claws");
 		});
 
 		it("keeps the hiding it had when rolled after the effect is gone", () => {
-			const tags = [{ uuid: "e1", name: "sharp claws", effectHiddenAtRoll: true }];
+			const tags = [
+				{ uuid: "e1", name: "sharp claws", effectHiddenAtRoll: true },
+			];
 			expect(maskHidden(tags, {})[0].name).toBe(MASK);
 		});
 	});

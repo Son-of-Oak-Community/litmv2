@@ -82,8 +82,7 @@ export function tokenTooltipHTML(token) {
 	const isOwnerOrGM = game.user.isGM || actor.isOwner;
 	// A column hidden in the story-tag sidebar hides its actor's tags here too,
 	// the same as in the roll dialog and the chat card.
-	if (!isOwnerOrGM && StoryTagsStore.concealedActorIds.has(actor.id))
-		return "";
+	if (!isOwnerOrGM && StoryTagsStore.concealedActorIds.has(actor.id)) return "";
 	return buildTooltipHTML(actor);
 }
 
@@ -114,7 +113,13 @@ function _createLabel(token, html, { tooltipClass } = {}) {
  * @param {Token} token
  * @param {{ removeExisting: boolean }} params
  */
-function _showTooltip(token, { removeExisting, tooltipClass } = { removeExisting: true, tooltipClass: HOVER_CLASS }) {
+function _showTooltip(
+	token,
+	{ removeExisting, tooltipClass } = {
+		removeExisting: true,
+		tooltipClass: HOVER_CLASS,
+	},
+) {
 	if (removeExisting) _removeTooltip();
 
 	const html = tokenTooltipHTML(token);

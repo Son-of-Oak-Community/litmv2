@@ -408,7 +408,10 @@ describe("Helping Each Other", () => {
 				session,
 				fields: {},
 				selections: [
-					[id, { state: "positive", helper: false, tagActorId: "someone-else" }],
+					[
+						id,
+						{ state: "positive", helper: false, tagActorId: "someone-else" },
+					],
 				],
 			},
 		});

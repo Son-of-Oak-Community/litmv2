@@ -11,6 +11,7 @@ import {
 	maxStatusTier,
 	StatusTagData,
 } from "../../active-effects/status-tag-data.js";
+import { toggleLimitHiddenIn } from "../../actor/mixins/limits-mixin.js";
 import {
 	classifyTagStringMatch,
 	effectDragState,
@@ -18,7 +19,6 @@ import {
 	parseTagString,
 	tagDragData,
 } from "../../item/action/tag-string.js";
-import { toggleLimitHiddenIn } from "../../actor/mixins/limits-mixin.js";
 import { info } from "../../logger.js";
 import { bindActionPresubmit } from "../../sheets/action-presubmit.js";
 import {
@@ -1377,7 +1377,9 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 	// The trash button asks first; Alt+click on the tag stays the instant removal.
 	static async #onRemoveTag(_event, target) {
 		const isStatus = target.dataset.tagType === "status_tag";
-		if (!(await confirmDelete(isStatus ? "LITM.Terms.status" : "LITM.Terms.tag")))
+		if (
+			!(await confirmDelete(isStatus ? "LITM.Terms.status" : "LITM.Terms.tag"))
+		)
 			return;
 		return this.removeTag(target);
 	}
@@ -1630,7 +1632,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		if (source === "story") {
 			if (!game.user.isGM) return;
 			const effect = this.#packStoryTags.find((e) => e._id === tagId);
-			if (!effect || effect.type !== "status_tag") return;
+			if (effect?.type !== "status_tag") return;
 			if (!effect.system.tiers.some(Boolean)) return;
 
 			const newTiers = effect.system.calculateReduction(1);
@@ -1642,7 +1644,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 			if (!actor?.isOwner) return;
 
 			const effect = resolveEffect(tagId, actor);
-			if (!effect || effect.type !== "status_tag") return;
+			if (effect?.type !== "status_tag") return;
 
 			await effect.system.reduceTier(1);
 			await this.#triggerLimitRecalc(source);

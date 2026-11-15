@@ -36,11 +36,6 @@ import { dialogContent } from "../system/renderers/renderer-utils.js";
 import { localize as t } from "../utils.js";
 import { ThemeBrowser } from "./theme-browser.js";
 import {
-	kitTagEffects,
-	kitThemeUpdate,
-	wipeNonTitleTagEffects,
-} from "./theme-template.js";
-import {
 	applyPromiseGain,
 	availableModes,
 	getRevisableParts,
@@ -48,6 +43,11 @@ import {
 	syntheticTradedFromCaps,
 	totalTradeCap,
 } from "./theme-evolution-rules.js";
+import {
+	kitTagEffects,
+	kitThemeUpdate,
+	wipeNonTitleTagEffects,
+} from "./theme-template.js";
 
 function getActor(app) {
 	return game.actors.get(app.actorId) ?? null;
@@ -911,7 +911,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		if (!data?.uuid || data?.type !== "Item") return;
 		const item = await foundry.utils.fromUuid(data.uuid);
 		if (item?.type === "themebook") return this.#useThemebook(item);
-		if (!item || item.type !== "theme") {
+		if (item?.type !== "theme") {
 			ui.notifications?.warn(t("LITM.Ui.evolution_drop_theme_invalid"));
 			return;
 		}

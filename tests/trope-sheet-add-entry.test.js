@@ -4,7 +4,11 @@ import { TropeSheet } from "../modules/item/trope/trope-sheet.js";
 // The Backpack Choices legend's + button fires `addEntry`; the sheet once
 // registered only `removeEntry`, so the button did nothing.
 const click = (sheet, path) =>
-	TropeSheet.DEFAULT_OPTIONS.actions.addEntry.call(sheet, {}, { dataset: { path } });
+	TropeSheet.DEFAULT_OPTIONS.actions.addEntry.call(
+		sheet,
+		{},
+		{ dataset: { path } },
+	);
 
 const makeSheet = (backpackChoices) => {
 	const document = { system: { backpackChoices }, update: vi.fn() };

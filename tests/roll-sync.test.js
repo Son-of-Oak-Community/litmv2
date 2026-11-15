@@ -59,18 +59,21 @@ describe("owner-authoritative shared-roll synchronization", () => {
 	it.each([
 		["hero-a", "positive"],
 		["hero-b", "scratched"],
-	])("enforces merged Hero and burn caps (%s, %s)", (secondHero, secondState) => {
-		const owner = new RollSync(initial(), "owner");
-		const a = new RollSync(initial(), "a");
-		const b = new RollSync(initial(), "b");
-		const first = select(a, "tag-a", "hero-a", "scratched");
-		const second = select(b, "tag-b", secondHero, secondState);
-		owner.receive(first, true);
-		b.receive(owner.receive(second, true), false);
-		expect(owner.view.selections.map(([id]) => id)).toEqual(["tag-a"]);
-		expect(b.view).toEqual(owner.view);
-		expect(b.pending).toEqual([]);
-	});
+	])(
+		"enforces merged Hero and burn caps (%s, %s)",
+		(secondHero, secondState) => {
+			const owner = new RollSync(initial(), "owner");
+			const a = new RollSync(initial(), "a");
+			const b = new RollSync(initial(), "b");
+			const first = select(a, "tag-a", "hero-a", "scratched");
+			const second = select(b, "tag-b", secondHero, secondState);
+			owner.receive(first, true);
+			b.receive(owner.receive(second, true), false);
+			expect(owner.view.selections.map(([id]) => id)).toEqual(["tag-a"]);
+			expect(b.view).toEqual(owner.view);
+			expect(b.pending).toEqual([]);
+		},
+	);
 
 	it("enforces the helper cap on a single-Hero roll when merging", () => {
 		const solo = () => ({

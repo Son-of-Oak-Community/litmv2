@@ -218,7 +218,7 @@ export class ActionsApp extends HandlebarsApplicationMixin(ApplicationV2) {
 		if (data?.type !== "Item" || !data.uuid) return;
 
 		const source = await foundry.utils.fromUuid(data.uuid);
-		if (!source || source.type !== "action") {
+		if (source?.type !== "action") {
 			ui.notifications.warn(t("LITM.Actions.drop_only_action"));
 			return;
 		}

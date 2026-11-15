@@ -1,6 +1,6 @@
-import { renderThemebook } from "../system/renderers/themebook-renderer.js";
-import { renderTheme } from "../system/renderers/theme-renderer.js";
 import { error } from "../logger.js";
+import { renderTheme } from "../system/renderers/theme-renderer.js";
+import { renderThemebook } from "../system/renderers/themebook-renderer.js";
 import { localize as t } from "../utils.js";
 import {
 	catalogLevels,
@@ -39,8 +39,13 @@ export class ThemeBrowser extends HandlebarsApplicationMixin(ApplicationV2) {
 	 * @param {string} [options.subtitle]   Shown under the filters
 	 */
 	constructor(options = {}) {
-		const { isFellowship = false, onPick, pickLabel, subtitle, ...rest } =
-			options;
+		const {
+			isFellowship = false,
+			onPick,
+			pickLabel,
+			subtitle,
+			...rest
+		} = options;
 		super(rest);
 		this.#isFellowship = isFellowship;
 		this.#pickCallback = onPick ?? null;
@@ -99,7 +104,9 @@ export class ThemeBrowser extends HandlebarsApplicationMixin(ApplicationV2) {
 			totalCount: this.#catalog.length,
 			entries: shown.map((e) => ({
 				...e,
-				kindLabel: t(e.kind === "kit" ? "LITM.Ui.theme_kit" : "LITM.Terms.themebook"),
+				kindLabel: t(
+					e.kind === "kit" ? "LITM.Ui.theme_kit" : "LITM.Terms.themebook",
+				),
 				levelLabel: e.level ? t(`LITM.Terms.${e.level}`) : "",
 				// Kits usually use their Might icon as their image; don't show it twice.
 				showLevelIcon: !!e.level && !e.img?.endsWith(`/${e.level}.svg`),
@@ -185,5 +192,4 @@ export class ThemeBrowser extends HandlebarsApplicationMixin(ApplicationV2) {
 		const keepOpen = (await this.#pickCallback(entry)) === false;
 		if (!keepOpen) this.close();
 	}
-
 }

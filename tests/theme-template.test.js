@@ -7,11 +7,20 @@ import { fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
 function tagEffect({ name, type = "power_tag", isTitleTag = false }) {
 	const effect = fakeEffect({ name, type, system: { isTitleTag } });
-	effect.toObject = () => ({ _id: effect.id, name, type, system: { isTitleTag } });
+	effect.toObject = () => ({
+		_id: effect.id,
+		name,
+		type,
+		system: { isTitleTag },
+	});
 	return effect;
 }
 
-function fakeTheme({ name = "Blank", isFellowship = false, level = "origin" } = {}) {
+function fakeTheme({
+	name = "Blank",
+	isFellowship = false,
+	level = "origin",
+} = {}) {
 	const effects = [
 		tagEffect({ name: `${name} title`, isTitleTag: true }),
 		tagEffect({ name: `${name} power` }),

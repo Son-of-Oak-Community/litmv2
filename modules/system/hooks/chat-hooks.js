@@ -367,7 +367,7 @@ async function _renderActionSuccesses(app, element) {
 	if (!allowedVerbs.size) return;
 
 	const action = await foundry.utils.fromUuid(actionUuid);
-	if (!action || action.type !== "action") return;
+	if (action?.type !== "action") return;
 
 	const reachable = (action.system.successes ?? []).filter((s) =>
 		allowedVerbs.has(s.verb),

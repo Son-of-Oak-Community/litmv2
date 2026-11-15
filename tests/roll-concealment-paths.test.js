@@ -102,48 +102,48 @@ describe("roll concealment across persisted and rendered paths", () => {
 		expect(secret.concealedAtRoll).toBeUndefined();
 	});
 
-	it.each([
-		false,
-		true,
-	])("stores masked HTML with raw flags (GM: %s)", async (isGM) => {
-		game.user.isGM = isGM;
-		await LitmRollDialog.prototype._createModerationRequest.call(
-			{
-				actor: { id: "hero", name: "Hero" },
-			},
-			{ type: "quick", actorId: "hero", tags: [secret] },
-		);
-		const message = foundry.documents.ChatMessage.create.mock.calls[0][0];
-		expect(message.content).not.toContain(secret.name);
-		expect(message.content).toContain("LITM.Ui.roll_concealed_tag");
-		expect(message.flags.litmv2.data.tags[0]).toMatchObject({
-			name: secret.name,
-			value: 4,
-			concealedAtRoll: true,
-		});
-	});
+	it.each([false, true])(
+		"stores masked HTML with raw flags (GM: %s)",
+		async (isGM) => {
+			game.user.isGM = isGM;
+			await LitmRollDialog.prototype._createModerationRequest.call(
+				{
+					actor: { id: "hero", name: "Hero" },
+				},
+				{ type: "quick", actorId: "hero", tags: [secret] },
+			);
+			const message = foundry.documents.ChatMessage.create.mock.calls[0][0];
+			expect(message.content).not.toContain(secret.name);
+			expect(message.content).toContain("LITM.Ui.roll_concealed_tag");
+			expect(message.flags.litmv2.data.tags[0]).toMatchObject({
+				name: secret.name,
+				value: 4,
+				concealedAtRoll: true,
+			});
+		},
+	);
 
-	it.each([
-		false,
-		true,
-	])("replaces legacy tooltip per viewer (GM: %s)", async (isGM) => {
-		game.user.isGM = isGM;
-		const tooltip = { replaceChildren: vi.fn(), outerHTML: secret.name };
-		const element = {
-			querySelector: (selector) =>
-				selector === ".dice-tooltip" ? tooltip : {},
-		};
-		const pending = renderModerationTooltip(
-			{
-				getFlag: () => ({ tags: [secret], type: "quick" }),
-			},
-			element,
-		);
-		expect(tooltip.replaceChildren).toHaveBeenCalledOnce();
-		await pending;
-		expect(tooltip.outerHTML.includes(secret.name)).toBe(isGM);
-		expect(render.mock.calls[0][1].data.negativeStatuses[0].value).toBe(4);
-	});
+	it.each([false, true])(
+		"replaces legacy tooltip per viewer (GM: %s)",
+		async (isGM) => {
+			game.user.isGM = isGM;
+			const tooltip = { replaceChildren: vi.fn(), outerHTML: secret.name };
+			const element = {
+				querySelector: (selector) =>
+					selector === ".dice-tooltip" ? tooltip : {},
+			};
+			const pending = renderModerationTooltip(
+				{
+					getFlag: () => ({ tags: [secret], type: "quick" }),
+				},
+				element,
+			);
+			expect(tooltip.replaceChildren).toHaveBeenCalledOnce();
+			await pending;
+			expect(tooltip.outerHTML.includes(secret.name)).toBe(isGM);
+			expect(render.mock.calls[0][1].data.negativeStatuses[0].value).toBe(4);
+		},
+	);
 
 	it("fails closed for legacy missing actor sources but not scene tags", () => {
 		source = null;
@@ -224,9 +224,9 @@ describe("roll concealment across persisted and rendered paths", () => {
 		);
 		const tags = LitmRoll.captureConcealment([secret]);
 		expect(tags[0].effectHiddenAtRoll).toBe(true);
-		expect(
-			tooltipFor({ powerTags: tags }).powerTags[0].name,
-		).toBe("LITM.Ui.roll_concealed_tag");
+		expect(tooltipFor({ powerTags: tags }).powerTags[0].name).toBe(
+			"LITM.Ui.roll_concealed_tag",
+		);
 		effect.system.isHidden = false;
 		expect(tooltipFor({ powerTags: tags }).powerTags[0].name).toBe(secret.name);
 		game.user.isGM = true;
