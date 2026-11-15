@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HeroCreationData } from "../modules/apps/welcome/hero-creation-data.js";
+import { stubSettings } from "./__helpers__/settings.js";
 
 // The welcome overlay's trope/themekit/themebook indexes must respect the
 // content-source setting for world items too — previously every matching
@@ -33,11 +34,8 @@ const worldTrope = {
 	testUserPermission: () => true,
 };
 
-const setSetting = (selected) => {
-	game.settings.get.mockImplementation((_scope, key) =>
-		key.startsWith("compendium.") ? selected : undefined,
-	);
-};
+const setSetting = (selected) =>
+	stubSettings((key) => (key.startsWith("compendium.") ? selected : undefined));
 
 const loadTropeNames = async () => {
 	const data = new HeroCreationData();

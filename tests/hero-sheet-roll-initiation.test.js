@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { scratchTag } from "../modules/active-effects/scratchable-mixin.js";
 import { HeroSheet } from "../modules/actor/hero/hero-sheet.js";
+import { setPlayer } from "./__helpers__/users.js";
 
 vi.mock("../modules/active-effects/scratchable-mixin.js", async (original) => ({
 	...(await original()),
@@ -48,7 +49,7 @@ const clickTag = (sheet, event = {}) =>
 describe("Hero sheet roll initiation", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		game.settings.get.mockReturnValue(false);
 	});
 

@@ -2,13 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LitmRollDialog } from "../modules/apps/roll/roll-dialog.js";
 import { Sockets } from "../modules/system/sockets.js";
 import { fakeElement } from "./__helpers__/dom.js";
+import { asUser } from "./__helpers__/users.js";
 
-const as = (id, fn) => {
-	game.user = { id, isGM: id === "gm" };
-	return fn();
-};
 const make = (id, options = {}) =>
-	as(
+	asUser(
 		id,
 		() =>
 			new LitmRollDialog({
@@ -55,15 +52,15 @@ describe("ending a roll", () => {
 	// from 0; only a roll suspended for approval comes back with it.
 	it("starts the next roll from Might 0 once an unrolled roll is closed", () => {
 		const roller = make("player", { ownerId: "player" });
-		as("player", () => controls(roller)("might", 3));
-		as("player", () => roller.endSharedRoll());
+		asUser("player", () => controls(roller)("might", 3));
+		asUser("player", () => roller.endSharedRoll());
 		expect(roller.extractRollData()).toMatchObject({ might: 0 });
 	});
 
 	it("keeps the Might of a roll waiting for the Narrator's approval", () => {
 		const roller = make("player", { ownerId: "player" });
-		as("player", () => controls(roller)("might", 3));
-		as("player", () => roller.endSharedRoll({ preserveAuthority: true }));
+		asUser("player", () => controls(roller)("might", 3));
+		asUser("player", () => roller.endSharedRoll({ preserveAuthority: true }));
 		expect(roller.extractRollData()).toMatchObject({ might: 3 });
 	});
 });
@@ -72,12 +69,12 @@ describe("LitmRollDialog sync integration", () => {
 	it("keeps the first sheet selection made before the owner is claimed", async () => {
 		const roller = make("player", { ownerId: null });
 		const viewer = make("gm", { ownerId: "player" });
-		as("player", () => {
+		asUser("player", () => {
 			roller.setCharacterTagState("first-tag", "positive");
 			roller.ownerId = "player";
 			roller.dispatchSync();
 		});
-		await as("gm", () => viewer.receiveUpdate(last()));
+		await asUser("gm", () => viewer.receiveUpdate(last()));
 		expect(roller.getSelection("first-tag").state).toBe("positive");
 		expect(viewer.getSelection("first-tag").state).toBe("positive");
 	});
@@ -87,14 +84,14 @@ describe("LitmRollDialog sync integration", () => {
 		const gm = make("gm", { ownerId: "player" });
 		const playerChange = controls(roller);
 		const gmChange = controls(gm);
-		as("gm", () => gmChange("might", 3));
+		asUser("gm", () => gmChange("might", 3));
 		const mightEdit = last();
-		as("player", () => playerChange("tradePower", -1));
+		asUser("player", () => playerChange("tradePower", -1));
 		const crossing = last();
-		await as("gm", () => gm.receiveUpdate(crossing));
+		await asUser("gm", () => gm.receiveUpdate(crossing));
 		expect(gm.extractRollData()).toMatchObject({ might: 3, tradePower: -1 });
-		await as("player", () => roller.receiveUpdate(mightEdit));
-		await as("gm", () => gm.receiveUpdate(last()));
+		await asUser("player", () => roller.receiveUpdate(mightEdit));
+		await asUser("gm", () => gm.receiveUpdate(last()));
 		expect(roller.extractRollData()).toMatchObject({
 			might: 3,
 			tradePower: -1,
@@ -106,24 +103,24 @@ describe("LitmRollDialog sync integration", () => {
 		const gm = make("gm");
 		const a = make("a");
 		const b = make("b");
-		as("a", () => {
+		asUser("a", () => {
 			a.setSelection("tag-a", "positive", "a", { tagActorId: "hero-a" });
 			a.dispatchSync();
 		});
 		const aEdit = last();
-		as("b", () => {
+		asUser("b", () => {
 			b.setSelection("tag-b", "positive", "b", { tagActorId: "hero-b" });
 			b.dispatchSync();
 		});
 		const bEdit = last();
-		await as("gm", () => gm.receiveUpdate(aEdit));
+		await asUser("gm", () => gm.receiveUpdate(aEdit));
 		const first = last();
-		await as("b", () => b.receiveUpdate(first));
+		await asUser("b", () => b.receiveUpdate(first));
 		expect(b.selections.size).toBe(2);
-		await as("gm", () => gm.receiveUpdate(bEdit));
+		await asUser("gm", () => gm.receiveUpdate(bEdit));
 		const final = last();
-		await as("a", () => a.receiveUpdate(final));
-		await as("b", () => b.receiveUpdate(final));
+		await asUser("a", () => a.receiveUpdate(final));
+		await asUser("b", () => b.receiveUpdate(final));
 		expect([...gm.selections.keys()]).toEqual(["tag-a", "tag-b"]);
 		expect(a.selections).toEqual(gm.selections);
 		expect(b.selections).toEqual(gm.selections);
@@ -132,20 +129,20 @@ describe("LitmRollDialog sync integration", () => {
 	it("syncs Action replacement, clear and title to an already open and a late dialog", async () => {
 		const gm = make("gm", { actionUuid: "Item.old", title: "Old" });
 		const peer = make("peer");
-		as("gm", () => gm.dispatchSync());
-		await as("peer", () => peer.receiveUpdate(last()));
+		asUser("gm", () => gm.dispatchSync());
+		await asUser("peer", () => peer.receiveUpdate(last()));
 		expect(peer.actionUuid).toBe("Item.old");
 		expect(peer.rollName).toBe("Old");
-		as("gm", () => gm.setAction("Item.new"));
-		await as("peer", () => peer.receiveUpdate(last()));
+		asUser("gm", () => gm.setAction("Item.new"));
+		await asUser("peer", () => peer.receiveUpdate(last()));
 		expect(peer.actionUuid).toBe("Item.new");
 		expect(peer.rollName).toBe("");
-		as("gm", () => gm.setAction(null));
-		await as("peer", () => peer.receiveUpdate(last()));
+		asUser("gm", () => gm.setAction(null));
+		await asUser("peer", () => peer.receiveUpdate(last()));
 		expect(peer.actionUuid).toBeNull();
 		const late = make("late");
-		as("gm", () => gm.dispatchSync());
-		await as("late", () => late.receiveUpdate(last()));
+		asUser("gm", () => gm.dispatchSync());
+		await asUser("late", () => late.receiveUpdate(last()));
 		expect(late.actionUuid).toBeNull();
 		expect(late.rollName).toBe("");
 	});
@@ -153,33 +150,33 @@ describe("LitmRollDialog sync integration", () => {
 	it("keeps the public partial receiveUpdate and dispatchSync API in the same session", async () => {
 		const gm = make("gm");
 		const peer = make("peer");
-		as("gm", () => gm.dispatchSync());
-		await as("peer", () => peer.receiveUpdate(last()));
+		asUser("gm", () => gm.dispatchSync());
+		await asUser("peer", () => peer.receiveUpdate(last()));
 		const session = last().sync.session;
-		await as("gm", () => gm.receiveUpdate({ actorId: "actor", might: 6 }));
-		as("gm", () => gm.dispatchSync());
+		await asUser("gm", () => gm.receiveUpdate({ actorId: "actor", might: 6 }));
+		asUser("gm", () => gm.dispatchSync());
 		expect(last().sync.session).toBe(session);
-		await as("peer", () => peer.receiveUpdate(last()));
+		await asUser("peer", () => peer.receiveUpdate(last()));
 		expect(peer.extractRollData().might).toBe(6);
 	});
 
 	it("does not revive a cancelled session from delayed snapshots", async () => {
 		const gm = make("gm");
 		const peer = make("peer");
-		as("gm", () => gm.dispatchSync());
+		asUser("gm", () => gm.dispatchSync());
 		const old = last();
-		await as("peer", () => peer.receiveUpdate(old));
+		await asUser("peer", () => peer.receiveUpdate(old));
 		peer.invalidateSync();
 		peer.rollName = "parked";
 		peer.activateSync();
-		await as("peer", () => peer.receiveUpdate(old));
+		await asUser("peer", () => peer.receiveUpdate(old));
 		expect(peer.rollName).toBe("parked");
 	});
 
 	it("knows a new call's session before its first snapshot", async () => {
 		const peer = make("peer");
 		peer.tabGroups = {};
-		as("peer", () =>
+		asUser("peer", () =>
 			peer.configureSharedRoll({
 				ownerId: "gm",
 				narratorUserId: "gm",
@@ -191,33 +188,33 @@ describe("LitmRollDialog sync integration", () => {
 
 		const owner = make("gm");
 		owner.tabGroups = {};
-		as("gm", () =>
+		asUser("gm", () =>
 			owner.configureSharedRoll({
 				ownerId: "gm",
 				narratorUserId: "gm",
 				syncSession: "new-call",
 			}),
 		);
-		as("gm", () => owner.dispatchSync());
-		await as("peer", () => peer.receiveUpdate(last()));
+		asUser("gm", () => owner.dispatchSync());
+		await asUser("peer", () => peer.receiveUpdate(last()));
 		expect(peer.syncSession).toBe("new-call");
 	});
 
 	it("reopens a parked ordinary roll with its draft and a fresh sync session", async () => {
 		const gm = make("gm");
-		as("gm", () => {
+		asUser("gm", () => {
 			gm.setSelection("draft", "positive", "gm");
 			gm.dispatchSync();
 		});
 		const oldSession = last().sync.session;
 		gm.invalidateSync();
-		as("gm", () => {
+		asUser("gm", () => {
 			gm.activateSync();
 			gm.dispatchSync();
 		});
 		expect(last().sync.session).not.toBe(oldSession);
 		const viewer = make("peer");
-		await as("peer", () => viewer.receiveUpdate(last()));
+		await asUser("peer", () => viewer.receiveUpdate(last()));
 		expect(viewer.getSelection("draft").state).toBe("positive");
 	});
 });
@@ -236,33 +233,33 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 		before.activateSync(SESSION);
 		gm.activateSync(SESSION);
 		for (const id of ["t1", "t2"]) {
-			as("player", () => {
+			asUser("player", () => {
 				before.setSelection(id, "positive", "player");
 				before.dispatchSync();
 			});
-			await as("gm", () => gm.receiveUpdate(last()));
+			await asUser("gm", () => gm.receiveUpdate(last()));
 		}
 		const fresh = make("player", { ownerId: "player" });
 		fresh.activateSync(SESSION);
-		as("player", () => fresh.requestReseat());
+		asUser("player", () => fresh.requestReseat());
 		return { gm, fresh };
 	};
 
 	/** The Narrator's edit reaches the owner before any reply does. */
 	const narratorSetsMight = async (gm, fresh) => {
 		const gmChange = controls(gm);
-		as("gm", () => gmChange("might", 3));
-		await as("player", () => fresh.receiveUpdate(last()));
+		asUser("gm", () => gmChange("might", 3));
+		await asUser("player", () => fresh.receiveUpdate(last()));
 		// The owner's revision-1 snapshot is stale to a viewer at revision 2.
-		await as("gm", () => gm.receiveUpdate(last()));
+		await asUser("gm", () => gm.receiveUpdate(last()));
 	};
 
 	it("takes the table's draft and keeps the Narrator's early edit", async () => {
 		const { gm, fresh } = await reloadedMidCall();
 		await narratorSetsMight(gm, fresh);
 
-		as("gm", () => gm.dispatchReseat());
-		await as("player", () => fresh.receiveUpdate(last()));
+		asUser("gm", () => gm.dispatchReseat());
+		await asUser("player", () => fresh.receiveUpdate(last()));
 
 		expect(fresh.getSelection("t1").state).toBe("positive");
 		expect(fresh.getSelection("t2").state).toBe("positive");
@@ -272,14 +269,14 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 	it("publishes a snapshot the viewers accept", async () => {
 		const { gm, fresh } = await reloadedMidCall();
 		await narratorSetsMight(gm, fresh);
-		as("gm", () => gm.dispatchReseat());
+		asUser("gm", () => gm.dispatchReseat());
 		const reply = last();
-		await as("player", () => fresh.receiveUpdate(reply));
+		await asUser("player", () => fresh.receiveUpdate(reply));
 
 		// Not older than the revision the viewers already hold, or they drop it.
 		expect(last().sync.kind).toBe("snapshot");
 		expect(last().sync.revision).toBeGreaterThan(reply.sync.revision);
-		await as("gm", () => gm.receiveUpdate(last()));
+		await asUser("gm", () => gm.receiveUpdate(last()));
 
 		expect(gm.getSelection("t2").state).toBe("positive");
 		expect(gm.extractRollData().might).toBe(3);
@@ -294,18 +291,18 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 			gm.activateSync(SESSION);
 			const fresh = make("player", { ownerId: "player" });
 			fresh.activateSync(SESSION);
-			as("player", () => {
+			asUser("player", () => {
 				fresh.requestReseat();
 				fresh.setSelection("t1", "positive", "player");
 				fresh.dispatchSync();
 			});
 			const sent = messages.length;
-			as("gm", () => gm.dispatchReseat());
+			asUser("gm", () => gm.dispatchReseat());
 			expect(messages.length).toBe(sent);
 
-			await as("player", () => vi.advanceTimersByTimeAsync(60_000));
+			await asUser("player", () => vi.advanceTimersByTimeAsync(60_000));
 			expect(last().sync.kind).toBe("snapshot");
-			await as("gm", () => gm.receiveUpdate(last()));
+			await asUser("gm", () => gm.receiveUpdate(last()));
 			expect(gm.getSelection("t1").state).toBe("positive");
 		} finally {
 			vi.useRealTimers();
@@ -317,10 +314,10 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 		try {
 			const fresh = make("player", { ownerId: "player" });
 			fresh.activateSync(SESSION);
-			as("player", () => fresh.requestReseat());
-			as("player", () => fresh.endSharedRoll());
+			asUser("player", () => fresh.requestReseat());
+			asUser("player", () => fresh.endSharedRoll());
 			const sent = messages.length;
-			await as("player", () => vi.advanceTimersByTimeAsync(60_000));
+			await asUser("player", () => vi.advanceTimersByTimeAsync(60_000));
 			expect(messages.length).toBe(sent);
 		} finally {
 			vi.useRealTimers();
@@ -332,18 +329,18 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 		// dialog, mid-roll included (a reaction, the HUD strip, the keybinding).
 		const owner = make("player", { ownerId: "player" });
 		const stray = make("gm", { ownerId: "player" });
-		as("player", () => {
+		asUser("player", () => {
 			owner.setSelection("t1", "positive", "player");
 			owner.dispatchSync();
 		});
 		const held = last().sync.revision;
 
-		as("player", () => owner.requestReseat());
-		as("gm", () => stray.dispatchReseat());
-		await as("player", () => owner.receiveUpdate(last()));
+		asUser("player", () => owner.requestReseat());
+		asUser("gm", () => stray.dispatchReseat());
+		await asUser("player", () => owner.receiveUpdate(last()));
 
 		expect(owner.getSelection("t1").state).toBe("positive");
-		as("player", () => owner.dispatchSync());
+		asUser("player", () => owner.dispatchSync());
 		expect(last().sync.revision).toBe(held);
 	});
 
@@ -354,8 +351,8 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 			await narratorSetsMight(gm, fresh);
 			await vi.advanceTimersByTimeAsync(60_000);
 
-			as("gm", () => gm.dispatchReseat());
-			await as("player", () => fresh.receiveUpdate(last()));
+			asUser("gm", () => gm.dispatchReseat());
+			await asUser("player", () => fresh.receiveUpdate(last()));
 
 			expect(fresh.getSelection("t1")?.state).toBeFalsy();
 			expect(fresh.extractRollData().might).toBe(3);
@@ -380,7 +377,7 @@ describe("Helping Each Other", () => {
 	it("does not count an ally's status as their help", () => {
 		allyEffect("status_tag");
 		const dialog = make("player", { ownerId: "player" });
-		as("player", () =>
+		asUser("player", () =>
 			dialog.setSelection("ally-status", "positive", "player"),
 		);
 		expect(dialog.getSelection("ally-status").helper).toBe(false);
@@ -389,7 +386,9 @@ describe("Helping Each Other", () => {
 	it("counts an ally's power tag as their help", () => {
 		allyEffect("power_tag");
 		const dialog = make("player", { ownerId: "player" });
-		as("player", () => dialog.setSelection("ally-tag", "positive", "player"));
+		asUser("player", () =>
+			dialog.setSelection("ally-tag", "positive", "player"),
+		);
 		expect(dialog.getSelection("ally-tag").helper).toBe(true);
 	});
 
@@ -398,7 +397,7 @@ describe("Helping Each Other", () => {
 	it("caps a contributor's help even when the edit says it is not help", async () => {
 		allyEffect("power_tag");
 		const owner = make("player", { ownerId: "player" });
-		as("player", () => owner.dispatchSync());
+		asUser("player", () => owner.dispatchSync());
 		const { session } = last().sync;
 		const edit = (sequence, id) => ({
 			actorId: "actor",
@@ -418,8 +417,8 @@ describe("Helping Each Other", () => {
 			},
 		});
 
-		await as("player", () => owner.receiveUpdate(edit(1, "ally-tag-1")));
-		await as("player", () => owner.receiveUpdate(edit(2, "ally-tag-2")));
+		await asUser("player", () => owner.receiveUpdate(edit(1, "ally-tag-1")));
+		await asUser("player", () => owner.receiveUpdate(edit(2, "ally-tag-2")));
 
 		expect(owner.getSelection("ally-tag-1")).toMatchObject({
 			state: "positive",
@@ -435,7 +434,7 @@ describe("Helping Each Other", () => {
 describe("leaving a Sacrifice on a called roll", () => {
 	const SESSION = "called-detailed";
 	const call = (dialog, user) =>
-		as(user, () =>
+		asUser(user, () =>
 			dialog.configureSharedRoll({
 				ownerId: "player",
 				narratorUserId: "gm",
@@ -451,8 +450,8 @@ describe("leaving a Sacrifice on a called roll", () => {
 		roller.updatePresence = gm.updatePresence = vi.fn(async () => {});
 		call(roller, "player");
 		call(gm, "gm");
-		as("player", () => roller.setType("sacrifice"));
-		await as("gm", () => gm.receiveUpdate(last()));
+		asUser("player", () => roller.setType("sacrifice"));
+		await asUser("gm", () => gm.receiveUpdate(last()));
 		return { roller, gm };
 	};
 
@@ -463,22 +462,22 @@ describe("leaving a Sacrifice on a called roll", () => {
 		fresh.tabGroups = {};
 		fresh.updatePresence = vi.fn(async () => {});
 		fresh.activateSync(SESSION);
-		as("player", () => fresh.requestReseat());
-		as("gm", () => gm.dispatchReseat());
-		await as("player", () => fresh.receiveUpdate(last()));
+		asUser("player", () => fresh.requestReseat());
+		asUser("gm", () => gm.dispatchReseat());
+		await asUser("player", () => fresh.receiveUpdate(last()));
 		expect(fresh.type).toBe("sacrifice");
 
-		as("player", () => fresh.setType("quick"));
+		asUser("player", () => fresh.setType("quick"));
 		expect(fresh.type).toBe("sacrifice");
-		as("player", () => fresh.setType("tracked"));
+		asUser("player", () => fresh.setType("tracked"));
 		expect(fresh.type).toBe("tracked");
 	});
 
 	it("goes back to the called move, not Quick, when an Action is rolled", async () => {
 		const { roller, gm } = await calledSacrifice();
-		as("player", () => roller.setAction("Actor.a.Item.action"));
+		asUser("player", () => roller.setAction("Actor.a.Item.action"));
 		expect(roller.type).toBe("tracked");
-		await as("gm", () => gm.receiveUpdate(last()));
+		await asUser("gm", () => gm.receiveUpdate(last()));
 		expect(gm.type).toBe("tracked");
 	});
 
@@ -486,19 +485,19 @@ describe("leaving a Sacrifice on a called roll", () => {
 		const roller = make("player", { ownerId: "player" });
 		roller.tabGroups = {};
 		roller.updatePresence = vi.fn(async () => {});
-		as("player", () => roller.setType("mitigate"));
-		as("player", () => roller.setType("sacrifice"));
-		as("player", () => roller.setAction("Actor.a.Item.action"));
+		asUser("player", () => roller.setType("mitigate"));
+		asUser("player", () => roller.setType("sacrifice"));
+		asUser("player", () => roller.setAction("Actor.a.Item.action"));
 		expect(roller.type).toBe("quick");
 	});
 
 	it("does not let a roller's update change the called move", async () => {
 		const { roller, gm } = await calledSacrifice();
-		as("player", () => {
+		asUser("player", () => {
 			roller.type = "quick";
 			roller.dispatchSync();
 		});
-		await as("gm", () => gm.receiveUpdate(last()));
+		await asUser("gm", () => gm.receiveUpdate(last()));
 		expect(gm.type).toBe("sacrifice");
 	});
 });
@@ -510,25 +509,25 @@ describe("Secret Grace Bonus", () => {
 		roller.updatePresence = gm.updatePresence = vi.fn(async () => {});
 		const playerChange = controls(roller);
 		const gmChange = controls(gm);
-		as("player", () => roller.setType("sacrifice"));
-		await as("gm", () => gm.receiveUpdate(last()));
-		as("gm", () => gmChange("sacrificeBonus", 2));
-		await as("player", () => roller.receiveUpdate(last()));
-		await as("gm", () => gm.receiveUpdate(last()));
+		asUser("player", () => roller.setType("sacrifice"));
+		await asUser("gm", () => gm.receiveUpdate(last()));
+		asUser("gm", () => gmChange("sacrificeBonus", 2));
+		await asUser("player", () => roller.receiveUpdate(last()));
+		await asUser("gm", () => gm.receiveUpdate(last()));
 		expect(roller.extractRollData()).toMatchObject({ sacrificeBonus: 2 });
 
-		as("player", () => playerChange("sacrificeBonus", 5));
-		as("player", () => playerChange("sacrificeLevel", "grave"));
-		await as("gm", () => gm.receiveUpdate(last()));
+		asUser("player", () => playerChange("sacrificeBonus", 5));
+		asUser("player", () => playerChange("sacrificeLevel", "grave"));
+		await asUser("gm", () => gm.receiveUpdate(last()));
 		expect(roller.extractRollData()).toMatchObject({ sacrificeBonus: 2 });
 		expect(gm.extractRollData()).toMatchObject({
 			sacrificeBonus: 2,
 			sacrificeLevel: "grave",
 		});
 
-		as("player", () => roller.setType("quick"));
-		as("player", () => roller.setType("sacrifice"));
-		await as("gm", () => gm.receiveUpdate(last()));
+		asUser("player", () => roller.setType("quick"));
+		asUser("player", () => roller.setType("sacrifice"));
+		await asUser("gm", () => gm.receiveUpdate(last()));
 		expect(gm.extractRollData()).toMatchObject({ sacrificeBonus: 0 });
 	});
 });

@@ -25,6 +25,8 @@ import { defaultCampingState } from "../modules/apps/camping/camping-state.js";
 import { error, warn } from "../modules/logger.js";
 import { ContentSources } from "../modules/system/content-sources.js";
 import { Sockets } from "../modules/system/sockets.js";
+import { withFlags } from "./__helpers__/flags.js";
+import { setGM, setPlayer } from "./__helpers__/users.js";
 
 // Pack Up's document writes live in the apply layer, which has its own tests;
 // here we only care about the order and guarding around them.
@@ -60,18 +62,7 @@ const actions = LitmCampingScene.DEFAULT_OPTIONS.actions;
 // A scene that stores flags the way the real document does for our purposes:
 // setFlag writes, unsetFlag removes, reads go through `flags`.
 function fakeScene({ id = "scene-a", camping = null } = {}) {
-	const scene = {
-		id,
-		flags: camping ? { litmv2: { camping: structuredClone(camping) } } : {},
-		setFlag: vi.fn(async (scope, key, value) => {
-			scene.flags[scope] ??= {};
-			scene.flags[scope][key] = structuredClone(value);
-		}),
-		unsetFlag: vi.fn(async (scope, key) => {
-			delete scene.flags[scope]?.[key];
-		}),
-	};
-	return scene;
+	return withFlags({ id }, camping ? { litmv2: { camping } } : {});
 }
 
 const sessionOf = (scene) => scene.flags.litmv2?.camping;
@@ -116,7 +107,7 @@ beforeEach(() => {
 		for (const id of ids) pack.delete(id);
 	});
 	ContentSources.createStoryTags.mockResolvedValue([]);
-	game.user = { id: "gm", isGM: true };
+	setGM();
 	game.users.activeGM = game.user;
 	globalThis.canvas = { scene: null };
 });
@@ -457,7 +448,7 @@ describe("scene binding", () => {
 		sceneA.visible = false;
 		// The Narrator always knows which scene the camp is on.
 		expect(app.title).toBe("Camping — Battle");
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		sceneA.visible = true;
 		expect(app.title).toBe("Camping — Battle");
 		sceneA.visible = false;
@@ -521,7 +512,7 @@ describe("scene binding", () => {
 	});
 
 	it("a player's edit names the scene the camp is bound to", async () => {
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		canvas.scene = sceneA;
 		LitmCampingScene.open();
 
@@ -535,7 +526,7 @@ describe("scene binding", () => {
 	});
 
 	it("a peer opened by the GM binds to the scene the GM names", async () => {
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		canvas.scene = sceneA;
 
 		hook("litm.camping.open")({ sceneId: "scene-b" });
@@ -548,7 +539,7 @@ describe("scene binding", () => {
 	});
 
 	it("a peer falls back to the scene it is viewing when the named scene is not available to it", async () => {
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		canvas.scene = sceneA;
 
 		hook("litm.camping.open")({ sceneId: "scene-unknown" });
@@ -569,7 +560,7 @@ describe("scene binding", () => {
 		});
 
 		it("go through the active GM's queue via the socket, not straight to the scene", async () => {
-			game.user = { id: "gm-2", isGM: true };
+			setGM("gm-2");
 			game.users.activeGM = { id: "gm-1", isGM: true };
 
 			await enqueueOp("set-type", edit);
@@ -664,7 +655,7 @@ describe("scene binding", () => {
 		canvas.scene = sceneB;
 
 		await LitmCampingScene.close({ fromSocket: true });
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		await enqueueOp("set-type", { value: "sojourn" });
 
 		expect(Sockets.dispatch).toHaveBeenCalledWith(
@@ -695,7 +686,7 @@ describe("camp lifecycle with a second GM", () => {
 	};
 
 	const asSecondGM = () => {
-		game.user = { id: "gm-2", isGM: true };
+		setGM("gm-2");
 		game.users.activeGM = { id: "gm-1", isGM: true };
 	};
 
@@ -863,7 +854,7 @@ describe("camp lifecycle with a second GM", () => {
 	});
 
 	it("a player's Cancel only closes their own window", async () => {
-		game.user = { id: "player", isGM: false };
+		setPlayer();
 		sceneA.flags = { litmv2: { camping: activeSession() } };
 
 		await actions.cancel();
@@ -927,7 +918,7 @@ describe("camp lifecycle with a second GM", () => {
 		});
 
 		it("is ignored by a player", async () => {
-			game.user = { id: "player", isGM: false };
+			setPlayer();
 
 			await hook("litm.camping.lifecycle")({
 				action: "cancel",

@@ -6,6 +6,7 @@ import { ContentSources } from "../modules/system/content-sources.js";
 import { Sockets } from "../modules/system/sockets.js";
 import { fakeElement } from "./__helpers__/dom.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
+import { setGM, setPlayer } from "./__helpers__/users.js";
 
 // Dragging a tag between columns is a move: add it to the destination, then
 // remove it from the source. The audit found the second half ran whether or not
@@ -100,7 +101,7 @@ beforeEach(() => {
 	CONFIG.litmv2 = Object.create(LitmConfig);
 	CONFIG.litmv2.heroLimit = 5;
 	CONFIG.litmv2._maxStatusTierOverride = null;
-	game.user = { isGM: false, id: "player" };
+	setPlayer();
 	game.users = { activeGM: null, get: vi.fn() };
 	actors = {};
 	packTags = [];
@@ -212,7 +213,7 @@ describe("dropping a tag onto another actor's column", () => {
 
 describe("dropping a tag into the Story section", () => {
 	it("moves it for the Narrator", async () => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 		const source = makeHero({ name: "Source" });
 		actors = { [source.actor.id]: source.actor };
 		const { effect, payload } = placeTag(source.actor, source.pack);
@@ -297,7 +298,7 @@ describe("dropping a tag onto a limit header", () => {
 
 	// A pack tag is re-limited in place; an actor's tag has no pack id to update.
 	it("moves an actor's tag into a Story limit by creating it there, not by updating a pack tag", async () => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 		const source = makeHero({ name: "Source" });
 		actors = { [source.actor.id]: source.actor };
 		const { effect, payload } = placeTag(source.actor, source.pack);
@@ -333,7 +334,7 @@ describe("dropping a tag onto a limit header", () => {
 	});
 
 	it("still re-limits a Story tag by updating it in the pack", async () => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 		const payload = {
 			id: "drag-id",
 			name: "fog",
@@ -391,7 +392,7 @@ const packTag = (over = {}) => {
 
 describe("a moved tag keeps its state", () => {
 	beforeEach(() => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 	});
 
 	it("stays scratched on its way into the Story section", async () => {
@@ -455,7 +456,7 @@ describe("a moved tag keeps its state", () => {
 			id: secret.id,
 			type: challenge.id,
 		});
-		game.user = { isGM: false, id: "player" };
+		setPlayer();
 		game.users.activeGM = { id: "gm" };
 
 		await sidebar._onDrop(dropEvent(payload, { column: "story" }));
@@ -578,7 +579,7 @@ describe("a moved tag keeps its state", () => {
 // column's owner decides, as before.
 describe("a tag the Narrator adds", () => {
 	beforeEach(() => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 	});
 
 	it("starts visible on a player's Hero", async () => {

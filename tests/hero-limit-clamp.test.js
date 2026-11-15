@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { advanceFlagLimit } from "../modules/actor/mixins/actor-limits.js";
 import { LitmSettings } from "../modules/system/settings.js";
+import { withFlags } from "./__helpers__/flags.js";
 
 // Regression: a Hero Limit above the status track's depth is unreachable —
 // the hero is simply unkillable. Status tracks now grow with the setting
@@ -72,17 +73,7 @@ describe("hero_limit onChange", () => {
 // setting was 8 keeps a stale `max: 8` on the flag. The manual Advance path
 // must clamp to the effective max, not the stale one.
 describe("advanceFlagLimit max override", () => {
-	const makeActor = (limits) => {
-		const stored = { value: limits };
-		return {
-			getFlag: vi.fn(() => stored.value),
-			setFlag: vi.fn(async (_scope, _key, next) => {
-				stored.value = next;
-				return next;
-			}),
-			stored,
-		};
-	};
+	const makeActor = (limits) => withFlags({}, { litmv2: { limits } });
 
 	const staleLimit = { id: "L1", label: "Wounded", max: 8, value: 5 };
 
@@ -93,7 +84,7 @@ describe("advanceFlagLimit max override", () => {
 
 		expect(result.value).toBe(6);
 		expect(result.max).toBe(6);
-		expect(actor.stored.value[0].value).toBe(6);
+		expect(actor.flags.litmv2.limits[0].value).toBe(6);
 	});
 
 	it("falls back to the stored max when no override is given", async () => {

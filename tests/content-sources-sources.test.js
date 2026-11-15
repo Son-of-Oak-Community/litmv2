@@ -3,6 +3,7 @@ import {
 	ContentSources,
 	WORLD_SOURCE_ID,
 } from "../modules/system/content-sources.js";
+import { stubSettings } from "./__helpers__/settings.js";
 
 // getSources resolves the per-category compendium setting into
 // { packs, includeWorld }. The "world" sentinel in the setting array selects
@@ -16,11 +17,8 @@ const pack = (collection, documentName = "Item", visible = true) => ({
 	metadata: { label: collection },
 });
 
-const setSetting = (selected) => {
-	game.settings.get.mockImplementation((_scope, key) =>
-		key.startsWith("compendium.") ? selected : undefined,
-	);
-};
+const setSetting = (selected) =>
+	stubSettings((key) => (key.startsWith("compendium.") ? selected : undefined));
 
 describe("ContentSources.getSources", () => {
 	beforeEach(() => {

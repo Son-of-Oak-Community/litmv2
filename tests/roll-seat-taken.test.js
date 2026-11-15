@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LitmRollDialog } from "../modules/apps/roll/roll-dialog.js";
 import { registerActorHooks } from "../modules/system/hooks/actor-hooks.js";
 import { Sockets } from "../modules/system/sockets.js";
+import { asUser } from "./__helpers__/users.js";
 
 // A player may take the seat of a roll the GM opened from their Hero's sheet.
 // Every client then hears the presence flag change. The GM steps down, and a
@@ -10,12 +11,8 @@ import { Sockets } from "../modules/system/sockets.js";
 
 const ACTOR_ID = "actor";
 
-const as = (id, fn) => {
-	game.user = { id, isGM: id === "gm" };
-	return fn();
-};
 const make = (id, options = {}) =>
-	as(
+	asUser(
 		id,
 		() =>
 			new LitmRollDialog({
@@ -55,7 +52,7 @@ const seatTaken = (clientId, dialog, newOwnerId) => {
 		sheet: { hasRollDialog: true, rollDialogInstance: dialog },
 	};
 	const changes = { flags: { litmv2: { rollDialogOwner: flag } } };
-	as(clientId, () => {
+	asUser(clientId, () => {
 		for (const [hook, fn] of Hooks.on.mock.calls)
 			if (hook === "updateActor") fn(actor, changes, {}, newOwnerId);
 	});
@@ -65,19 +62,19 @@ const seatTaken = (clientId, dialog, newOwnerId) => {
 const gmHoldsTheRoll = async (viewers) => {
 	const gm = make("gm", { ownerId: "gm" });
 	for (const id of ["t1", "t2"]) {
-		as("gm", () => {
+		asUser("gm", () => {
 			gm.setSelection(id, "positive", "gm");
 			gm.dispatchSync();
 		});
 		for (const [clientId, dialog] of Object.entries(viewers))
-			await as(clientId, () => dialog.receiveUpdate(last()));
+			await asUser(clientId, () => dialog.receiveUpdate(last()));
 	}
 	return gm;
 };
 
 /** What `renderRollDialog` does for a player taking over: claim, then publish. */
 const playerTakesOver = (player) =>
-	as("player", () => {
+	asUser("player", () => {
 		player.ownerId = "player";
 		player.setSelection("mine", "positive", "player");
 		player.dispatchSync();
@@ -106,7 +103,7 @@ describe("a player takes the seat from the GM", () => {
 		const takeover = last();
 		seatTaken("gm", gm, "player");
 		seatTaken("third", third, "player");
-		await as("third", () => third.receiveUpdate(takeover));
+		await asUser("third", () => third.receiveUpdate(takeover));
 
 		expect(third.ownerId).toBe("player");
 		expect(third.getSelection("mine").state).toBe("positive");
@@ -123,7 +120,7 @@ describe("a player takes the seat from the GM", () => {
 		const takeover = last();
 		seatTaken("gm", gm, "player");
 		seatTaken("third", third, "player");
-		await as("third", () => third.receiveUpdate(takeover));
+		await asUser("third", () => third.receiveUpdate(takeover));
 
 		expect(third.getSelection("mine").state).toBe("positive");
 	});
@@ -135,15 +132,15 @@ describe("a player takes the seat from the GM", () => {
 
 		playerTakesOver(player);
 		// The snapshot outran the flag update: still addressed to the old owner.
-		await as("third", () => third.receiveUpdate(last()));
+		await asUser("third", () => third.receiveUpdate(last()));
 		expect(third.getSelection("mine")?.state).toBeFalsy();
 
 		seatTaken("third", third, "player");
 		expect(syncRequests).toContainEqual(
 			expect.objectContaining({ actorId: ACTOR_ID, senderId: "third" }),
 		);
-		as("player", () => player.dispatchSync());
-		await as("third", () => third.receiveUpdate(last()));
+		asUser("player", () => player.dispatchSync());
+		await asUser("third", () => third.receiveUpdate(last()));
 
 		expect(third.getSelection("mine").state).toBe("positive");
 	});
@@ -155,7 +152,7 @@ describe("a player takes the seat from the GM", () => {
 		const takeover = last();
 
 		seatTaken("gm", gm, "player");
-		await as("gm", () => gm.receiveUpdate(takeover));
+		await asUser("gm", () => gm.receiveUpdate(takeover));
 
 		expect(gm.isOwner).toBe(false);
 		expect(gm.ownerId).toBe("player");

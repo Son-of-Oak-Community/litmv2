@@ -6,6 +6,7 @@ import { executeRoll } from "../modules/apps/roll/roll-pipeline.js";
 import { normalizeConfig } from "../modules/apps/story-tags/story-tag-helpers.js";
 import { StoryTagsStore } from "../modules/apps/story-tags/story-tags-store.js";
 import { fakeElement } from "./__helpers__/dom.js";
+import { stubSettings } from "./__helpers__/settings.js";
 
 const secret = {
 	uuid: "Actor.hidden.ActiveEffect.secret",
@@ -24,9 +25,7 @@ beforeEach(() => {
 	game.users.filter = () => [];
 	config = { actors: ["Actor.hidden"], hiddenActors: ["Actor.hidden"] };
 	source = { id: "hidden", documentName: "Actor" };
-	game.settings.get.mockImplementation((_scope, key) =>
-		key === "storytags" ? config : undefined,
-	);
+	stubSettings((key) => (key === "storytags" ? config : undefined));
 	foundry.utils.parseUuid = (uuid) => ({
 		collection: "Actor",
 		type: uuid?.startsWith("Actor.") ? "Actor" : null,

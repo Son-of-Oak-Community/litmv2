@@ -18,21 +18,25 @@ import {
 	onHoverToken,
 	tokenTooltipHTML,
 } from "../modules/hud/token-tooltip.js";
+import { stubSettings } from "./__helpers__/settings.js";
 
 /** `LitmSettings.tokenTooltipStatusesOnly` reads this key. */
 function settingsOnly(statusesOnly) {
-	game.settings.get = vi.fn((_ns, key) =>
-		key === "token_tooltip_statuses_only" ? statusesOnly : false,
+	stubSettings(
+		{ token_tooltip_statuses_only: statusesOnly },
+		{ fallback: false },
 	);
 }
 
 /** Both tooltip keys, so the persistent-mode guard can be exercised. */
 function settings({ statusesOnly = false, persistent = false } = {}) {
-	game.settings.get = vi.fn((_ns, key) => {
-		if (key === "token_tooltip_statuses_only") return statusesOnly;
-		if (key === "persistent_token_labels") return persistent;
-		return false;
-	});
+	stubSettings(
+		{
+			token_tooltip_statuses_only: statusesOnly,
+			persistent_token_labels: persistent,
+		},
+		{ fallback: false },
+	);
 }
 
 function fakeToken({ isOwner = false, tags = ["rope"], statuses = [] } = {}) {
