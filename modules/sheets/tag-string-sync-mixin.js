@@ -1,9 +1,14 @@
 import {
 	hiddenTagKeys,
 	playerVisibleTagString,
+	removeFromTagString,
+	retierInTagString,
 } from "../item/action/tag-string.js";
 import { ACTOR_TAG_TYPES } from "../system/config.js";
 import { enrichPlainText } from "../utils.js";
+
+/** The tag-string markup kind each actor tag effect is written as. */
+const TAG_KIND_BY_EFFECT_TYPE = { story_tag: "story", status_tag: "status" };
 
 /**
  * Mixin that adds bidirectional tag-string ↔ ActiveEffect synchronisation.
@@ -139,18 +144,13 @@ export function TagStringSyncMixin(Base) {
 					if (this.#syncing) return;
 					if (!this.document.isOwner) return;
 					if (effect.type !== "status_tag") return;
-					const name = effect.name;
-					const newTier = effect.system?.currentTier ?? 0;
-					let tags = this.system.tags || "";
-					const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-					const re = new RegExp(
-						`([\\[{]${escaped})[\\s\\-:](\\d+)([\\]}])`,
-						"i",
+					const current = this.system.tags || "";
+					const tags = retierInTagString(
+						current,
+						effect.name,
+						effect.system?.currentTier ?? 0,
 					);
-					if (re.test(tags)) {
-						tags = tags.replace(re, `$1-${newTier}$3`);
-						this.document.update({ "system.tags": tags });
-					}
+					if (tags !== current) this.document.update({ "system.tags": tags });
 				}),
 				delete: Hooks.on("deleteActiveEffect", (effect) => {
 					if (effect.parent !== this.document) return;
@@ -158,21 +158,13 @@ export function TagStringSyncMixin(Base) {
 					if (!this.document.isOwner) return;
 					if (!ACTOR_TAG_TYPES.has(effect.type)) return;
 					if (effect.getFlag("litmv2", "addonId")) return;
-					const name = effect.name;
-					const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-					let tags = this.system.tags || "";
-					// Remove [name], {name}, [name-N], {name-N}
-					const re = new RegExp(
-						`[\\[{]${escaped}(?:[\\s\\-:]\\d+)?[\\]}]`,
-						"gi",
+					const current = this.system.tags || "";
+					const tags = removeFromTagString(
+						current,
+						TAG_KIND_BY_EFFECT_TYPE[effect.type],
+						effect.name,
 					);
-					tags = tags.replace(re, "").trim();
-					// Clean up orphaned separators
-					tags = tags
-						.replace(/,\s*,/g, ",")
-						.replace(/^\s*,|,\s*$/g, "")
-						.trim();
-					this.document.update({ "system.tags": tags });
+					if (tags !== current) this.document.update({ "system.tags": tags });
 				}),
 			};
 		}
