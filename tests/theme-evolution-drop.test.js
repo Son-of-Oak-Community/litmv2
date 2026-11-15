@@ -301,6 +301,30 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		return { wizard, message, drop: dropCallback };
 	}
 
+	// A Scarring Sacrifice's Replace can also be paid by dropping a kit.
+	it("counts a kit drop as done when it fails after the old tags are gone", async () => {
+		const actor = fakeActor({ system: { promise: 0 } });
+		const theme = fakeTheme({ name: "Old" });
+		const source = fakeTheme({ name: "Kit" });
+		theme.update = vi.fn(async () => {
+			throw new Error("lost connection");
+		});
+		foundry.applications.api.DialogV2.confirm = vi.fn(async () => true);
+		const { wizard, drop } = wizardFor({
+			actor,
+			theme,
+			dragged: { type: "Item", uuid: source.uuid },
+		});
+		foundry.utils.fromUuid.mockResolvedValueOnce(source);
+		const error = vi.spyOn(ui.notifications, "error");
+
+		await expect(drop({})).rejects.toThrow("lost connection");
+
+		await expect(wizard.done).resolves.toBe(true);
+		expect(error).toHaveBeenCalledWith("LITM.Ui.evolution_replace_unfinished");
+		error.mockRestore();
+	});
+
 	it("rejects dropping the theme being evolved onto its own wizard", async () => {
 		const actor = fakeActor({ system: { promise: 0 } });
 		const theme = fakeTheme({ name: "Hardened Warrior" });
@@ -507,6 +531,77 @@ describe("ThemeEvolutionWizard forced Replace", () => {
 		const wizard = wizardOn(fakeTheme());
 		wizard._onClose({});
 		await expect(wizard.done).resolves.toBe(false);
+	});
+
+	// A Scarring Sacrifice waits on `done` to clear its debt. Once the old
+	// theme's tags are gone the price is paid, even if a later write fails:
+	// otherwise the debt stays owed for a theme already lost.
+	async function confirmForced(theme) {
+		const wizard = wizardOn(theme, { forceReplace: true });
+		wizard.close = vi.fn();
+		Object.defineProperty(wizard, "element", {
+			value: { querySelector: () => null },
+		});
+		foundry.applications.ux = {
+			...originalUx,
+			FormDataExtended: class {
+				object = {
+					name: "New",
+					themebook: "Book",
+					level: "origin",
+					quest: "Q",
+					weakness: "W",
+				};
+			},
+		};
+		const error = vi.spyOn(ui.notifications, "error");
+		const result = await ThemeEvolutionWizard.DEFAULT_OPTIONS.actions.confirm
+			.call(wizard)
+			.then(
+				() => null,
+				(err) => err,
+			);
+		return { wizard, error, result };
+	}
+
+	it("counts the Replace as done when it fails after the old tags are gone", async () => {
+		const theme = fakeTheme({ name: "Old" });
+		theme.update = vi.fn(async () => {
+			throw new Error("lost connection");
+		});
+		const { wizard, error, result } = await confirmForced(theme);
+		await expect(wizard.done).resolves.toBe(true);
+		expect(result).toBeInstanceOf(Error);
+		expect(error).toHaveBeenCalledWith("LITM.Ui.evolution_replace_unfinished");
+		error.mockRestore();
+	});
+
+	// The wipe is two writes: the delete, then the title tag's question.
+	it("counts the Replace as done when the title tag's reset fails after the delete", async () => {
+		const theme = fakeTheme({ name: "Old" });
+		const title = theme.effects.find((e) => e.system.isTitleTag);
+		title.system.question = 2;
+		theme.updateEmbeddedDocuments = vi.fn(async () => {
+			throw new Error("lost connection");
+		});
+		const { wizard, error, result } = await confirmForced(theme);
+		expect(result).toBeInstanceOf(Error);
+		await expect(wizard.done).resolves.toBe(true);
+		expect(error).toHaveBeenCalledWith("LITM.Ui.evolution_replace_unfinished");
+		error.mockRestore();
+	});
+
+	it("is not done when it fails before any tag was removed", async () => {
+		const theme = fakeTheme({ name: "Old" });
+		theme.deleteEmbeddedDocuments = vi.fn(async () => {
+			throw new Error("lost connection");
+		});
+		const { wizard, error, result } = await confirmForced(theme);
+		expect(result).toBeInstanceOf(Error);
+		expect(error).not.toHaveBeenCalled();
+		wizard._onClose({});
+		await expect(wizard.done).resolves.toBe(false);
+		error.mockRestore();
 	});
 });
 

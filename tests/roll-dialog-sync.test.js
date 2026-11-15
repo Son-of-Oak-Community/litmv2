@@ -428,6 +428,79 @@ describe("Helping Each Other", () => {
 	});
 });
 
+// On a called roll the move is the Narrator's; the roller may only make it a
+// Sacrifice and go back to the move that was called.
+describe("leaving a Sacrifice on a called roll", () => {
+	const SESSION = "called-detailed";
+	const call = (dialog, user) =>
+		as(user, () =>
+			dialog.configureSharedRoll({
+				ownerId: "player",
+				narratorUserId: "gm",
+				narratorName: "GM",
+				type: "tracked",
+				syncSession: SESSION,
+			}),
+		);
+	const calledSacrifice = async () => {
+		const roller = make("player", { ownerId: "player" });
+		const gm = make("gm", { ownerId: "player" });
+		roller.tabGroups = gm.tabGroups = {};
+		roller.updatePresence = gm.updatePresence = vi.fn(async () => {});
+		call(roller, "player");
+		call(gm, "gm");
+		as("player", () => roller.setType("sacrifice"));
+		await as("gm", () => gm.receiveUpdate(last()));
+		return { roller, gm };
+	};
+
+	it("still knows the called move after the roller reloads", async () => {
+		const { gm } = await calledSacrifice();
+		expect(gm.type).toBe("sacrifice");
+		const fresh = make("player", { ownerId: "player" });
+		fresh.tabGroups = {};
+		fresh.updatePresence = vi.fn(async () => {});
+		fresh.activateSync(SESSION);
+		as("player", () => fresh.requestReseat());
+		as("gm", () => gm.dispatchReseat());
+		await as("player", () => fresh.receiveUpdate(last()));
+		expect(fresh.type).toBe("sacrifice");
+
+		as("player", () => fresh.setType("quick"));
+		expect(fresh.type).toBe("sacrifice");
+		as("player", () => fresh.setType("tracked"));
+		expect(fresh.type).toBe("tracked");
+	});
+
+	it("goes back to the called move, not Quick, when an Action is rolled", async () => {
+		const { roller, gm } = await calledSacrifice();
+		as("player", () => roller.setAction("Actor.a.Item.action"));
+		expect(roller.type).toBe("tracked");
+		await as("gm", () => gm.receiveUpdate(last()));
+		expect(gm.type).toBe("tracked");
+	});
+
+	it("goes to Quick when an Action is rolled from the roller's own Sacrifice", () => {
+		const roller = make("player", { ownerId: "player" });
+		roller.tabGroups = {};
+		roller.updatePresence = vi.fn(async () => {});
+		as("player", () => roller.setType("mitigate"));
+		as("player", () => roller.setType("sacrifice"));
+		as("player", () => roller.setAction("Actor.a.Item.action"));
+		expect(roller.type).toBe("quick");
+	});
+
+	it("does not let a roller's update change the called move", async () => {
+		const { roller, gm } = await calledSacrifice();
+		as("player", () => {
+			roller.type = "quick";
+			roller.dispatchSync();
+		});
+		await as("gm", () => gm.receiveUpdate(last()));
+		expect(gm.type).toBe("sacrifice");
+	});
+});
+
 describe("Secret Grace Bonus", () => {
 	it("is the Narrator's; the roller's Sacrifice switch only resets it to 0", async () => {
 		const roller = make("player", { ownerId: "player" });

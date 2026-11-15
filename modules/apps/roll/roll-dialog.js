@@ -551,8 +551,10 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	#might = 0;
 	/** The number the Narrator tells a Sacrifice to add (p.159); no Power is. */
 	#sacrificeBonus = 0;
-	/** The move a Sacrifice replaced, to go back to. shortcut: kept on this
-	 *  client only, so after a reload a called roll's way back is Quick. */
+	/** The move a Sacrifice replaced, to go back to. Part of the synced roll
+	 *  state, so a reseat after the roller reloads keeps it; a roll rebuilt
+	 *  from the presence flag alone (the whole table reloaded) goes back to
+	 *  Quick. */
 	#moveBeforeSacrifice = null;
 	#tradePower = 0;
 	#sacrificeLevel = "painful";
@@ -651,7 +653,12 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		// action while the dialog is parked in sacrifice mode must drop
 		// sacrifice, mirroring the Roll button's behaviour in hero-sheet.
 		if (this.#actionUuid && this.type === "sacrifice") {
-			this.type = "quick";
+			// A called roll goes back to the Narrator's move; the roller's own
+			// roll to Quick, as before (an Action is not a Reaction).
+			this.type = isNarratorControlled(this.#narratorCall)
+				? this.#calledMove()
+				: "quick";
+			this.#moveBeforeSacrifice = null;
 			// As `setType`: Secret Grace never outlives the Sacrifice.
 			this.#sacrificeBonus = 0;
 			this.updatePresence(true).catch(console.error);
@@ -2540,6 +2547,9 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			sacrificeThemeId: this.#sacrificeThemeId,
 			sacrificeStatusName: this.#sacrificeStatusName,
 			sojournBonus: this.#sojournBonus,
+			// Shared so the way back from a Sacrifice survives the roller's
+			// reload (a reseat adopts the table's view).
+			moveBeforeSacrifice: this.#moveBeforeSacrifice,
 			ownerId: this.ownerId,
 			actionUuid: this.#actionUuid,
 			title: this.rollName,
@@ -2571,6 +2581,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			"sacrificeThemeId",
 			"sacrificeStatusName",
 			"sojournBonus",
+			"moveBeforeSacrifice",
 			"ownerId",
 			"narratorCall",
 			"participantIds",
@@ -2589,12 +2600,21 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// even on a called roll, and so is the roller's Sacrifice switch
 			// between Quick and Sacrifice. The radio handler still rejects
 			// player edits.
+			// The Sacrifice switch is the same rule as the move bar
+			// (#canPickType): Sacrifice, or back to the move that was called.
+			// Judged against the shared view, since this client's own `type`
+			// has already changed.
+			const view = this.#sync.view;
+			const calledMove =
+				view.type === "sacrifice"
+					? (view.moveBeforeSacrifice ?? "quick")
+					: view.type;
 			const reaction =
 				key === "type" && this.isOwner && this.type === "mitigate";
 			const sacrificeSwitch =
 				key === "type" &&
 				this.canProposeSacrifice &&
-				(state.type === "sacrifice" || this.#sync.view.type === "sacrifice");
+				(state.type === "sacrifice" || state.type === calledMove);
 			if (!this.canSetNarratorFields && !reaction && !sacrificeSwitch)
 				state[key] = this.#sync.view[key];
 		}
@@ -2738,6 +2758,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		sacrificeThemeId,
 		sacrificeStatusName,
 		sojournBonus,
+		moveBeforeSacrifice,
 		ownerId,
 		narratorCall,
 		participantIds,
@@ -2760,6 +2781,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		if (sacrificeStatusName !== undefined)
 			this.#sacrificeStatusName = sacrificeStatusName;
 		if (sojournBonus !== undefined) this.#sojournBonus = sojournBonus;
+		if (moveBeforeSacrifice !== undefined)
+			this.#moveBeforeSacrifice = moveBeforeSacrifice;
 		if (ownerId !== undefined) this.ownerId = ownerId;
 		if (actionUuid !== undefined && actionUuid !== this.#actionUuid) {
 			this.#actionUuid = actionUuid;
