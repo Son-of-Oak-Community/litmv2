@@ -4,6 +4,7 @@ import { StoryTagSidebar } from "../modules/apps/story-tags/story-tag-sidebar.js
 import { LitmConfig } from "../modules/system/config.js";
 import { ContentSources } from "../modules/system/content-sources.js";
 import { Sockets } from "../modules/system/sockets.js";
+import { fakeElement } from "./__helpers__/dom.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
 // Dragging a tag between columns is a move: add it to the destination, then
@@ -80,16 +81,14 @@ const payloadFor = (effect, container) => ({
  */
 const dropEvent = (data, { column, limitId, limitSource } = {}) => ({
 	dataTransfer: { getData: () => JSON.stringify(data) },
-	target: {
-		closest: (selector) => {
-			if (selector === "[data-limit-id]" && limitId) {
-				return { dataset: { limitId, source: limitSource } };
-			}
-			if (selector === "[data-id]" && column)
-				return { dataset: { id: column } };
-			return null;
+	target: fakeElement({
+		closest: {
+			"[data-limit-id]": limitId
+				? fakeElement({ dataset: { limitId, source: limitSource } })
+				: null,
+			"[data-id]": column ? fakeElement({ dataset: { id: column } }) : null,
 		},
-	},
+	}),
 });
 
 let sidebar;
@@ -363,7 +362,9 @@ describe("dropping a tag onto a limit header", () => {
 const dragFrom = (row) => {
 	const setData = vi.fn();
 	sidebar._onDragStart({
-		currentTarget: { closest: () => ({ dataset: row }) },
+		currentTarget: fakeElement({
+			closest: () => fakeElement({ dataset: row }),
+		}),
 		dataTransfer: { setData },
 	});
 	return JSON.parse(setData.mock.calls[0][1]);

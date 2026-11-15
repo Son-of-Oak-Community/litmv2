@@ -13,6 +13,7 @@ vi.mock("../modules/apps/story-tags/scene-tag-dialog.js", () => ({
 }));
 
 import { registerUiHooks } from "../modules/system/hooks/ui-hooks.js";
+import { fakeElement } from "./__helpers__/dom.js";
 
 describe("camp pickup", () => {
 	it("offers a begun camp this client is not viewing", () => {
@@ -83,14 +84,10 @@ describe("camping HUD lifecycle", () => {
 		vi.stubGlobal("Hooks", {
 			on: (name, callback) => listeners.set(name, callback),
 		});
-		let onClick;
-		const container = {
+		const container = fakeElement({
 			classList: { add: vi.fn(), remove: vi.fn() },
-			addEventListener: (_type, cb) => {
-				onClick = cb;
-			},
 			innerHTML: "",
-		};
+		});
 		vi.stubGlobal("document", {
 			getElementById: () => ({ prepend: vi.fn() }),
 			createElement: () => container,
@@ -127,8 +124,12 @@ describe("camping HUD lifecycle", () => {
 		await hud.render();
 		expect(container.innerHTML).toBe("scene1:LITM.Ui.camping_camp@Riverbank");
 
-		onClick({
-			target: { closest: () => ({ dataset: { sceneId: "scene1" } }) },
+		container.emit("click", {
+			target: fakeElement({
+				closest: {
+					"[data-scene-id]": fakeElement({ dataset: { sceneId: "scene1" } }),
+				},
+			}),
 		});
 		expect(campApp.open).toHaveBeenCalledWith({ sceneId: "scene1" });
 

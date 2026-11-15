@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LitmRollDialog } from "../modules/apps/roll/roll-dialog.js";
 import { Sockets } from "../modules/system/sockets.js";
+import { fakeElement } from "./__helpers__/dom.js";
 
 const as = (id, fn) => {
 	game.user = { id, isGM: id === "gm" };
@@ -37,17 +38,10 @@ afterEach(() => {
 });
 const last = () => messages.at(-1);
 const controls = (dialog) => {
-	let change;
-	dialog.element = {
-		addEventListener: (event, listener) => {
-			if (event === "change") change = listener;
-		},
-		querySelector: () => null,
-		querySelectorAll: () => [],
-	};
+	dialog.element = fakeElement();
 	dialog._onFirstRender({}, {});
 	return (name, value) =>
-		change({
+		dialog.element.emit("change", {
 			target: {
 				tagName: "INPUT",
 				value: String(value),

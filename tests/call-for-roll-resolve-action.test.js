@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fakeElement } from "./__helpers__/dom.js";
 
 vi.mock("../modules/apps/roll/roll-request.js", () => ({
 	openSharedRoll: vi.fn(async () => undefined),
@@ -40,22 +41,13 @@ const openApp = (options = {}) => {
 	app.close = vi.fn();
 	app.configure(options);
 
-	let onChange;
-	app.element = {
-		querySelectorAll: () => [
-			{
-				dataset: { roster: "target" },
-				addEventListener: (_type, listener) => {
-					onChange = listener;
-				},
-			},
-		],
-	};
+	const row = fakeElement({ dataset: { rowId: hero.id } });
+	const input = fakeElement({ closest: { "[data-row-id]": row } });
+	const roster = fakeElement({ dataset: { roster: "target" } });
+	app.element = fakeElement({ all: { "[data-roster]": [roster] } });
 	app._onRender({}, {});
-	onChange({
-		target: {
-			closest: () => ({ closest: () => ({ dataset: { rowId: hero.id } }) }),
-		},
+	roster.emit("change", {
+		target: fakeElement({ closest: { ".litm--roster-input": input } }),
 	});
 	return app;
 };

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LitmRollDialog } from "../modules/apps/roll/roll-dialog.js";
 import { Sockets } from "../modules/system/sockets.js";
+import { fakeElement } from "./__helpers__/dom.js";
 
 let actor;
 
@@ -84,13 +85,10 @@ describe("called-roll lifecycle", () => {
 	// the player started it only closes the Narrator's view.
 	describe("the Narrator's X", () => {
 		const clickX = (dialog) => {
-			let onClose;
-			dialog.window = {
-				close: { addEventListener: (_type, cb) => (onClose = cb) },
-			};
-			dialog.element = { addEventListener: () => {} };
+			dialog.window = { close: fakeElement() };
+			dialog.element = fakeElement();
 			dialog._onFirstRender({}, {});
-			onClose({ button: 0 });
+			dialog.window.close.emit("click", { button: 0 });
 		};
 
 		it("cancels a roll the Narrator called", () => {
