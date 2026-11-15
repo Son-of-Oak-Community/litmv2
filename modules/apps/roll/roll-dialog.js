@@ -66,6 +66,20 @@ const submitting = new WeakSet();
 /** How long a reloaded owner waits for a viewer's answer to its reseat request. */
 const RESEAT_WINDOW_MS = 5000;
 
+/**
+ * The fields the owner takes from the Narrator's edits: their half of the roll
+ * (move, Might, Secret Grace) and the Action they called with its title. The
+ * roller's own fields (modifier, Trade Power, the Sacrifice's terms) and the
+ * call itself (stamp, seat, participants) are never taken from another client.
+ */
+const NARRATOR_EDIT_FIELDS = [
+	"type",
+	"might",
+	"sacrificeBonus",
+	"actionUuid",
+	"title",
+];
+
 export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicationMixin(
 	foundry.applications.api.ApplicationV2,
 ) {
@@ -552,9 +566,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	/** The number the Narrator tells a Sacrifice to add (p.159); no Power is. */
 	#sacrificeBonus = 0;
 	/** The move a Sacrifice replaced, to go back to. Part of the synced roll
-	 *  state, so a reseat after the roller reloads keeps it; a roll rebuilt
-	 *  from the presence flag alone (the whole table reloaded) goes back to
-	 *  Quick. */
+	 *  state, so the owner's saved draft and a Narrator's reseat answer both
+	 *  carry it; a roll rebuilt from the call alone goes back to Quick. */
 	#moveBeforeSacrifice = null;
 	#tradePower = 0;
 	#sacrificeLevel = "painful";
@@ -1752,6 +1765,140 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 	}
 
 	/**
+	 * The owner's own authority check on an edit from another client, by the
+	 * server-attested sender. The sender's markup, change handlers and
+	 * `#dispatchUpdate` all refuse these changes, but a peer can hand-craft a
+	 * packet; the owner is the one writer, so it must refuse too.
+	 *
+	 * - From the Narrator: their half of the roll (move, Might, Secret Grace,
+	 *   the Action and its title) and any tag; never the roller's own fields.
+	 * - From anyone else: no field at all, and only tags within their reach
+	 *   (`actableActorIds`): not a Narrator-stamped pick, not someone else's
+	 *   pick. Each kept entry is stamped with the sender as contributor.
+	 *
+	 * @param {object} message   An incoming sync message.
+	 * @param {string} senderId  The attested sender.
+	 * @returns {object} The message with what the sender may not do removed.
+	 */
+	#authorizeEdit(message, senderId) {
+		if (message?.kind !== "edit" || !senderId || senderId === game.user.id)
+			return message;
+		const sender = game.users.get(senderId);
+		const sent = message.fields ?? {};
+		if (sender?.isGM) {
+			const fields = {};
+			for (const key of NARRATOR_EDIT_FIELDS)
+				if (key in sent) fields[key] = sent[key];
+			return { ...message, fields };
+		}
+		const view = new Map(this.#sync.view.selections ?? []);
+		const reach = sender ? actableActorIds(this, sender) : new Set();
+		const selections = (message.selections ?? []).flatMap(([id, entry]) => {
+			const current = view.get(id);
+			if (!sender || entry?.narrator || current?.narrator) return [];
+			// Whose tag it is comes from the tag (or what this owner already
+			// stored for it), never from the sender's claim: a scene tag resolves
+			// to no actor, and claiming it as one's own Hero's must not pass.
+			const tagActorId = resolveTagActorId(id) ?? current?.tagActorId ?? null;
+			if (!tagActorId || !reach.has(tagActorId)) return [];
+			if (current?.contributorId && current.contributorId !== senderId)
+				return [];
+			return [
+				[id, entry ? { ...entry, tagActorId, contributorId: senderId } : entry],
+			];
+		});
+		return { ...message, fields: {}, selections };
+	}
+
+	/** Whether a packet comes from the Narrator, or from this client itself. */
+	#fromNarrator(senderId) {
+		return (
+			!senderId || senderId === game.user.id || !!game.users.get(senderId)?.isGM
+		);
+	}
+
+	/** This roll's saved-draft key in this browser's storage. */
+	get #draftKey() {
+		return `litmv2.rollDraft.${this.actorId}`;
+	}
+
+	/**
+	 * Save the canonical draft (both halves) in this browser, so an owner that
+	 * reloads mid-call rebuilds it from its own record, never from another
+	 * player's word. A document flag would not do: every player owns the
+	 * Fellowship, and a Hero's player owns the Hero, so on a roll the Narrator
+	 * holds they could rewrite it. Only a called roll survives a reload
+	 * (`ready` keeps only narrator-stamped flags), so only it is saved. A
+	 * reload on another device starts from the call, or the Narrator's answer.
+	 */
+	#persistDraft() {
+		if (
+			this.localOnly ||
+			!this.isOwner ||
+			!this.#syncActive ||
+			!isNarratorControlled(this.#narratorCall)
+		)
+			return;
+		const { ownerId: _seat, ...state } = this.#sync.view;
+		try {
+			globalThis.localStorage?.setItem(
+				this.#draftKey,
+				JSON.stringify({
+					session: this.syncSession,
+					revision: this.#sync.revision,
+					state,
+				}),
+			);
+		} catch {
+			// Storage full or blocked: the reseat still has the Narrator's answer.
+		}
+	}
+
+	/** The draft this browser saved for this roll, if any. */
+	#readDraft() {
+		try {
+			return JSON.parse(globalThis.localStorage?.getItem(this.#draftKey));
+		} catch {
+			return null;
+		}
+	}
+
+	/** Forget the saved draft: the roll it was for has ended. */
+	#forgetDraft() {
+		try {
+			globalThis.localStorage?.removeItem(this.#draftKey);
+		} catch {
+			// Nothing to forget.
+		}
+	}
+
+	/**
+	 * Start a fresh owner from the draft this browser saved before a reload.
+	 * The Narrator's answer to the reseat that follows can still replace it.
+	 * @param {{session: string, revision: number, state: object}} [draft]
+	 * @returns {boolean} Whether a draft for this roll was restored.
+	 */
+	restoreDraft(draft = this.#readDraft()) {
+		if (!this.isOwner || !draft?.state || draft.session !== this.syncSession)
+			return false;
+		const { ownerId: _seat, ...state } = draft.state;
+		if (!this.#sync.restore({ ...this.#syncState(), ...state }, draft.revision))
+			return false;
+		this.#applySyncState(this.#sync.view);
+		return true;
+	}
+
+	/** Take a reseat answer and tell the table. */
+	#adoptReseat(answer) {
+		if (!this.#sync.adopt(answer)) return false;
+		this.#applySyncState(this.#sync.view);
+		this.#sendSync(this.#sync.snapshot());
+		if (this.actor?.sheet?.rendered) this.actor.sheet.render();
+		if (this.rendered) this.render();
+		return true;
+	}
+
+	/**
 	 * The owner decides which contributed tags are help, from the tag itself,
 	 * rather than trusting the `helper` and `tagActorId` a contributor sent.
 	 * That keeps the merge's Helping Each Other cap (`refusesHelperTag` in
@@ -2026,6 +2173,7 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// Nor the Narrator's Secret Grace, which was for this Sacrifice.
 			this.#sacrificeBonus = 0;
 			this.#cachedTotalPower = null;
+			if (this.isOwner) this.#forgetDraft();
 		}
 		this.invalidateSync();
 	}
@@ -2565,6 +2713,8 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			actorId: this.actorId,
 			sync,
 		});
+		// Each canonical draft the owner publishes is the one to keep.
+		if (sync.kind === "snapshot") this.#persistDraft();
 	}
 
 	#dispatchUpdate() {
@@ -2647,11 +2797,14 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 		sync.expectReseat();
 		setTimeout(() => {
 			if (!sync.awaitingReseat) return;
-			sync.abandonReseat();
-			// Nobody held the draft, the whole table reloaded say: publish the
-			// one rebuilt from the flag, so viewers that opened blank get the call.
-			if (this.#sync === sync && this.#syncActive && this.isOwner)
+			// No Narrator answered: carry on with the draft restored from this
+			// browser (or the call rebuilt from the flag), under a revision past every
+			// answer seen, so viewers that opened blank or held older views
+			// take it. Not into a roll that ended meanwhile.
+			if (this.#sync === sync && this.#syncActive && this.isOwner) {
+				sync.publishRestored();
 				this.#sendSync(sync.snapshot());
+			} else sync.abandonReseat();
 		}, RESEAT_WINDOW_MS);
 		Sockets.dispatch("requestRollDialogSync", {
 			actorId: this.actorId,
@@ -2714,12 +2867,16 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			// Only the owner serializes edits; all other peers ignore proposals.
 			if (data.sync.kind === "edit" && !this.isOwner) return;
 			if (data.sync.kind === "reseat") {
-				if (!this.isOwner) return;
+				// Only an answer this owner asked for (requestReseat): an
+				// unsolicited view would otherwise replace a fresh roll's draft.
+				if (!this.isOwner || !this.#sync.awaitingReseat) return;
 				const { ownerId: _stale, ...state } = data.sync.state ?? {};
-				if (!this.#sync.adopt({ ...data.sync, state })) return;
-				this.#applySyncState(this.#sync.view);
-				this.#sendSync(this.#sync.snapshot());
-				if (this.rendered) this.render();
+				// The Narrator's answer is taken: it may carry edits made while
+				// this client was away. A player's is not; the draft comes from
+				// this browser (restoreDraft), and only its revision counts.
+				if (this.#fromNarrator(data.senderId))
+					this.#adoptReseat({ ...data.sync, state });
+				else this.#sync.noteRevision(data.sync.revision);
 				return;
 			}
 			if (
@@ -2729,12 +2886,23 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			)
 				return;
 			const response = this.#sync.receive(
-				this.isOwner ? this.#classifyHelpers(data.sync) : data.sync,
+				this.isOwner
+					? this.#classifyHelpers(this.#authorizeEdit(data.sync, data.senderId))
+					: data.sync,
 				this.isOwner,
 			);
 			this.#applySyncState(this.#sync.view);
 			this.#sendSync(response);
 		} else {
+			// No honest client sends this over the socket (every sync carries
+			// `sync`); from another user it would overwrite any field, the seat
+			// included. Only the Narrator's packets are taken.
+			if (
+				data.senderId &&
+				data.senderId !== game.user.id &&
+				!game.users.get(data.senderId)?.isGM
+			)
+				return;
 			// Preserve the public partial-update API used by modules/macros.
 			// An owner-side caller updates the canonical draft without replacing
 			// its generation; dispatchSync() can then publish it to current peers.

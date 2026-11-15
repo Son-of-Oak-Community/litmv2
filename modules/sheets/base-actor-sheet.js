@@ -1001,6 +1001,9 @@ export class LitmActorSheet extends LitmSheetMixin(
 					type: assigned.type,
 					syncSession: assigned.syncSession,
 				});
+			// Then the draft this browser saved, both halves; a Narrator's
+			// answer to the reseat may still bring newer edits.
+			if (dialog.isOwner && !dialog.rendered) dialog.restoreDraft();
 			if (dialog.isOwner) dialog.requestReseat();
 			else
 				Sockets.dispatch("requestRollDialogSync", {
