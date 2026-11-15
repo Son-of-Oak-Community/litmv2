@@ -453,7 +453,7 @@ describe("ThemeEvolutionWizard forced Replace", () => {
 		foundry.applications.ux = {
 			...originalUx,
 			FormDataExtended: class {
-				object = { mode: "evolve", name: "New", themebook: "Book", level: "origin", quest: "Q" };
+				object = { mode: "evolve", name: "New", themebook: "Book", level: "origin", quest: "Q", weakness: "W" };
 			},
 		};
 		await ThemeEvolutionWizard.DEFAULT_OPTIONS.actions.confirm.call(wizard);
