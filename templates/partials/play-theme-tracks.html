@@ -28,7 +28,13 @@
 			{{/progress-buttons}}
 		</div>
 		<label>{{localize "LITM.Ui.improve"}}</label>
-		{{#if (eq system.improve.value (improve-threshold))}}
+		{{#if system.owedPowerTags}}
+		{{!-- A nascent theme's Improve marks are owed as power tags (p.192). --}}
+		<button type="button" class="litm--track-action" data-action="openThemeAdvancement" data-item-id="{{_id}}"
+			data-tooltip="{{localize 'LITM.Ui.nascent_add_power_tag'}}" aria-label="{{localize 'LITM.Ui.nascent_add_power_tag'}}">
+			<i class="fa-solid fa-seedling" aria-hidden="true"></i>
+		</button>
+		{{else if (eq system.improve.value (improve-threshold))}}
 		<button type="button" class="litm--track-action" data-action="openThemeAdvancement" data-item-id="{{_id}}"
 			data-tooltip="{{localize 'LITM.Ui.choose_improvement'}}" aria-label="{{localize 'LITM.Ui.choose_improvement'}}">
 			<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>

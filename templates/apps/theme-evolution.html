@@ -125,7 +125,14 @@
 			</div>
 		</div>
 
-		<p class="hint" data-hide-when="expand">{{localize "LITM.Ui.evolution_type_or_might_hint"}}</p>
+		<p class="hint" data-hide-when="expand replace">{{localize "LITM.Ui.evolution_type_or_might_hint"}}</p>
+
+		{{!-- A new theme is its title tag, one weakness tag and a Quest
+		      (Core Book p.192); Evolve keeps the theme's own. --}}
+		<div class="form-group stacked" data-hide-when="evolve">
+			<label>{{localize "LITM.Ui.evolution_new_weakness"}}</label>
+			<input type="text" name="weakness" placeholder="{{localize 'LITM.Ui.evolution_new_weakness_placeholder'}}" />
+		</div>
 
 		<div class="form-group stacked">
 			<label>{{localize "LITM.Ui.evolution_new_quest"}}</label>
