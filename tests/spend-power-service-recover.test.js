@@ -4,6 +4,11 @@ import { Sockets } from "../modules/system/sockets.js";
 import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
 import { recoverIntent, wireActors } from "./__helpers__/spend-power.js";
 
+// The Recover list is HeroData#scratchedTags, which includes the Fellowship's
+// scratched tags — an actor the player usually does not own. Recovering one
+// must resolve there, route its write through the active GM when the player
+// can't make it, and bill Power only for tags that actually came back.
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});

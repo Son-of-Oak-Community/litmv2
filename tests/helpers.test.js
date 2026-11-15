@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fakeFlagActor, withFlags } from "./__helpers__/flags.js";
+import { withFlags } from "./__helpers__/flags.js";
 import { stubSettings } from "./__helpers__/settings.js";
 import { asUser, setGM, setPlayer, setUser } from "./__helpers__/users.js";
 
@@ -135,25 +135,5 @@ describe("withFlags", () => {
 		a.flags.litmv2 = { x: 1 };
 
 		expect(b.flags).toEqual({});
-	});
-});
-
-describe("fakeFlagActor", () => {
-	it("is a fakeActor that keeps flags", async () => {
-		const actor = fakeFlagActor({
-			id: "h1",
-			type: "journey",
-			flags: { litmv2: { limits: [] } },
-		});
-
-		expect(actor).toMatchObject({ id: "h1", type: "journey" });
-		expect(actor.getFlag("litmv2", "limits")).toEqual([]);
-		await actor.setFlag("litmv2", "limits", [1]);
-		expect(actor.flags.litmv2.limits).toEqual([1]);
-		expect([...actor.allApplicableEffects()]).toEqual([]);
-	});
-
-	it("starts with no flags", () => {
-		expect(fakeFlagActor().flags).toEqual({});
 	});
 });

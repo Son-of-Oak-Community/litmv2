@@ -5,7 +5,6 @@
 // change what was "saved".
 
 import { vi } from "vitest";
-import { fakeActor } from "./factories.js";
 
 /**
  * Back `doc`'s getFlag, setFlag and unsetFlag with `doc.flags`
@@ -26,9 +25,4 @@ export function withFlags(doc, flags = {}) {
 		return doc;
 	});
 	return doc;
-}
-
-/** A `fakeActor` that keeps `flags`; the other options are `fakeActor`'s. */
-export function fakeFlagActor({ flags = {}, ...rest } = {}) {
-	return withFlags(fakeActor(rest), flags);
 }

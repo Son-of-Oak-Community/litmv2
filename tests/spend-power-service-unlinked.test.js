@@ -19,6 +19,12 @@ import {
 	wireMessage,
 } from "./__helpers__/spend-power.js";
 
+// An unlinked token's actor is synthetic: it has the world actor's id but is
+// its own document, with its own effects and its own uuid. Every Spend Power
+// write that names an actor must therefore resolve by uuid, locally and on the
+// GM's client after a relay — resolving by id writes to the world actor (every
+// copy, plus the sidebar column) or silently misses a token-only effect.
+
 const WORLD_UUID = "Actor.bandit";
 const TOKEN_UUID = "Scene.s1.Token.t1.Actor.bandit";
 
