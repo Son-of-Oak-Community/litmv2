@@ -724,10 +724,24 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 
 	#dragDrop = null;
 
+	/** Settles {@link ThemeEvolutionWizard#done}. */
+	#settle;
+
 	constructor(options = {}) {
 		super(options);
 		this.actorId = options.actorId;
 		this.themeId = options.themeId;
+		// Replace is the only path, whatever the tracks say: a Scarring
+		// Sacrifice's price (Core Book p.159) is a theme replaced as p.192 does.
+		this.forceReplace = !!options.forceReplace;
+		/**
+		 * Resolves true once the theme was transformed, false when the wizard
+		 * closed without it — so a caller can wait on the player's answer.
+		 * @type {Promise<boolean>}
+		 */
+		this.done = new Promise((resolve) => {
+			this.#settle = resolve;
+		});
 		// Optional: chat message that triggered the wizard. On successful
 		// confirmation, we flag the message so its footer button hides.
 		this.messageId = options.messageId ?? null;
@@ -749,6 +763,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 	get title() {
 		const theme = getTheme(this);
 		if (!theme) return t("LITM.Ui.theme_evolution_title");
+		if (this.forceReplace) return t("LITM.Ui.theme_replacement_title");
 		const { defaultMode, milestoneFull, abandonFull } = availableModes(theme);
 		if (milestoneFull && abandonFull) {
 			return t("LITM.Ui.theme_transformation_title");
@@ -776,8 +791,12 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		}));
 
 		const isFellowship = !!theme.system.isFellowship;
-		const { defaultMode, milestoneFull, abandonFull } = availableModes(theme);
-		const showModeSelect = milestoneFull && abandonFull;
+		const modes = availableModes(theme);
+		const { milestoneFull, abandonFull } = modes;
+		const defaultMode = this.forceReplace ? "replace" : modes.defaultMode;
+		// Keeping the old title as a power tag belongs to Inexorable Failure
+		// (p.190), so a forced Replace offers no choice of path either.
+		const showModeSelect = !this.forceReplace && milestoneFull && abandonFull;
 		const revisable = getRevisableParts(theme);
 		const tradeCaps = getTradeCaps(revisable);
 		const totalCap = totalTradeCap(tradeCaps);
@@ -791,7 +810,10 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			this.themeId,
 		);
 		const expandAvailable =
-			!isFellowship && milestoneFull && otherThemes.length > 0;
+			!this.forceReplace &&
+			!isFellowship &&
+			milestoneFull &&
+			otherThemes.length > 0;
 
 		const modeOptions = [
 			{ value: "evolve", label: t("LITM.Ui.evolve_theme") },
@@ -909,6 +931,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			// A refused drop changed nothing: leave the wizard and its chat card be.
 			if (!applied) return false;
 			await markSourceMessageResolved(this.messageId);
+			this.#settle(true);
 			this.close();
 			theme.sheet?.render(true, { focus: true });
 			return true;
@@ -1002,7 +1025,7 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 		}
 
 		const fd = new foundry.applications.ux.FormDataExtended(html).object;
-		const mode = fd.mode || currentMode(html);
+		const mode = this.forceReplace ? "replace" : fd.mode || currentMode(html);
 		const isFellowship = !!theme.system.isFellowship;
 		const newName = `${fd.name ?? ""}`.trim();
 		const newThemebook = `${fd.themebook ?? ""}`.trim();
@@ -1024,7 +1047,10 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 				newLevel,
 				newQuest,
 				messageId: this.messageId,
-				close: () => this.close(),
+				close: () => {
+					this.#settle(true);
+					this.close();
+				},
 			});
 		}
 
@@ -1068,8 +1094,15 @@ export class ThemeEvolutionWizard extends foundry.applications.api.HandlebarsApp
 			oldName: theme.name,
 		});
 		await markSourceMessageResolved(this.messageId);
+		this.#settle(true);
 		this.close();
 		theme.sheet?.render(true, { focus: true });
+	}
+
+	_onClose(options) {
+		super._onClose(options);
+		// Closed without a transformation: a no-op once `done` has settled.
+		this.#settle(false);
 	}
 }
 

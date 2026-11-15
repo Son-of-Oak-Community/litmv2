@@ -364,5 +364,92 @@ describe("ThemeEvolutionWizard drop handler", () => {
 		);
 		expect(ui.notifications.info).toHaveBeenCalledTimes(1);
 		expect(wizard.close).toHaveBeenCalled();
+		await expect(wizard.done).resolves.toBe(true);
+	});
+});
+
+// A Scarring Sacrifice (Core Book p.159) replaces a theme whatever its
+// tracks say, and waits on the wizard to know whether the price was paid.
+describe("ThemeEvolutionWizard forced Replace", () => {
+	function wizardOn(theme, options = {}) {
+		const actor = fakeActor({ system: { promise: 0 } });
+		actor.items = Object.assign([theme], { get: vi.fn(() => theme) });
+		game.actors.get = vi.fn(() => actor);
+		return new ThemeEvolutionWizard({
+			actorId: actor.id,
+			themeId: theme.id,
+			...options,
+		});
+	}
+
+	it("offers only Replace, even on a theme whose Milestone is full", async () => {
+		const theme = fakeTheme({ name: "Ranger" });
+		theme.system.quest.tracks = { milestone: { value: 3 }, abandon: { value: 0 } };
+		const free = await wizardOn(theme)._prepareContext();
+		expect(free.defaultMode).toBe("evolve");
+		const forced = await wizardOn(theme, { forceReplace: true })._prepareContext();
+		expect(forced).toMatchObject({
+			defaultMode: "replace",
+			showModeSelect: false,
+			expandAvailable: false,
+			showPathPicker: false,
+		});
+	});
+
+	// p.192: +1 for the replacement, +1 per power tag beyond the third (the
+	// title tag is one of the three), +1 per weakness tag beyond the first,
+	// +1 per Special Improvement. Only tags and specials the Hero has gained
+	// count; a scratched tag is still the theme's.
+	it.each([
+		["a baseline theme", { power: 2, weakness: 1 }, 1],
+		["one power tag beyond the third", { power: 3, weakness: 1 }, 2],
+		["three power tags beyond the third", { power: 5, weakness: 1 }, 4],
+		["two weakness tags beyond the first", { power: 2, weakness: 3 }, 3],
+		["two Special Improvements", { power: 2, weakness: 1, specials: 2 }, 3],
+		["every kind of extra", { power: 4, weakness: 2, specials: 1 }, 5],
+		["a nascent theme: title tag only", { power: 0, weakness: 1 }, 1],
+		["no weakness tag at all", { power: 2, weakness: 0 }, 1],
+		["a power tag not yet gained", { power: 3, weakness: 1, lockedPower: 1 }, 1],
+		["a Special Improvement not yet gained", { power: 2, weakness: 1, specials: 1, lockedSpecials: 1 }, 2],
+		["a scratched power tag", { power: 3, weakness: 1, scratchedPower: 1 }, 2],
+	])("marks the right Promise for %s", async (_label, shape, promise) => {
+		const theme = fakeTheme({
+			name: "Old",
+			power: shape.power,
+			weakness: shape.weakness,
+			specials: [
+				...Array.from({ length: shape.specials ?? 0 }, (_, i) => ({ name: `s${i}`, isActive: true })),
+				...Array.from({ length: shape.lockedSpecials ?? 0 }, (_, i) => ({ name: `l${i}`, isActive: false })),
+			],
+		});
+		const power = theme.effects.filter((e) => e.type === "power_tag" && !e.system.isTitleTag);
+		for (const e of power.slice(0, shape.lockedPower ?? 0)) e.disabled = true;
+		for (const e of power.slice(0, shape.scratchedPower ?? 0)) e.system.isScratched = true;
+		theme.system.quest.tracks = { milestone: { value: 3 }, abandon: { value: 0 } };
+
+		const wizard = wizardOn(theme, { forceReplace: true });
+		const actor = game.actors.get();
+		wizard.close = vi.fn();
+		Object.defineProperty(wizard, "element", { value: { querySelector: () => null } });
+		// The form asks to Evolve; a forced Replace must replace all the same.
+		foundry.applications.ux = {
+			...originalUx,
+			FormDataExtended: class {
+				object = { mode: "evolve", name: "New", themebook: "Book", level: "origin", quest: "Q" };
+			},
+		};
+		await ThemeEvolutionWizard.DEFAULT_OPTIONS.actions.confirm.call(wizard);
+
+		expect(actor.update).toHaveBeenCalledWith({ "system.promise": promise });
+		await expect(wizard.done).resolves.toBe(true);
+		const [, created] = theme.createEmbeddedDocuments.mock.calls.at(-1);
+		expect(created.map((e) => e.type)).toEqual(["weakness_tag"]);
+		expect(theme.effects.filter((e) => e.type === "power_tag").map((e) => e.system.isTitleTag)).toEqual([true]);
+	});
+
+	it("reports a close without a transformation as not done", async () => {
+		const wizard = wizardOn(fakeTheme());
+		wizard._onClose({});
+		await expect(wizard.done).resolves.toBe(false);
 	});
 });
