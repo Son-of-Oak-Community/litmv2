@@ -104,14 +104,19 @@
 
 	<fieldset data-show-when="reset" hidden>
 		<legend>{{localize "LITM.Ui.improve_option_reset"}}</legend>
+		{{!-- Only a track with marks has anything to reset. --}}
+		{{#if tracks.abandon.value}}
 		<div class="form-group">
 			<label for="{{theme.id}}-reset-abandon">{{localize "LITM.Themes.abandon"}} ({{tracks.abandon.value}})</label>
 			<input type="checkbox" id="{{theme.id}}-reset-abandon" name="resetAbandon" />
 		</div>
+		{{/if}}
+		{{#if tracks.milestone.value}}
 		<div class="form-group">
 			<label for="{{theme.id}}-reset-milestone">{{localize "LITM.Themes.milestone"}} ({{tracks.milestone.value}})</label>
 			<input type="checkbox" id="{{theme.id}}-reset-milestone" name="resetMilestone" />
 		</div>
+		{{/if}}
 	</fieldset>
 
 	<fieldset data-show-when="promise" hidden>
@@ -141,7 +146,7 @@
 	{{#if rewritable.length}}
 	<fieldset>
 		<legend>{{localize "LITM.Ui.improve_rewrite_legend"}}</legend>
-		<p class="hint">{{localize "LITM.Ui.improve_rewrite_hint"}}</p>
+		<p class="hint">{{localize "LITM.Ui.improve_rewrite_tag_hint"}}</p>
 		<div class="form-group">
 			<select name="rewriteTag" class="noflex" aria-label="{{localize 'LITM.Ui.improve_rewrite_legend'}}">
 				{{selectOptions rewritable valueAttr="id" labelAttr="name" blank="—"}}
@@ -155,6 +160,14 @@
 
 	<footer class="form-footer">
 		<button type="button" data-action="cancel">{{localize "LITM.Ui.cancel"}}</button>
+		{{#if canUnmarkOwed}}
+		{{!-- Owed marks never show on the Improve track, so this is how a
+		     mistaken one is taken back. --}}
+		<button type="button" data-action="unmarkOwed" data-tooltip="{{localize 'LITM.Ui.nascent_unmark_hint'}}">
+			<i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+			{{localize "LITM.Ui.nascent_unmark"}}
+		</button>
+		{{/if}}
 		{{#if canSelect}}
 		<button type="button" data-action="confirm" class="bright">
 			<i class="fa-solid fa-check" aria-hidden="true"></i>

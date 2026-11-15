@@ -120,6 +120,48 @@ describe("markImprove", () => {
 		await markImprove(theme, owner);
 		expect(theme.update).toHaveBeenCalledWith({ "system.improve.value": 2 });
 	});
+
+	// A full track has nothing left to mark: no write, and no second
+	// "Choose Improvement" card for the improvement already waiting.
+	it("leaves a full Improve track alone", async () => {
+		const { owner, theme } = themeWith({ power: 2, improve: 3 });
+		const info = await markImprove(theme, owner);
+		expect(info).toBeNull();
+		expect(theme.update).not.toHaveBeenCalled();
+		expect(Hooks.callAll).not.toHaveBeenCalledWith(
+			"litm.trackCompleted",
+			expect.anything(),
+		);
+	});
+});
+
+describe("taking back an owed power tag", () => {
+	function unmark(theme, owner) {
+		game.actors.get = vi.fn(() => owner);
+		const app = new ThemeAdvancementApp({
+			actorId: owner.id,
+			themeId: theme.id,
+		});
+		app.close = vi.fn();
+		return ThemeAdvancementApp.DEFAULT_OPTIONS.actions.unmarkOwed
+			.call(app)
+			.then(() => app);
+	}
+
+	it("removes one mistaken owed tag without adding one", async () => {
+		const { owner, theme } = themeWith({ pending: 2 });
+		const app = await unmark(theme, owner);
+		expect(theme.update).toHaveBeenCalledWith({ "system.nascentPending": 1 });
+		expect(theme.createEmbeddedDocuments).not.toHaveBeenCalled();
+		expect(theme.system.improve.value).toBe(0);
+		expect(app.close).toHaveBeenCalled();
+	});
+
+	it("does nothing when no tag is owed", async () => {
+		const { owner, theme } = themeWith({ pending: 0 });
+		await unmark(theme, owner);
+		expect(theme.update).not.toHaveBeenCalled();
+	});
 });
 
 describe("adding an owed power tag", () => {
