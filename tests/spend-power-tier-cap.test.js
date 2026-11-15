@@ -5,6 +5,12 @@ import {
 	SpendPowerApp,
 } from "../modules/apps/spend-power.js";
 import { LitmConfig } from "../modules/system/config.js";
+import { fakeElement } from "./__helpers__/dom.js";
+import {
+	optionRow,
+	spendDialog,
+	spendForm,
+} from "./__helpers__/spend-power.js";
 
 // Spend Power's Inflict row takes a free-typed tier. The template's `max`
 // only constrains the spinner, so the typed value has to be clamped to the
@@ -37,43 +43,31 @@ function tierRow(tier, name = "Dazed") {
 		".litm-spend-power__entry-tier": { value: tier },
 		".litm-spend-power__entry-name": { value: name },
 	};
-	return { querySelector: (selector) => parts[selector] ?? null };
+	return fakeElement({ one: parts });
 }
 
 /** An Inflict option row holding the given entry rows. */
 function inflictRow(rows, { hasTier = true } = {}) {
-	const parts = {
-		"[data-option-check]": { checked: true },
-		".litm-spend-power__entries": { dataset: {} },
-	};
-	return {
-		dataset: { optionId: "inflict_status", hasTier: String(hasTier) },
-		querySelector: (selector) => parts[selector] ?? null,
-		querySelectorAll: (selector) =>
-			selector === ".litm-spend-power__entry" ? rows : [],
-	};
+	return optionRow(
+		{ optionId: "inflict_status", hasTier: String(hasTier) },
+		{
+			one: { ".litm-spend-power__entries": { dataset: {} } },
+			all: { ".litm-spend-power__entry": rows },
+		},
+	);
 }
 
 function parse(li) {
-	const form = {
-		querySelectorAll: (selector) =>
-			selector === ".litm-spend-power__option" ? [li] : [],
-		querySelector: () => null,
-	};
-	const dialog = {
-		spendingOptions: [
-			{
-				id: "inflict_status",
-				label: "LITM.Effects.inflict.action",
-				cost: 1,
-				hasTier: true,
-				draggable: true,
-			},
-		],
-		messageId: null,
-		alreadySpent: 0,
-	};
-	return parseSpendIntent(form, dialog);
+	const dialog = spendDialog([
+		{
+			id: "inflict_status",
+			label: "LITM.Effects.inflict.action",
+			cost: 1,
+			hasTier: true,
+			draggable: true,
+		},
+	]);
+	return parseSpendIntent(spendForm([li]), dialog);
 }
 
 describe("defaultCostCalculator: Inflict tier", () => {
@@ -119,7 +113,7 @@ describe("defaultCostCalculator: Inflict tier", () => {
 
 	it("does not consult a tier input on rows that have none", () => {
 		withHeroLimit(5);
-		const row = { querySelector: () => null };
+		const row = fakeElement();
 		expect(cost([row], 2, false)).toBe(2);
 	});
 });
@@ -162,12 +156,9 @@ describe("parseSpendIntent: Inflict tier", () => {
 
 	it("leaves tier null on options that carry no tier", () => {
 		withHeroLimit(5);
-		const row = {
-			querySelector: (selector) =>
-				({
-					".litm-spend-power__entry-name": { value: "A boon" },
-				})[selector] ?? null,
-		};
+		const row = fakeElement({
+			one: { ".litm-spend-power__entry-name": { value: "A boon" } },
+		});
 		const li = inflictRow([row], { hasTier: false });
 		const [option] = parse(li).options;
 		expect(option.entries[0].tier).toBeNull();
