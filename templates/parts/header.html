@@ -31,5 +31,36 @@
 			{{/each}}
 		</div>
 		{{/if}}
+		{{#if ratingStars}}
+		{{!-- The play view's stars as buttons: a star sets the rating, the
+		      current top one lowers it by one (adjustRating). --}}
+		<div class="litm--rating-field" role="group" aria-labelledby="litm-rating-{{document.id}}">
+			<span class="litm--roles-label" id="litm-rating-{{document.id}}">{{localize "LITM.Terms.rating"}}</span>
+			{{#progress-buttons ratingStars 5}}
+			<button type="button" class="litm--rating-star" data-action="adjustRating" data-index="{{@index}}"
+				aria-label="{{localize 'LITM.Terms.rating'}} {{sum @index 1}}" aria-pressed="{{#if @checked}}true{{else}}false{{/if}}">
+				{{> systems/litmv2/templates/partials/rating-star.html cssClass=(ifThen @checked "filled" "empty")}}
+			</button>
+			{{/progress-buttons}}
+		</div>
+		{{/if}}
+		{{#if roleOptions}}
+		{{!-- Challenge Roles (Core Book p.110): toggle any of the book's, or type
+		      a custom one at the end. The pills carry no name: the sheet reads
+		      them off the form. --}}
+		<div class="litm--roles-field" role="group" aria-labelledby="litm-roles-{{document.id}}">
+			<span class="litm--roles-label" id="litm-roles-{{document.id}}">{{localize "LITM.Terms.roles"}}</span>
+			{{#each roleOptions}}
+			<label class="litm--role-pill"
+				{{#if hint}}data-tooltip-html="{{hint}}" data-tooltip-direction="UP" data-tooltip-class="litm--role-tooltip"{{/if}}>
+				<input type="checkbox" data-role="{{value}}" {{checked selected}} />
+				<span>{{label}}</span>
+			</label>
+			{{/each}}
+			<input type="text" name="customRole" value=""
+				placeholder="{{localize 'LITM.Ui.custom_role_placeholder'}}"
+				aria-label="{{localize 'LITM.Ui.custom_role_placeholder'}}" />
+		</div>
+		{{/if}}
 	</div>
 </header>

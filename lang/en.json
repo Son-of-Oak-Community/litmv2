@@ -155,6 +155,76 @@
 			"view_linked_ref_named": "View {name}",
 			"warn_no_character": "Assign a hero to your user first."
 		},
+		"ChallengeRoleHints": {
+			"aggressor": {
+				"consequences": "Lands the hit, leaving a harmful status (wounded, shaken, shamed).",
+				"summary": "Out to hurt the Heroes: their bodies, their minds, their good name or the people they love.",
+				"threats": "Draws steel, takes aim, mutters a curse, lines up a humiliating word."
+			},
+			"charge": {
+				"consequences": "Takes harm (a status), or is lost: slain, broken or taken.",
+				"summary": "A person, creature or thing the Heroes must keep safe while something else wants it.",
+				"threats": "Is singled out by an enemy, wanders into peril, is seized or dragged off."
+			},
+			"countdown": {
+				"consequences": "Ticks closer (its progress status rises), or completes and its outcome lands.",
+				"summary": "Something on its way to happening: a fuse burning down, a flood rising, a rite nearing its last verse.",
+				"threats": "Omens and warnings, the clock running, the next stage plainly about to begin."
+			},
+			"influence": {
+				"consequences": "Gives a Hero a status that sways them (persuaded, enthralled), or parts them from what they own (light-purse, scratched tags).",
+				"summary": "A pressure nudging the Heroes toward a choice: a voice, a temptation, a custom, a charm.",
+				"threats": "Speaks up, catches a Hero's eye, makes an offer that is hard to turn down."
+			},
+			"mystery": {
+				"consequences": "Gets murkier: a Hero ends up baffled-2, a lead goes cold, a source turns evasive-3.",
+				"summary": "A truth the Heroes are after that is hidden, tangled or guarded.",
+				"threats": "Seldom acts on its own; mostly it waits to be unravelled."
+			},
+			"obstacle": {
+				"consequences": "Hurts those who tackle it (a status), grows tougher (a tag or status on itself), pulls in fresh Challenges, or eats supplies (scratched tags).",
+				"summary": "Something in the way: a wall, a river, a rockslide, a locked gate.",
+				"threats": "Seldom acts on its own; it simply stands there."
+			},
+			"pursuer": {
+				"consequences": "Gains ground (setting up a sharper Threat), or shrinks the status that measures the gap.",
+				"summary": "Something on the Heroes' trail, meaning to catch them.",
+				"threats": "Fresh tracks, hoofbeats growing louder, the hunter cutting a corner or lying in wait."
+			},
+			"quarry": {
+				"consequences": "Gets clean away, or grows the status that measures the gap.",
+				"summary": "Someone or something the Heroes want that is getting away.",
+				"threats": "Gains distance, spots an exit, attracts unwanted company, slips out of sight."
+			},
+			"sapper": {
+				"consequences": "Scratches the Heroes' tags or saddles them with wearing statuses (weary, rattled).",
+				"summary": "Grinds the Heroes down over time rather than meeting them head-on.",
+				"threats": "Keeps to the shadows, leaves a trap or an unpleasant gift behind."
+			},
+			"support": {
+				"consequences": "Strips harmful tags and statuses from other Challenges, or gives them helpful ones.",
+				"summary": "Props up other Challenges, mending or empowering them.",
+				"threats": "Shouts orders, binds wounds, mixes a draught, chants a blessing."
+			},
+			"watcher": {
+				"consequences": "Spots the Heroes, learns something about them (their aim, their gear, their plan), or raises the alarm.",
+				"summary": "Eyes on the lookout, such as a sentry, a spy or a hound, trying to find or read the Heroes.",
+				"threats": "Turns its head, comes for a closer look, sniffs the air, frowns in doubt."
+			}
+		},
+		"ChallengeRoles": {
+			"aggressor": "Aggressor",
+			"charge": "Charge",
+			"countdown": "Countdown",
+			"influence": "Influence",
+			"mystery": "Mystery",
+			"obstacle": "Obstacle",
+			"pursuer": "Pursuer",
+			"quarry": "Quarry",
+			"sapper": "Sapper",
+			"support": "Support",
+			"watcher": "Watcher"
+		},
 		"Editor": {
 			"ingress": "Ingress"
 		},
@@ -315,6 +385,7 @@
 			"rating_bonus": "Rating Increase",
 			"relationship": "Relationship",
 			"roll": "Roll",
+			"roles": "Roles",
 			"scratched": "Scratched",
 			"select": "Select",
 			"single_use": "Single-use",
@@ -335,6 +406,7 @@
 			"themekits": "Themekits",
 			"themes": "Themes",
 			"threat": "Threat",
+			"threats": "Threats",
 			"threats_consequences": "Threats & Consequences",
 			"title_tag": "Title Tag",
 			"total_power": "Total Power",
@@ -541,6 +613,7 @@
 			"consequences_only": "Consequences Only",
 			"consequences_only_hint": "When checked, this item represents only Consequences without an associated Threat.",
 			"context_remove_all_tags": "<span class='reference'>Right-Click</span> to remove all tags",
+			"custom_role_placeholder": "Custom role…",
 			"deactivate_tag": "Deactivate Tag",
 			"decrease": "Decrease",
 			"dice_roller": "Dice Roller",

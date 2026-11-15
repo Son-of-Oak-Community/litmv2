@@ -263,6 +263,25 @@ export const LitmConfig = {
 	themeLimit: 4,
 
 	/**
+	 * Typical Challenge Roles (Core Book p.110). Keys are stored in
+	 * `ChallengeData#category` and labelled by `LITM.ChallengeRoles.<key>`;
+	 * any other text in that field is a custom role, shown as typed.
+	 */
+	challengeRoles: [
+		"aggressor",
+		"charge",
+		"countdown",
+		"influence",
+		"mystery",
+		"obstacle",
+		"pursuer",
+		"quarry",
+		"sapper",
+		"support",
+		"watcher",
+	],
+
+	/**
 	 * Improve marks needed before a theme can choose an advancement.
 	 * Mirrored from the world setting at registration time (init) — the
 	 * ThemeData schema reads it for the track's `max` before `ready`.
