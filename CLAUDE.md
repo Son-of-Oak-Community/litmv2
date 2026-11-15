@@ -408,6 +408,10 @@ tag; from anyone else no field, and only tags within their reach
 (`actableActorIds(dialog, sender)`), decided by whose tag it is, never by the
 sender's claim: not a Narrator-stamped pick, not another user's pick. A
 partial update (no `sync`) from another client is taken only from the Narrator.
+The table-wide roll packets are judged by sender too: `openRollDialog` and
+`rejectRoll` only from a Narrator (only a Narrator calls or rejects a roll), `closeRollDialog` and
+`resetRollDialog` only from the roll's owner or a Narrator
+(`mayEndSharedRoll`), and `narratorRollCommand` only from a Narrator.
 
 **Read the presence flag through `readRollSeat`, never `getFlag`.** Every
 player owns the Fellowship and can write its `rollDialogOwner` flag, but an

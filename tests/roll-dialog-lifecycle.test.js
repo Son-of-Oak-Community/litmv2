@@ -179,10 +179,112 @@ describe("called-roll lifecycle", () => {
 			handlers.set(name, handler),
 		);
 		Sockets.registerListeners();
-		handlers.get("closeRollDialog")({ data: { actorId: actor.id } });
+		handlers.get("closeRollDialog")({
+			senderId: "player",
+			data: { actorId: actor.id },
+		});
 		expect(dialog.narratorCall).toBeNull();
 		expect(dialog.getSelection("tag").narrator).toBe(false);
 	});
+
+	it.each([
+		["the owner", "player", true],
+		["a Narrator", "gm", true],
+		["another player", "player2", false],
+		["an unknown sender", undefined, false],
+	])("ends the table's roll on a close from %s: %s", (_who, senderId, ends) => {
+		const dialog = makeDialog();
+		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
+		dialog.setSelection("tag", "negative", "gm", { narrator: true });
+		dialog.rendered = true;
+		dialog.close = vi.fn();
+		actor.sheet = { hasRollDialog: true, rollDialogInstance: dialog };
+		const handlers = new Map();
+		vi.spyOn(Sockets, "on").mockImplementation((name, handler) =>
+			handlers.set(name, handler),
+		);
+		Sockets.registerListeners();
+		handlers.get("closeRollDialog")({
+			senderId,
+			data: { actorId: actor.id, syncSession: dialog.syncSession },
+		});
+		expect(dialog.close).toHaveBeenCalledTimes(ends ? 1 : 0);
+		expect(dialog.narratorCall === null).toBe(ends);
+	});
+
+	it.each([
+		["a Narrator", "gm", true],
+		["a player", "player2", false],
+		["an unknown sender", undefined, false],
+	])("calls a roll on an open packet from %s", (_who, senderId, applied) => {
+		const dialog = makeDialog({ ownerId: "gm" });
+		dialog.configureSharedRoll = vi.fn();
+		dialog.dispatchSync = vi.fn();
+		actor.sheet = { hasRollDialog: true, rollDialogInstance: dialog };
+		const handlers = new Map();
+		vi.spyOn(Sockets, "on").mockImplementation((name, handler) =>
+			handlers.set(name, handler),
+		);
+		Sockets.registerListeners();
+		handlers.get("openRollDialog")({
+			senderId,
+			data: { actorId: actor.id, ownerId: "player" },
+		});
+		expect(dialog.configureSharedRoll).toHaveBeenCalledTimes(applied ? 1 : 0);
+	});
+
+	it.each([
+		["the owner", "player", true],
+		["a Narrator", "gm", true],
+		["another player", "player2", false],
+		["an unknown sender", undefined, false],
+	])("resets the table's roll on a reset from %s", (_who, senderId, reset) => {
+		setGM();
+		const dialog = makeDialog();
+		dialog.configureSharedRoll({ ownerId: "player", narratorUserId: "gm" });
+		actor.sheet = {
+			hasRollDialog: true,
+			rollDialogInstance: dialog,
+			resetRollDialog: vi.fn(),
+		};
+		const handlers = new Map();
+		vi.spyOn(Sockets, "on").mockImplementation((name, handler) =>
+			handlers.set(name, handler),
+		);
+		Sockets.registerListeners();
+		handlers.get("resetRollDialog")({
+			senderId,
+			data: { actorId: actor.id, syncSession: dialog.syncSession },
+		});
+		expect(actor.sheet.resetRollDialog).toHaveBeenCalledTimes(reset ? 1 : 0);
+	});
+
+	it.each([
+		["a Narrator", "gm", true],
+		["a player", "player2", false],
+		["an unknown sender", undefined, false],
+	])(
+		"reopens a rejected roll only on a reject from %s",
+		(_who, senderId, reopened) => {
+			const warn = vi
+				.spyOn(ui.notifications, "warn")
+				.mockImplementation(() => {});
+			actor.sheet = { hasRollDialog: true, renderRollDialog: vi.fn() };
+			const handlers = new Map();
+			vi.spyOn(Sockets, "on").mockImplementation((name, handler) =>
+				handlers.set(name, handler),
+			);
+			Sockets.registerListeners();
+			handlers.get("rejectRoll")({
+				senderId,
+				data: { actorId: actor.id, name: "Narrator" },
+			});
+			expect(actor.sheet.renderRollDialog).toHaveBeenCalledTimes(
+				reopened ? 1 : 0,
+			);
+			expect(warn).toHaveBeenCalledTimes(reopened ? 1 : 0);
+		},
+	);
 
 	it("keeps the explicit reaction entry point available on a called player roll", () => {
 		const dialog = makeDialog();
