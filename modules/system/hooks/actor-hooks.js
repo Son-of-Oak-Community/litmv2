@@ -1,4 +1,9 @@
 import { createLegacyActorEffects } from "../../actor/litm-actor.js";
+import {
+	narratorSeats,
+	plausibleFellowshipSeat,
+	readRollSeat,
+} from "../../apps/roll/roll-pipeline.js";
 import { error } from "../../logger.js";
 import {
 	findFellowshipTheme,
@@ -21,9 +26,12 @@ export function registerActorHooks() {
 	_validateEffectType();
 	_syncUiOnEffectChange();
 	_recalcLimitsOnStatusChange();
+	// First of the presence-flag hooks: the HUD strip and the seat-taken hook
+	// both read the Narrator's seat memory it keeps current.
+	guardFellowshipSeat();
 	_syncRollDialogHudOnUpdate();
 	_flashSacrificeBannerOnUpdate();
-	_demoteRollDialogOnSeatTaken();
+	demoteRollDialogOnSeatTaken();
 	_syncStoryThemeActorToItem();
 	_enforceStoryThemeActorLimits();
 }
@@ -411,11 +419,13 @@ function _syncRollDialogHudOnUpdate() {
  * snapshots from the owner it knows, so a third viewer went deaf to the new
  * one. Each of them follows the seat and asks for the draft again.
  */
-function _demoteRollDialogOnSeatTaken() {
+export function demoteRollDialogOnSeatTaken() {
 	Hooks.on("updateActor", (actor, changes) => {
 		const flagPath = `flags.litmv2.${FLAGS.rollDialogOwner}`;
 		if (!foundry.utils.hasProperty(changes, flagPath)) return;
-		const flag = actor.getFlag("litmv2", FLAGS.rollDialogOwner);
+		// A live Fellowship call's seat is the Narrator's, whatever a player
+		// just wrote (see readRollSeat): it is never followed to them.
+		const flag = readRollSeat(actor);
 		const sheet = actor.sheet;
 		if (!flag?.ownerId || !sheet?.hasRollDialog) return;
 		const dialog = sheet.rollDialogInstance;
@@ -424,6 +434,77 @@ function _demoteRollDialogOnSeatTaken() {
 		if (!dialog.followSeat(flag.ownerId)) return;
 		Sockets.dispatch("requestRollDialogSync", { actorId: actor.id });
 		if (dialog.rendered) dialog.render();
+	});
+}
+
+/**
+ * Every player owns the Fellowship, so any of them can write its roll
+ * presence flag, and a Narrator-called roll there (Acting Together) is the
+ * Narrator's to hold. Each client remembers the flag as a Narrator last wrote
+ * it (`narratorSeats`; the server attests every write's author), and readers
+ * take a live call's seat from there (`readRollSeat`), so no window follows a
+ * player's rewrite, whatever it says. When a player changes a called
+ * Fellowship flag, or writes a call, the active Narrator's client puts back
+ * what a Narrator wrote, in one replacing write. An ordinary Fellowship roll
+ * stays anyone's. Registered before the seat-taken hook, so it reads a
+ * current memory.
+ */
+export function guardFellowshipSeat() {
+	const key = FLAGS.rollDialogOwner;
+	const path = `flags.litmv2.${key}`;
+	const restore = async (actor, call) => {
+		const { ForcedReplacement, ForcedDeletion } = foundry.data.operators;
+		try {
+			await actor.update({
+				[path]: call ? ForcedReplacement.create(call) : ForcedDeletion.create(),
+			});
+		} catch (err) {
+			error("Could not restore the Fellowship's roll seat:", err);
+		}
+	};
+	// Seeded from the world setting, which only a Narrator writes: a flag a
+	// player rewrote while no Narrator was connected is not believed by a
+	// client that loads afterwards. A Fellowship never written under this
+	// record (an older world) falls back to a plausible flag.
+	Hooks.once("ready", () => {
+		const saved = game.settings.get("litmv2", "fellowshipSeats") ?? {};
+		for (const actor of game.actors.filter((a) => a.type === "fellowship")) {
+			const flag = actor.getFlag("litmv2", key) ?? null;
+			const call =
+				actor.id in saved ? saved[actor.id] : plausibleFellowshipSeat(flag);
+			narratorSeats.set(actor.id, call);
+			// The Narrator coming back puts right what a player wrote meanwhile:
+			// a call they rewrote, or one they forged where none was recorded.
+			if (
+				(call?.narrator || (actor.id in saved && flag?.narrator)) &&
+				game.users.activeGM?.id === game.user.id &&
+				JSON.stringify(flag) !== JSON.stringify(call)
+			)
+				restore(actor, call);
+		}
+	});
+	Hooks.on("updateActor", async (actor, changes, _options, userId) => {
+		if (actor.type !== "fellowship") return;
+		const touched =
+			foundry.utils.hasProperty(changes, path) ||
+			foundry.utils.hasProperty(changes, `flags.litmv2.-=${key}`);
+		if (!touched) return;
+		const now = actor.getFlag("litmv2", key) ?? null;
+		if (game.users.get(userId)?.isGM) {
+			narratorSeats.set(actor.id, now);
+			// The writing Narrator's client records it where players can't.
+			if (userId === game.user.id) {
+				const saved = game.settings.get("litmv2", "fellowshipSeats") ?? {};
+				game.settings
+					.set("litmv2", "fellowshipSeats", { ...saved, [actor.id]: now })
+					?.catch?.(console.error);
+			}
+			return;
+		}
+		const before = narratorSeats.get(actor.id) ?? null;
+		if (!before?.narrator && !now?.narrator) return;
+		if (game.users.activeGM?.id !== game.user.id) return;
+		await restore(actor, before);
 	});
 }
 

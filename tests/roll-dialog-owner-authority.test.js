@@ -209,16 +209,14 @@ describe("the owner's merge: positive controls", () => {
 
 describe("a non-GM peer's forged edit to the owner", () => {
 	describe("Might", () => {
-		// PRODUCT BUG: the owner merges `fields.might` from any sender (RollSync#apply spreads it; receiveUpdate only checks senderId for snapshots).
-		it.fails("is not taken on a roll its owner holds", async () => {
+		it("is not taken on a roll its owner holds", async () => {
 			const owner = plainRoll("player");
 			await deliver(owner, "player", edit({ fields: { might: 6 } }));
 			expect(owner.extractRollData().might).toBe(0);
 			expect(published(owner, "player")).toMatchObject({ might: 0 });
 		});
 
-		// PRODUCT BUG: same merge, GM-owned roll: a non-GM peer sets the Narrator's Might.
-		it.fails("is not taken on a roll the Narrator holds", async () => {
+		it("is not taken on a roll the Narrator holds", async () => {
 			const owner = plainRoll("gm");
 			await deliver(owner, "gm", edit({ fields: { might: 6 } }));
 			expect(owner.extractRollData().might).toBe(0);
@@ -227,8 +225,7 @@ describe("a non-GM peer's forged edit to the owner", () => {
 	});
 
 	describe("the move on a called roll", () => {
-		// PRODUCT BUG: the owner merges `fields.type` from a non-GM peer, overriding the called move.
-		it.fails("is not changed", async () => {
+		it("is not changed", async () => {
 			const owner = calledRoll("player", "tracked");
 			await deliver(owner, "player", edit({ fields: { type: "quick" } }));
 			expect(owner.type).toBe("tracked");
@@ -237,8 +234,7 @@ describe("a non-GM peer's forged edit to the owner", () => {
 	});
 
 	describe("the Narrator's stamp", () => {
-		// PRODUCT BUG: `fields.narratorCall` is merged from any sender, so a peer can stamp a roll as Narrator-called and lock its owner out of move and Might.
-		it.fails("is not forged onto a roll nobody called, locking its owner out", async () => {
+		it("is not forged onto a roll nobody called, locking its owner out", async () => {
 			const owner = plainRoll("player");
 			const stamp = { narratorUserId: "peer", narratorName: "Not the GM" };
 			await deliver(owner, "player", edit({ fields: { narratorCall: stamp } }));
@@ -246,8 +242,7 @@ describe("a non-GM peer's forged edit to the owner", () => {
 			expect(as("player", () => owner.canSetNarratorFields)).toBe(true);
 		});
 
-		// PRODUCT BUG: `fields.narratorCall: null` from a peer removes the Narrator's stamp, unlocking move and Might for the roller.
-		it.fails("is not stripped from a called roll, handing its move to the roller", async () => {
+		it("is not stripped from a called roll, handing its move to the roller", async () => {
 			const owner = calledRoll("player");
 			await deliver(owner, "player", edit({ fields: { narratorCall: null } }));
 			expect(owner.narratorCall).toMatchObject({ narratorUserId: "gm" });
@@ -256,8 +251,7 @@ describe("a non-GM peer's forged edit to the owner", () => {
 	});
 
 	describe("Secret Grace", () => {
-		// PRODUCT BUG: `fields.sacrificeBonus` is merged from a non-GM peer; Secret Grace is the Narrator's alone.
-		it.fails("is not granted to a Sacrifice", async () => {
+		it("is not granted to a Sacrifice", async () => {
 			const owner = calledRoll("player");
 			as("player", () => owner.setType("sacrifice"));
 			await deliver(owner, "player", edit({ fields: { sacrificeBonus: 6 } }));
@@ -271,6 +265,24 @@ describe("a non-GM peer's forged edit to the owner", () => {
 
 	describe("a selection marked narrator: true", () => {
 		const NARRATOR_TAG = "opposition-tag";
+		// Both tags are within the peer's reach (their Hero, "ally"), so only
+		// the narrator stamp can stop these edits.
+		beforeEach(() => {
+			foundry.utils.fromUuidSync.mockImplementation((uuid) =>
+				uuid === "peer-tag" || uuid === NARRATOR_TAG
+					? { type: "power_tag", parent: { documentName: "Actor", id: "ally" } }
+					: null,
+			);
+			game.actors.get.mockImplementation((id) =>
+				id === "ally"
+					? {
+							id: "ally",
+							type: "hero",
+							testUserPermission: (user) => user.id === "peer",
+						}
+					: null,
+			);
+		});
 		/** A called roll with the Narrator's invocation already in it. */
 		const withInvocation = async () => {
 			const owner = calledRoll("player");
@@ -286,8 +298,7 @@ describe("a non-GM peer's forged edit to the owner", () => {
 			...entry,
 		});
 
-		// PRODUCT BUG: a selection entry with `narrator: true` from a non-GM peer is stored as sent.
-		it.fails("is not stamped by a peer onto a tag of their own", async () => {
+		it("is not stamped by a peer onto a tag of their own", async () => {
 			const owner = calledRoll("player");
 			await deliver(
 				owner,
@@ -299,8 +310,7 @@ describe("a non-GM peer's forged edit to the owner", () => {
 			expect(owner.getSelection("peer-tag").narrator).not.toBe(true);
 		});
 
-		// PRODUCT BUG: a peer's `[id, null]` removes a Narrator-stamped selection; the lock is only applied client-side by #canModifyTag.
-		it.fails("is not un-invoked by a peer", async () => {
+		it("is not un-invoked by a peer", async () => {
 			const owner = await withInvocation();
 			await deliver(
 				owner,
@@ -313,8 +323,7 @@ describe("a non-GM peer's forged edit to the owner", () => {
 			});
 		});
 
-		// PRODUCT BUG: a peer overwrites a Narrator-stamped selection's polarity.
-		it.fails("is not flipped to another polarity by a peer", async () => {
+		it("is not flipped to another polarity by a peer", async () => {
 			const owner = await withInvocation();
 			await deliver(
 				owner,
@@ -326,8 +335,7 @@ describe("a non-GM peer's forged edit to the owner", () => {
 			expect(owner.getSelection(NARRATOR_TAG).state).toBe("negative");
 		});
 
-		// PRODUCT BUG: a peer's entry with `narrator: false` clears the Narrator's stamp.
-		it.fails("is not released to the roller by a peer clearing its stamp", async () => {
+		it("is not released to the roller by a peer clearing its stamp", async () => {
 			const owner = await withInvocation();
 			await deliver(
 				owner,
@@ -347,8 +355,7 @@ describe("a non-GM peer's partial update to the owner", () => {
 	// `receiveUpdate` without a `sync` is the public API modules and macros
 	// call on their own client, but the socket hands the same method whatever a
 	// peer emitted, so a packet with no `sync` reaches it too.
-	// PRODUCT BUG: a packet with no `sync` goes through receiveUpdate's partial-update branch, which applies any field from any sender.
-	it.fails("does not set the Might", async () => {
+	it("does not set the Might", async () => {
 		const owner = plainRoll("player");
 		await deliver(owner, "player", {
 			actorId: "actor",
@@ -358,8 +365,7 @@ describe("a non-GM peer's partial update to the owner", () => {
 		expect(owner.extractRollData().might).toBe(0);
 	});
 
-	// PRODUCT BUG: the partial-update branch also applies `ownerId`: a non-GM peer takes the seat from the real owner.
-	it.fails("does not take the seat", async () => {
+	it("does not take the seat", async () => {
 		const owner = plainRoll("player");
 		await deliver(owner, "player", {
 			actorId: "actor",
@@ -391,5 +397,249 @@ describe("a non-owner peer's own client", () => {
 		as("peer", () => controls(viewer)("might", 4));
 		expect(messages.length).toBe(sent);
 		expect(viewer.extractRollData().might).toBe(0);
+	});
+});
+
+describe("a non-GM peer's reach", () => {
+	// "ally" is the peer's Hero; "ally-tag" is one of its tags.
+	beforeEach(() => {
+		foundry.utils.fromUuidSync.mockImplementation((uuid) =>
+			uuid === "ally-tag"
+				? { type: "power_tag", parent: { documentName: "Actor", id: "ally" } }
+				: null,
+		);
+		game.actors.get.mockImplementation((id) =>
+			id === "ally"
+				? {
+						id: "ally",
+						type: "hero",
+						testUserPermission: (user) => user.id === "peer",
+					}
+				: null,
+		);
+	});
+
+	// A scene tag lives in a compendium and resolves to no actor: claiming it
+	// as one's own Hero's must not get it into another player's roll.
+	it("does not take a tag that resolves to no actor, whatever it claims", async () => {
+		const sceneTag = "Compendium.world.scene-tags.ActiveEffect.x";
+		const owner = calledRoll("player");
+		await deliver(
+			owner,
+			"player",
+			edit({
+				selections: [[sceneTag, { state: "negative", tagActorId: "ally" }]],
+			}),
+		);
+		expect(owner.getSelection(sceneTag)?.state).toBeFalsy();
+	});
+
+	it("does not change another user's pick of a tag in reach", async () => {
+		const owner = calledRoll("player");
+		as("player", () => {
+			owner.setSelection("ally-tag", "positive", "other", {
+				tagActorId: "ally",
+			});
+			owner.dispatchSync();
+		});
+		await deliver(owner, "player", edit({ selections: [["ally-tag", null]] }));
+		expect(owner.getSelection("ally-tag")).toMatchObject({
+			state: "positive",
+			contributorId: "other",
+		});
+	});
+});
+
+describe("a reseat answer to the owner", () => {
+	/** The roller's client, freshly back on a called roll at revision 0. */
+	const freshOwner = () => calledRoll("player");
+	const reseat = (from, state) => ({
+		actorId: "actor",
+		senderId: from,
+		sync: { kind: "reseat", session: SESSION, revision: 3, state },
+	});
+	const forged = {
+		narratorCall: null,
+		might: 6,
+		type: "quick",
+		selections: [["peer-pick", { state: "positive" }]],
+	};
+
+	it("is not taken when the owner never asked", async () => {
+		const owner = freshOwner();
+		await deliver(owner, "player", reseat("peer", forged));
+		expect(owner.narratorCall).toMatchObject({ narratorUserId: "gm" });
+		expect(owner.extractRollData()).toMatchObject({
+			might: 0,
+			type: "tracked",
+		});
+		expect(owner.getSelection("peer-pick")?.state).toBeFalsy();
+	});
+
+	// After a reload the owner rebuilds the roll from the draft it saved in
+	// its own browser (no other client can write it), so no player's answer
+	// is needed, and none is taken.
+	const saved = {
+		session: SESSION,
+		revision: 5,
+		state: {
+			narratorCall: { narratorUserId: "gm", narratorName: "GM" },
+			might: 3,
+			type: "tracked",
+			modifier: 1,
+			selections: [
+				["opposition-tag", { state: "negative", narrator: true }],
+				["own-pick", { state: "positive" }],
+			],
+		},
+	};
+	const restored = () => {
+		const owner = freshOwner();
+		as("player", () => {
+			expect(owner.restoreDraft(saved)).toBe(true);
+			owner.requestReseat();
+		});
+		return owner;
+	};
+
+	it("restores both halves from the saved draft and takes no player's answer", async () => {
+		const owner = restored();
+		await deliver(owner, "player", reseat("peer", forged));
+		expect(owner.narratorCall).toMatchObject({ narratorUserId: "gm" });
+		expect(owner.extractRollData()).toMatchObject({
+			might: 3,
+			type: "tracked",
+			modifier: 1,
+		});
+		expect(owner.getSelection("opposition-tag")).toMatchObject({
+			state: "negative",
+			narrator: true,
+		});
+		expect(owner.getSelection("own-pick")).toMatchObject({ state: "positive" });
+		expect(owner.getSelection("peer-pick")?.state).toBeFalsy();
+	});
+
+	it("publishes the restored draft past every answer when no Narrator answers", async () => {
+		const owner = restored();
+		await deliver(owner, "player", {
+			...reseat("peer", forged),
+			sync: { ...reseat("peer", forged).sync, revision: 9 },
+		});
+		await vi.advanceTimersByTimeAsync(5000);
+		const published = last().sync;
+		expect(published.kind).toBe("snapshot");
+		expect(published.revision).toBeGreaterThan(9);
+		expect(published.state).toMatchObject({ might: 3, type: "tracked" });
+	});
+
+	it("ignores a revision number no viewer could hold", async () => {
+		const owner = restored();
+		const huge = reseat("peer", forged);
+		await deliver(owner, "player", {
+			...huge,
+			sync: { ...huge.sync, revision: "1e999" },
+		});
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(Number.isSafeInteger(last().sync.revision)).toBe(true);
+	});
+
+	it("does not publish into a roll that ended meanwhile", async () => {
+		const owner = restored();
+		as("player", () => owner.endSharedRoll());
+		const sent = messages.length;
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(messages.length).toBe(sent);
+	});
+
+	it("ignores a draft saved for another roll", () => {
+		const owner = freshOwner();
+		const restoredOther = as("player", () =>
+			owner.restoreDraft({ ...saved, session: "an-older-call" }),
+		);
+		expect(restoredOther).toBe(false);
+		expect(owner.extractRollData().might).toBe(0);
+	});
+
+	it("lets the Narrator's answer replace the restored draft", async () => {
+		const owner = restored();
+		await deliver(owner, "player", reseat("gm", { ...saved.state, might: 5 }));
+		expect(owner.extractRollData().might).toBe(5);
+	});
+
+	it("takes the Narrator's answer whole", async () => {
+		const owner = freshOwner();
+		as("player", () => owner.requestReseat());
+		await deliver(
+			owner,
+			"player",
+			reseat("gm", {
+				...forged,
+				narratorCall: { narratorUserId: "gm", narratorName: "GM" },
+			}),
+		);
+		expect(owner.extractRollData()).toMatchObject({ might: 6, type: "quick" });
+	});
+});
+
+describe("the owner's saved draft", () => {
+	// This browser's storage: no other client can write it.
+	let store;
+	beforeEach(() => {
+		store = new Map();
+		globalThis.localStorage = {
+			getItem: (k) => store.get(k) ?? null,
+			setItem: (k, v) => store.set(k, String(v)),
+			removeItem: (k) => store.delete(k),
+		};
+	});
+	afterEach(() => {
+		delete globalThis.localStorage;
+	});
+	const KEY = "litmv2.rollDraft.actor";
+
+	it("is saved in this browser as the owner publishes, both halves", () => {
+		const owner = calledRoll("player");
+		as("player", () => {
+			owner.setSelection("own-pick", "positive", "player");
+			owner.dispatchSync();
+		});
+		expect(JSON.parse(store.get(KEY))).toMatchObject({
+			session: SESSION,
+			state: {
+				narratorCall: { narratorUserId: "gm" },
+				type: "tracked",
+				selections: [
+					["own-pick", expect.objectContaining({ state: "positive" })],
+				],
+			},
+		});
+	});
+
+	it("is what a reloaded owner restores", () => {
+		const before = calledRoll("player");
+		as("player", () => {
+			before.setSelection("own-pick", "positive", "player");
+			before.dispatchSync();
+		});
+		const after = calledRoll("player");
+		expect(as("player", () => after.restoreDraft())).toBe(true);
+		expect(after.getSelection("own-pick")).toMatchObject({ state: "positive" });
+	});
+
+	it("is not saved for a roll nobody called", () => {
+		const owner = plainRoll("player");
+		as("player", () => {
+			owner.setSelection("own-pick", "positive", "player");
+			owner.dispatchSync();
+		});
+		expect(store.has(KEY)).toBe(false);
+	});
+
+	it("is forgotten when the roll ends", () => {
+		const owner = calledRoll("player");
+		as("player", () => owner.dispatchSync());
+		expect(store.has(KEY)).toBe(true);
+		as("player", () => owner.endSharedRoll());
+		expect(store.has(KEY)).toBe(false);
 	});
 });

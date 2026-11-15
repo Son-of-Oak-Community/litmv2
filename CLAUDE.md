@@ -401,19 +401,51 @@ IDs keep delayed snapshots and close/reset events from mutating a newer roll.
 The canonical state includes the narrator stamp, participants, title and Action,
 so a late HUD join reconstructs the same draft.
 
-A called roll survives its owner's reload. `ready` keeps the user's own
-narrator-stamped `rollDialogOwner` flag, and on rejoining the owner sends
-`requestRollDialogSync` with `reseat: true`; a viewer answers with its
-canonical view and the fresh owner adopts it (`RollSync#adopt`) rather than
-publishing an empty draft. Edits accepted while that reseat is in flight are
-replayed on top of the adopted draft (`RollSync#expectReseat`); only a fresh
-owner (revision 0) waits for one. When a player takes the seat of a roll the
+**The owner judges every packet by its server-attested sender**
+(`#authorizeEdit`); the sender's own checks are not the boundary. From the
+Narrator it takes their half (move, Might, Secret Grace, Action, title) and any
+tag; from anyone else no field, and only tags within their reach
+(`actableActorIds(dialog, sender)`), decided by whose tag it is, never by the
+sender's claim: not a Narrator-stamped pick, not another user's pick. A
+partial update (no `sync`) from another client is taken only from the Narrator.
+The table-wide roll packets are judged by sender too: `openRollDialog` and
+`rejectRoll` only from a Narrator (only a Narrator calls or rejects a roll), `closeRollDialog` and
+`resetRollDialog` only from the roll's owner or a Narrator
+(`mayEndSharedRoll`), and `narratorRollCommand` only from a Narrator.
+
+**Read the presence flag through `readRollSeat`, never `getFlag`.** Every
+player owns the Fellowship and can write its `rollDialogOwner` flag, but an
+Acting Together call is always the Narrator's to hold. Whether a Fellowship
+roll is a live call comes from the flag as a Narrator last wrote it
+(`narratorSeats`, from server-attested writers, persisted by the writing
+Narrator in the `fellowshipSeats` world setting so a reloading client seeds
+from a record players can't write) — never from the flag a player just wrote.
+`guardFellowshipSeat` keeps that memory, runs before the other presence-flag
+hooks, and has the active Narrator restore a player's rewrite in one replacing
+write. `openSharedRoll` keeps a group roll's seat with the Narrator even if
+`litm.narratorCall` rewrites it to a player.
+
+A called roll survives its owner's reload. The owner saves its canonical draft,
+both halves, in its own browser (`localStorage`, `#persistDraft`) — never on a
+document, since players own the Fellowship and their Heroes and could rewrite
+it. `ready` keeps the user's own narrator-stamped `rollDialogOwner` flag; on
+rejoining, the owner rebuilds the call from that flag, restores the saved draft
+(`restoreDraft`, `RollSync#restore`, which keeps revision 0) and sends
+`requestRollDialogSync` with `reseat: true`. Only the Narrator's answer is
+adopted (`RollSync#adopt`), since it may carry edits made during the reload; a
+player's counts only for its revision (`RollSync#noteRevision`), and when the
+window closes the owner publishes its draft past every revision seen
+(`RollSync#publishRestored`). A reseat answer the owner never asked for is
+ignored. Edits accepted while that reseat is in flight are replayed on top of
+an adopted draft (`RollSync#expectReseat`); only a fresh owner (revision 0)
+waits for one. When a player takes the seat of a roll the
 GM was holding, every open dialog follows the new owner on the flag change
 (`LitmRollDialog#followSeat`), and the new owner keeps the old revision.
 
 When the whole table reloads, nobody holds the draft to hand back, so the
 `rollDialogOwner` flag also stores the call itself (participants, Action, title,
-narrator stamp) and the owner rebuilds it from there. A viewer only answers a
+narrator stamp) and the owner rebuilds it from there, then its saved draft on
+top. A viewer only answers a
 reseat once it has heard from an owner (`RollSync#heard`); a blank view must
 not wipe the Narrator's call. After a reload the owner's HUD strip reads "Your
 unfinished roll". Ending a roll resets Might to 0; only a roll suspended for
@@ -531,7 +563,7 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits, column hide/reveal), on every client; no payload. Roll dialogs listen to refresh contributed-tag groups.
 - `litm.sacrificePrepared` — `({ actor })` on clients other than the roller's when a Hero's roll turns into a Sacrifice; return `false` to suppress the default banner
 - `litm.campingStepChanged` — `({ from, to })` after camping navigates between steps
-- `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
+- `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it — except an Acting Together call's `ownerId`, which stays a Narrator's. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.
 

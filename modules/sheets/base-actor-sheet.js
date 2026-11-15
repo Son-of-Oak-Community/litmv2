@@ -10,7 +10,10 @@ import {
 } from "../active-effects/effect-queries.js";
 import { clampTier, maxStatusTier } from "../active-effects/status-tag-data.js";
 import { isNarratorControlled } from "../apps/roll/roll-authority.js";
-import { resolveRollDialogOwnership } from "../apps/roll/roll-pipeline.js";
+import {
+	readRollSeat,
+	resolveRollDialogOwnership,
+} from "../apps/roll/roll-pipeline.js";
 import {
 	mapEffectForUI,
 	parseQuickAddInput,
@@ -18,7 +21,7 @@ import {
 } from "../apps/story-tags/story-tag-helpers.js";
 import { markImprove } from "../item/theme/nascent-theme.js";
 import { completeTrackUpdate } from "../system/chat.js";
-import { ACTOR_TAG_TYPES, FLAGS, THEME_TAG_TYPES } from "../system/config.js";
+import { ACTOR_TAG_TYPES, THEME_TAG_TYPES } from "../system/config.js";
 import { Sockets } from "../system/sockets.js";
 import {
 	availableThemebookImprovements,
@@ -982,7 +985,7 @@ export class LitmActorSheet extends LitmSheetMixin(
 		// A roll the Narrator called already knows whose it is. The flag is the
 		// durable record of that — the local dialog may be brand new, after a
 		// reload or a HUD-strip join — so ownership is read, not recomputed.
-		const assigned = this.document.getFlag("litmv2", FLAGS.rollDialogOwner);
+		const assigned = readRollSeat(this.document);
 		if (assigned?.narrator && assigned.ownerId) {
 			dialog.activateSync(assigned.syncSession);
 			dialog.ownerId = assigned.ownerId;
@@ -1001,6 +1004,9 @@ export class LitmActorSheet extends LitmSheetMixin(
 					type: assigned.type,
 					syncSession: assigned.syncSession,
 				});
+			// Then the draft this browser saved, both halves; a Narrator's
+			// answer to the reseat may still bring newer edits.
+			if (dialog.isOwner && !dialog.rendered) dialog.restoreDraft();
 			if (dialog.isOwner) dialog.requestReseat();
 			else
 				Sockets.dispatch("requestRollDialogSync", {

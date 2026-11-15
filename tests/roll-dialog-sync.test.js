@@ -15,6 +15,8 @@ const make = (id, options = {}) =>
 				...options,
 			}),
 	);
+/** Each contributing user's own Hero: the only tags the owner takes from them. */
+const CHARACTERS = { a: "hero-a", b: "hero-b", "ally-user": "ally" };
 let messages;
 beforeEach(() => {
 	messages = [];
@@ -23,6 +25,13 @@ beforeEach(() => {
 			messages.push(structuredClone({ ...data, senderId: game.user.id }));
 	});
 	game.actors.get.mockReturnValue(null);
+	// The owner judges an edit by its attested sender; as in asUser, only the
+	// id "gm" is a Narrator. A contributor's tags come from their own Hero.
+	game.users.get.mockImplementation((id) => ({
+		id,
+		isGM: id === "gm",
+		character: CHARACTERS[id] ? { id: CHARACTERS[id] } : null,
+	}));
 	// "Helping Each Other" resolves tags to an ally; later tests must not
 	// inherit that (mockReset restores the stub's own `() => null`).
 	foundry.utils.fromUuidSync.mockReset();
@@ -100,6 +109,13 @@ describe("LitmRollDialog sync integration", () => {
 	});
 
 	it("merges two concurrent contributor dispatches at the GM and acknowledges both", async () => {
+		// Each contributor offers a tag of their own Hero.
+		foundry.utils.fromUuidSync.mockImplementation((uuid) => {
+			const hero = { "tag-a": "hero-a", "tag-b": "hero-b" }[uuid];
+			return hero
+				? { type: "power_tag", parent: { documentName: "Actor", id: hero } }
+				: null;
+		});
 		const gm = make("gm");
 		const a = make("a");
 		const b = make("b");

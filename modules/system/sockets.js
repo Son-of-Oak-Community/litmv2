@@ -79,7 +79,10 @@ export class Sockets {
 	// the rest of the table sees it on the roll-dialog HUD strip and joins if
 	// they want to. There is no chat card: the roll posts its own.
 	static #registerSharedRollListener() {
-		Sockets.on("openRollDialog", ({ data }) => {
+		// Only a Narrator calls a roll (`openSharedRoll`); a player's packet
+		// would otherwise seat them and wipe every client's draft.
+		Sockets.on("openRollDialog", ({ senderId, data }) => {
+			if (!game.users.get(senderId)?.isGM) return;
 			if (!shouldJoinSharedRoll(data)) return;
 			applySharedRoll(data);
 		});
@@ -96,23 +99,32 @@ export class Sockets {
 			LitmRollDialog.roll(data)?.catch(console.error);
 		});
 
-		Sockets.on("rejectRoll", ({ data: { actorId, name, userId } }) => {
-			if (userId && userId !== game.userId) return;
-			ui.notifications.warn(
-				game.i18n.format("LITM.Ui.roll_rejected", { name }),
-			);
-			const actor = game.actors.get(actorId);
-			if (!actor?.sheet?.hasRollDialog) return;
-			actor.sheet.renderRollDialog();
-		});
+		// Only a Narrator rejects a roll (`_handleRejectModeration`).
+		Sockets.on(
+			"rejectRoll",
+			({ senderId, data: { actorId, name, userId } }) => {
+				if (!game.users.get(senderId)?.isGM) return;
+				if (userId && userId !== game.userId) return;
+				ui.notifications.warn(
+					game.i18n.format("LITM.Ui.roll_rejected", { name }),
+				);
+				const actor = game.actors.get(actorId);
+				if (!actor?.sheet?.hasRollDialog) return;
+				actor.sheet.renderRollDialog();
+			},
+		);
 
-		Sockets.on("resetRollDialog", ({ data: { actorId, syncSession } }) => {
-			const actor = game.actors.get(actorId);
-			if (!actor?.sheet?.hasRollDialog) return;
-			if (!actor.sheet.rollDialogInstance.matchesSyncSession(syncSession))
-				return;
-			actor.sheet.resetRollDialog();
-		});
+		Sockets.on(
+			"resetRollDialog",
+			({ senderId, data: { actorId, syncSession } }) => {
+				const actor = game.actors.get(actorId);
+				if (!actor?.sheet?.hasRollDialog) return;
+				const dialog = actor.sheet.rollDialogInstance;
+				if (!dialog.matchesSyncSession(syncSession)) return;
+				if (!mayEndSharedRoll(senderId, dialog)) return;
+				actor.sheet.resetRollDialog();
+			},
+		);
 
 		// The Narrator pressed Roll or Cancel on a player's roll; only that
 		// roll's owner acts on it.
@@ -194,6 +206,7 @@ export class Sockets {
 				if (!actor?.sheet?.hasRollDialog) return;
 				const dialog = actor.sheet.rollDialogInstance;
 				if (!dialog.matchesSyncSession(syncSession)) return;
+				if (!mayEndSharedRoll(senderId, dialog)) return;
 				if (cancelled && dialog.rendered && game.users.get(senderId)?.isGM)
 					ui.notifications?.info(t("LITM.Ui.roll_cancelled_by_narrator"));
 				dialog.endSharedRoll({ preserveAuthority });
@@ -358,4 +371,13 @@ export class Sockets {
 			Hooks.callAll("litm.camping.end");
 		});
 	}
+}
+
+/**
+ * Whether a packet that ends or resets a shared roll for the table may be
+ * taken: only from the roll's owner (who rolled or closed it) or a Narrator
+ * (who approved or cancelled it), judged by the server-attested sender.
+ */
+function mayEndSharedRoll(senderId, dialog) {
+	return !!game.users.get(senderId)?.isGM || senderId === dialog.ownerId;
 }

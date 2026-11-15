@@ -904,23 +904,25 @@ export function buildGroupRollTabs(dialog, shared) {
  * Gates three surfaces that must agree: whether a tab renders in full
  * ({@link buildGroupRollTabs}), whether a row is locked
  * ({@link makeTagDecorator}), and whether a change is accepted
- * (`LitmRollDialog#canModifyTag`).
+ * (`LitmRollDialog#canModifyTag`). The owner also asks it for the user who
+ * sent an edit, since the sender's own checks are not the boundary.
  *
  * @param {LitmRollDialog} dialog
+ * @param {User} [user]  Whose reach; this client's user by default.
  * @returns {Set<string>}
  */
-export function actableActorIds(dialog) {
+export function actableActorIds(dialog, user = game.user) {
 	const ids = new Set();
 	// Helping Each Other: a helper offers one of their own Hero's tags, not
 	// the scene's or anyone else's.
 	if (!dialog.isGroupRoll) {
-		const own = game.user.character;
+		const own = user?.character;
 		if (own && own.id !== dialog.actorId) ids.add(own.id);
 		return ids;
 	}
 	for (const id of dialog.participantIds) {
 		const hero = game.actors.get(id);
-		if (hero?.testUserPermission(game.user, "OWNER")) ids.add(id);
+		if (user && hero?.testUserPermission(user, "OWNER")) ids.add(id);
 	}
 	if (ids.size) ids.add(dialog.actorId);
 	return ids;

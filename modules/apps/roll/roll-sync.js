@@ -132,6 +132,50 @@ export class RollSync {
 	}
 
 	/**
+	 * Start a fresh owner's sync from the draft it saved before a reload (in
+	 * its own browser), without taking that draft's revision: it can be older
+	 * than what the table holds, so a Narrator's answer to the reseat must
+	 * still be able to replace it. {@link publishRestored} gives it a
+	 * revision the viewers accept when nobody answers.
+	 * @param {object} state
+	 * @param {number} revision  The saved draft's revision.
+	 */
+	restore(state, revision = 0) {
+		if (this.revision > 0) return false;
+		this.state = copy(state);
+		this.view = copy(state);
+		this.restoredRevision = revision;
+		return true;
+	}
+
+	/**
+	 * Note an answer's revision without taking its state (a player's answer
+	 * to a reseat): only the number, so the owner can publish past it.
+	 * @param {number} revision
+	 */
+	noteRevision(revision) {
+		// A player's number: only a safe whole one counts, so a forged
+		// "1e999" can't push the owner's revision to Infinity (null on the wire).
+		const n = Number(revision);
+		if (!Number.isSafeInteger(n) || n < 0) return;
+		this.seenRevision = Math.max(this.seenRevision ?? 0, n);
+	}
+
+	/**
+	 * Nobody whose word is taken answered: carry on from the restored draft,
+	 * under a revision past everything seen, so viewers don't drop it as stale.
+	 */
+	publishRestored() {
+		this.revision =
+			Math.max(
+				this.revision,
+				this.restoredRevision ?? 0,
+				this.seenRevision ?? 0,
+			) + 1;
+		this.abandonReseat();
+	}
+
+	/**
 	 * Take over a draft from a peer's canonical view, keeping its session and
 	 * revision. Used when the owner's client comes back after a reload with an
 	 * empty dialog while the rest of the table still holds the roll.
