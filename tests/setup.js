@@ -268,7 +268,17 @@ globalThis.foundry = {
 			DataModelValidationError: class extends Error {},
 		},
 		operators: {
-			ForcedDeletion: class {},
+			// Recognisable stand-ins for v14's update operators.
+			ForcedDeletion: class {
+				static create() {
+					return { forcedDeletion: true };
+				}
+			},
+			ForcedReplacement: class {
+				static create(value) {
+					return { forcedReplacement: value };
+				}
+			},
 		},
 	},
 	dice: { Roll: StubRoll },

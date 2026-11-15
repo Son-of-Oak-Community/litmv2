@@ -362,6 +362,48 @@ export async function processPostRollEffects({
 }
 
 /**
+ * Each Fellowship's roll presence flag as a Narrator last wrote it, by actor
+ * id: the server attests every write's author, and `guardFellowshipSeat`
+ * keeps this current. Whether a Fellowship roll is a Narrator's call is read
+ * from here, never from the flag a player may just have rewritten.
+ * @type {Map<string, object|null>}
+ */
+export const narratorSeats = new Map();
+
+/** A flag that can stand as a Fellowship's Narrator-written one. */
+export function plausibleFellowshipSeat(flag) {
+	if (!flag) return null;
+	// A called Fellowship roll is always a Narrator's to hold.
+	if (flag.narrator && !game.users?.get(flag.ownerId)?.isGM) return null;
+	return flag;
+}
+
+/**
+ * An actor's roll presence flag (`rollDialogOwner`), if it is one to trust.
+ * Read it through here, never with `getFlag` directly.
+ *
+ * Every player owns the Fellowship, so any of them can write its flag. A
+ * Narrator-called roll on the Fellowship (Acting Together) is always held by
+ * a Narrator — `openSharedRoll` resolves no player owners for it, and nothing
+ * moves that seat to a player. So while a Narrator's call is live
+ * (`narratorSeats`), its seat is the one they wrote, whatever the flag says
+ * now — even a flag a player rewrote as an ordinary roll — and the active
+ * Narrator puts the flag back (`guardFellowshipSeat`). A called seat naming a
+ * player is never trusted. A Hero's flag can only be written by its own
+ * player and the Narrator, who may hold its seat anyway.
+ *
+ * @param {Actor} actor
+ * @returns {object|null}
+ */
+export function readRollSeat(actor) {
+	const flag = actor?.getFlag?.("litmv2", FLAGS.rollDialogOwner) ?? null;
+	if (actor?.type !== "fellowship") return flag;
+	const call = narratorSeats.get(actor.id);
+	if (call?.narrator) return call;
+	return plausibleFellowshipSeat(flag);
+}
+
+/**
  * Determine ownership state for the roll dialog. Pure logic — used by both
  * the dialog itself and the hero sheet to decide whether the open-dialog
  * action should claim ownership or render in viewer mode.
@@ -371,8 +413,7 @@ export async function processPostRollEffects({
  * @returns {{ isOwner: boolean, gmAsViewer: boolean, activeOwnerId: string|null }}
  */
 export function resolveRollDialogOwnership(actor, userId) {
-	const activeOwnerId =
-		actor.getFlag("litmv2", FLAGS.rollDialogOwner)?.ownerId || null;
+	const activeOwnerId = readRollSeat(actor)?.ownerId || null;
 	const activeOwner = activeOwnerId ? game.users.get(activeOwnerId) : null;
 	const hasActorPermission =
 		game.user.isGM || actor.testUserPermission(game.user, "OWNER");

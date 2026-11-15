@@ -1,4 +1,4 @@
-import { FLAGS } from "../system/config.js";
+import { readRollSeat } from "../apps/roll/roll-pipeline.js";
 import { localize as t } from "../utils.js";
 import { mountPlayersHud } from "./players-hud.js";
 
@@ -47,7 +47,7 @@ export class RollDialogHud {
 		const entries =
 			game.actors
 				?.filter((a) => {
-					const flag = a.getFlag("litmv2", FLAGS.rollDialogOwner);
+					const flag = readRollSeat(a);
 					const dialog = foundry.applications.instances.get(
 						`litm-roll-dialog-${a.id}`,
 					);
@@ -59,7 +59,7 @@ export class RollDialogHud {
 					});
 				})
 				.map((a) => {
-					const flag = a.getFlag("litmv2", FLAGS.rollDialogOwner);
+					const flag = readRollSeat(a);
 					const owner = game.users.get(flag.ownerId);
 					const isOwn = flag.ownerId === game.user.id;
 					return {

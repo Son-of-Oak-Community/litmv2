@@ -211,6 +211,17 @@ export class LitmSettings {
 			default: false,
 		});
 
+		// Each Fellowship's roll presence flag as a Narrator last wrote it, by
+		// actor id. A world setting, so only a Narrator can write it: every
+		// player owns the Fellowship and could rewrite the flag itself. Clients
+		// seed their memory of a live call from here (`guardFellowshipSeat`).
+		game.settings.register("litmv2", "fellowshipSeats", {
+			scope: "world",
+			config: false,
+			type: Object,
+			default: {},
+		});
+
 		game.settings.register("litmv2", "storytags", {
 			name: "LITM.Settings.story_tags",
 			hint: "Sidebar configuration: tracked actors, limits, and visibility.",

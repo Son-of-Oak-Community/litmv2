@@ -409,6 +409,18 @@ tag; from anyone else no field, and only tags within their reach
 sender's claim: not a Narrator-stamped pick, not another user's pick. A
 partial update (no `sync`) from another client is taken only from the Narrator.
 
+**Read the presence flag through `readRollSeat`, never `getFlag`.** Every
+player owns the Fellowship and can write its `rollDialogOwner` flag, but an
+Acting Together call is always the Narrator's to hold. Whether a Fellowship
+roll is a live call comes from the flag as a Narrator last wrote it
+(`narratorSeats`, from server-attested writers, persisted by the writing
+Narrator in the `fellowshipSeats` world setting so a reloading client seeds
+from a record players can't write) — never from the flag a player just wrote.
+`guardFellowshipSeat` keeps that memory, runs before the other presence-flag
+hooks, and has the active Narrator restore a player's rewrite in one replacing
+write. `openSharedRoll` keeps a group roll's seat with the Narrator even if
+`litm.narratorCall` rewrites it to a player.
+
 A called roll survives its owner's reload. The owner saves its canonical draft,
 both halves, in its own browser (`localStorage`, `#persistDraft`) — never on a
 document, since players own the Fellowship and their Heroes and could rewrite
@@ -547,7 +559,7 @@ Prefer `static migrateData(source)` in DataModel subclasses (Foundry runs it on 
 - `litm.sceneTagsChanged` — after any story-tag-sidebar CRUD (scene tags, actor tags/statuses, limits, column hide/reveal), on every client; no payload. Roll dialogs listen to refresh contributed-tag groups.
 - `litm.sacrificePrepared` — `({ actor })` on clients other than the roller's when a Hero's roll turns into a Sacrifice; return `false` to suppress the default banner
 - `litm.campingStepChanged` — `({ from, to })` after camping navigates between steps
-- `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
+- `litm.narratorCall` — `(payload, actor)` before the Narrator opens a shared roll; return `false` to cancel, or mutate `payload` to rewrite it — except an Acting Together call's `ownerId`, which stays a Narrator's. (There is no `litm.narratorCallReceived` any more: with one shared roll object there is no separate receive step to hook.)
 
 Hooks registered via `LitmHooks.register()` in `modules/system/hooks/index.js`, delegating to domain modules (`actor-hooks`, `chat-hooks`, `item-hooks`, `fellowship-hooks`, `ui-hooks`, `token-hooks`, `ready-hooks`, `compat-hooks`, `preloads`). Add new hooks to the appropriate domain file.
 

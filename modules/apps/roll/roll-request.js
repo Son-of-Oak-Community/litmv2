@@ -73,6 +73,12 @@ export async function openSharedRoll({
 
 	// Cancellable: a module may veto or rewrite a call before it goes out.
 	if (Hooks.call("litm.narratorCall", payload, actor) === false) return null;
+	// Acting Together is the Narrator's to hold and roll (p.157): its seat is
+	// guarded as theirs (`readRollSeat`), so a rewrite handing it to a player
+	// would leave a roll that player could never end. It stays with the
+	// Narrator calling it.
+	if (isGroupRoll && !game.users.get(payload.ownerId)?.isGM)
+		payload.ownerId = game.user.id;
 
 	// Advertise the roll before opening it, so the HUD strip lights up for
 	// everyone the call didn't reach directly. The GM writes this flag on the
