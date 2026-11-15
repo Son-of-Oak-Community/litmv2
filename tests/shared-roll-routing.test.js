@@ -219,7 +219,8 @@ describe("sendRollRequest", () => {
 			actorId: "hero",
 			actionUuid: "Item.strike",
 			title: "Strike",
-			// The Hero's active player holds the seat, not the calling Narrator.
+			// Called for that Hero, stamped with the calling Narrator. Who
+			// takes the seat is resolveSharedRollOwner's (roll-authority.test.js).
 			narratorUserId: "gm",
 		});
 		expect(Sockets.dispatch).toHaveBeenCalledWith(
