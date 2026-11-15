@@ -92,14 +92,24 @@ export class ChallengeData extends LimitsMixin(
 	 * @returns {string[]}
 	 */
 	static parseRoles(value) {
+		return ChallengeData.#uniqueRoles(String(value ?? "").split(","));
+	}
+
+	/**
+	 * One role per entry, each once: a book role as its key, matched by key
+	 * or by its name as this table reads it ("Здобич"); anything else as
+	 * typed. Entries are not split further.
+	 * @param {string[]} entries
+	 * @returns {string[]}
+	 */
+	static #uniqueRoles(entries) {
 		const known = CONFIG.litmv2?.challengeRoles ?? [];
 		const seen = new Set();
 		const roles = [];
-		for (const raw of String(value ?? "").split(",")) {
-			const text = raw.trim();
+		for (const raw of entries) {
+			const text = String(raw ?? "").trim();
 			if (!text) continue;
 			const lower = text.toLowerCase();
-			// The key, or the role's name as this table reads it ("Здобич").
 			const role =
 				known.find(
 					(k) =>
@@ -121,9 +131,12 @@ export class ChallengeData extends LimitsMixin(
 	 */
 	static deriveRoles(category, addonCategories = []) {
 		const seen = new Map();
-		for (const role of ChallengeData.parseRoles(
-			[category, ...addonCategories].join(","),
-		)) {
+		// The Challenge's own roles are one comma-separated string; an addon's
+		// categories are a list already, each entry one category.
+		for (const role of ChallengeData.#uniqueRoles([
+			...String(category ?? "").split(","),
+			...addonCategories,
+		])) {
 			const label = ChallengeData.roleLabel(role);
 			const key = label.toLowerCase();
 			if (!seen.has(key)) seen.set(key, { role, label });

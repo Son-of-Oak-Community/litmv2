@@ -49,6 +49,16 @@ describe("Challenge roles", () => {
 		]);
 	});
 
+	// An addon's categories are a list already: an entry with a comma in it
+	// is one category, as it was before Roles.
+	it("keeps an addon category with a comma in it whole", () => {
+		expect(
+			ChallengeData.deriveRoles("", ["Spy, Thief", "Quarry"]).map(
+				(r) => r.role,
+			),
+		).toEqual(["quarry", "Spy, Thief"]);
+	});
+
 	describe("saving from the picker", () => {
 		const pill = (role, checked) => ({ dataset: { role }, checked });
 		const form = {
