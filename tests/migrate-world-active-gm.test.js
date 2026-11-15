@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { migrateWorld } from "../modules/system/migrations.js";
+import { setGM, setPlayer } from "./__helpers__/users.js";
 
 // `ready` fires on every connected client. Pending world migrations delete and
 // create effects, so with two GMs online both running 002/003 at once would
@@ -20,7 +21,7 @@ describe("migrateWorld", () => {
 		saved.activeGM = game.users.activeGM;
 		game.settings.get.mockReset().mockReturnValue(-1);
 		game.settings.set.mockClear();
-		game.user = { id: "user-gm", isGM: true };
+		setGM("user-gm");
 	});
 
 	afterEach(() => {
@@ -48,7 +49,7 @@ describe("migrateWorld", () => {
 	});
 
 	it("does nothing on a non-GM", async () => {
-		game.user = { id: "user-player", isGM: false };
+		setPlayer("user-player");
 		game.users.activeGM = null;
 		await migrateWorld();
 		expect(game.settings.set).not.toHaveBeenCalled();

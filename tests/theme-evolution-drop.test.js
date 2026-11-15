@@ -3,6 +3,7 @@ import {
 	applyDroppedTheme,
 	ThemeEvolutionWizard,
 } from "../modules/apps/theme-evolution.js";
+import { fakeElement } from "./__helpers__/dom.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
 // The wizard's drop-to-replace path: dropping a theme item on the "new theme"
@@ -498,7 +499,7 @@ describe("ThemeEvolutionWizard forced Replace", () => {
 		const actor = game.actors.get();
 		wizard.close = vi.fn();
 		Object.defineProperty(wizard, "element", {
-			value: { querySelector: () => null },
+			value: fakeElement(),
 		});
 		// The form asks to Evolve; a forced Replace must replace all the same.
 		foundry.applications.ux = {
@@ -540,7 +541,7 @@ describe("ThemeEvolutionWizard forced Replace", () => {
 		const wizard = wizardOn(theme, { forceReplace: true });
 		wizard.close = vi.fn();
 		Object.defineProperty(wizard, "element", {
-			value: { querySelector: () => null },
+			value: fakeElement(),
 		});
 		foundry.applications.ux = {
 			...originalUx,
@@ -621,7 +622,7 @@ describe("ThemeEvolutionWizard Replace", () => {
 		});
 		wizard.close = vi.fn();
 		Object.defineProperty(wizard, "element", {
-			value: { querySelector: () => null },
+			value: fakeElement(),
 		});
 		foundry.applications.ux = {
 			...originalUx,

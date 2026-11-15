@@ -1,16 +1,10 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { applyTypedTagSyntax } from "../modules/apps/spend-power.js";
 import { makeTagStringRe } from "../modules/system/config.js";
+import { fakeElement } from "./__helpers__/dom.js";
 
 // Spend Power's entry rows read tag markup like the sidebar's quick-add:
 // typing "wet-3" to Inflict must not create a status literally named "wet-3".
-
-vi.mock("../modules/apps/target-picker.js", () => ({
-	getTargetCandidates: vi.fn(() => []),
-}));
-vi.mock("../modules/apps/story-tags/story-tags-store.js", () => ({
-	StoryTagsStore: { loadStoryTags: vi.fn(async () => {}), packStoryTags: [] },
-}));
 
 beforeAll(() => {
 	Object.defineProperty(CONFIG.litmv2, "tagStringRe", {
@@ -25,7 +19,7 @@ function row(name, { tier, singleUse } = {}) {
 		parts[".litm-spend-power__entry-tier"] = { value: tier };
 	if (singleUse !== undefined)
 		parts[".litm-spend-power__entry-single-use"] = { checked: singleUse };
-	return { parts, querySelector: (selector) => parts[selector] ?? null };
+	return fakeElement({ parts, one: parts });
 }
 
 describe("applyTypedTagSyntax", () => {

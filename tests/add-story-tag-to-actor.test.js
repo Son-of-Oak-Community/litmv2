@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { storyTagEffect } from "../modules/active-effects/effect-factories.js";
-import { HeroData } from "../modules/actor/hero/hero-data.js";
 import { EffectTagsMixin } from "../modules/actor/mixins/effect-tags-mixin.js";
 import { fakeActor, fakeItem } from "./__helpers__/factories.js";
+import { fakeHeroModel } from "./__helpers__/hero.js";
 
 // addStoryTag routing: heroes reroute story tags into their backpack item so
 // the effects transfer; every other actor type creates them directly on the
@@ -14,12 +14,7 @@ class BaseModel {
 }
 const TaggedModel = EffectTagsMixin(BaseModel);
 
-const makeHero = ({ items = [] } = {}) => {
-	const actor = fakeActor({ type: "hero", items });
-	const model = new HeroData();
-	model.parent = actor;
-	return { model, actor };
-};
+const makeHero = ({ items = [] } = {}) => fakeHeroModel({ actor: { items } });
 
 beforeEach(() => {
 	vi.clearAllMocks();

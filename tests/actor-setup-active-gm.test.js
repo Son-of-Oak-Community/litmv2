@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerActorHooks } from "../modules/system/hooks/actor-hooks.js";
 import { fakeActor } from "./__helpers__/factories.js";
+import { setGM } from "./__helpers__/users.js";
 
 // createActor fires on every connected client. Scaffolding (default themes,
 // backpack, story theme item) must run once, or a table with two GMs online
@@ -30,7 +31,7 @@ describe("createActor scaffolding", () => {
 		saved.user = game.user;
 		saved.activeGM = game.users.activeGM;
 		Hooks.on.mockClear();
-		game.user = { id: "user-gm", isGM: true };
+		setGM("user-gm");
 		registerActorHooks();
 	});
 

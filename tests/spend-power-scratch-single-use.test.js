@@ -1,30 +1,36 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	parseSpendIntent,
 	scratchPickerCostCalculator,
 } from "../modules/apps/spend-power.js";
 import { applySpendIntent } from "../modules/apps/spend-power-service.js";
+import { StoryTagsStore } from "../modules/apps/story-tags/story-tags-store.js";
 import { Sockets } from "../modules/system/sockets.js";
+import { fakeElement } from "./__helpers__/dom.js";
 import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
+import {
+	optionRow,
+	scratchIntent,
+	spendDialog,
+	spendForm,
+	wireActors,
+} from "./__helpers__/spend-power.js";
 
 // Core Book p.165: "Scratching a single-use story tag costs 1 Power." The
 // scratch picker used to price every chip at the option's flat 2.
 
-vi.mock("../modules/apps/target-picker.js", () => ({
-	getTargetCandidates: vi.fn(() => []),
-}));
-vi.mock("../modules/apps/story-tags/story-tags-store.js", () => ({
-	StoryTagsStore: { loadStoryTags: vi.fn(async () => {}), packStoryTags: [] },
-}));
-vi.mock("../modules/system/sockets.js", () => ({
-	Sockets: { dispatch: vi.fn() },
-}));
-
 beforeEach(() => {
 	vi.clearAllMocks();
+	vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
+	// The scene-tag pack is not in the unit-test shim; no pack means no scene tags.
+	vi.spyOn(StoryTagsStore, "packStoryTags", "get").mockReturnValue([]);
 	game.users.activeGM = null;
 	game.user.isGM = false;
 	game.messages.get = vi.fn(() => null);
+});
+
+afterEach(() => {
+	vi.restoreAllMocks();
 });
 
 /** A selected scratch chip reduced to what the spend-power code reads off it. */
@@ -35,7 +41,7 @@ function chip({
 	scene = false,
 	singleUse = false,
 }) {
-	return {
+	return fakeElement({
 		dataset: {
 			tagId,
 			tagName,
@@ -43,16 +49,15 @@ function chip({
 			sceneTag: String(scene),
 			singleUse: String(singleUse),
 		},
-	};
+	});
 }
 
 /** The scratch option's entries section holding the given selected chips. */
 function entriesSection(chips) {
-	return {
+	return fakeElement({
 		dataset: { scratchPicker: "true" },
-		querySelectorAll: (selector) =>
-			selector === ".litm-spend-power__tag-chip.is-selected" ? chips : [],
-	};
+		all: { ".litm-spend-power__tag-chip.is-selected": chips },
+	});
 }
 
 describe("scratch picker price in the dialog", () => {
@@ -72,16 +77,10 @@ describe("scratch picker price in the dialog", () => {
 
 describe("parseSpendIntent — scratch chips", () => {
 	function scratchRow(chips) {
-		const section = entriesSection(chips);
-		const parts = {
-			"[data-option-check]": { checked: true },
-			".litm-spend-power__entries": section,
-		};
-		return {
-			dataset: { optionId: "scratch_tag", hasTier: "false" },
-			querySelector: (selector) => parts[selector] ?? null,
-			querySelectorAll: () => [],
-		};
+		return optionRow(
+			{ optionId: "scratch_tag", hasTier: "false" },
+			{ one: { ".litm-spend-power__entries": entriesSection(chips) } },
+		);
 	}
 
 	it("carries isSingleUse on each chip", () => {
@@ -96,18 +95,9 @@ describe("parseSpendIntent — scratch chips", () => {
 				singleUse: true,
 			}),
 		]);
-		const form = {
-			querySelectorAll: (selector) =>
-				selector === ".litm-spend-power__option" ? [li] : [],
-			querySelector: () => null,
-		};
-		const dialog = {
-			spendingOptions: [{ id: "scratch_tag", label: "x", cost: 2 }],
-			messageId: null,
-			alreadySpent: 0,
-		};
+		const dialog = spendDialog([{ id: "scratch_tag", label: "x", cost: 2 }]);
 
-		const { options } = parseSpendIntent(form, dialog);
+		const { options } = parseSpendIntent(spendForm([li]), dialog);
 
 		expect(options[0].chips).toEqual([
 			expect.objectContaining({ tagId: "a", isSingleUse: false }),
@@ -122,28 +112,11 @@ describe("parseSpendIntent — scratch chips", () => {
 });
 
 describe("applySpendIntent — scratch of single-use tags", () => {
-	function scratchIntent(chips) {
-		return {
-			options: [
-				{
-					kind: "scratchPicker",
-					optionId: "scratch_tag",
-					label: "LITM.Effects.scratch.action",
-					cost: 2,
-					chips,
-				},
-			],
-			messageId: null,
-			alreadySpent: 0,
-			targetActorId: null,
-		};
-	}
-
 	it("charges 1 for a single-use actor tag and 2 for a normal one", async () => {
 		const normal = fakeEffect({ id: "e1", name: "rope" });
 		const single = fakeEffect({ id: "e2", name: "torch" });
 		const hero = fakeActor({ id: "h1", effects: [normal, single] });
-		game.actors.get = vi.fn((id) => ({ h1: hero })[id] ?? null);
+		wireActors(hero);
 
 		const { results, totalSpent } = await applySpendIntent(
 			hero,
@@ -197,7 +170,7 @@ describe("applySpendIntent — scratch of single-use tags", () => {
 	it("still charges the flat cost for chips that do not say (older intents)", async () => {
 		const tag = fakeEffect({ id: "e1", name: "rope" });
 		const hero = fakeActor({ id: "h1", effects: [tag] });
-		game.actors.get = vi.fn((id) => ({ h1: hero })[id] ?? null);
+		wireActors(hero);
 
 		const { totalSpent } = await applySpendIntent(
 			hero,

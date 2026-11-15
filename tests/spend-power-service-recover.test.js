@@ -1,40 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applySpendIntent } from "../modules/apps/spend-power-service.js";
 import { Sockets } from "../modules/system/sockets.js";
 import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
+import { recoverIntent, wireActors } from "./__helpers__/spend-power.js";
 
 // The Recover list is HeroData#scratchedTags, which includes the Fellowship's
 // scratched tags — an actor the player usually does not own. Recovering one
 // must resolve there, route its write through the active GM when the player
 // can't make it, and bill Power only for tags that actually came back.
-vi.mock("../modules/system/sockets.js", () => ({
-	Sockets: { dispatch: vi.fn() },
-}));
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	vi.spyOn(Sockets, "dispatch").mockImplementation(() => {});
 	game.users.activeGM = null;
 	game.user.isGM = false;
 	game.user.id = "player-1";
 	game.messages.get = vi.fn(() => null);
 });
 
-function recoverIntent(chips) {
-	return {
-		options: [
-			{
-				kind: "picker",
-				optionId: "recover_tag",
-				label: "LITM.Effects.recover.action",
-				cost: 2,
-				chips,
-			},
-		],
-		messageId: null,
-		alreadySpent: 0,
-		targetActorId: null,
-	};
-}
+afterEach(() => {
+	vi.restoreAllMocks();
+});
 
 /** A hero the player owns, linked to a Fellowship they do not own. */
 function heroWithFellowship({ fellowshipOwned = false } = {}) {
@@ -63,7 +49,7 @@ function heroWithFellowship({ fellowshipOwned = false } = {}) {
 		effects: [heroTag],
 		system: { fellowshipActor: fellowship },
 	});
-	game.actors.get = vi.fn((id) => ({ h1: hero, f1: fellowship })[id] ?? null);
+	wireActors(hero, fellowship);
 	return { hero, fellowship, heroTag, fellowshipTag };
 }
 

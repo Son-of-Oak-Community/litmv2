@@ -4,7 +4,9 @@ import { StoryTagSidebar } from "../modules/apps/story-tags/story-tag-sidebar.js
 import { LitmConfig } from "../modules/system/config.js";
 import { ContentSources } from "../modules/system/content-sources.js";
 import { Sockets } from "../modules/system/sockets.js";
+import { fakeElement } from "./__helpers__/dom.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
+import { setGM, setPlayer } from "./__helpers__/users.js";
 
 // Dragging a tag between columns is a move: add it to the destination, then
 // remove it from the source. The audit found the second half ran whether or not
@@ -80,16 +82,14 @@ const payloadFor = (effect, container) => ({
  */
 const dropEvent = (data, { column, limitId, limitSource } = {}) => ({
 	dataTransfer: { getData: () => JSON.stringify(data) },
-	target: {
-		closest: (selector) => {
-			if (selector === "[data-limit-id]" && limitId) {
-				return { dataset: { limitId, source: limitSource } };
-			}
-			if (selector === "[data-id]" && column)
-				return { dataset: { id: column } };
-			return null;
+	target: fakeElement({
+		closest: {
+			"[data-limit-id]": limitId
+				? fakeElement({ dataset: { limitId, source: limitSource } })
+				: null,
+			"[data-id]": column ? fakeElement({ dataset: { id: column } }) : null,
 		},
-	},
+	}),
 });
 
 let sidebar;
@@ -101,7 +101,7 @@ beforeEach(() => {
 	CONFIG.litmv2 = Object.create(LitmConfig);
 	CONFIG.litmv2.heroLimit = 5;
 	CONFIG.litmv2._maxStatusTierOverride = null;
-	game.user = { isGM: false, id: "player" };
+	setPlayer();
 	game.users = { activeGM: null, get: vi.fn() };
 	actors = {};
 	packTags = [];
@@ -213,7 +213,7 @@ describe("dropping a tag onto another actor's column", () => {
 
 describe("dropping a tag into the Story section", () => {
 	it("moves it for the Narrator", async () => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 		const source = makeHero({ name: "Source" });
 		actors = { [source.actor.id]: source.actor };
 		const { effect, payload } = placeTag(source.actor, source.pack);
@@ -298,7 +298,7 @@ describe("dropping a tag onto a limit header", () => {
 
 	// A pack tag is re-limited in place; an actor's tag has no pack id to update.
 	it("moves an actor's tag into a Story limit by creating it there, not by updating a pack tag", async () => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 		const source = makeHero({ name: "Source" });
 		actors = { [source.actor.id]: source.actor };
 		const { effect, payload } = placeTag(source.actor, source.pack);
@@ -334,7 +334,7 @@ describe("dropping a tag onto a limit header", () => {
 	});
 
 	it("still re-limits a Story tag by updating it in the pack", async () => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 		const payload = {
 			id: "drag-id",
 			name: "fog",
@@ -363,7 +363,9 @@ describe("dropping a tag onto a limit header", () => {
 const dragFrom = (row) => {
 	const setData = vi.fn();
 	sidebar._onDragStart({
-		currentTarget: { closest: () => ({ dataset: row }) },
+		currentTarget: fakeElement({
+			closest: () => fakeElement({ dataset: row }),
+		}),
 		dataTransfer: { setData },
 	});
 	return JSON.parse(setData.mock.calls[0][1]);
@@ -390,7 +392,7 @@ const packTag = (over = {}) => {
 
 describe("a moved tag keeps its state", () => {
 	beforeEach(() => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 	});
 
 	it("stays scratched on its way into the Story section", async () => {
@@ -454,7 +456,7 @@ describe("a moved tag keeps its state", () => {
 			id: secret.id,
 			type: challenge.id,
 		});
-		game.user = { isGM: false, id: "player" };
+		setPlayer();
 		game.users.activeGM = { id: "gm" };
 
 		await sidebar._onDrop(dropEvent(payload, { column: "story" }));
@@ -577,7 +579,7 @@ describe("a moved tag keeps its state", () => {
 // column's owner decides, as before.
 describe("a tag the Narrator adds", () => {
 	beforeEach(() => {
-		game.user = { isGM: true, id: "gm" };
+		setGM();
 	});
 
 	it("starts visible on a player's Hero", async () => {

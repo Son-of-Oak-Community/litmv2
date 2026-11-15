@@ -71,7 +71,8 @@ describe("roll result bookkeeping failure", () => {
 			syncSession: "current",
 		});
 
-		expect(result).toBeDefined();
+		// The card was posted; the failed scratch must not swallow it.
+		expect(result).toEqual({ rolls: [{ actor }] });
 		expect(console.error).toHaveBeenCalled();
 		expect(actor.sheet.resetRollDialog).toHaveBeenCalledTimes(1);
 		expect(Sockets.dispatch).toHaveBeenCalledWith("resetRollDialog", {

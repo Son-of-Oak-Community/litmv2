@@ -12,6 +12,7 @@ vi.mock("../modules/apps/story-tags/scene-tag-dialog.js", () => ({
 }));
 
 import { registerUiHooks } from "../modules/system/hooks/ui-hooks.js";
+import { fakeElement } from "./__helpers__/dom.js";
 
 describe("roll pickup", () => {
 	const shared = {
@@ -59,11 +60,10 @@ describe("HUD lifecycle", () => {
 		vi.stubGlobal("Hooks", {
 			on: (name, callback) => listeners.set(name, callback),
 		});
-		const container = {
+		const container = fakeElement({
 			classList: { add: vi.fn(), remove: vi.fn() },
-			addEventListener: vi.fn(),
 			innerHTML: "",
-		};
+		});
 		const panel = { prepend: vi.fn() };
 		vi.stubGlobal("document", {
 			getElementById: () => panel,

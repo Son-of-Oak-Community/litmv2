@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { queryItemsFromPacks } from "../modules/utils.js";
+import { stubSettings } from "./__helpers__/settings.js";
 
 // queryItemsFromPacks must respect the category's content-source setting for
 // BOTH halves of its search: the compendium packs AND the world-item loop.
@@ -19,11 +20,8 @@ const mkWorldItem = (data, observable = true) => ({
 	testUserPermission: vi.fn(() => observable),
 });
 
-const setSetting = (selected) => {
-	game.settings.get.mockImplementation((_scope, key) =>
-		key.startsWith("compendium.") ? selected : undefined,
-	);
-};
+const setSetting = (selected) =>
+	stubSettings((key) => (key.startsWith("compendium.") ? selected : undefined));
 
 describe("queryItemsFromPacks world-item gating", () => {
 	beforeEach(() => {
