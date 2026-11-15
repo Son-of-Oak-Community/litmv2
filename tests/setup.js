@@ -74,18 +74,7 @@ const fromUuid = vi.fn(async () => null);
 // again for every test file, so the classes are built once and reused, and
 // only their per-file state is reset below. Rebuilding them per file left
 // later files patching classes no module inherits from.
-const {
-	StubDataModel,
-	StubField,
-	StubRoll,
-	StubActor,
-	StubItem,
-	StubChatMessage,
-	StubAppV2,
-	StubDialogV2,
-	StubDocumentSheetV2,
-	HandlebarsApplicationMixin,
-} = (globalThis.__litmStubClasses ??= (() => {
+globalThis.__litmStubClasses ??= (() => {
 	// --- foundry.data.* ---
 	// Just enough that `class Foo extends foundry.data.ActiveEffectTypeDataModel`
 	// parses. defineSchema is only called when Foundry boots; tests that hit
@@ -195,12 +184,24 @@ const {
 		StubDocumentSheetV2,
 		HandlebarsApplicationMixin,
 	};
-})());
+})();
+const {
+	StubDataModel,
+	StubField,
+	StubRoll,
+	StubActor,
+	StubItem,
+	StubChatMessage,
+	StubAppV2,
+	StubDialogV2,
+	StubDocumentSheetV2,
+	HandlebarsApplicationMixin,
+} = globalThis.__litmStubClasses;
 
 // Per-file state on the shared classes. A test may assign or replace a
 // static (`Actor.create = …`, `DialogV2.confirm = …`); each file starts from
 // the statics the classes were built with, snapshotted on the first run.
-const stubStatics = (globalThis.__litmStubStatics ??= new Map(
+globalThis.__litmStubStatics ??= new Map(
 	[
 		StubDataModel,
 		StubField,
@@ -212,7 +213,8 @@ const stubStatics = (globalThis.__litmStubStatics ??= new Map(
 		StubDialogV2,
 		StubDocumentSheetV2,
 	].map((cls) => [cls, Object.getOwnPropertyDescriptors(cls)]),
-));
+);
+const stubStatics = globalThis.__litmStubStatics;
 for (const [cls, own] of stubStatics) {
 	for (const key of Reflect.ownKeys(cls)) if (!(key in own)) delete cls[key];
 	Object.defineProperties(cls, own);
