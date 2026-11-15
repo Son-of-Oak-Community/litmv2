@@ -3,7 +3,7 @@ import {
 	powerTagEffect,
 	weaknessTagEffect,
 } from "../active-effects/effect-factories.js";
-import { NASCENT_POWER_TAGS } from "../item/theme/theme-data.js";
+import { settleNascent } from "../item/theme/nascent-theme.js";
 import {
 	findThemebookByName,
 	localize as t,
@@ -24,7 +24,8 @@ const OPTIONS = [
 /**
  * The improvements a theme may take. A nascent theme only gains power tags
  * (p.192); the Fellowship theme never marks Promise; a Special Improvement is
- * offered while one is left to gain or to activate.
+ * offered while one is left to gain or to activate; Reset while a quest
+ * track has a mark to clear.
  * @param {Item} theme
  * @param {{ hasSpecials: boolean }} options
  * @returns {string[]}
@@ -34,22 +35,30 @@ export function improveOptions(theme, { hasSpecials }) {
 	return OPTIONS.map((o) => o.value).filter((value) => {
 		if (value === "promise") return !theme.system?.isFellowship;
 		if (value === "special") return hasSpecials;
+		if (value === "reset") return resettableTracks(theme).length > 0;
 		return true;
 	});
 }
 
 /**
- * The tags an improvement may rewrite (p.193): the title tag, then the
- * theme's gained power and weakness tags.
+ * The quest tracks Reset can clear: the ones with a mark on them.
+ * @param {Item} theme
+ * @returns {("abandon"|"milestone")[]}
+ */
+function resettableTracks(theme) {
+	const tracks = theme.system?.quest?.tracks ?? {};
+	return ["abandon", "milestone"].filter((k) => (tracks[k]?.value ?? 0) > 0);
+}
+
+/**
+ * The tags an improvement may rewrite (p.193): a power or weakness tag the
+ * theme has gained. Never the title tag: it is the theme's name, and a new
+ * title is Evolve's.
  * @param {Item} theme
  * @returns {{kind: string, id: string, name: string}[]}
  */
 function rewritableTags(theme) {
-	const title = theme.system?.themeTag;
-	return [
-		...(title ? [{ kind: "title", id: title.id, name: title.name }] : []),
-		...getRevisableParts(theme).filter((p) => p.kind !== "special"),
-	];
+	return getRevisableParts(theme).filter((p) => p.kind !== "special");
 }
 
 export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -70,6 +79,7 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 		actions: {
 			confirm: ThemeAdvancementApp.#onConfirm,
 			cancel: ThemeAdvancementApp.#onCancel,
+			unmarkOwed: ThemeAdvancementApp.#onUnmarkOwed,
 		},
 	};
 
@@ -168,6 +178,7 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			canSelect: !!theme.system?.canAdvance,
 			// A nascent theme only ever gains power tags (Core Book p.192).
 			restrictedToPowerTag: isNascent,
+			canUnmarkOwed: (theme.system?.owedPowerTags ?? 0) > 0,
 			options: OPTIONS.filter((o) => available.includes(o.value)).map((o) => ({
 				...o,
 				label: t(`LITM.Ui.improve_option_${o.value}`),
@@ -254,12 +265,12 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 	}
 
 	/**
-	 * Spend what paid for this improvement and fire the advancement hook. A
-	 * power tag a nascent theme owed (Core Book p.192) settles that debt and
-	 * leaves the Improve track alone; anything else spends the full track.
-	 * A theme that now has three power tags is no longer nascent.
-	 * The new tag is already on `theme` when this runs, so whether it paid an
-	 * owed tag is decided by the caller before it was added.
+	 * Spend what pays for this improvement, together with the theme's own
+	 * changes (tracks, Special Improvements), in one write. A power tag a
+	 * nascent theme owed (Core Book p.192) settles that debt and leaves the
+	 * Improve track alone; anything else spends the full track. This runs
+	 * before the improvement's other writes, so one that fails part-way never
+	 * leaves the improvement granted and the Improve there to spend again.
 	 */
 	static async #spendImprove(
 		theme,
@@ -272,15 +283,20 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 				(theme.system?.nascentPending || 0) - 1,
 			);
 		else updateData["system.improve.value"] = 0;
-		if (
-			(theme.system?.nascentImprovements || 0) > 0 &&
-			(theme.system?.powerTagCount ?? 0) >= NASCENT_POWER_TAGS
-		) {
-			updateData["system.nascentImprovements"] = 0;
-			updateData["system.nascentPending"] = 0;
-		}
 		await theme.update(updateData);
-		Hooks.callAll("litm.themeAdvanced", theme.actor, theme, updateData);
+	}
+
+	/**
+	 * Take back a power tag a nascent theme owes, without adding one: for an
+	 * Improve box marked by mistake. The owed marks never show on the track,
+	 * so this is the only way to undo one.
+	 */
+	static async #onUnmarkOwed() {
+		const theme = game.actors.get(this.actorId)?.items.get(this.themeId);
+		const owed = theme?.system?.owedPowerTags ?? 0;
+		if (owed <= 0) return;
+		await theme.update({ "system.nascentPending": owed - 1 });
+		this.close();
 	}
 
 	/**
@@ -331,11 +347,8 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 			ui.notifications?.warn(t("LITM.Ui.improve_rewrite_removed"));
 			return;
 		}
-		const renamed = rewrite && rewriteName !== rewrite.name;
-		// The title tag is the theme's name; renaming the theme renames it
-		// (item-hooks keeps them in step).
 		const renames =
-			renamed && rewrite.kind !== "title"
+			rewrite && rewriteName !== rewrite.name
 				? [{ _id: rewrite.id, name: rewriteName }]
 				: [];
 
@@ -439,10 +452,17 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 					ui.notifications?.warn(t("LITM.Ui.improve_choose_reset"));
 					return;
 				}
-				if (fd.resetAbandon)
-					updateData["system.quest.tracks.abandon.value"] = 0;
-				if (fd.resetMilestone)
-					updateData["system.quest.tracks.milestone.value"] = 0;
+				// Only a track with marks on it; an Improve spent clearing an
+				// empty track buys nothing.
+				const marked = resettableTracks(theme).filter((k) =>
+					k === "abandon" ? fd.resetAbandon : fd.resetMilestone,
+				);
+				if (!marked.length) {
+					ui.notifications?.warn(t("LITM.Ui.improve_reset_nothing"));
+					return;
+				}
+				for (const k of marked)
+					updateData[`system.quest.tracks.${k}.value`] = 0;
 				break;
 			}
 			case "promise": {
@@ -455,13 +475,17 @@ export class ThemeAdvancementApp extends foundry.applications.api.HandlebarsAppl
 				return;
 		}
 
-		for (const step of apply) await step();
-		if (renames.length)
-			await theme.updateEmbeddedDocuments("ActiveEffect", renames);
-		if (renamed && rewrite.kind === "title") updateData.name = rewriteName;
+		// Spend first, then grant: see #spendImprove.
 		await ThemeAdvancementApp.#spendImprove(theme, updateData, {
 			paysOwedTag,
 		});
+		for (const step of apply) await step();
+		if (renames.length)
+			await theme.updateEmbeddedDocuments("ActiveEffect", renames);
+		// A third power tag ends the nascent stage. The effect hook does this
+		// too; settling here keeps it from depending on the hook's timing.
+		await settleNascent(theme);
+		Hooks.callAll("litm.themeAdvanced", theme.actor, theme, updateData);
 		this.close();
 	}
 

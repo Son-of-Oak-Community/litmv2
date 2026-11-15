@@ -41,13 +41,15 @@ export async function markImprove(
 		});
 		if (marks === owed) return trackInfo;
 	}
+	const current = theme.system?.improve?.value ?? 0;
+	const next = Math.min(CONFIG.litmv2.improveThreshold, current + marks - owed);
+	// A full track has no box left to mark. Writing the same value again
+	// would post a second "Choose Improvement" card for the one waiting.
+	if (next === current) return null;
 	return completeTrackUpdate(
 		theme,
 		"system.improve.value",
-		Math.min(
-			CONFIG.litmv2.improveThreshold,
-			(theme.system?.improve?.value ?? 0) + marks - owed,
-		),
+		next,
 		owner,
 		notifyActor,
 	);

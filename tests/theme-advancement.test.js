@@ -75,7 +75,7 @@ afterEach(() => {
 
 describe("improveOptions", () => {
 	it("offers every improvement to a hero theme", () => {
-		const { theme } = setup();
+		const { theme } = setup({ tracks: { abandon: 1 } });
 		expect(improveOptions(theme, { hasSpecials: true })).toEqual([
 			"power",
 			"weakness",
@@ -86,11 +86,20 @@ describe("improveOptions", () => {
 	});
 
 	it("never offers Promise to the Fellowship theme", () => {
-		const { theme } = setup({ fellowship: true });
+		const { theme } = setup({ fellowship: true, tracks: { milestone: 1 } });
 		expect(improveOptions(theme, { hasSpecials: false })).toEqual([
 			"power",
 			"weakness",
 			"reset",
+		]);
+	});
+
+	it("offers no Reset while both tracks are empty", () => {
+		const { theme } = setup();
+		expect(improveOptions(theme, { hasSpecials: false })).toEqual([
+			"power",
+			"weakness",
+			"promise",
 		]);
 	});
 });
@@ -183,7 +192,9 @@ describe("choosing an improvement", () => {
 		expect(actor.update).not.toHaveBeenCalled();
 	});
 
-	it("rewrites the title tag by renaming the theme", async () => {
+	// p.193 rewrites a power or weakness tag; the title tag is the theme's
+	// name, and renaming the theme is Evolve's.
+	it("never rewrites the title tag", async () => {
 		const { actor, theme } = setup();
 		const title = theme.effects.find((e) => e.system.isTitleTag);
 		await confirm(theme, actor, {
@@ -191,9 +202,68 @@ describe("choosing an improvement", () => {
 			rewriteTag: title.id,
 			rewriteName: "Pathfinder",
 		});
-		expect(theme.updateEmbeddedDocuments).not.toHaveBeenCalled();
+		expect(ui.notifications.warn).toHaveBeenCalledWith(
+			"LITM.Ui.improve_rewrite_pick_tag",
+		);
+		expect(theme.update).not.toHaveBeenCalled();
+		expect(actor.update).not.toHaveBeenCalled();
+	});
+
+	it("does not offer the title tag to rewrite", async () => {
+		const { actor, theme } = setup();
+		const app = new ThemeAdvancementApp({
+			actorId: actor.id,
+			themeId: theme.id,
+		});
+		game.items = [];
+		try {
+			const context = await app._prepareContext({});
+			expect(context.rewritable.map((p) => p.name)).not.toContain("Title");
+			expect(context.rewritable.map((p) => p.name)).toContain("Swift");
+		} finally {
+			delete game.items;
+		}
+	});
+
+	// The Improve is spent before the improvement lands, so a write that
+	// fails part-way never leaves the improvement granted and the Improve
+	// still there to spend again.
+	it("spends the Improve before marking Promise", async () => {
+		const { actor, theme } = setup({ promise: 1 });
+		await confirm(theme, actor, { option: "promise" });
+		expect(theme.update).toHaveBeenCalledWith({ "system.improve.value": 0 });
+		expect(theme.update.mock.invocationCallOrder[0]).toBeLessThan(
+			actor.update.mock.invocationCallOrder[0],
+		);
+	});
+
+	it("spends the Improve before adding a power tag", async () => {
+		const { actor, theme } = setup();
+		await confirm(theme, actor, { option: "power", powerName: "Bold" });
+		expect(theme.update).toHaveBeenCalledWith({ "system.improve.value": 0 });
+		expect(theme.update.mock.invocationCallOrder[0]).toBeLessThan(
+			theme.createEmbeddedDocuments.mock.invocationCallOrder[0],
+		);
+	});
+
+	it("refuses to reset a track that has nothing to reset", async () => {
+		const { actor, theme } = setup({ tracks: { abandon: 0, milestone: 2 } });
+		await confirm(theme, actor, { option: "reset", resetAbandon: true });
+		expect(ui.notifications.warn).toHaveBeenCalledWith(
+			"LITM.Ui.improve_reset_nothing",
+		);
+		expect(theme.update).not.toHaveBeenCalled();
+	});
+
+	it("resets the tracks that have marks when both are ticked", async () => {
+		const { actor, theme } = setup({ tracks: { abandon: 0, milestone: 2 } });
+		await confirm(theme, actor, {
+			option: "reset",
+			resetAbandon: true,
+			resetMilestone: true,
+		});
 		expect(theme.update).toHaveBeenCalledWith({
-			name: "Pathfinder",
+			"system.quest.tracks.milestone.value": 0,
 			"system.improve.value": 0,
 		});
 	});
