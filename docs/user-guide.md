@@ -44,7 +44,9 @@ Clicking things in Play mode:
 
 Hovering any chip shows the gestures it supports.
 
-Themes, themebooks and tropes are added by dragging them onto the sheet. Marking
+Themes, themebooks and tropes are added by dragging them onto the sheet. A
+hero with no themes shows a book: click it to browse theme kits, and **Use**
+adds one, as dropping it would. Marking
 Improve is automatic when you invoke a weakness or relationship tag (unless the
 Narrator turned that off — then the chat card offers a **Mark Improve** button).
 A full Improve track opens theme advancement.
@@ -59,12 +61,17 @@ own sheet is where tags are added.
 
 ### Choosing a layout
 
-There are three hero sheets. Pick one in the sheet's **Configure Sheet** menu
-(the header's cog):
+There are three hero sheets:
 
 - **Hero Sheet** (the default): vertical, one column.
 - **Hero Sheet (Landscape)**: the same sheet, opened wide.
 - **Hero Sheet (Cards)**: every theme is a printed card, in a row.
+
+The easy way to get the cards is **Cards Look** in your own settings (see
+[Settings](#settings)). It applies to you only, and switches your hero and
+Fellowship sheets and your roll window together; open sheets change at once.
+A sheet picked for one hero in its **Configure Sheet** menu (the header's
+cog) keeps that choice whatever the look.
 
 ### Hero Sheet (Cards)
 
@@ -113,7 +120,15 @@ The roll window lists every tag you can invoke — your themes, backpack,
 relationships, the Fellowship, and the scene's story tags and statuses. Pick
 the ones that apply; Power is totalled live.
 
-**Roll types:** Quick, Detailed, Reaction, Sacrifice.
+**Moves:** Sacrifice, Quick (the default), Detailed, Reaction — the bar at
+the top of the roll window.
+
+**Sacrifice** is the roller's choice, even on a roll the Narrator called: pick
+it on the move bar, then the level (Painful, Scarring, Grave) and the theme
+that pays the price. A Sacrifice adds no Power from tags. The Narrator may add
+the Hero's **Secret Grace** to it; the player doesn't see that bonus until the
+roll card shows it as "Bonus". The Narrator notes a Hero's moments of grace
+with the dove button by the hero sheet's Roll button; each moment adds a tier.
 
 **After the roll**, the chat card lets you spend Power: give or reduce
 statuses, add or scratch tags, discover details. Story tags and statuses on the
@@ -134,6 +149,26 @@ player list shows it — **click it to join** and watch or contribute live.
   **one** tag in total.
 - **Hidden things still count.** If a concealed Challenge's tag affects your
   roll, you see "Something unseen" with its value — never silent math.
+
+### The Cards roll window
+
+With **Cards Look** on, your roll window shows your tags as theme cards:
+
+- **Plaques.** Each theme's card is headed by its main tag, which you invoke or
+  burn right on the plaque. Scratched tags stay on their card, struck through
+  and locked.
+- **Caption.** The move as icons (skull for Sacrifice), the Might with **−**
+  and **+**, and who called the roll. Click the Might to open the book's Might
+  table: pick the Heroes' Might and what they face (area, size, group), and it
+  adds them up. Only whoever sets the Might can pick in it.
+- **Chips.** The footer lists every chosen tag and what it adds. Only the
+  highest status of each kind counts, so a lower one is greyed.
+- **Sacrifice.** The level is chosen on the stripe under the caption, and each
+  theme you could pay with is a card with its tags, tracks and Quest. The
+  Narrator's Secret Grace takes the Might's place in the caption.
+
+The look is per player: the Narrator and the roller can each see the same
+roll in their own look. An open roll window keeps its look until it closes.
 
 ### When the Narrator controls the dice
 
@@ -190,7 +225,13 @@ Drag a chip onto an actor or the Tags window to apply it.
 One shared Fellowship actor per world, created automatically; every Hero is
 linked to it. It holds the fellowship theme and story themes. For the
 Narrator, its sheet also shows **The Heroes** — every Hero's Quests,
-weaknesses and statuses at a glance.
+weaknesses, statuses and live moments of Secret Grace at a glance.
+
+With **Cards Look** on, the Fellowship sheet is a board too: story tags and
+statuses, then the Fellowship theme and the story themes as a row of printed
+cards that flip to their notes. In Play mode the Story Tags & Statuses banner's
+icons add a story tag (tag icon) or a status (droplet) by name; for a status,
+`wounded-3` gives tier 3.
 
 Turn **Use Fellowship** off for solo play or tables without one.
 
@@ -254,6 +295,7 @@ Per player:
 
 | Setting | Default | |
 |---------|---------|---|
+| Cards Look | Classic | Cards: hero and Fellowship sheets and the roll window as printed cards. |
 | Themed Dice | on | Custom dice (needs Dice So Nice). |
 | Auto Pop-out Tags Sidebar | off | Open the Tags window on load. |
 | Token Tags: Statuses Only | off | Hide story/backpack tags on tokens. |
