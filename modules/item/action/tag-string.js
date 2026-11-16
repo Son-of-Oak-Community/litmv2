@@ -145,21 +145,91 @@ export function playerVisibleTagString(text, actor, { limits = [] } = {}) {
 	if (!text || globalThis.game?.user?.isGM) return text ?? "";
 	const hidden = hiddenTagKeys(actor, { limits });
 	if (!hidden.size) return text;
+	return tidyTagString(
+		rewriteTagString(text, (token, c) => (hidden.has(tagKey(c)) ? "" : token)),
+	);
+}
+
+/**
+ * Run every tag token in `text` through `replace`, which gets the token as
+ * typed and its classification and returns what to put in its place.
+ * @param {string} text
+ * @param {(token: string, c: ReturnType<typeof classifyTagStringMatch>) => string} replace
+ * @returns {string}
+ */
+function rewriteTagString(text, replace) {
 	const base = tagStringRe();
 	const flags = base.flags.includes("g") ? base.flags : `${base.flags}g`;
-	const re = new RegExp(base.source, flags);
-	return (
-		text
-			.replace(re, (...args) => {
-				const c = classifyTagStringMatch(args.slice(0, 5));
-				return hidden.has(tagKey(c)) ? "" : args[0];
-			})
-			// The same clean-up the sync mixin does when a tag is deleted.
-			.replace(/,\s*,/g, ",")
-			.replace(/^\s*,|,\s*$/g, "")
-			.replace(/ {2,}/g, " ")
-			.trim()
+	return text.replace(new RegExp(base.source, flags), (...args) =>
+		replace(args[0], classifyTagStringMatch(args.slice(0, 5))),
 	);
+}
+
+/** Close the gaps a removed token leaves: doubled separators and spaces. */
+function tidyTagString(text) {
+	return text
+		.replace(/,(?:\s*,)+/g, ",")
+		.replace(/^\s*,|,\s*$/g, "")
+		.replace(/ {2,}/g, " ")
+		.trim();
+}
+
+/**
+ * The text an effect is written into a tag string as when its name is one
+ * the markup cannot hold (a digit, say): not a token, so only its literal
+ * form finds it again.
+ */
+function literalTagRe(kind, name) {
+	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const suffix = kind === "status" ? "-\\d*" : "!?";
+	return new RegExp(`\\[${escaped}${suffix}\\]`, "gi");
+}
+
+/**
+ * Rewrite a status's tier in a tag string: the first `[name-N]` or `[name-]`
+ * with that name becomes `[name-tier]`, or `[name-]` when no tier is marked.
+ * A limit or a story tag of the same name is not a status and is left alone.
+ * @param {string} text
+ * @param {string} name  The status's name; matched case-insensitively
+ * @param {number} tier  The tier now marked, 0 for none
+ * @returns {string} The rewritten string, or `text` itself when the status
+ *   is not in it
+ */
+export function retierInTagString(text, name, tier) {
+	if (!text) return text ?? "";
+	const key = tagKey({ kind: "status", name });
+	let done = false;
+	return rewriteTagString(text, (token, c) => {
+		if (done || tagKey(c) !== key) return token;
+		done = true;
+		return `[${c.name}-${tier > 0 ? tier : ""}]`;
+	});
+}
+
+/**
+ * Remove a story tag or a status from a tag string, every copy of it, and
+ * tidy the separators it leaves. Other markup of the same name (a limit, a
+ * weakness, the other kind) is kept.
+ * @param {string} text
+ * @param {"story"|"status"} kind
+ * @param {string} name  Matched case-insensitively
+ * @returns {string} The rewritten string, or `text` itself when the tag is
+ *   not in it
+ */
+export function removeFromTagString(text, kind, name) {
+	if (!text) return text ?? "";
+	const key = tagKey({ kind, name });
+	let removed = false;
+	const rewritten = rewriteTagString(text, (token, c) => {
+		if (tagKey(c) !== key) return token;
+		removed = true;
+		return "";
+	});
+	if (removed) return tidyTagString(rewritten);
+	// Nothing the parser reads as that tag. A name the markup cannot hold
+	// was still appended as text when its effect was created.
+	const literal = literalTagRe(kind, name);
+	return literal.test(text) ? tidyTagString(text.replace(literal, "")) : text;
 }
 
 /**
