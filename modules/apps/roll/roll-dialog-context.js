@@ -5,6 +5,7 @@
  */
 
 import {
+	byThemeCardOrder,
 	effectToPlain,
 	isEffectVisible,
 	resolveTagActorId,
@@ -458,8 +459,8 @@ const GROUP_ORDER = {
 
 /**
  * A theme-group map's groups by category, themes in sheet order, each group's
- * tags as the sheet lists them: title tag first, then as stored
- * (`HeroData#themes`).
+ * tags as the sheet lists them: title tag, power tags, weaknesses
+ * (`byThemeCardOrder`, as `HeroData#themes`).
  */
 const groupsByCategory = (themeMap) =>
 	[...themeMap.values()]
@@ -469,10 +470,7 @@ const groupsByCategory = (themeMap) =>
 		)
 		.map((g) => ({
 			...g,
-			tags: g.tags.toSorted(
-				(a, b) =>
-					(b.system?.isTitleTag ? 1 : 0) - (a.system?.isTitleTag ? 1 : 0),
-			),
+			tags: g.tags.toSorted(byThemeCardOrder),
 		}));
 
 /**
