@@ -117,7 +117,7 @@ All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — sheets s
 ```
 HeroSheet roll → LitmRollDialog (tag selection)
   → calculatePower()
-  → new LitmRoll("2d6 + {power}", ...)  -- DoubleSix term maps d12 → 2d6 range
+  → new LitmRoll("2d6 + {power}", ...)  -- two plain d6; `DoubleSix` only reads rolls older versions stored
   → ChatMessage rendered, "litm.roll" hook fires (auto-scratch, gain improvements)
   → socket broadcast resets dialogs on all clients
 ```
