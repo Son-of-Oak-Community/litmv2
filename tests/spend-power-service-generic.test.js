@@ -382,6 +382,28 @@ describe("postSpendChat: the card each option posts", () => {
 		expect(posted).toEqual([]);
 	});
 
+	it("posts nothing for an Inflict that could not be written", async () => {
+		const foe = fakeTarget({ isOwner: false });
+		const actor = hero();
+		wireActors(actor, foe);
+
+		const posted = await cards(actor, inflictIntent({ targetActorId: "c1" }));
+
+		expect(posted).toEqual([]);
+	});
+
+	it("posts nothing for a Reduce where no status could be written", async () => {
+		const actor = hero();
+		wireActors(actor);
+
+		const posted = await cards(
+			actor,
+			reduceIntent([{ effectId: "gone", name: "ghost", tiers: 1 }]),
+		);
+
+		expect(posted).toEqual([]);
+	});
+
 	it("still posts an Inflict that landed, naming its target", async () => {
 		const foe = fakeTarget({ isOwner: true });
 		const actor = hero();

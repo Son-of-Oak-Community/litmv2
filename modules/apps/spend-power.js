@@ -1060,6 +1060,9 @@ export async function postSpendChat(actor, intent, results) {
 		switch (result.kind) {
 			case "statusPicker": {
 				const opt = intent.options.find((o) => o.optionId === result.optionId);
+				// Every reduction may have been skipped (status gone, no GM to
+				// write it): nothing applied, so no card, as for the pickers below.
+				if (!result.bodyLines.length) break;
 				await foundry.documents.ChatMessage.create({
 					content: await chatCard({
 						actor,
@@ -1118,6 +1121,9 @@ export async function postSpendChat(actor, intent, results) {
 			}
 			default: {
 				const opt = intent.options.find((o) => o.optionId === result.optionId);
+				// An Inflict whose target could not be written (gone, or no GM to
+				// relay to) bills nothing and says nothing: no "0 Power" card.
+				if (!result.body && !result.power) break;
 				await foundry.documents.ChatMessage.create({
 					content: await chatCard({
 						actor,
