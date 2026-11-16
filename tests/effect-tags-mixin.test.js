@@ -62,20 +62,6 @@ describe("EffectTagsMixin.storyTags / statusEffects", () => {
 });
 
 describe("EffectTagsMixin.addStatus", () => {
-	it("creates a status_tag effect via the parent actor", async () => {
-		const actor = fakeActor();
-		const model = buildModel(actor);
-
-		await model.addStatus("Tired");
-
-		expect(actor.createEmbeddedDocuments).toHaveBeenCalledWith(
-			"ActiveEffect",
-			expect.arrayContaining([
-				expect.objectContaining({ type: "status_tag", name: "Tired" }),
-			]),
-		);
-	});
-
 	it("forwards tiers and img options into the effect data", async () => {
 		const actor = fakeActor();
 		const model = buildModel(actor);
@@ -88,13 +74,15 @@ describe("EffectTagsMixin.addStatus", () => {
 		expect(data.img).toBe("icons/svg/x.svg");
 	});
 
-	it("omits img and uses the factory's default tiers when no options are passed", async () => {
+	it("creates a status_tag on the parent actor, with no img and the factory's default tiers", async () => {
 		const actor = fakeActor();
 		const model = buildModel(actor);
 
 		await model.addStatus("Tired");
 
-		const [, [data]] = actor.createEmbeddedDocuments.mock.calls[0];
+		const [docType, [data]] = actor.createEmbeddedDocuments.mock.calls[0];
+		expect(docType).toBe("ActiveEffect");
+		expect(data).toMatchObject({ type: "status_tag", name: "Tired" });
 		// img absent -> Foundry uses field initial; we don't synthesise undefined
 		expect("img" in data).toBe(false);
 		// Default tiers come from statusTagEffect factory: 6-element all-false

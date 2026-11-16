@@ -13,23 +13,13 @@ import { HeroData } from "./modules/actor/hero/hero-data.js";
 import { JourneyData } from "./modules/actor/journey/journey-data.js";
 import { LitmActor } from "./modules/actor/litm-actor.js";
 import { StoryThemeActorData } from "./modules/actor/story-theme/story-theme-actor-data.js";
-import { ApplyActionMenuApp } from "./modules/apps/apply-action-menu.js";
 import { LitmCampingScene } from "./modules/apps/camping/camping-scene.js";
 import { DoubleSix } from "./modules/apps/dice.js";
-import { CallForRollApp } from "./modules/apps/roll/call-for-roll.js";
 import { LitmRoll } from "./modules/apps/roll/roll.js";
-import { LitmRollDialog } from "./modules/apps/roll/roll-dialog.js";
-import { SecretGraceApp } from "./modules/apps/secret-grace-app.js";
-import { SpendPowerApp } from "./modules/apps/spend-power.js";
 import { StoryTagSidebar } from "./modules/apps/story-tags/story-tag-sidebar.js";
 import { StoryTagsStore } from "./modules/apps/story-tags/story-tags-store.js";
-import { ThemeAdvancementApp } from "./modules/apps/theme-advancement.js";
-import { ThemeBrowser } from "./modules/apps/theme-browser.js";
-import { ThemeEvolutionWizard } from "./modules/apps/theme-evolution.js";
-import { WelcomeOverlay } from "./modules/apps/welcome/welcome-overlay.js";
 import { SuperCheckbox } from "./modules/components/super-checkbox.js";
 import { LitmTokenHUD } from "./modules/hud/litm-token-hud.js";
-import { showSacrificeBanner } from "./modules/hud/sacrifice-banner.js";
 import { ActionData } from "./modules/item/action/action-data.js";
 import { AddonData } from "./modules/item/addon/addon-data.js";
 import { BackpackData } from "./modules/item/backpack/backpack-data.js";
@@ -51,6 +41,7 @@ import {
 import { LitmHooks } from "./modules/system/hooks/index.js";
 import { KeyBindings } from "./modules/system/keybindings.js";
 import { migrateWorld } from "./modules/system/migrations.js";
+import { buildPublicApi } from "./modules/system/public-api.js";
 import { LitmSettings } from "./modules/system/settings.js";
 import { LitmSheets } from "./modules/system/sheets.js";
 import { Sockets } from "./modules/system/sockets.js";
@@ -61,71 +52,8 @@ SuperCheckbox.Register();
 // Init Hook
 Hooks.once("init", () => {
 	info("Initializing Legend in the Mist...");
-	/**
-	 * The litmv2 system's public surface, exposed for module authors and
-	 * world-level macros. The system aims to be extensible/malleable —
-	 * macros and modules may replace these classes (or subclass them) to
-	 * change behaviour. See the "Extensibility" section in CLAUDE.md.
-	 *
-	 * - `data.*` — ActiveEffect data model classes
-	 * - `methods.calculatePower` — kept for backward compat; prefer
-	 *   `LitmRoll.calculatePower` directly
-	 * - `fellowship` — the singleton fellowship actor (or null when disabled)
-	 * - `LitmRoll`, `LitmRollDialog` — replaceable roll classes; combine with
-	 *   `CONFIG.litmv2.roll.{formula,resolver}` for third-party roll customisation
-	 * - `CallForRollApp` — the Narrator's Call: `CallForRollApp.open()` picks who
-	 *   is rolling, then the shared `LitmRollDialog` opens on both screens.
-	 *   `litm.narratorCall` fires (cancellable) before the call goes out
-	 * - `StoryTagApp`, `SpendPowerApp`, `ApplyActionMenuApp`,
-	 *   `ThemeAdvancementApp`, `ThemeEvolutionWizard`, `WelcomeOverlay` —
-	 *   replaceable app classes
-	 * - `SecretGraceApp` — the Narrator's window on a Hero's Secret Grace
-	 *   (Vol. II p.78): `SecretGraceApp.open(actor)`
-	 * - `ContentSources` — compendium loading and status seeding entry point
-	 * - `storyTags` — set at ready time to the sidebar tab instance
-	 * - `rollDialogHud` — mutable reference to the active roll-dialog HUD
-	 * - `callForRollHud` — mutable reference to the Narrator's main-screen
-	 *   call-for-roll control, which shares the players-panel region with it
-	 * - `campingHud` — mutable reference to the "rejoin camp" entry in the
-	 *   same region
-	 * - `showSacrificeBanner` — flash the sacrifice rite on peer clients;
-	 *   reassign to replace the default visual treatment
-	 */
-	game.litmv2 = {
-		data: {
-			PowerTagData,
-			WeaknessTagData,
-			FellowshipTagData,
-			RelationshipTagData,
-			StoryTagData,
-			StatusTagData,
-		},
-		methods: {
-			calculatePower: LitmRoll.calculatePower,
-		},
-		get fellowship() {
-			if (!LitmSettings.useFellowship) return null;
-			const id = LitmSettings.fellowshipId;
-			return id ? (game.actors?.get(id) ?? null) : null;
-		},
-		LitmRollDialog,
-		SecretGraceApp,
-		LitmRoll,
-		CallForRollApp,
-		WelcomeOverlay,
-		StoryTagApp: StoryTagSidebar,
-		SpendPowerApp,
-		ApplyActionMenuApp,
-		ThemeAdvancementApp,
-		ThemeEvolutionWizard,
-		ThemeBrowser,
-		LitmCampingScene,
-		ContentSources,
-		rollDialogHud: null,
-		callForRollHud: null,
-		campingHud: null,
-		showSacrificeBanner,
-	};
+	// The public surface for modules and macros: see buildPublicApi.
+	game.litmv2 = buildPublicApi();
 
 	info("Initializing Config...");
 	CONFIG.Actor.dataModels.hero = HeroData;
