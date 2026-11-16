@@ -68,6 +68,49 @@ describe("LitmRoll.calculatePower", () => {
 	});
 });
 
+describe("LitmRoll.calculatePower: loose input", () => {
+	// A moderation card's flags and a form field both hand numbers as strings.
+	it("reads a modifier and a Might given as strings as numbers", () => {
+		const { totalPower, modifier, mightOffset } = LitmRoll.calculatePower({
+			...baseTags,
+			powerTags: [{}],
+			modifier: "2",
+			might: "-3",
+		});
+		expect(modifier).toBe(2);
+		expect(mightOffset).toBe(-3);
+		expect(totalPower).toBe(0);
+	});
+
+	it("counts nonsense as nothing", () => {
+		expect(
+			LitmRoll.calculatePower({ ...baseTags, modifier: "x", might: undefined })
+				.totalPower,
+		).toBe(0);
+	});
+
+	it("needs no burn list at all", () => {
+		const { scratchedTags: _none, ...rest } = baseTags;
+		expect(LitmRoll.calculatePower(rest)).toMatchObject({
+			scratchedValue: 0,
+			scratchedTags: [],
+			totalPower: 0,
+		});
+	});
+
+	// A tag off a stored roll has no data model, only the tier it had.
+	it("reads a status's tier from its stored value when it has no model", () => {
+		const { positiveStatusValue, negativeStatusValue } =
+			LitmRoll.calculatePower({
+				...baseTags,
+				positiveStatuses: [{ value: "3" }, { value: 2 }],
+				negativeStatuses: [{ value: "x" }, { system: { currentTier: 0 } }],
+			});
+		expect(positiveStatusValue).toBe(3);
+		expect(negativeStatusValue).toBe(0);
+	});
+});
+
 describe("LitmRoll.powerBySource", () => {
 	const tag = (src, state, extra = {}) => ({ src, state, ...extra });
 	const st = (src, state, tier) =>

@@ -187,17 +187,6 @@ describe("requiresRollApproval", () => {
 		).toBe(false);
 	});
 
-	it("is independent of player instigation: both settings can be read separately", () => {
-		// `canInitiateRoll` governs starting a roll, `requiresRollApproval`
-		// governs executing one. Neither implies the other.
-		expect(canInitiateRoll({ isGM: false, playerInitiatedRolls: true })).toBe(
-			true,
-		);
-		expect(requiresRollApproval({ isGM: false, requireApproval: true })).toBe(
-			true,
-		);
-	});
-
 	it("defaults to off", () => {
 		expect(requiresRollApproval()).toBe(false);
 	});

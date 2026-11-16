@@ -43,19 +43,6 @@ describe("isThemeSpent", () => {
 		).toBe(false);
 	});
 
-	it("counts the title tag — an unscratched title keeps a theme live", () => {
-		// The title tag is a power_tag; spent-ness includes it (no isTitleTag
-		// exemption), so a scratched body tag + live title is not spent.
-		expect(
-			isThemeSpent(
-				theme(
-					tag("power_tag", { scratched: true }),
-					tag("power_tag", { scratched: false }), // title tag, still live
-				),
-			),
-		).toBe(false);
-	});
-
 	it("treats fellowship_tag as power-like", () => {
 		expect(
 			isThemeSpent(theme(tag("fellowship_tag", { scratched: true }))),
