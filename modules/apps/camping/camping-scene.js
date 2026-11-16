@@ -6,7 +6,6 @@ import { campSceneLabel } from "../../hud/camping-hud.js";
 import { error, warn } from "../../logger.js";
 import { ACTOR_TYPES } from "../../system/config.js";
 import { ContentSources } from "../../system/content-sources.js";
-import { LitmSettings } from "../../system/settings.js";
 import { Sockets } from "../../system/sockets.js";
 import {
 	enrichPlainText,
@@ -678,11 +677,7 @@ export class LitmCampingScene extends foundry.applications.api.HandlebarsApplica
 			const fellowshipActor = heroes
 				.map((h) => h.system?.fellowshipActor)
 				.find(Boolean);
-			// As the camp view does: with the Threats section off, a threat
-			// picked before the table turned it off stays out of the recap.
-			const threatItems = LitmSettings.showCampingThreats
-				? buildThreatsContext(state)
-				: [];
+			const threatItems = buildThreatsContext(state);
 
 			const { operations, recap } = buildOperations(state, {
 				heroes,

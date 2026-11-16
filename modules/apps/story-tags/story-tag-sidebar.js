@@ -367,26 +367,6 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		return this.#broadcastRender();
 	}
 
-	/**
-	 * Track one more actor. Its column starts from its tokens' state, the way
-	 * a dropped actor's does, so adding it never shows a hidden token's actor.
-	 * @param {Actor} actor
-	 */
-	async trackActor(actor) {
-		const config = this.config;
-		if (config.actors.includes(actor.uuid)) return;
-		const hiddenActors = config.hiddenActors ?? [];
-		await LitmSettings.setStoryTags({
-			...config,
-			actors: [...config.actors, actor.uuid],
-			hiddenActors:
-				startsHidden(actor) && !hiddenActors.includes(actor.uuid)
-					? [...hiddenActors, actor.uuid]
-					: hiddenActors,
-		});
-		return this.#broadcastRender();
-	}
-
 	async setLimits(limits) {
 		await LitmSettings.setStoryTags({ ...this.config, limits });
 		return this.#broadcastRender();
