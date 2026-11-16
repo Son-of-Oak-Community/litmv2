@@ -113,22 +113,31 @@ export async function pickTargetActor({
 
 /**
  * Pick a limit on any visible actor (challenges, heroes, fellowship, journey).
+ * A player is offered what the story-tag sidebar shows them: no actor whose
+ * column the Narrator hid, and of an actor's limits only the revealed ones,
+ * unless the limits are their own (a Hero's, the Fellowship's).
  * @returns {Promise<{actor: Actor, limitId: string, limit: object, source: "system"|"flag"}|null>}
  */
 export async function pickLimit() {
-	const actors = game.actors.contents.filter((a) =>
-		a.testUserPermission(game.user, "OBSERVER"),
+	const concealed = StoryTagsStore.concealedActorIds;
+	const actors = game.actors.contents.filter(
+		(a) => a.testUserPermission(game.user, "OBSERVER") && !concealed.has(a.id),
 	);
 	const candidates = [];
 
 	for (const actor of actors) {
 		if (typeof actor.system?.limits === "undefined") continue;
-		const limits = actor.system.limits ?? [];
-		if (!limits.length) continue;
-
 		// For challenge actors, derive source from whether the id exists in the
 		// canonical (non-addon) schema field. Other actor types are always "flag".
 		const isChallenge = actor.type === "challenge";
+		// Same rule as the sidebar: a limit saved before `hidden` existed counts
+		// as hidden, and so does an addon's, which carries no flag.
+		const seesAll = game.user.isGM || (!isChallenge && actor.isOwner);
+		const limits = (actor.system.limits ?? []).filter(
+			(l) => seesAll || l.hidden === false,
+		);
+		if (!limits.length) continue;
+
 		const ownIds = isChallenge
 			? new Set((actor.system._source?.limits ?? []).map((l) => l.id))
 			: null;

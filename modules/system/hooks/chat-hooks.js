@@ -340,7 +340,8 @@ async function _handleCallRequestedRoll(_target, app) {
 	await answerRollRequest(app);
 }
 
-const CLICK_HANDLERS = {
+/** The chat card buttons, by their `data-click`. Exported for tests. */
+export const CLICK_HANDLERS = {
 	"spend-power": _handleSpendPower,
 	"push-roll": _handlePushRoll,
 	"mark-improve": _handleMarkImprove,

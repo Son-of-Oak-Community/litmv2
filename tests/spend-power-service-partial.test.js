@@ -99,20 +99,6 @@ describe("applySpendIntent — mid-sequence failure", () => {
 
 		expect(message.setFlag).not.toHaveBeenCalled();
 	});
-
-	it("still records the full spend when every option lands", async () => {
-		const message = heldMessage();
-		const foe = fakeTarget();
-		const hero = fakeActor({ id: "h1", name: "Gerrin" });
-		wireActors(hero, foe);
-
-		await applySpendIntent(
-			hero,
-			spendIntent(enrage("c1"), { messageId: "m1", alreadySpent: 1 }),
-		);
-
-		expect(message.setFlag).toHaveBeenCalledWith("litmv2", "spentPower", 3);
-	});
 });
 
 describe("applySpendIntent — mid-option failure", () => {

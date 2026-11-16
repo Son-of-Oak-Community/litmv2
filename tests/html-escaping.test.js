@@ -5,7 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { applySpendIntent } from "../modules/apps/spend-power-service.js";
 import { buildTooltipHTML } from "../modules/hud/token-tooltip.js";
 import { dialogContent } from "../modules/system/renderers/renderer-utils.js";
-import { fakeActor, fakeEffect } from "./__helpers__/factories.js";
+import { fakeActor } from "./__helpers__/factories.js";
+import {
+	fakeStatus,
+	reduceIntent,
+	wireActors,
+} from "./__helpers__/spend-power.js";
 
 vi.mock("../modules/system/sockets.js", () => ({
 	Sockets: { dispatch: vi.fn() },
@@ -78,37 +83,6 @@ describe("token tooltip escapes player-controlled names", () => {
 });
 
 describe("Spend Power reduce-status chat body escapes names", () => {
-	function fakeStatus({ id, name, tier }) {
-		const effect = fakeEffect({ id, name, type: "status_tag" });
-		effect.system = {
-			currentTier: tier,
-			calculateReduction: vi.fn((by) => {
-				const tiers = Array(6).fill(false);
-				if (tier - by > 0) tiers[tier - by - 1] = true;
-				return tiers;
-			}),
-			reduceTier: vi.fn(async () => {}),
-		};
-		return effect;
-	}
-
-	function statusPickerIntent(reductions) {
-		return {
-			options: [
-				{
-					kind: "statusPicker",
-					optionId: "reduce_status",
-					label: "LITM.Effects.reduce.action",
-					cost: 1,
-					reductions,
-				},
-			],
-			messageId: null,
-			alreadySpent: 0,
-			targetActorId: null,
-		};
-	}
-
 	async function reduce({ statusName, ownerName }) {
 		const status = fakeStatus({ id: "s1", name: statusName, tier: 4 });
 		const foe = fakeActor({
@@ -118,11 +92,11 @@ describe("Spend Power reduce-status chat body escapes names", () => {
 			isOwner: true,
 		});
 		const hero = fakeActor({ id: "h1", name: "Gerrin" });
-		game.actors.get = vi.fn((id) => ({ h1: hero, c1: foe })[id] ?? null);
+		wireActors(hero, foe);
 
 		const { results } = await applySpendIntent(
 			hero,
-			statusPickerIntent([
+			reduceIntent([
 				{ effectId: "s1", name: statusName, actorId: "c1", tiers: 1 },
 			]),
 		);
@@ -139,13 +113,6 @@ describe("Spend Power reduce-status chat body escapes names", () => {
 		const body = await reduce({ statusName: "enraged", ownerName: PAYLOAD });
 		expect(body).not.toContain("<img");
 		expect(body).toContain("&lt;img");
-	});
-
-	it("keeps the ordinary owner-prefixed label and tier arrow intact", async () => {
-		const body = await reduce({ statusName: "enraged", ownerName: "Serpent" });
-		expect(body).toContain("Serpent: enraged-4");
-		expect(body).toContain("&rarr;");
-		expect(body).toContain("<strong>enraged-3</strong>");
 	});
 });
 

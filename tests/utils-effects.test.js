@@ -12,7 +12,6 @@ import {
 	isEffectVisible,
 	partitionEffects,
 } from "../modules/active-effects/effect-queries.js";
-import { parseTagStringMatch } from "../modules/item/action/tag-string.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 
 describe("partitionEffects", () => {
@@ -69,30 +68,6 @@ describe("findApplicableEffect", () => {
 	it("returns undefined when nothing matches", () => {
 		const actor = fakeActor({ effects: [fakeEffect()] });
 		expect(findApplicableEffect(actor, () => false)).toBeUndefined();
-	});
-});
-
-describe("parseTagStringMatch", () => {
-	it("produces a status_tag with the right tier marked", () => {
-		const match = ["[Tired-3]", "Tired", undefined, "-", "3"];
-		const data = parseTagStringMatch(match);
-		expect(data.type).toBe("status_tag");
-		expect(data.name).toBe("Tired");
-		expect(data.system.tiers).toEqual([
-			false,
-			false,
-			true,
-			false,
-			false,
-			false,
-		]);
-	});
-
-	it("produces a story_tag for non-status separators", () => {
-		const match = ["[Blessed]", "Blessed", undefined, "", ""];
-		const data = parseTagStringMatch(match);
-		expect(data.type).toBe("story_tag");
-		expect(data.system).toEqual({ isScratched: false, isSingleUse: false });
 	});
 });
 

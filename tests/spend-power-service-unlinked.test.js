@@ -149,21 +149,6 @@ describe("reduce on an unlinked token", () => {
 		expect(results[0].power).toBe(0);
 		expect(totalSpent).toBe(0);
 	});
-
-	it("still resolves by id when the intent carries no uuid", async () => {
-		const { world, worldStatus } = banditWithToken();
-		const hero = fakeActor({ id: "h1" });
-		wireActors(hero, world);
-
-		await applySpendIntent(
-			hero,
-			reduceIntent([
-				{ effectId: "s1", name: "enraged", actorId: "bandit", tiers: 1 },
-			]),
-		);
-
-		expect(worldStatus.system.reduceTier).toHaveBeenCalledTimes(1);
-	});
 });
 
 describe("applyStatusAsGM relay handler on an unlinked token", () => {

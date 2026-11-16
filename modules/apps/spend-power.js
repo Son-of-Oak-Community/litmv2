@@ -756,69 +756,21 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 	}
 
 	#updatePower(form) {
-		let spent = 0;
-		let anyChecked = false;
-
-		form.querySelectorAll(".litm-spend-power__option").forEach((li) => {
-			const checkbox = li.querySelector("[data-option-check]");
-			if (!checkbox.checked) return;
-			anyChecked = true;
-
-			const cost = Number(li.dataset.cost);
-			spent += this.#calculateOptionCost(li, cost);
-		});
+		const { remaining, overBudget, canSubmit } = spendBudget(form, this.power);
 
 		const remainingEl = form.querySelector(
 			".litm-spend-power__power-remaining",
 		);
-		const remaining = this.power - spent;
 		if (remainingEl) remainingEl.textContent = remaining;
 
-		// Highlight if over budget and disable submit. Selection, not cost,
-		// gates the button — a free narrative success is still worth applying.
-		const overBudget = remaining < 0;
+		// Highlight if over budget and disable submit.
 		remainingEl?.classList.toggle("is-over-budget", overBudget);
 		const submitBtn = form.querySelector("[type='submit']");
-		if (submitBtn) submitBtn.disabled = overBudget || !anyChecked;
+		if (submitBtn) submitBtn.disabled = !canSubmit;
 	}
 
-	/**
-	 * Calculate the power cost for a single checked option.
-	 * @param {HTMLElement} li   The option list item
-	 * @param {number} cost      Base cost per unit
-	 * @returns {number}
-	 */
 	#calculateOptionCost(li, cost) {
-		// Action-success rows: cost = static base (data-fixed-cost, the part
-		// that is neither a counter nor a chip) + selected tag chips + var-tier
-		// counter values. Plain rows (no counters, no chips) are just their
-		// full fixed cost.
-		if (li.dataset.source === "action") {
-			const hasVar = li.dataset.variableTier === "true";
-			const hasTags = li.dataset.selectableTags === "true";
-			if (!hasVar && !hasTags) return cost;
-
-			let total = Number(li.dataset.fixedCost ?? 0);
-			li.querySelectorAll(".litm-spend-power__tag-chip.is-selected").forEach(
-				(chip) => {
-					total += Number(chip.dataset.tagCost ?? 0);
-				},
-			);
-			li.querySelectorAll(".litm-spend-power__var-tier").forEach((row) => {
-				const raw = Number(
-					row.querySelector(".litm-spend-power__counter-value")?.textContent ??
-						0,
-				);
-				const val = Number.isFinite(raw) ? raw : 0;
-				total += Math.max(0, val);
-			});
-			return total;
-		}
-
-		const { type, hasTier } = getOptionType(li);
-		const entriesSection = li.querySelector(".litm-spend-power__entries");
-		const calculator = COST_CALCULATORS[type] ?? defaultCostCalculator;
-		return calculator(li, cost, entriesSection, hasTier);
+		return optionCost(li, cost);
 	}
 
 	static async #onSubmit(_event, form, _formData) {
@@ -827,6 +779,70 @@ export class SpendPowerApp extends foundry.applications.api.HandlebarsApplicatio
 		const { results } = await applySpendIntent(actor, intent);
 		await postSpendChat(actor, intent, results);
 	}
+}
+
+/**
+ * Where the checked options leave the roll's Power. Selection, not cost,
+ * gates the Spend button — a free narrative success is still worth applying —
+ * and a spend past the budget is refused.
+ * @param {HTMLElement} form  The Spend Power form
+ * @param {number} power      Power still unspent on the roll
+ * @returns {{ spent: number, remaining: number, overBudget: boolean, canSubmit: boolean }}
+ */
+export function spendBudget(form, power) {
+	let spent = 0;
+	let anyChecked = false;
+
+	form.querySelectorAll(".litm-spend-power__option").forEach((li) => {
+		const checkbox = li.querySelector("[data-option-check]");
+		if (!checkbox.checked) return;
+		anyChecked = true;
+
+		const cost = Number(li.dataset.cost);
+		spent += optionCost(li, cost);
+	});
+
+	const remaining = power - spent;
+	const overBudget = remaining < 0;
+	return { spent, remaining, overBudget, canSubmit: anyChecked && !overBudget };
+}
+
+/**
+ * Calculate the power cost for a single checked option.
+ * @param {HTMLElement} li   The option list item
+ * @param {number} cost      Base cost per unit
+ * @returns {number}
+ */
+export function optionCost(li, cost) {
+	// Action-success rows: cost = static base (data-fixed-cost, the part
+	// that is neither a counter nor a chip) + selected tag chips + var-tier
+	// counter values. Plain rows (no counters, no chips) are just their
+	// full fixed cost.
+	if (li.dataset.source === "action") {
+		const hasVar = li.dataset.variableTier === "true";
+		const hasTags = li.dataset.selectableTags === "true";
+		if (!hasVar && !hasTags) return cost;
+
+		let total = Number(li.dataset.fixedCost ?? 0);
+		li.querySelectorAll(".litm-spend-power__tag-chip.is-selected").forEach(
+			(chip) => {
+				total += Number(chip.dataset.tagCost ?? 0);
+			},
+		);
+		li.querySelectorAll(".litm-spend-power__var-tier").forEach((row) => {
+			const raw = Number(
+				row.querySelector(".litm-spend-power__counter-value")?.textContent ?? 0,
+			);
+			const val = Number.isFinite(raw) ? raw : 0;
+			total += Math.max(0, val);
+		});
+		return total;
+	}
+
+	const { type, hasTier } = getOptionType(li);
+	const entriesSection = li.querySelector(".litm-spend-power__entries");
+	const calculator = COST_CALCULATORS[type] ?? defaultCostCalculator;
+	return calculator(li, cost, entriesSection, hasTier);
 }
 
 function chatCard({ actor, action, body, power }) {
@@ -1034,7 +1050,7 @@ export function parseSpendIntent(form, dialog) {
  * @param {object}   intent   The parsed intent (for option labels)
  * @param {object[]} results  The results returned by applySpendIntent
  */
-async function postSpendChat(actor, intent, results) {
+export async function postSpendChat(actor, intent, results) {
 	const speaker = foundry.documents.ChatMessage.getSpeaker({ actor });
 
 	for (const result of results) {
@@ -1044,6 +1060,9 @@ async function postSpendChat(actor, intent, results) {
 		switch (result.kind) {
 			case "statusPicker": {
 				const opt = intent.options.find((o) => o.optionId === result.optionId);
+				// Every reduction may have been skipped (status gone, no GM to
+				// write it): nothing applied, so no card, as for the pickers below.
+				if (!result.bodyLines.length) break;
 				await foundry.documents.ChatMessage.create({
 					content: await chatCard({
 						actor,
@@ -1102,6 +1121,9 @@ async function postSpendChat(actor, intent, results) {
 			}
 			default: {
 				const opt = intent.options.find((o) => o.optionId === result.optionId);
+				// An Inflict whose target could not be written (gone, or no GM to
+				// relay to) bills nothing and says nothing: no "0 Power" card.
+				if (!result.body && !result.power) break;
 				await foundry.documents.ChatMessage.create({
 					content: await chatCard({
 						actor,
