@@ -82,7 +82,9 @@ export function mightName(might) {
 	const size = Math.abs(might);
 	if (size < 3) return "";
 	const extreme = size >= 6 ? "extremely_" : "";
-	return t(`LITM.Ui.might_${extreme}${might > 0 ? "favored" : "imperiled"}_short`);
+	return t(
+		`LITM.Ui.might_${extreme}${might > 0 ? "favored" : "imperiled"}_short`,
+	);
 }
 
 /**

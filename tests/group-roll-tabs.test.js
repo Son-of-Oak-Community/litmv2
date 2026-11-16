@@ -44,6 +44,9 @@ const actor = (id, type, effects, { system = {} } = {}) => {
 		isOwner: false,
 		prototypeToken: { texture: { src: "" } },
 		appliedEffects: effects,
+		*allApplicableEffects() {
+			yield* this.appliedEffects;
+		},
 		system: { storyTags: [], statusEffects: [], ...system },
 		testUserPermission: (_user, level) =>
 			level === "OWNER" && (viewer.isGM || viewer.owns.has(id)),

@@ -64,6 +64,9 @@ beforeEach(() => {
 		name: "Fellowship",
 		type: "fellowship",
 		appliedEffects: [],
+		*allApplicableEffects() {
+			yield* this.appliedEffects;
+		},
 		items: [],
 		system: {},
 		testUserPermission: () => true,
@@ -82,6 +85,9 @@ beforeEach(() => {
 		isOwner: false,
 		prototypeToken: { texture: { src: "" } },
 		appliedEffects: [],
+		*allApplicableEffects() {
+			yield* this.appliedEffects;
+		},
 		system: {
 			maskedName: "Something in the dark",
 			storyTags: [],
@@ -144,6 +150,9 @@ describe.each(SHAPES)("masked rows in %s", (_label, shape) => {
 			img: "hero.webp",
 			items: [],
 			appliedEffects: [],
+			*allApplicableEffects() {
+				yield* this.appliedEffects;
+			},
 			system: {
 				statusEffects: [],
 				storyTags: [],
