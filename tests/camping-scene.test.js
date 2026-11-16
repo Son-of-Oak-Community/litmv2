@@ -965,3 +965,290 @@ describe("camp lifecycle with a second GM", () => {
 		});
 	});
 });
+
+// Every tag a camp puts in the story-tag pack carries the session's campId:
+// the campsite tags Begin Camp creates, and anything added through the sidebar
+// while the camp is active. Pack Up deletes by that stamp and nothing else, so
+// the table's own scene tags and another scene's camp survive it.
+describe("the campId stamp", () => {
+	const hook = (name) => {
+		LitmCampingScene.registerSocketHooks();
+		return Hooks.on.mock.calls.find(([n]) => n === name)[1];
+	};
+
+	/** A pack effect, stamped with `campId` when one is given. */
+	const packEffect = (id, campId) => ({
+		id,
+		getFlag: (scope, key) =>
+			scope === "litmv2" && key === "campId" ? campId : undefined,
+	});
+
+	function activeSession(overrides = {}) {
+		const state = defaultCampingState();
+		state.phase = "active";
+		state.campId = "camp-1";
+		return Object.assign(state, overrides);
+	}
+
+	describe("Begin Camp", () => {
+		beforeEach(() => {
+			ContentSources.createStoryTags.mockImplementation(async (data) =>
+				data.map((_, i) => ({ id: `new-${i}` })),
+			);
+		});
+
+		it("stamps every campsite tag it creates with the session's new campId", async () => {
+			const state = defaultCampingState();
+			state.placeOfStay.campsiteTags = "[Warm fire] [rainy-2] [dry wood!]";
+			const scene = fakeScene({ camping: state });
+			canvas.scene = scene;
+
+			await actions["begin-camp"]();
+
+			const { campId } = sessionOf(scene);
+			expect(campId).toBeTruthy();
+			const [created] = ContentSources.createStoryTags.mock.calls[0];
+			expect(created.map((e) => [e.type, e.name])).toEqual([
+				["story_tag", "Warm fire"],
+				["status_tag", "rainy"],
+				["story_tag", "dry wood"],
+			]);
+			for (const effect of created) {
+				expect(effect.flags).toEqual({ litmv2: { campId } });
+			}
+			expect(created[1].system.tiers.indexOf(true)).toBe(1);
+			expect(created[2].system.isSingleUse).toBe(true);
+			expect(created[0].system.isSingleUse).toBe(false);
+		});
+
+		it("keeps a campId the session already carries", async () => {
+			const state = defaultCampingState();
+			state.campId = "camp-7";
+			state.placeOfStay.campsiteTags = "[Warm fire]";
+			const scene = fakeScene({ camping: state });
+			canvas.scene = scene;
+
+			await actions["begin-camp"]();
+
+			expect(sessionOf(scene).campId).toBe("camp-7");
+			const [created] = ContentSources.createStoryTags.mock.calls[0];
+			expect(created[0].flags.litmv2.campId).toBe("camp-7");
+		});
+	});
+
+	describe("a tag added to the story-tag pack during the camp", () => {
+		const added = (over = {}) => ({
+			pack: "world.litmv2-story-tags",
+			getFlag: () => undefined,
+			updateSource: vi.fn(),
+			...over,
+		});
+
+		it("is stamped on the Narrator's client", () => {
+			canvas.scene = fakeScene({ camping: activeSession() });
+			const effect = added();
+
+			hook("preCreateActiveEffect")(effect);
+
+			expect(effect.updateSource).toHaveBeenCalledWith({
+				"flags.litmv2.campId": "camp-1",
+			});
+		});
+
+		it("is left alone on a player's client", () => {
+			canvas.scene = fakeScene({ camping: activeSession() });
+			setPlayer();
+			const effect = added();
+
+			hook("preCreateActiveEffect")(effect);
+
+			expect(effect.updateSource).not.toHaveBeenCalled();
+		});
+
+		it("is left alone when it goes anywhere but the story-tag pack", () => {
+			canvas.scene = fakeScene({ camping: activeSession() });
+			const onHero = added({ pack: null });
+			const elsewhere = added({ pack: "world.other-pack" });
+
+			hook("preCreateActiveEffect")(onHero);
+			hook("preCreateActiveEffect")(elsewhere);
+
+			expect(onHero.updateSource).not.toHaveBeenCalled();
+			expect(elsewhere.updateSource).not.toHaveBeenCalled();
+		});
+
+		it("is left alone while the camp is still being set up, or when there is none", () => {
+			const effect = added();
+			canvas.scene = fakeScene({
+				camping: activeSession({ phase: "setup" }),
+			});
+			hook("preCreateActiveEffect")(effect);
+			canvas.scene = fakeScene();
+			hook("preCreateActiveEffect")(effect);
+
+			expect(effect.updateSource).not.toHaveBeenCalled();
+		});
+
+		it("keeps a stamp it already carries", () => {
+			canvas.scene = fakeScene({ camping: activeSession() });
+			const effect = added({ getFlag: () => "camp-other" });
+
+			hook("preCreateActiveEffect")(effect);
+
+			expect(effect.updateSource).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("Pack Up", () => {
+		beforeEach(() => {
+			vi.spyOn(foundry.applications.api.DialogV2, "confirm").mockResolvedValue(
+				true,
+			);
+			getCampingHeroes.mockReturnValue([]);
+			buildThreatsContext.mockReturnValue([]);
+			buildOperations.mockReturnValue({ operations: {}, recap: {} });
+			applyOperations.mockResolvedValue(undefined);
+		});
+
+		it("deletes this camp's tags and leaves the table's and another camp's alone", async () => {
+			pack = new Map(
+				[
+					packEffect("campsite", "camp-1"),
+					packEffect("added-in-camp", "camp-1"),
+					packEffect("other-camp", "camp-2"),
+					packEffect("scene-tag"),
+					{ id: "legacy-no-flags" },
+				].map((e) => [e.id, e]),
+			);
+			const scene = fakeScene({ camping: activeSession() });
+			canvas.scene = scene;
+
+			await actions["pack-up"]();
+
+			expect(ContentSources.deleteStoryTags).toHaveBeenCalledTimes(1);
+			expect(ContentSources.deleteStoryTags).toHaveBeenCalledWith([
+				"campsite",
+				"added-in-camp",
+			]);
+			expect([...pack.keys()]).toEqual([
+				"other-camp",
+				"scene-tag",
+				"legacy-no-flags",
+			]);
+		});
+
+		it("sweeps before it applies the camp's results", async () => {
+			pack = new Map([["campsite", packEffect("campsite", "camp-1")]]);
+			canvas.scene = fakeScene({ camping: activeSession() });
+			let sweptBeforeApply;
+			applyOperations.mockImplementation(async () => {
+				sweptBeforeApply = ContentSources.deleteStoryTags.mock.calls.length;
+			});
+
+			await actions["pack-up"]();
+
+			expect(sweptBeforeApply).toBe(1);
+		});
+
+		it("deletes nothing when no tag carries this camp's stamp", async () => {
+			pack = new Map([["other-camp", packEffect("other-camp", "camp-2")]]);
+			canvas.scene = fakeScene({ camping: activeSession() });
+
+			await actions["pack-up"]();
+
+			expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
+			expect(applyOperations).toHaveBeenCalledTimes(1);
+		});
+
+		it("deletes nothing for a session that has no campId to sweep by", async () => {
+			pack = new Map([["unstamped", packEffect("unstamped", "")]]);
+			canvas.scene = fakeScene({ camping: activeSession({ campId: "" }) });
+
+			await actions["pack-up"]();
+
+			expect(ContentSources.getStoryTags).not.toHaveBeenCalled();
+			expect(ContentSources.deleteStoryTags).not.toHaveBeenCalled();
+		});
+
+		it("hands the camp's threats to the recap", async () => {
+			const threats = [{ id: "v1", name: "Heavy Rain" }];
+			buildThreatsContext.mockReturnValue(threats);
+			const state = activeSession();
+			state.placeOfStay.threats = ["v1"];
+			canvas.scene = fakeScene({ camping: state });
+			game.settings.get.mockImplementation((_scope, key) =>
+				key === "show_camping_threats" ? true : undefined,
+			);
+
+			await actions["pack-up"]();
+
+			expect(buildOperations.mock.calls[0][1].threatItems).toBe(threats);
+			game.settings.get.mockReset();
+		});
+
+		// The setting hides the Threats section "during camps and sojourns". A
+		// threat picked before the table turned it off must not surface in
+		// the public recap either.
+		it("leaves threats out of the recap when the Threats section is off", async () => {
+			buildThreatsContext.mockReturnValue([{ id: "v1", name: "Heavy Rain" }]);
+			const state = activeSession();
+			state.placeOfStay.threats = ["v1"];
+			canvas.scene = fakeScene({ camping: state });
+			game.settings.get.mockImplementation((_scope, key) =>
+				key === "show_camping_threats" ? false : undefined,
+			);
+
+			try {
+				await actions["pack-up"]();
+				expect(buildOperations.mock.calls[0][1].threatItems).toEqual([]);
+			} finally {
+				game.settings.get.mockReset();
+			}
+		});
+	});
+
+	// Core Book p.181: a sojourn's length adds Power to its camp actions.
+	describe("launching a camp action roll", () => {
+		function heroWithDialog() {
+			const dialog = {
+				setCampAction: vi.fn(),
+				rendered: false,
+				render: vi.fn(),
+			};
+			const sheet = { rollDialogInstance: dialog, renderRollDialog: vi.fn() };
+			game.actors.get = vi.fn((id) => (id === "hero-1" ? { sheet } : null));
+			return { dialog, sheet };
+		}
+
+		const launch = () =>
+			actions["launch-camp-roll"](null, { dataset: { heroId: "hero-1" } });
+
+		it.each([
+			["camp", "days", 0],
+			["sojourn", "days", 1],
+			["sojourn", "weeks", 2],
+			["sojourn", "months", 3],
+		])("a %s of %s gives the roll +%i", (type, sojournDuration, bonus) => {
+			canvas.scene = fakeScene({
+				camping: activeSession({ type, sojournDuration }),
+			});
+			const { dialog, sheet } = heroWithDialog();
+
+			launch();
+
+			expect(dialog.setCampAction).toHaveBeenCalledWith({
+				sojournBonus: bonus,
+			});
+			expect(sheet.renderRollDialog).toHaveBeenCalledTimes(1);
+		});
+
+		it("does nothing for a hero that is gone", () => {
+			canvas.scene = fakeScene({ camping: activeSession() });
+			const { dialog } = heroWithDialog();
+
+			actions["launch-camp-roll"](null, { dataset: { heroId: "nobody" } });
+
+			expect(dialog.setCampAction).not.toHaveBeenCalled();
+		});
+	});
+});
