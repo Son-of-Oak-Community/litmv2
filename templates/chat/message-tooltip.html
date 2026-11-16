@@ -36,12 +36,13 @@
 		{{#if data.mitigate}}
 		{{> section name=(localize 'LITM.Effects.mitigate.key') value=1}}
 		{{/if}}
+		{{!-- Everything that adds Power, then everything that takes it away. --}}
+		{{#each data.positiveStatuses as |tag|}}
+		{{> section name=tag.name value=tag.value flavor=(localize 'LITM.Terms.status') flavorClass="flavor-status"}}
+		{{/each}}
 		{{#each data.weaknessTags as |tag|}}
 		{{> section name=tag.name value=-1 flavor=(ifThen (eq tag.type 'weakness_tag') (localize 'LITM.Tags.weakness')
 		(localize 'LITM.Terms.tag')) flavorClass=(ifThen (eq tag.type 'weakness_tag') "flavor-weakness" "flavor-tag")}}
-		{{/each}}
-		{{#each data.positiveStatuses as |tag|}}
-		{{> section name=tag.name value=tag.value flavor=(localize 'LITM.Terms.status') flavorClass="flavor-status"}}
 		{{/each}}
 		{{#each data.negativeStatuses as |tag|}}
 		{{> section name=tag.name value=(concat "-" tag.value) flavor=(localize 'LITM.Terms.status')
