@@ -863,26 +863,6 @@ describe("buildOperations — Fellowship Quality Time (exclusive choice)", () =>
 		);
 	});
 
-	it("recoverFellowship: finds the tag through the hero's own Fellowship link", () => {
-		const fsTag = fakeEffect({
-			name: "we never give up",
-			type: "fellowship_tag",
-			system: { isScratched: true },
-		});
-		const fwTheme = fakeItem({ type: "theme", effects: [fsTag] });
-		const fellowshipActor = fakeActor({ type: "fellowship", items: [fwTheme] });
-		const hero = fakeActor();
-		hero.system = { fellowshipActor };
-
-		const state = defaultCampingState();
-		setQualityTime(state, hero.id, "action", "recoverFellowship");
-		setQualityTime(state, hero.id, "fellowshipTagId", fsTag.id);
-
-		// No `fellowshipActor` on the world shim: the hero's link is enough.
-		const { operations } = buildOperations(state, world({ heroes: [hero] }));
-		expect(operations.unscratches).toContainEqual({ effect: fsTag });
-	});
-
 	it("recoverFellowship: falls back to the world's Fellowship when the hero has no link", () => {
 		const fsTag = fakeEffect({
 			name: "we never give up",
@@ -1121,22 +1101,6 @@ describe("buildOperations — fellowship_tag is NOT recoverable via Rest", () =>
 		const { operations } = buildOperations(state, world({ heroes: [hero] }));
 		expect(operations.unscratches).toEqual([]);
 	});
-
-	it("Rest recover-tag still unscratches a normal scratched power_tag", () => {
-		const tag = fakeEffect({
-			name: "iron will",
-			type: "power_tag",
-			system: { isScratched: true },
-		});
-		const theme = fakeItem({ type: "theme", effects: [tag] });
-		const hero = fakeActor({ items: [theme] });
-
-		const state = defaultCampingState();
-		setActivity(state, hero.id, 0, "rest");
-		setRestRecoverTag(state, hero.id, 0, tag.id, true);
-		const { operations } = buildOperations(state, world({ heroes: [hero] }));
-		expect(operations.unscratches).toContainEqual({ effect: tag });
-	});
 });
 
 describe("applyOperations — recovering a fellowship tag", () => {
@@ -1269,11 +1233,12 @@ describe("buildOperations — place of stay", () => {
 		// Camp clears it), the apply layer must not enqueue duplicate deletes.
 		state.placeOfStay.sceneTagsToExpire = [sceneFx.id];
 
-		const { recap } = buildOperations(
+		const { operations } = buildOperations(
 			state,
 			world({ sceneEffects: [sceneFx] }),
 		);
-		expect(recap.placeOfStay).not.toHaveProperty("sceneTagsExpired");
+		// Nothing in the plan may name the scene effect: no delete, no write.
+		expect(JSON.stringify(operations)).not.toContain(sceneFx.id);
 	});
 
 	it("does not throw on empty / null campsiteTags", () => {

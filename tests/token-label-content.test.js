@@ -12,8 +12,8 @@
 // against this repo's node-environment Foundry shim, and is covered by runtime
 // verification instead.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { StoryTagsStore } from "../modules/apps/story-tags/story-tags-store.js";
 import {
-	buildTooltipHTML,
 	onDisplayTooltip,
 	onHoverToken,
 	tokenTooltipHTML,
@@ -79,25 +79,86 @@ describe("tokenTooltipHTML", () => {
 		expect(html).toContain("rope");
 		expect(html).toContain("wounded 2");
 	});
+});
 
-	it("gives the same markup the hover tooltip builds for the same viewer", () => {
+// CLAUDE.md: "Hiding a column also hides the actor on the canvas ... the token
+// hover tooltip and persistent labels show players nothing for it." A hidden
+// column is the only thing that separates a GM, an owner and a bystander here:
+// with nothing concealed all three get the same chips.
+describe("a token whose story-tag column is hidden", () => {
+	const lurker = { id: "lurker", documentName: "Actor" };
+
+	/** Hide (or show) the lurker's column. */
+	function column({ hidden }) {
+		stubSettings(
+			{
+				token_tooltip_statuses_only: false,
+				storytags: {
+					actors: ["Actor.lurker"],
+					hiddenActors: hidden ? ["Actor.lurker"] : [],
+					limits: [],
+				},
+			},
+			{ fallback: false },
+		);
+		StoryTagsStore.invalidateCache();
+	}
+
+	function lurkerToken({ isOwner = false } = {}) {
 		const token = fakeToken({
-			isOwner: true,
-			tags: ["rope"],
-			statuses: [["wounded", 2]],
+			isOwner,
+			tags: ["poisoned blade"],
+			statuses: [["lurking", 3]],
 		});
-		expect(tokenTooltipHTML(token)).toBe(buildTooltipHTML(token.actor));
+		token.actor.id = lurker.id;
+		return token;
+	}
+
+	beforeEach(() => {
+		game.users.filter = () => [];
+		foundry.utils.parseUuid = (uuid) => ({
+			collection: "Actor",
+			type: uuid?.startsWith("Actor.") ? "Actor" : null,
+		});
+		foundry.utils.fromUuidSync.mockImplementation((uuid) =>
+			uuid === "Actor.lurker" ? lurker : null,
+		);
+		column({ hidden: true });
 	});
 
-	it("treats a GM as an owner of a token they do not own", () => {
+	afterEach(() => {
+		foundry.utils.fromUuidSync.mockReset();
+		delete foundry.utils.parseUuid;
+		delete game.users.filter;
+		StoryTagsStore.invalidateCache();
+	});
+
+	it("shows a player who does not own it nothing at all", () => {
+		expect(tokenTooltipHTML(lurkerToken())).toBe("");
+	});
+
+	it("still shows the Narrator its chips", () => {
 		game.user.isGM = true;
-		const token = fakeToken({ isOwner: false, tags: ["secret plan"] });
-		expect(tokenTooltipHTML(token)).toBe(buildTooltipHTML(token.actor));
+		const html = tokenTooltipHTML(lurkerToken());
+		expect(html).toContain("poisoned blade");
+		expect(html).toContain("lurking 3");
 	});
 
-	it("does not grant owner sight to a non-GM non-owner", () => {
-		const token = fakeToken({ isOwner: false, tags: ["rope"] });
-		expect(tokenTooltipHTML(token)).toBe(buildTooltipHTML(token.actor));
+	it("still shows its owner their own chips", () => {
+		const html = tokenTooltipHTML(lurkerToken({ isOwner: true }));
+		expect(html).toContain("poisoned blade");
+		expect(html).toContain("lurking 3");
+	});
+
+	it("shows a bystander the chips again once the column is revealed", () => {
+		column({ hidden: false });
+		expect(tokenTooltipHTML(lurkerToken())).toContain("poisoned blade");
+	});
+
+	it("leaves another actor's token alone", () => {
+		const token = lurkerToken();
+		token.actor.id = "someone-else";
+		expect(tokenTooltipHTML(token)).toContain("poisoned blade");
 	});
 });
 

@@ -396,6 +396,36 @@ describe("buildContext — Pack Up Keep all", () => {
 			locked: true,
 		});
 	});
+
+	// CLAUDE.md names the camp among the surfaces a hidden tag never reaches a
+	// player on, the Hero's own player included.
+	it("shows a player none of a hidden backpack tag, active or put away", () => {
+		const shown = fakeEffect({ name: "rope", type: "story_tag" });
+		const hidden = fakeEffect({ name: "map", type: "story_tag" });
+		hidden.system = { isHidden: true };
+		const hiddenAway = fakeEffect({
+			name: "cursed coin",
+			type: "story_tag",
+			disabled: true,
+		});
+		hiddenAway.system = { isHidden: true };
+		const backpack = fakeItem({
+			type: "backpack",
+			effects: [shown, hidden, hiddenAway],
+		});
+		const actor = fakeActor({ type: "hero", isOwner: true, items: [backpack] });
+		actor.system = { backpackItem: backpack, themes: [] };
+		globalThis.game.actors = { filter: (fn) => [actor].filter(fn) };
+		globalThis.game.packs = { get: () => undefined };
+		globalThis.game.user.isGM = false;
+
+		const hero = buildContext(defaultCampingState()).heroes[0];
+
+		expect(hero.backpackTags.map((t) => t.name)).toEqual(["rope"]);
+		expect(hero.backpackTagIds).toBe(shown.id);
+		expect(JSON.stringify(hero)).not.toContain("map");
+		expect(JSON.stringify(hero)).not.toContain("cursed coin");
+	});
 });
 
 describe("buildContext — Reflect rows", () => {
