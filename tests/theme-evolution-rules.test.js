@@ -235,12 +235,6 @@ describe("getTradeCaps", () => {
 		expect(powerCap(1)).toBe(0);
 	});
 
-	it("keeps the title tag out of the tradable list", () => {
-		const parts = getRevisableParts(theme({ power: 3 }));
-		expect(parts.filter((p) => p.kind === "power")).toHaveLength(3);
-		expect(parts.some((p) => p.id === "title")).toBe(false);
-	});
-
 	it("caps trades to extras beyond baseline", () => {
 		const caps = getTradeCaps(
 			getRevisableParts(

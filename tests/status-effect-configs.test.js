@@ -15,16 +15,11 @@ describe("ContentSources.getStatusEffectConfigs", () => {
 		const configs = await ContentSources.getStatusEffectConfigs([
 			mockPack([doc("aaa", "Wounded", "blood.svg")]),
 		]);
+		// A plain array: callers spread it.
+		expect(Array.isArray(configs)).toBe(true);
 		expect(configs).toEqual([
 			{ id: "wounded", _id: "aaa", name: "Wounded", img: "blood.svg" },
 		]);
-	});
-
-	it("returns a real array so callers can spread it", async () => {
-		const configs = await ContentSources.getStatusEffectConfigs([
-			mockPack([doc("aaa", "Wounded")]),
-		]);
-		expect(Array.isArray(configs)).toBe(true);
 	});
 
 	it("dedupes docs that slugify to the same id within a pack — last wins", async () => {

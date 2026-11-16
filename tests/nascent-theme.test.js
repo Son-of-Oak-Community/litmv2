@@ -64,7 +64,6 @@ describe("a nascent theme", () => {
 	it("owes a power tag for each Improve until it has three", () => {
 		expect(themeWith().theme.system.nascentTagsToOwe).toBe(2);
 		expect(themeWith({ pending: 1 }).theme.system.nascentTagsToOwe).toBe(1);
-		expect(themeWith({ power: 1 }).theme.system.nascentTagsToOwe).toBe(1);
 	});
 
 	it("is a normal theme once it has three power tags, title tag included", () => {

@@ -68,11 +68,11 @@ describe("ContentSources.getSources", () => {
 		});
 	});
 
-	it("getPacks stays a thin wrapper over getSources().packs", () => {
+	it("getPacks gives the selected packs only", () => {
 		setSetting(["modA.themekits"]);
-		expect(ContentSources.getPacks("themekits")).toEqual(
-			ContentSources.getSources("themekits").packs,
-		);
+		expect(
+			ContentSources.getPacks("themekits").map((p) => p.collection),
+		).toEqual(["modA.themekits"]);
 	});
 
 	// Foundry serves pack contents to any client that asks — ownership only
