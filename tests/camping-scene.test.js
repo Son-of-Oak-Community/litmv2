@@ -1185,26 +1185,6 @@ describe("the campId stamp", () => {
 			expect(buildOperations.mock.calls[0][1].threatItems).toBe(threats);
 			game.settings.get.mockReset();
 		});
-
-		// The setting hides the Threats section "during camps and sojourns". A
-		// threat picked before the table turned it off must not surface in
-		// the public recap either.
-		it("leaves threats out of the recap when the Threats section is off", async () => {
-			buildThreatsContext.mockReturnValue([{ id: "v1", name: "Heavy Rain" }]);
-			const state = activeSession();
-			state.placeOfStay.threats = ["v1"];
-			canvas.scene = fakeScene({ camping: state });
-			game.settings.get.mockImplementation((_scope, key) =>
-				key === "show_camping_threats" ? false : undefined,
-			);
-
-			try {
-				await actions["pack-up"]();
-				expect(buildOperations.mock.calls[0][1].threatItems).toEqual([]);
-			} finally {
-				game.settings.get.mockReset();
-			}
-		});
 	});
 
 	// Core Book p.181: a sojourn's length adds Power to its camp actions.

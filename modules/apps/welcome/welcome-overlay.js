@@ -4,11 +4,7 @@ import { createSampleHero } from "../../system/sample-hero.js";
 import { LitmSettings } from "../../system/settings.js";
 import { levelIcon, localize as t, toQuestionOptions } from "../../utils.js";
 import { catalogLevels, filterThemeCatalog } from "../theme-catalog.js";
-import {
-	cleanQuestions,
-	customBackpackTags,
-	HeroCreationData,
-} from "./hero-creation-data.js";
+import { cleanQuestions, HeroCreationData } from "./hero-creation-data.js";
 import {
 	animateEnter,
 	animateExit,
@@ -1245,16 +1241,15 @@ export class WelcomeOverlay {
 			themebookLookup,
 		);
 
-		// The same reading `createHero` builds the backpack from.
-		const customBackpack = customBackpackTags(this._appState.custom);
 		const reviewBackpackChoices =
 			this._appState.mode === "trope"
 				? selectedTrope?.backpackChoices || []
-				: customBackpack.tags;
+				: this._appState.custom.backpackTags.filter(Boolean);
 		const reviewBackpackSelection =
 			this._appState.mode === "trope"
 				? this._appState.trope.backpackChoice || reviewBackpackChoices[0]
-				: (customBackpack.tags[customBackpack.activeIndex] ?? null);
+				: reviewBackpackChoices[this._appState.custom.activeBackpackIndex] ||
+					null;
 
 		return {
 			logo: CONFIG.litmv2.assets.logo,

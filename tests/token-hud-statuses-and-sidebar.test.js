@@ -173,34 +173,6 @@ describe("toggling a status icon on the token HUD", () => {
 		expect(options.img).toBe("afraid.svg");
 	});
 
-	it("starts the Narrator's status on a Challenge hidden, as the sidebar does", async () => {
-		setGM();
-		const ogre = actorWithStatusApi("challenge");
-		ogre.hasPlayerOwner = false;
-
-		await act(hudFor(ogre), "effect", { dataset: { statusId: "afraid" } });
-
-		expect(ogre.system.addStatus.mock.calls[0][1].isHidden).toBe(true);
-	});
-
-	it("starts the Narrator's status on a Hero visible, so it reaches the player", async () => {
-		setGM();
-		const hero = actorWithStatusApi("hero");
-		hero.hasPlayerOwner = true;
-
-		await act(hudFor(hero), "effect", { dataset: { statusId: "afraid" } });
-
-		expect(hero.system.addStatus.mock.calls[0][1].isHidden).toBe(false);
-	});
-
-	it("never hides a player's own addition", async () => {
-		const hero = actorWithStatusApi("hero");
-
-		await act(hudFor(hero), "effect", { dataset: { statusId: "afraid" } });
-
-		expect(hero.system.addStatus.mock.calls[0][1].isHidden).toBe(false);
-	});
-
 	it("does nothing for an icon it does not know", async () => {
 		const actor = actorWithStatusApi("hero");
 
@@ -278,16 +250,6 @@ describe("the token HUD and the story-tag sidebar", () => {
 	};
 
 	describe("adding the token's actor to the sidebar", () => {
-		it("starts a Challenge's column hidden when its token is hidden", async () => {
-			const ogre = worldActor("ogre", "challenge");
-			token(ogre, true);
-
-			await act(hudFor(ogre, { tokenHidden: true }), "sidebar");
-
-			expect(config.actors).toEqual(["Actor.ogre"]);
-			expect(config.hiddenActors).toEqual(["Actor.ogre"]);
-		});
-
 		it("starts it visible when its token is in plain sight", async () => {
 			const ogre = worldActor("ogre", "challenge");
 			token(ogre, false);

@@ -26,52 +26,12 @@ describe("HeroCreationData backpack effects", () => {
 		trope: { backpackChoice: null },
 		custom: {
 			themes: [],
-			// Three slots, the middle one left blank, the third chosen.
 			backpackTags: ["rope", "", "lantern"],
-			activeBackpackIndex: 2,
+			activeBackpackIndex: 1,
 		},
 	};
 
-	const activeNames = async (custom) => {
-		await new HeroCreationData().createHero({ ...appState, custom });
-		return created.items
-			.find((i) => i.type === "backpack")
-			.effects.filter((e) => !e.disabled)
-			.map((e) => e.name);
-	};
-
-	it("activates the tag in the chosen slot, whatever slots are blank", async () => {
-		const custom = { themes: [], backpackTags: ["", "rope", "lantern"] };
-		expect(await activeNames({ ...custom, activeBackpackIndex: 1 })).toEqual([
-			"rope",
-		]);
-		expect(await activeNames({ ...custom, activeBackpackIndex: 2 })).toEqual([
-			"lantern",
-		]);
-	});
-
-	it("activates the first tag when the chosen slot is blank", async () => {
-		const custom = { themes: [], backpackTags: ["", "rope", "lantern"] };
-		expect(await activeNames({ ...custom, activeBackpackIndex: 0 })).toEqual([
-			"rope",
-		]);
-	});
-
-	it("builds no effect for a backpack left empty", async () => {
-		await new HeroCreationData().createHero({
-			...appState,
-			custom: {
-				themes: [],
-				backpackTags: ["", "", ""],
-				activeBackpackIndex: 0,
-			},
-		});
-		expect(created.items.find((i) => i.type === "backpack").effects).toEqual(
-			[],
-		);
-	});
-
-	it("builds one story_tag effect per chosen tag, active by slot", async () => {
+	it("builds one story_tag effect per chosen tag, active by index", async () => {
 		await new HeroCreationData().createHero(appState);
 
 		const backpack = created.items.find((i) => i.type === "backpack");

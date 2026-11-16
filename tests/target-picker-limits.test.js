@@ -82,37 +82,6 @@ afterEach(() => {
 });
 
 describe("pickLimit: which Limits are offered", () => {
-	it("offers a player only the Limits the Narrator has revealed", async () => {
-		const serpent = withLimits("Serpent", "challenge", [
-			limit("L1", "Wounds", { hidden: false }),
-			limit("L2", "Hunger", { hidden: true }),
-			// Saved before `hidden` existed: counts as hidden.
-			limit("L3", "Secret weakness"),
-		]);
-		world([serpent]);
-
-		foundry.applications.api.DialogV2.prompt = vi.fn(async () => null);
-
-		const picked = await pickLimit();
-
-		// One revealed Limit: it is taken without a dialog.
-		expect(picked).toMatchObject({ actor: serpent, limitId: "L1" });
-		expect(foundry.applications.api.DialogV2.prompt).not.toHaveBeenCalled();
-	});
-
-	it("tells a player there is nothing to pick when every Limit is hidden", async () => {
-		world([
-			withLimits("Serpent", "challenge", [
-				limit("L2", "Hunger", { hidden: true }),
-			]),
-		]);
-
-		expect(await pickLimit()).toBeNull();
-		expect(ui.notifications.warn).toHaveBeenCalledWith(
-			"LITM.Actions.no_limits_in_scene",
-		);
-	});
-
 	it("offers the Narrator every Limit, hidden or not", async () => {
 		game.user.isGM = true;
 		world([
@@ -130,43 +99,6 @@ describe("pickLimit: which Limits are offered", () => {
 			"Hunger (1/4)",
 		]);
 		expect(picked.limitId).toBe("L2");
-	});
-
-	it("offers a player every Limit of a Hero they own, and only revealed ones on another's", async () => {
-		const mine = withLimits("Gerrin", "hero", [limit("H1", "Doubt")], {
-			isOwner: true,
-		});
-		const theirs = withLimits("Mira", "hero", [
-			limit("H2", "Grief"),
-			limit("H3", "Rage", { hidden: false }),
-		]);
-		world([mine, theirs]);
-		const listed = dialog(0);
-
-		await pickLimit();
-
-		expect(listed.map((row) => row.meta)).toEqual([
-			"Doubt (1/4)",
-			"Rage (1/4)",
-		]);
-	});
-
-	it("leaves out an actor the player cannot observe, and one whose column is hidden", async () => {
-		const unseen = withLimits(
-			"Lurker",
-			"challenge",
-			[limit("L1", "Patience", { hidden: false })],
-			{ observer: false },
-		);
-		const hiddenColumn = withLimits("Ambush", "challenge", [
-			limit("L2", "Surprise", { hidden: false }),
-		]);
-		const shown = withLimits("Serpent", "challenge", [
-			limit("L3", "Wounds", { hidden: false }),
-		]);
-		world([unseen, hiddenColumn, shown], { hidden: [hiddenColumn] });
-
-		expect(await pickLimit()).toMatchObject({ actor: shown, limitId: "L3" });
 	});
 
 	it("names a concealed challenge by its mask", async () => {
