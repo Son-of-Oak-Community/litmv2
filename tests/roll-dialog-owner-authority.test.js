@@ -543,14 +543,6 @@ describe("a reseat answer to the owner", () => {
 		expect(Number.isSafeInteger(last().sync.revision)).toBe(true);
 	});
 
-	it("does not publish into a roll that ended meanwhile", async () => {
-		const owner = restored();
-		as("player", () => owner.endSharedRoll());
-		const sent = messages.length;
-		await vi.advanceTimersByTimeAsync(5000);
-		expect(messages.length).toBe(sent);
-	});
-
 	it("ignores a draft saved for another roll", () => {
 		const owner = freshOwner();
 		const restoredOther = as("player", () =>

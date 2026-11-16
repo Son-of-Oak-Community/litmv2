@@ -432,7 +432,8 @@ export function resolveRollDialogOwnership(actor, userId) {
 			(!activeOwnerId && hasActorPermission) ||
 			(!activeOwner?.active && hasActorPermission) ||
 			(activeOwner?.isGM && hasActorPermission));
-	return { isOwner, gmAsViewer, activeOwnerId };
+	// `!!`: with no seat taken the last clause is undefined, not false.
+	return { isOwner: !!isOwner, gmAsViewer, activeOwnerId };
 }
 
 /**

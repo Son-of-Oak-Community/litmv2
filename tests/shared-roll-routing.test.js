@@ -52,6 +52,8 @@ describe("shouldJoinSharedRoll", () => {
 		expect(shouldJoinSharedRoll({ ownerId: "gm", participantIds: [] })).toBe(
 			false,
 		);
+		expect(shouldJoinSharedRoll()).toBe(false);
+		expect(shouldJoinSharedRoll({})).toBe(false);
 	});
 
 	it("includes a player who owns any one participating Hero", () => {
@@ -76,11 +78,6 @@ describe("shouldJoinSharedRoll", () => {
 		expect(
 			shouldJoinSharedRoll({ ownerId: "gm", participantIds: ["gone"] }),
 		).toBe(false);
-	});
-
-	it("leaves out a client when the call carries no roller and no participants", () => {
-		expect(shouldJoinSharedRoll()).toBe(false);
-		expect(shouldJoinSharedRoll({})).toBe(false);
 	});
 });
 

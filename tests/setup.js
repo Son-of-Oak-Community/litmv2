@@ -296,6 +296,9 @@ globalThis.foundry = {
 		},
 		// The Tags sidebar extends AbstractSidebarTab at module load.
 		sidebar: { AbstractSidebarTab: StubAppV2 },
+		// The token HUD extends TokenHUD at module load and calls its
+		// `_prepareContext`.
+		hud: { TokenHUD: StubDocumentSheetV2 },
 		handlebars: {
 			renderTemplate: () => Promise.resolve(""),
 		},
