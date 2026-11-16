@@ -1,11 +1,18 @@
 # Hero Sheet (Cards)
 
-Pick **Hero Sheet (Cards)** in the hero sheet's **Configure Sheet** menu.
+Turn on **Cards Look** in your settings (Game Settings → Configure Settings →
+Legend in the Mist). It applies to you only and also gives you the Cards
+Fellowship sheet and roll window. To use it for just one hero, pick **Hero
+Sheet (Cards)** in that hero's **Configure Sheet** menu instead.
 
 ## The board
 
-- **Header:** portrait, name, Promise, "What do you do?", and the **Roll!**,
-  **Actions**, **Sacrifice** and **Notes** buttons.
+- **Header:** portrait, name, Promise, "What do you do?", and the **Roll**
+  (or **Ask to roll**, at a table where the Narrator calls the rolls),
+  **Actions** and **Notes** buttons. A Sacrifice is picked in the roll window.
+  The Narrator also gets the Secret Grace dove, and **Make Camp** when the
+  table plays without a Fellowship. A viewer who can't edit the hero gets no
+  buttons.
 - **Statuses and Backpack first.** They change every scene, and statuses count
   toward Power, so they sit above the themes.
 - **One card per theme**, coloured by might: Origin green, Adventure red,
@@ -76,6 +83,15 @@ The card keeps its height, and stays flipped while you play.
 
 Drag a card by its banner to move it along the row. The Fellowship card can
 move too; its place is saved for this hero.
+
+---
+
+## Roll window
+
+With Cards Look on, the roll window matches the sheet: each theme is a card
+headed by its main tag, scratched tags stay on the card, and the caption
+holds the move icons, the Might and the book's Might table. See
+[The Cards roll window](user-guide.md#the-cards-roll-window).
 
 ---
 
