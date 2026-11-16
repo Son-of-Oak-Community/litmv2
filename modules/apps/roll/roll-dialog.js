@@ -2729,10 +2729,13 @@ export class LitmRollDialog extends foundry.applications.api.HandlebarsApplicati
 			el.textContent = this.#might > 0 ? `+${this.#might}` : `${this.#might}`;
 		for (const el of this.element.querySelectorAll("[data-update='mightName']"))
 			el.textContent = mightName(this.#might);
-		const mightButton = this.element.querySelector(".litm--might-value[data-sign]");
+		const mightButton = this.element.querySelector(
+			".litm--might-value[data-sign]",
+		);
 		if (mightButton) {
 			mightButton.dataset.sign = Math.sign(this.#might);
-			mightButton.ariaLabel = `${t("LITM.Terms.might")}: ${mightButton.textContent.trim()} ${mightName(this.#might)}`.trim();
+			mightButton.ariaLabel =
+				`${t("LITM.Terms.might")}: ${mightButton.textContent.trim()} ${mightName(this.#might)}`.trim();
 		}
 		const totalPower = this.totalPower;
 		const tabPowers = this.#tabPowers();

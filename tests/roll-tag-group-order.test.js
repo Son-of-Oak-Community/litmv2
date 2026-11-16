@@ -22,7 +22,13 @@ describe("roll tag groups by category", () => {
 			system: { backpackItem: backpack },
 			items: { get: () => ({ type: "theme" }) },
 			effects: [
-				{ uuid: "e1", name: "Rope", type: "story_tag", parent: backpack, active: true },
+				{
+					uuid: "e1",
+					name: "Rope",
+					type: "story_tag",
+					parent: backpack,
+					active: true,
+				},
 				{
 					uuid: "e2",
 					name: "Old friend",
@@ -117,7 +123,13 @@ describe("roll tag groups by category", () => {
 	});
 
 	it("tells each theme card its banner: Might level, or Fellowship gold", () => {
-		const fx = (name, type) => ({ uuid: name, name, type, active: true, system: {} });
+		const fx = (name, type) => ({
+			uuid: name,
+			name,
+			type,
+			active: true,
+			system: {},
+		});
 		const dialog = {
 			getSelection: () => ({}),
 			actor: {
@@ -144,17 +156,22 @@ describe("roll tag groups by category", () => {
 				},
 			},
 		};
-		const { characterTagGroups, fellowshipTagGroups } = buildOwnerContext(dialog, {
-			decorateTag: (tag) => tag,
-		});
+		const { characterTagGroups, fellowshipTagGroups } = buildOwnerContext(
+			dialog,
+			{
+				decorateTag: (tag) => tag,
+			},
+		);
 		const bow = characterTagGroups.find((g) => g.themeName === "Bow");
-		const statuses = characterTagGroups.find((g) => g.themeName === "LITM.Terms.statuses");
+		const statuses = characterTagGroups.find(
+			(g) => g.themeName === "LITM.Terms.statuses",
+		);
 		expect(bow.level).toBe("adventure");
 		expect(statuses.level).toBeUndefined();
 		expect(statuses.banner).toBeUndefined();
-		expect(fellowshipTagGroups.find((g) => g.themeName === "Amulet").banner).toBe(
-			"fellowship",
-		);
+		expect(
+			fellowshipTagGroups.find((g) => g.themeName === "Amulet").banner,
+		).toBe("fellowship");
 	});
 
 	// A scratched tag stays on its theme's card, struck through and locked
@@ -196,7 +213,9 @@ describe("roll tag groups by category", () => {
 				},
 			},
 		};
-		const { characterTagGroups } = buildOwnerContext(dialog, { decorateTag: (tag) => tag });
+		const { characterTagGroups } = buildOwnerContext(dialog, {
+			decorateTag: (tag) => tag,
+		});
 		const bow = characterTagGroups.find((g) => g.themeName === "Bow");
 		expect(bow.tags.map((tag) => tag.name)).toEqual(["Bow", "Burned"]);
 
@@ -216,13 +235,21 @@ describe("roll tag groups by category", () => {
 			name: "Helper",
 			img: null,
 			system: {},
-			items: { get: () => ({ type: "theme", sort: 0, system: { level: "greatness" } }) },
+			items: {
+				get: () => ({ type: "theme", sort: 0, system: { level: "greatness" } }),
+			},
 			// Foundry caches the active ones here; the Classic look reads it.
 			get appliedEffects() {
 				return [...this.allApplicableEffects()].filter((e) => e.active);
 			},
 			allApplicableEffects: () => [
-				{ uuid: "e3", name: "Keen senses", type: "power_tag", parent: theme, active: true },
+				{
+					uuid: "e3",
+					name: "Keen senses",
+					type: "power_tag",
+					parent: theme,
+					active: true,
+				},
 			],
 		};
 		game.user.character = hero;
@@ -272,7 +299,13 @@ describe("roll tag groups by category", () => {
 	// As on the Cards sheet: a story theme's image is its portrait, so its
 	// banner carries the level's icon and colour.
 	it("heads a story theme's card with its level, for the roller and a helper", () => {
-		const fx = (name) => ({ uuid: name, name, type: "power_tag", active: true, system: {} });
+		const fx = (name) => ({
+			uuid: name,
+			name,
+			type: "power_tag",
+			active: true,
+			system: {},
+		});
 		const story = {
 			type: "story_theme",
 			name: "Haunted",
@@ -299,7 +332,9 @@ describe("roll tag groups by category", () => {
 		});
 		const own = characterTagGroups.find((g) => g.themeName === "Haunted");
 		expect(own.level).toBe("greatness");
-		expect(own.themeImg).toBe("systems/litmv2/assets/media/icons/greatness.svg");
+		expect(own.themeImg).toBe(
+			"systems/litmv2/assets/media/icons/greatness.svg",
+		);
 
 		game.user.character = {
 			id: "h2",
@@ -313,7 +348,10 @@ describe("roll tag groups by category", () => {
 				return [...this.allApplicableEffects()].filter((e) => e.active);
 			},
 			allApplicableEffects: () => [
-				{ ...fx("Ghostly"), parent: { id: "s1", name: "Haunted", img: story.img } },
+				{
+					...fx("Ghostly"),
+					parent: { id: "s1", name: "Haunted", img: story.img },
+				},
 			],
 		};
 		const [helper] = buildContributedTagGroups(
@@ -334,7 +372,12 @@ describe("roll tag groups by category", () => {
 	// tags; a disabled one, or a scratched backpack tag, stays off it.
 	it("keeps a helper's scratched theme tags on its card", () => {
 		const theme = { id: "t1", name: "Deer Stalker", img: null, type: "theme" };
-		const backpack = { id: "b1", name: "Backpack", img: null, type: "backpack" };
+		const backpack = {
+			id: "b1",
+			name: "Backpack",
+			img: null,
+			type: "backpack",
+		};
 		const fx = (name, parent, extra = {}) => ({
 			uuid: name,
 			name,
@@ -351,7 +394,10 @@ describe("roll tag groups by category", () => {
 			name: "Helper",
 			img: null,
 			system: { backpackItem: backpack },
-			items: { get: (id) => (id === "t1" ? { type: "theme", sort: 0, system: {} } : null) },
+			items: {
+				get: (id) =>
+					id === "t1" ? { type: "theme", sort: 0, system: {} } : null,
+			},
 			// Foundry caches the active ones here; the Classic look reads it.
 			get appliedEffects() {
 				return [...this.allApplicableEffects()].filter((e) => e.active);

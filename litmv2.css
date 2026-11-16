@@ -3959,7 +3959,8 @@ section.standard-form.litm-theme-browser-body {
 
 /* The Fellowship's default icon is drawn white: ink it on the light theme.
    Portraits and custom art keep their colours. */
-.litm--roll :is(.litm--roll-dialog-tabs, .litm--roll-dialog-actor-label)
+.litm--roll
+	:is(.litm--roll-dialog-tabs, .litm--roll-dialog-actor-label)
 	img[src$="icons/fellowship.svg"] {
 	filter: var(--litm-icon-filter);
 }
@@ -8698,7 +8699,8 @@ button.litm-camping-scene__hero-link {
 }
 
 /* Special improvements show their name only; the description is a tooltip. */
-.litm--printed-cards .special-improvements-list
+.litm--printed-cards
+	.special-improvements-list
 	li[data-tooltip]:not(.is-locked)
 	h5 {
 	cursor: help;
@@ -8960,7 +8962,7 @@ body.litm--colorblind .application.litm--printed-cards {
 /* A viewer's row is empty. It is kept only on a folded wide panel, where the
    thumbnail and the Promise line up against it. */
 .litm-hero-cards:not(.litm-hero-cards--panel-collapsed)
-.litm--play-actions--view-only {
+	.litm--play-actions--view-only {
 	display: none;
 }
 
@@ -9013,22 +9015,6 @@ body.litm--colorblind .application.litm--printed-cards {
 	&:focus-visible {
 		outline: 2px solid var(--color-litm-tag-text);
 		outline-offset: 2px;
-	}
-
-	&.litm--sacrifice-button {
-		color: var(--color-litm-weakness-text);
-		background: color-mix(in srgb, var(--color-litm-weakness) 18%, transparent);
-		border-color: var(--color-litm-weakness-text);
-
-		&:hover,
-		&:focus-visible {
-			background: color-mix(
-				in srgb,
-				var(--color-litm-weakness) 38%,
-				transparent
-			);
-			border-color: var(--color-litm-weakness-text);
-		}
 	}
 }
 
@@ -9104,7 +9090,7 @@ body.litm--colorblind .application.litm--printed-cards {
 	   padding plus a 2.5rem button) lead that row, and the board below runs the full
 	   width with no dead gutter. */
 	.litm-hero-cards--panel-collapsed
-	.window-content:has(> .litm--play-header--art) {
+		.window-content:has(> .litm--play-header--art) {
 		min-height: 0;
 		--litm-hero-panel-w: calc(2.5rem + var(--spacer-8));
 		--litm-hero-art-h: calc(2.5rem + var(--spacer-8));
@@ -9241,7 +9227,8 @@ body.theme-dark .litm--printed-cards:not(.theme-light) .theme-card,
 }
 
 /* The colour-blind hues are already dark; 45% would sink them together. */
-body.theme-dark.litm--colorblind .litm--printed-cards:not(.theme-light)
+body.theme-dark.litm--colorblind
+	.litm--printed-cards:not(.theme-light)
 	.theme-card:not([data-banner="fellowship"]),
 body.litm--colorblind
 	.litm--printed-cards.theme-dark
@@ -9348,7 +9335,8 @@ body.theme-dark
 }
 
 /* The main tag titles the banner: banner ink, no chip. */
-.litm--printed-cards .litm-hero-board
+.litm--printed-cards
+	.litm-hero-board
 	.theme-card
 	> legend
 	.theme-card__banner-tag {
@@ -9469,7 +9457,8 @@ body.theme-dark
    left so they sit side by side instead of stacked.
    shortcut: handles three buttons; a fourth would need a flex group at the
    strip's end. */
-.litm--printed-cards .theme-card
+.litm--printed-cards
+	.theme-card
 	> legend
 	button:not(.litm--banner-icon):has(+ button:not(.litm--banner-icon)) {
 	inset-inline-end: calc(var(--spacer-8) + 1.6em + var(--spacer-4));
@@ -9507,7 +9496,8 @@ body.theme-dark
 }
 
 /* Layout only: the title keeps the full chip colour, as in the roll dialog. */
-.litm--printed-cards .theme-card
+.litm--printed-cards
+	.theme-card
 	:is(.theme-card-header, .story-theme-card__header)
 	.litm-title_tag {
 	flex: 0 1 auto;
@@ -9523,7 +9513,8 @@ body.theme-dark
 /* Board chips are lighter than the roll dialog's — no stroked halo, a
    partial tint in the same hues (--litm-chip-mix) — so a card of tags reads as print,
    not a wall of blocks. The big title tag is lighter still. */
-.litm--printed-cards .litm-hero-board
+.litm--printed-cards
+	.litm-hero-board
 	:is(
 		.litm-power_tag,
 		.litm-fellowship_tag,
@@ -9671,7 +9662,8 @@ body.theme-dark
 /* The title headers are size containers, and Chrome skips relayout of a
    container that comes back from opacity 0 (the title vanished after a flip):
    fade their contents instead. */
-.litm--printed-cards .theme-card.is-flipped:has(> .theme-card__back)
+.litm--printed-cards
+	.theme-card.is-flipped:has(> .theme-card__back)
 	> :not(
 		legend,
 		.theme-card__back,
@@ -9836,16 +9828,17 @@ body.theme-dark
 
 /* Cards sit close, as on a table; the base board spaces sections wider. */
 .litm--printed-cards
-:is(
-	.litm-hero-board,
-	.litm-hero-board__themes,
-	.litm-hero-board__inventory,
-	.litm-hero-board__story-grid
-) {
+	:is(
+		.litm-hero-board,
+		.litm-hero-board__themes,
+		.litm-hero-board__inventory,
+		.litm-hero-board__story-grid
+	) {
 	gap: var(--spacer-8);
 }
 
-.litm--printed-cards :is(.litm-hero-board__themes, .litm-hero-board__story-grid) {
+.litm--printed-cards
+	:is(.litm-hero-board__themes, .litm-hero-board__story-grid) {
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
 }
 
@@ -9861,7 +9854,8 @@ body.theme-dark
 }
 
 /* At 15rem a long tag wraps rather than widening the card. */
-.litm--printed-cards .theme-card
+.litm--printed-cards
+	.theme-card
 	:is(
 		.litm-power_tag,
 		.litm-weakness_tag,
@@ -9974,7 +9968,8 @@ body.theme-dark
 }
 
 /* Two strip buttons sit side by side, as on the theme strip. */
-.litm--printed-cards .litm-kit-card__head
+.litm--printed-cards
+	.litm-kit-card__head
 	button:not(.litm--banner-icon):has(+ button:not(.litm--banner-icon)) {
 	inset-inline-end: calc(var(--spacer-8) + 1.4rem + var(--spacer-4));
 }
@@ -10037,7 +10032,8 @@ body.theme-dark
 
 /* Chips wrap with one consistent gap; colour is the base chip's, as in the
    roll dialog. */
-.litm--printed-cards .litm-kit-card
+.litm--printed-cards
+	.litm-kit-card
 	:is(.litm-kit-card__tags, .litm--play-statuses) {
 	gap: var(--spacer-8) var(--spacer-12);
 }
@@ -10045,9 +10041,9 @@ body.theme-dark
 /* A theme with no tags yet is a stub: it doesn't stretch to its row's
    height, and its tracks stay hidden until something is marked. */
 .litm--printed-cards
-.theme-card[data-level]:not(
-	:has(.theme-card-tags :is(.litm-power_tag, .litm-weakness_tag))
-) {
+	.theme-card[data-level]:not(
+		:has(.theme-card-tags :is(.litm-power_tag, .litm-weakness_tag))
+	) {
 	align-self: start;
 
 	.theme-card-tracks:not(:has(.progress-box.checked)) {
@@ -10149,9 +10145,17 @@ body.theme-dark
 
 .litm--roll-cards {
 	--litm-card-surface: url("assets/journal/parchment.webp") center / 100% 100%;
-	--litm-card-border: color-mix(in srgb, var(--color-litm-banner) 70%, transparent);
+	--litm-card-border: color-mix(
+		in srgb,
+		var(--color-litm-banner) 70%,
+		transparent
+	);
 	--litm-card-radius: var(--radius-md);
-	--litm-card-rule: color-mix(in srgb, var(--color-litm-banner) 35%, transparent);
+	--litm-card-rule: color-mix(
+		in srgb,
+		var(--color-litm-banner) 35%,
+		transparent
+	);
 	--litm-card-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
 	--litm-card-ink: var(--color-dark-1);
 	/* Turns a coloured icon into the ink colour. */
@@ -10308,7 +10312,6 @@ body.litm--colorblind .application.litm--roll-cards {
 	&[data-banner="fellowship"] {
 		--litm-banner-bg: var(--litm-banner-fellowship);
 	}
-
 }
 
 /* The first card in a tab keeps its room for the plaque: the shared reset
@@ -10341,7 +10344,8 @@ body.litm--colorblind .application.litm--roll-cards {
 	justify-content: center;
 	gap: var(--spacer-8);
 	min-height: calc(1.6em + 2 * var(--spacer-4));
-	margin: calc(-1 * var(--litm-banner-overhang)) var(--spacer-12) var(--spacer-4);
+	margin: calc(-1 * var(--litm-banner-overhang)) var(--spacer-12)
+		var(--spacer-4);
 	padding: var(--spacer-4) var(--spacer-12);
 	font-size: var(--font-size-14);
 	font-style: normal;
@@ -10579,7 +10583,8 @@ body.litm--colorblind .application.litm--roll-cards {
 
 /* A chosen line shows what it adds, as the chips do. Statuses add their tier
    (`data-tier` on the row); other tags +1 / −1, a burn +3 (BURN_POWER). */
-.litm--roll-cards .litm--roll-dialog-tag:has(litm-super-checkbox[value])::after {
+.litm--roll-cards
+	.litm--roll-dialog-tag:has(litm-super-checkbox[value])::after {
 	margin-inline-start: auto;
 	padding-inline-start: var(--spacer-4);
 	font-size: var(--font-size-12);
@@ -10602,12 +10607,16 @@ body.litm--colorblind .application.litm--roll-cards {
 }
 
 .litm--roll-cards
-	.litm--roll-dialog-tag[data-tier]:has(litm-super-checkbox[value="positive"])::after {
+	.litm--roll-dialog-tag[data-tier]:has(
+		litm-super-checkbox[value="positive"]
+	)::after {
 	content: "+" attr(data-tier);
 }
 
 .litm--roll-cards
-	.litm--roll-dialog-tag[data-tier]:has(litm-super-checkbox[value="negative"])::after {
+	.litm--roll-dialog-tag[data-tier]:has(
+		litm-super-checkbox[value="negative"]
+	)::after {
 	content: "−" attr(data-tier);
 }
 
@@ -10654,7 +10663,9 @@ body.litm--colorblind .application.litm--roll-cards {
 }
 
 /* No "Modifiers" box, and no box at all when the Might was all it held. */
-.litm--roll-cards .litm--roll-dialog-settings > fieldset:has(> .litm--roll-dialog-might) {
+.litm--roll-cards
+	.litm--roll-dialog-settings
+	> fieldset:has(> .litm--roll-dialog-might) {
 	padding: 0;
 	border: none;
 	background: none;
@@ -10790,7 +10801,6 @@ body.litm--colorblind .application.litm--roll-cards {
 		font-size: var(--font-size-18);
 		line-height: 1;
 	}
-
 }
 
 /* A player opens the table to read it; picking is the Narrator's. */
@@ -10907,12 +10917,28 @@ body.litm--colorblind .application.litm--roll-cards {
 /* A pick fills its whole cell, so a tier and its picked row read as one
    block. The Heroes' own Might is the plus (green); Area, Size and Group
    take from it (red). */
-.litm--might-picker .litm--might-table tbody tr td:has(> .litm--might-pick.is-active) {
-	background: color-mix(in srgb, var(--color-litm-might-adventure) 35%, transparent);
+.litm--might-picker
+	.litm--might-table
+	tbody
+	tr
+	td:has(> .litm--might-pick.is-active) {
+	background: color-mix(
+		in srgb,
+		var(--color-litm-might-adventure) 35%,
+		transparent
+	);
 }
 
-.litm--might-picker .litm--might-table tbody tr td:has(> .litm--might-pick.is-own.is-active) {
-	background: color-mix(in srgb, var(--color-litm-might-origin) 35%, transparent);
+.litm--might-picker
+	.litm--might-table
+	tbody
+	tr
+	td:has(> .litm--might-pick.is-own.is-active) {
+	background: color-mix(
+		in srgb,
+		var(--color-litm-might-origin) 35%,
+		transparent
+	);
 }
 
 /* A tier's coloured icon and number vanish into the fill; on it they read

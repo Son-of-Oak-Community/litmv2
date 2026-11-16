@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { LitmRollDialog } from "../modules/apps/roll/roll-dialog.js";
 import {
 	classicMightScale,
 	mightFromPicks,
@@ -6,7 +7,6 @@ import {
 	mightScaleRows,
 	rollLookClass,
 } from "../modules/apps/roll/roll-dialog-context.js";
-import { LitmRollDialog } from "../modules/apps/roll/roll-dialog.js";
 
 // The per-player "Roll window look" setting picks the class the Cards CSS is
 // scoped under; Classic gets none, so its look cannot change.

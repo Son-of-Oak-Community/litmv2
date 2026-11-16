@@ -380,7 +380,7 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 
 describe("Cards Might picker", () => {
 	const act = (dialog, name, dataset) =>
-		as("gm", () =>
+		asUser("gm", () =>
 			LitmRollDialog.DEFAULT_OPTIONS.actions[name].call(dialog, null, {
 				dataset,
 			}),
