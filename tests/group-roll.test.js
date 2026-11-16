@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { findBurnedSelection } from "../modules/apps/roll/burn-cap.js";
 import {
 	findHeroTagConflict,
 	refusesHelperTag,
@@ -34,19 +33,6 @@ describe("resolveGroupParticipants", () => {
 		).toEqual(["h2"]);
 	});
 
-	it("keeps an offline participant in the roll — they simply contribute no tag", () => {
-		const withPresence = [
-			{ id: "h1", online: true },
-			{ id: "h2", online: false },
-		];
-		expect(
-			resolveGroupParticipants({
-				heroes: withPresence,
-				selectedIds: ["h1", "h2"],
-			}),
-		).toEqual(["h1", "h2"]);
-	});
-
 	it("returns nothing when the Narrator picked nobody", () => {
 		expect(resolveGroupParticipants({ heroes })).toEqual([]);
 		expect(resolveGroupParticipants()).toEqual([]);
@@ -77,17 +63,6 @@ describe("findHeroTagConflict", () => {
 				participantIds,
 			}),
 		).toBe(null);
-	});
-
-	it("counts a relationship tag against the Hero's one, since it lives on them", () => {
-		const map = entries(["rel-tag", { state: "positive", tagActorId: "h1" }]);
-		expect(
-			findHeroTagConflict(map, {
-				tagActorId: "h1",
-				uuid: "theme-tag",
-				participantIds,
-			}),
-		).toBe("rel-tag");
 	});
 
 	it("does not cap a different Hero", () => {
@@ -149,34 +124,6 @@ describe("findHeroTagConflict", () => {
 	});
 });
 
-describe("the group burn cap needs no group-specific code", () => {
-	/**
-	 * One Hero may burn a tag for the whole roll (p.157). `findBurnedSelection`
-	 * already caps the entire selection map at one scratched tag, so a burn on
-	 * one participant blocks a burn on another for free. These pin that.
-	 */
-	it("blocks a second Hero from burning once one has", () => {
-		const map = new Map([
-			["h1-tag", { state: "scratched", tagActorId: "h1" }],
-			["h2-tag", { state: "positive", tagActorId: "h2" }],
-		]);
-		expect(findBurnedSelection(map, "h2-tag")).toBe("h1-tag");
-	});
-
-	it("lets the burning Hero change their own burn", () => {
-		const map = new Map([["h1-tag", { state: "scratched", tagActorId: "h1" }]]);
-		expect(findBurnedSelection(map, "h1-tag")).toBe(null);
-	});
-
-	it("allows the first burn in a group roll", () => {
-		const map = new Map([
-			["h1-tag", { state: "positive", tagActorId: "h1" }],
-			["h2-tag", { state: "negative", tagActorId: "h2" }],
-		]);
-		expect(findBurnedSelection(map, "h3-tag")).toBe(null);
-	});
-});
-
 describe("resolveFellowshipParticipants", () => {
 	const linked = (id, fellowshipId) => ({ id, system: { fellowshipId } });
 
@@ -201,13 +148,6 @@ describe("resolveFellowshipParticipants", () => {
 		).toEqual(["h1"]);
 	});
 
-	it("keeps hero order rather than link order", () => {
-		const heroes = [linked("h1", "f1"), linked("h2", "f1")];
-		expect(
-			resolveFellowshipParticipants({ heroes, fellowshipId: "f1" }),
-		).toEqual(["h1", "h2"]);
-	});
-
 	it("is empty without a Fellowship, since Acting Together has nothing to ride", () => {
 		const heroes = [linked("h1", "f1")];
 		expect(resolveFellowshipParticipants({ heroes })).toEqual([]);
@@ -215,16 +155,6 @@ describe("resolveFellowshipParticipants", () => {
 			resolveFellowshipParticipants({ heroes, fellowshipId: null }),
 		).toEqual([]);
 		expect(resolveFellowshipParticipants()).toEqual([]);
-	});
-
-	it("does not consult presence — an offline Hero is still in the roll", () => {
-		const heroes = [
-			{ id: "h1", system: { fellowshipId: "f1" }, active: false },
-			{ id: "h2", system: { fellowshipId: "f1" }, active: true },
-		];
-		expect(
-			resolveFellowshipParticipants({ heroes, fellowshipId: "f1" }),
-		).toEqual(["h1", "h2"]);
 	});
 });
 

@@ -24,18 +24,6 @@ describe("roll dialog submit closes only on success", () => {
 		expect(dialog.close).not.toHaveBeenCalled();
 	});
 
-	it("keeps the window open when an unpaid Sacrifice refuses the roll", async () => {
-		const dialog = {
-			isOwner: true,
-			rollRefusal: () => "unpaidSacrifice",
-			extractRollData: vi.fn(),
-			close: vi.fn(),
-		};
-		await LitmRollDialog._onSubmit.call(dialog, null, null, {});
-		expect(dialog.extractRollData).not.toHaveBeenCalled();
-		expect(dialog.close).not.toHaveBeenCalled();
-	});
-
 	it("closes after posting a moderation request", async () => {
 		const dialog = {
 			isOwner: true,

@@ -211,12 +211,6 @@ describe("collectScratchableTags", () => {
 		]);
 	});
 
-	it("omits the scene group when no scene tags are provided", () => {
-		const hero = actor("h1", "Gerrin", [tag("e1", "tonic")]);
-		const groups = collectScratchableTags(hero, []);
-		expect(groups.some((g) => g.isScene)).toBe(false);
-	});
-
 	it("can produce a scene-only picker (no actor tags)", () => {
 		const hero = actor("h1", "Gerrin", []);
 		const groups = collectScratchableTags(

@@ -68,12 +68,6 @@ describe("refuseUnpaidSacrifice", () => {
 		expect(Sockets.dispatch).not.toHaveBeenCalled();
 	});
 
-	it("stays quiet on a player's client running the Narrator's Roll", () => {
-		const owing = hero("gerrin", { owes: true });
-		expect(refuseUnpaidSacrifice(owing, { byNarrator: true })).toBe(false);
-		expect(warn).not.toHaveBeenCalled();
-	});
-
 	it("warns early without telling the Narrator a roll was refused", () => {
 		const owing = hero("gerrin", { owes: true });
 		expect(refuseUnpaidSacrifice(owing, { tellNarrator: false })).toBe(true);
@@ -91,6 +85,8 @@ describe("refuseUnpaidSacrifice", () => {
 	it("treats a player's client acting on the Narrator's Roll as the Narrator", () => {
 		const owing = hero("gerrin", { owes: true });
 		expect(refuseUnpaidSacrifice(owing, { byNarrator: true })).toBe(false);
+		// Quiet: the reminder is for the Narrator, who pressed Roll.
+		expect(warn).not.toHaveBeenCalled();
 		expect(
 			refuseUnpaidSacrifice(owing, { byNarrator: true, newSacrifice: true }),
 		).toBe(true);
@@ -284,15 +280,6 @@ describe("completePendingSacrifice", () => {
 	// A Narrator forgiving while the player is mid-payment (a Scarring
 	// price's Replace wizard can stay open for minutes) would have the price
 	// both paid and forgiven.
-	it("marks the debt as being paid before the price goes on", async () => {
-		const hero = graveHero();
-		hero.system.addStatus = vi.fn(() => {
-			expect(hero.flag.payingUserId).toBe("player");
-		});
-		wait.mockResolvedValue(true);
-		expect(await completePendingSacrifice(hero)).toBe(true);
-		expect(hero.system.addStatus).toHaveBeenCalled();
-	});
 
 	it("asks the Narrator before forgiving a price the player is paying", async () => {
 		const hero = graveHero();

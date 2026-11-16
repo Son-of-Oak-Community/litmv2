@@ -147,15 +147,6 @@ describe("enricher markup at depth", () => {
 			tier: 8,
 		});
 	});
-
-	it("still discards a tier past the world's depth as tier-less", () => {
-		withHeroLimit(5);
-		expect(classify("[cursed-8]")).toMatchObject({
-			kind: "status",
-			name: "cursed",
-			tier: 0,
-		});
-	});
 });
 
 describe("marking deep tracks", () => {

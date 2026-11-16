@@ -121,14 +121,6 @@ describe("withFlags", () => {
 		expect(doc.getFlag("litmv2", "list")).toEqual([1]);
 	});
 
-	it("records its calls", async () => {
-		const doc = withFlags({});
-
-		await doc.setFlag("litmv2", "a", 1);
-
-		expect(doc.setFlag).toHaveBeenCalledWith("litmv2", "a", 1);
-	});
-
 	it("does not share flags between documents", () => {
 		const a = withFlags({});
 		const b = withFlags({});

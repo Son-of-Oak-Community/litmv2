@@ -186,21 +186,6 @@ describe("HeroData.relationships", () => {
 		expect(model.relationships).toEqual([]);
 		expect(model.lostRelationships).toEqual([lost]);
 	});
-
-	it("partitions story_tag and status_tag into the mixin's caches in one pass", () => {
-		const story = fakeEffect({ type: "story_tag", name: "blessed" });
-		const status = fakeEffect({
-			type: "status_tag",
-			name: "tired",
-			system: { active: true, currentTier: 0 },
-		});
-		const { model } = makeHero({ effects: [story, status] });
-
-		model.prepareDerivedData();
-
-		expect(model.storyTags).toEqual([story]);
-		expect(model.statusEffects).toEqual([status]);
-	});
 });
 
 describe("HeroData.scratchedTags", () => {

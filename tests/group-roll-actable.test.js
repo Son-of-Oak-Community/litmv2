@@ -27,28 +27,13 @@ afterEach(() => {
 });
 
 describe("actableActorIds", () => {
-	it("gives a participant their own Hero", () => {
+	it("gives a participant their own Hero and the Fellowship, and nobody else's Hero", () => {
 		const dialog = makeDialog({
 			participantIds: ["h1", "h2"],
 			owned: ["h1"],
 		});
-		expect(actableActorIds(dialog).has("h1")).toBe(true);
-	});
-
-	it("withholds another player's Hero", () => {
-		const dialog = makeDialog({
-			participantIds: ["h1", "h2"],
-			owned: ["h1"],
-		});
-		expect(actableActorIds(dialog).has("h2")).toBe(false);
-	});
-
-	it("gives a participant the Fellowship — any or all of its tags may be invoked", () => {
-		const dialog = makeDialog({
-			participantIds: ["h1", "h2"],
-			owned: ["h1"],
-		});
-		expect(actableActorIds(dialog).has(FELLOWSHIP)).toBe(true);
+		// p.157: any or all of the Fellowship's tags may be invoked.
+		expect(actableActorIds(dialog)).toEqual(new Set(["h1", FELLOWSHIP]));
 	});
 
 	it("withholds the Fellowship from a spectator with no Hero in the roll", () => {

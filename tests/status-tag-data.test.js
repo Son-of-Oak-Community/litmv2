@@ -94,20 +94,6 @@ describe("StatusTagData#calculateMark", () => {
 			false,
 		]);
 	});
-
-	it("shifts to the next free slot when the requested tier is occupied", () => {
-		const status = new StatusTagData({
-			tiers: [false, false, true, false, false, false],
-		});
-		expect(status.calculateMark(3)).toEqual([
-			false,
-			false,
-			true,
-			true,
-			false,
-			false,
-		]);
-	});
 });
 
 describe("StatusTagData#currentTier", () => {

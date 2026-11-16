@@ -22,11 +22,8 @@ describe("maskConcealedTags", () => {
 		const out = mask(tags, ["hidden"], { e1: "hidden" });
 		expect(out[0].name).toBe(MASK);
 		expect(out[0].isConcealed).toBe(true);
-	});
-
-	it("keeps the tier — the number is the honest part", () => {
-		const tags = [{ uuid: "e1", name: "lurking", value: 4 }];
-		expect(mask(tags, ["hidden"], { e1: "hidden" })[0].value).toBe(4);
+		// The tier is the honest part: identity is masked, never magnitude.
+		expect(out[0].value).toBe(4);
 	});
 
 	it("leaves a visible actor's tag alone", () => {
@@ -58,7 +55,14 @@ describe("maskConcealedTags", () => {
 
 	it("returns the original array untouched for a GM, who conceals nothing", () => {
 		const tags = [{ uuid: "e1", name: "lurking" }];
-		expect(mask(tags, [], { e1: "hidden" })).toBe(tags);
+		expect(
+			maskConcealedTags(tags, {
+				concealedActorIds: new Set(["hidden"]),
+				resolveActorId: () => "hidden",
+				maskName: MASK,
+				isGM: true,
+			}),
+		).toBe(tags);
 	});
 
 	it("returns the original array when nothing in it is concealed", () => {

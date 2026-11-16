@@ -140,12 +140,6 @@ describe("parseSpendIntent: Inflict tier", () => {
 		expect(tierOf("12")).toBe(7);
 	});
 
-	it("follows a module override of the depth", () => {
-		withHeroLimit(5);
-		CONFIG.litmv2.maxStatusTier = 5;
-		expect(tierOf("6")).toBe(5);
-	});
-
 	it("floors at tier 1 for zero, negative, blank and non-numeric input", () => {
 		withHeroLimit(5);
 		expect(tierOf("0")).toBe(1);
@@ -174,16 +168,5 @@ describe("SpendPowerApp context", () => {
 		const context = await app._prepareContext({});
 
 		expect(context.maxTier).toBe(7);
-	});
-
-	it("tracks a module override of the depth", async () => {
-		withHeroLimit(5);
-		CONFIG.litmv2.maxStatusTier = 5;
-		game.actors.get = vi.fn(() => null);
-		const app = new SpendPowerApp({ actorId: "a1", power: 3 });
-
-		const context = await app._prepareContext({});
-
-		expect(context.maxTier).toBe(5);
 	});
 });

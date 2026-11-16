@@ -17,6 +17,28 @@ const THEME_SLOTS = 4;
 // ---------------------------------------------------------------------------
 
 /**
+ * The custom backpack's tags and which one starts active. The wizard keeps
+ * three slots and the active one as a slot number, and a slot may be left
+ * blank, so the active tag is found by slot before the blanks are dropped.
+ * A blank active slot falls back to the first tag.
+ * @param {{ backpackTags?: string[], activeBackpackIndex?: number }} custom
+ * @returns {{ tags: string[], activeIndex: number }} `activeIndex` is into
+ *   `tags`, -1 when there are none
+ */
+export function customBackpackTags(custom) {
+	const filled = (custom?.backpackTags ?? [])
+		.map((tag, slot) => ({ tag, slot }))
+		.filter((entry) => entry.tag);
+	const active = filled.findIndex(
+		(entry) => entry.slot === custom?.activeBackpackIndex,
+	);
+	return {
+		tags: filled.map((entry) => entry.tag),
+		activeIndex: active === -1 && filled.length ? 0 : active,
+	};
+}
+
+/**
  * Convert legacy stashed tag flags into ActiveEffect entries on item data.
  * Old-format compendium items have tags stashed in flags.litmv2.legacyTags
  * by LitmItem.migrateData but no actual effects array. This injects the
@@ -915,10 +937,11 @@ export class HeroCreationData {
 
 	/** Backpack item with the wizard's chosen starting tags. */
 	#buildBackpack(appState, trope) {
+		const custom = customBackpackTags(appState.custom);
 		const backpackTags =
 			appState.mode === "trope"
 				? (trope?.system?.backpackChoices || []).filter(Boolean)
-				: appState.custom.backpackTags.filter(Boolean);
+				: custom.tags;
 		const selectedBackpackTag =
 			appState.trope.backpackChoice || backpackTags[0];
 
@@ -930,7 +953,7 @@ export class HeroCreationData {
 				disabled:
 					appState.mode === "trope"
 						? tag !== selectedBackpackTag
-						: index !== appState.custom.activeBackpackIndex,
+						: index !== custom.activeIndex,
 			})),
 		};
 	}

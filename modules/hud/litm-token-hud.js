@@ -1,6 +1,7 @@
 import {
 	isEffectVisible,
 	resolveEffect,
+	startsHiddenOn,
 } from "../active-effects/effect-queries.js";
 import { StatusTagData } from "../active-effects/index.js";
 import { ContentSources } from "../system/content-sources.js";
@@ -205,6 +206,9 @@ export class LitmTokenHUD extends TokenHUD {
 			await this.actor.system.addStatus(choice.title, {
 				tiers: StatusTagData.oneHot(1),
 				img: choice.src,
+				// As the sidebar adds one: the Narrator's start hidden on a
+				// Challenge, visible on a Hero.
+				isHidden: startsHiddenOn(this.actor),
 			});
 		}
 	}
@@ -226,7 +230,8 @@ export class LitmTokenHUD extends TokenHUD {
 			);
 			await sidebar.setActors(actors);
 		} else {
-			await sidebar.setActors([...sidebar.config.actors, this.actor.uuid]);
+			// Not `setActors`: the column starts from this actor's tokens.
+			await sidebar.trackActor(this.actor);
 		}
 
 		target.classList.toggle("active", !isInSidebar);

@@ -51,8 +51,10 @@ describe("applySpendIntent — reduce_status owner routing", () => {
 		});
 		expect(Sockets.dispatch).not.toHaveBeenCalled();
 		expect(results[0].power).toBe(2);
-		// The chat body names the foreign owner.
-		expect(results[0].bodyLines[0]).toContain("Serpent: enraged");
+		// The chat body names the foreign owner, then old tier → new tier.
+		expect(results[0].bodyLines[0]).toBe(
+			"<span>Serpent: enraged-4 &rarr; <strong>enraged-2</strong></span>",
+		);
 	});
 
 	it("names a hidden status as unseen on the public card, tier kept", async () => {
