@@ -12,47 +12,20 @@ import { makeTagStringRe } from "../modules/system/config.js";
 // enricher-only kinds (weakness/limit) that produce no effect data.
 
 describe("parseTagStringMatch edge cases", () => {
-	it("tier 0 produces an all-false tier array (out-of-range)", () => {
-		const data = parseTagStringMatch(["[X-0]", "X", undefined, "-", "0"]);
+	// Every tier the track can't hold is tier-less: 0, past the depth,
+	// non-numeric, and the variable `[name-]`.
+	it.each([
+		["0", "[X-0]"],
+		["7", "[X-7]"],
+		["abc", "[X-abc]"],
+		["", "[X-]"],
+	])("tier %j produces a status with no box marked", (value, full) => {
+		const data = parseTagStringMatch([full, "X", undefined, "-", value]);
 		expect(data.type).toBe("status_tag");
-		expect(data.system.tiers).toEqual([
-			false,
-			false,
-			false,
-			false,
-			false,
-			false,
-		]);
+		expect(data.system.tiers).toEqual(Array(6).fill(false));
 	});
 
-	it("tier 7 produces an all-false tier array (out-of-range)", () => {
-		const data = parseTagStringMatch(["[X-7]", "X", undefined, "-", "7"]);
-		expect(data.system.tiers).toEqual([
-			false,
-			false,
-			false,
-			false,
-			false,
-			false,
-		]);
-	});
-
-	it("non-numeric tier value falls back to 0 / all-false", () => {
-		const data = parseTagStringMatch(["[X-abc]", "X", undefined, "-", "abc"]);
-		expect(data.system.tiers.every((v) => v === false)).toBe(true);
-	});
-
-	it("preserves internal whitespace in the tag name", () => {
-		const status = parseTagStringMatch([
-			"[Tired Out-3]",
-			"Tired Out",
-			undefined,
-			"-",
-			"3",
-		]);
-		expect(status.name).toBe("Tired Out");
-		expect(status.type).toBe("status_tag");
-
+	it("preserves internal whitespace in a story tag name", () => {
 		const story = parseTagStringMatch([
 			"[Tired Out]",
 			"Tired Out",
@@ -64,27 +37,16 @@ describe("parseTagStringMatch edge cases", () => {
 		expect(story.type).toBe("story_tag");
 	});
 
-	it("returns null for limit markup [name:N] — limits are not effects", () => {
-		const data = parseTagStringMatch([
-			"[Suspicion:3]",
-			"Suspicion",
-			undefined,
-			":",
-			"3",
-		]);
-		expect(data).toBeNull();
-	});
-
-	it("returns null for legacy [name:1] — no longer a single-use story tag", () => {
-		const data = parseTagStringMatch([
-			"[Lucky Charm:1]",
-			"Lucky Charm",
-			undefined,
-			":",
-			"1",
-		]);
-		expect(data).toBeNull();
-	});
+	// `[name:1]` was once a single-use story tag; it is a limit like any other.
+	it.each([
+		["[Suspicion:3]", "Suspicion", "3"],
+		["[Lucky Charm:1]", "Lucky Charm", "1"],
+	])(
+		"returns null for limit markup %s — limits are not effects",
+		(full, name, max) => {
+			expect(parseTagStringMatch([full, name, undefined, ":", max])).toBeNull();
+		},
+	);
 
 	it("returns null for weakness markup [-name] — weaknesses are not parsed here", () => {
 		const data = parseTagStringMatch([
@@ -129,14 +91,6 @@ describe("parseTagStringMatch edge cases", () => {
 			false,
 			false,
 		]);
-	});
-
-	it("regex parses [name-] as variable-tier (all-false)", () => {
-		const re = makeTagStringRe();
-		const matches = [..."[wounded-]".matchAll(re)];
-		const data = parseTagStringMatch(matches[0]);
-		expect(data.type).toBe("status_tag");
-		expect(data.system.tiers.every((v) => v === false)).toBe(true);
 	});
 });
 

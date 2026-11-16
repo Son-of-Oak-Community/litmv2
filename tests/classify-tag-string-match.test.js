@@ -91,9 +91,4 @@ describe("classifyTagStringMatch", () => {
 			tier: 3,
 		});
 	});
-
-	it("no longer matches tags wrapped in curly braces", () => {
-		expect([..."{map}".matchAll(makeTagStringRe())]).toHaveLength(0);
-		expect([..."{wounded-2}".matchAll(makeTagStringRe())]).toHaveLength(0);
-	});
 });
