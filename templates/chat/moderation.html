@@ -40,21 +40,22 @@
 					</header>
 				</section>
 				{{/each}}
-				{{#each tooltipData.weaknessTags as |tag|}}
-				<section class="tooltip-part">
-					<header class="part-header flexrow">
-						<span class="part-formula">{{tag.name}}</span>
-						<span class="part-flavor negative">{{localize 'LITM.Tags.weakness'}}</span>
-						<span class="part-total">-1</span>
-					</header>
-				</section>
-				{{/each}}
+				{{!-- Everything that adds Power, then everything that takes it away. --}}
 				{{#each tooltipData.positiveStatuses as |tag|}}
 				<section class="tooltip-part">
 					<header class="part-header flexrow">
 						<span class="part-formula">{{tag.name}}</span>
 						<span class="part-flavor positive">{{localize 'LITM.Terms.status'}}</span>
 						<span class="part-total">{{tag.value}}</span>
+					</header>
+				</section>
+				{{/each}}
+				{{#each tooltipData.weaknessTags as |tag|}}
+				<section class="tooltip-part">
+					<header class="part-header flexrow">
+						<span class="part-formula">{{tag.name}}</span>
+						<span class="part-flavor negative">{{localize 'LITM.Tags.weakness'}}</span>
+						<span class="part-total">-1</span>
 					</header>
 				</section>
 				{{/each}}
