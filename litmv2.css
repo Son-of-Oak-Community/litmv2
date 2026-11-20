@@ -8706,9 +8706,14 @@ button.litm-camping-scene__hero-link {
 	cursor: help;
 }
 
-/* Shared card face for 25b and 25c: one surface, two banner families —
-   theme cards take their level's might colour, kit sections take sienna. */
-.litm--printed-cards {
+/* Tokens for the Cards sheets (25) and the Cards roll window (26): one
+   surface, two banner families — theme cards take their level's might
+   colour, kit sections take sienna. Colour maths (alpha tints and the like)
+   lives only in these definitions; use sites reference the names. A token
+   built from a per-element variable (--tag-color, --litm-level,
+   --litm-banner-bg) is declared on the element that sets it, because a
+   custom property resolves where it is declared. */
+:is(.litm--printed-cards, .litm--roll-cards) {
 	--litm-card-surface: url("assets/journal/parchment.webp") center / 100% 100%;
 	--litm-card-border: color-mix(
 		in srgb,
@@ -8725,7 +8730,21 @@ button.litm-camping-scene__hero-link {
 		var(--color-litm-banner) 55%,
 		transparent
 	);
+	--litm-card-ink: var(--color-dark-1);
+	--litm-card-ink-7: color-mix(in srgb, var(--litm-card-ink) 7%, transparent);
+	/* Turns a coloured icon into the ink colour. */
+	--litm-card-ink-filter: brightness(0);
 	--litm-banner-ink: #f6efe4;
+	--litm-banner-ink-22: color-mix(
+		in srgb,
+		var(--litm-banner-ink) 22%,
+		transparent
+	);
+	--litm-banner-ink-45: color-mix(
+		in srgb,
+		var(--litm-banner-ink) 45%,
+		transparent
+	);
 	--litm-banner-rim:
 		inset 0 2px 0 var(--color-overlay-black-40),
 		inset 0 -2px 0 var(--color-overlay-black-40);
@@ -8733,6 +8752,45 @@ button.litm-camping-scene__hero-link {
 	/* Sienna as a literal, not the Limit accent: colour-blind mode remaps
 	   that token to the Limit purple, which made these strips read as Limits. */
 	--litm-banner-kit: #a0522d;
+	/* How far the might colour is pushed toward black under the cream ink. */
+	--litm-banner-mix: 85%;
+	/* The might colours as the Cards see them: colour-blind mode remaps these,
+	   not the global --color-litm-might-* tokens. */
+	--litm-might-origin: var(--color-litm-might-origin);
+	--litm-might-adventure: var(--color-litm-might-adventure);
+	--litm-might-greatness: var(--color-litm-might-greatness);
+	--litm-might-origin-35: color-mix(
+		in srgb,
+		var(--litm-might-origin) 35%,
+		transparent
+	);
+	--litm-might-adventure-35: color-mix(
+		in srgb,
+		var(--litm-might-adventure) 35%,
+		transparent
+	);
+	/* Tints of theme colours the Cards use at fixed strengths. */
+	--color-text-secondary-55: color-mix(
+		in srgb,
+		var(--color-text-secondary) 55%,
+		transparent
+	);
+	--color-litm-banner-34: color-mix(
+		in srgb,
+		var(--color-litm-banner) 34%,
+		transparent
+	);
+	--color-litm-tag-25: color-mix(
+		in srgb,
+		var(--color-litm-tag) 25%,
+		transparent
+	);
+	--color-cool-5-60: color-mix(in srgb, var(--color-cool-5) 60%, transparent);
+	--color-cool-5-85: color-mix(in srgb, var(--color-cool-5) 85%, transparent);
+	--litm-overlay-white-15: rgb(255 255 255 / 0.15);
+}
+
+.litm--printed-cards {
 	--litm-kit-strip: var(--litm-banner-kit);
 	/* Board chip tint strength: full on parchment, as on the classic sheet;
 	   the dark theme halves it. */
@@ -8748,23 +8806,39 @@ button.litm-camping-scene__hero-link {
 	--litm-hero-banner-h: 11rem;
 }
 
-/* Dark card faces: the dark parchment, cropped rather than stretched. */
-:is(body.theme-dark, .themed.theme-dark) .litm--printed-cards:not(.theme-light),
-.litm--printed-cards:is(.themed.theme-dark) {
+/* Dark card faces: the dark parchment, cropped rather than stretched, with
+   lighter ink and deeper banners — the might colours turn pastel in the dark
+   theme. */
+body.theme-dark :is(.litm--printed-cards, .litm--roll-cards):not(.theme-light),
+.themed.theme-dark
+	:is(.litm--printed-cards, .litm--roll-cards):not(.theme-light),
+:is(.litm--printed-cards, .litm--roll-cards).theme-dark {
 	--litm-card-surface: url("assets/journal/parchment-dark.webp") center / cover;
+	--litm-card-ink: var(--color-light-1);
+	--litm-card-ink-filter: brightness(0) invert(1);
+	--litm-banner-mix: 45%;
 }
 
 /* Colour-blind mode: the might colours (Origin green, Adventure red,
    Fellowship gold) collapse into one olive under red-green deficiency, and
    Fellowship matches Adventure under tritanopia. Okabe-Ito-derived hues,
-   dark enough for the cream banner ink at 4.5:1 or better. */
-/* `.application` matches the dark-theme token block's specificity; being
-   later in the file, this one wins in both themes. */
-body.litm--colorblind .application.litm--printed-cards {
-	--color-litm-might-origin: #00785a;
-	--color-litm-might-adventure: #b34700;
-	--color-litm-might-greatness: #1f5f99;
+   dark enough for the cream banner ink at 4.5:1 or better. The Cards tokens
+   are remapped, never the global might colours. `.application` matches the
+   dark-theme token block's specificity; being later in the file, this one
+   wins in both themes. */
+body.litm--colorblind .application:is(.litm--printed-cards, .litm--roll-cards) {
+	--litm-might-origin: #00785a;
+	--litm-might-adventure: #b34700;
+	--litm-might-greatness: #1f5f99;
 	--litm-banner-fellowship: #8a4d78;
+	--litm-banner-mix: 85%;
+}
+
+/* The sheet's colour-blind hues are already dark; 45% would sink them
+   together, so its dark theme stops at 70%. */
+body.theme-dark.litm--colorblind .litm--printed-cards:not(.theme-light),
+body.litm--colorblind .litm--printed-cards.theme-dark {
+	--litm-banner-mix: 70%;
 }
 
 /* ----------------------------------------
@@ -8998,8 +9072,7 @@ body.litm--colorblind .application.litm--printed-cards {
 	font-weight: 600;
 	color: var(--color-text-primary);
 	background: var(--litm-card-surface);
-	border: 1px solid
-		color-mix(in srgb, var(--color-text-secondary) 55%, transparent);
+	border: 1px solid var(--color-text-secondary-55);
 	border-radius: var(--litm-card-radius);
 	box-shadow: var(--litm-card-shadow);
 	transition:
@@ -9008,7 +9081,7 @@ body.litm--colorblind .application.litm--printed-cards {
 
 	&:hover,
 	&:focus-visible {
-		background: color-mix(in srgb, var(--color-litm-banner) 34%, transparent);
+		background: var(--color-litm-banner-34);
 		border-color: var(--color-litm-banner);
 	}
 
@@ -9067,16 +9140,15 @@ body.litm--colorblind .application.litm--printed-cards {
 		height: 1.75rem;
 		min-height: 0;
 		padding: 0;
-		border: 1px solid
-			color-mix(in srgb, var(--litm-banner-ink) 45%, transparent);
+		border: 1px solid var(--litm-banner-ink-45);
 		border-radius: var(--litm-card-radius);
-		background: color-mix(in srgb, var(--color-cool-5) 60%, transparent);
+		background: var(--color-cool-5-60);
 		box-shadow: none;
 		color: var(--litm-banner-ink);
 		font-size: var(--font-size-12);
 
 		&:hover {
-			background: color-mix(in srgb, var(--color-cool-5) 85%, transparent);
+			background: var(--color-cool-5-85);
 		}
 
 		&:focus-visible {
@@ -9179,8 +9251,22 @@ body.litm--colorblind .application.litm--printed-cards {
    three tracks pinned along the bottom edge. */
 .litm--printed-cards .theme-card {
 	--litm-card-pad: var(--spacer-12);
-	--litm-level: var(--color-litm-might-origin);
-	--litm-banner-bg: color-mix(in srgb, var(--litm-level) 85%, black);
+	--litm-level: var(--litm-might-origin);
+	--litm-banner-bg: color-mix(
+		in srgb,
+		var(--litm-level) var(--litm-banner-mix),
+		black
+	);
+	--litm-banner-bg-22: color-mix(
+		in srgb,
+		var(--litm-banner-bg) 22%,
+		transparent
+	);
+	--litm-banner-bg-40: color-mix(
+		in srgb,
+		var(--litm-banner-bg) 40%,
+		transparent
+	);
 	gap: var(--spacer-8);
 	min-width: 0;
 	/* Foundry's fieldset margin would widen every gap between cards. */
@@ -9191,22 +9277,18 @@ body.litm--colorblind .application.litm--printed-cards {
 	   the card, not the lower panel, so a flipped card keeps it. The banner
 	   colour is already tuned per theme for contrast. */
 	background:
-		linear-gradient(
-			to bottom,
-			transparent 30%,
-			color-mix(in srgb, var(--litm-banner-bg) 40%, transparent)
-		),
+		linear-gradient(to bottom, transparent 30%, var(--litm-banner-bg-40)),
 		var(--litm-card-surface);
 	border: 1px solid var(--litm-card-border);
 	border-radius: var(--litm-card-radius);
 	box-shadow: var(--litm-card-shadow);
 
 	&[data-level="adventure"] {
-		--litm-level: var(--color-litm-might-adventure);
+		--litm-level: var(--litm-might-adventure);
 	}
 
 	&[data-level="greatness"] {
-		--litm-level: var(--color-litm-might-greatness);
+		--litm-level: var(--litm-might-greatness);
 	}
 
 	&[data-banner="fellowship"] {
@@ -9219,23 +9301,7 @@ body.litm--colorblind .application.litm--printed-cards {
 	}
 }
 
-/* The might colours turn pastel in the dark theme; darken them so the
-   banner ink keeps its contrast. */
-body.theme-dark .litm--printed-cards:not(.theme-light) .theme-card,
-.litm--printed-cards.theme-dark .theme-card {
-	--litm-banner-bg: color-mix(in srgb, var(--litm-level) 45%, black);
-}
-
-/* The colour-blind hues are already dark; 45% would sink them together. */
-body.theme-dark.litm--colorblind
-	.litm--printed-cards:not(.theme-light)
-	.theme-card:not([data-banner="fellowship"]),
-body.litm--colorblind
-	.litm--printed-cards.theme-dark
-	.theme-card:not([data-banner="fellowship"]) {
-	--litm-banner-bg: color-mix(in srgb, var(--litm-level) 70%, black);
-}
-
+/* The Fellowship colour is already tuned for the cream ink; no darkening. */
 body.theme-dark
 	.litm--printed-cards:not(.theme-light)
 	.theme-card[data-banner="fellowship"],
@@ -9411,7 +9477,7 @@ body.theme-dark
 	}
 
 	&:hover {
-		background: color-mix(in srgb, var(--litm-banner-ink) 22%, transparent);
+		background: var(--litm-banner-ink-22);
 		box-shadow: none;
 	}
 
@@ -9431,7 +9497,7 @@ body.theme-dark
 	min-height: 0;
 	margin: auto 0;
 	padding: 0;
-	border: 1px solid color-mix(in srgb, var(--litm-banner-ink) 45%, transparent);
+	border: 1px solid var(--litm-banner-ink-45);
 	border-radius: var(--litm-card-radius);
 	background: none;
 	box-shadow: none;
@@ -9444,7 +9510,7 @@ body.theme-dark
 	}
 
 	&:hover {
-		background: color-mix(in srgb, var(--litm-banner-ink) 22%, transparent);
+		background: var(--litm-banner-ink-22);
 		box-shadow: none;
 	}
 
@@ -9524,37 +9590,46 @@ body.theme-dark
 		.litm-relationship_tag,
 		.litm-status
 	) {
+	--litm-tag-chip: color-mix(
+		in srgb,
+		var(--tag-color) var(--litm-chip-mix),
+		transparent
+	);
+	--litm-tag-chip-hover: color-mix(
+		in srgb,
+		var(--tag-color) min(var(--litm-chip-mix) + 25%, 100%),
+		transparent
+	);
+	--litm-tag-color-20: color-mix(in srgb, var(--tag-color) 20%, transparent);
+
 	&::before {
 		content: none;
 	}
 
 	&::after {
-		background: color-mix(
-			in srgb,
-			var(--tag-color) var(--litm-chip-mix),
-			transparent
-		);
+		background: var(--litm-tag-chip);
 	}
 
 	&:hover::after {
-		background: color-mix(
-			in srgb,
-			var(--tag-color) min(var(--litm-chip-mix) + 25%, 100%),
-			transparent
-		);
+		background: var(--litm-tag-chip-hover);
 	}
 
 	&.scratched::after {
-		background: color-mix(in srgb, var(--tag-color) 20%, transparent);
+		background: var(--litm-tag-color-20);
 	}
 }
 
+.litm--printed-cards .litm-hero-board .litm-title_tag {
+	--litm-tag-color-30: color-mix(in srgb, var(--tag-color) 30%, transparent);
+	--litm-tag-color-50: color-mix(in srgb, var(--tag-color) 50%, transparent);
+}
+
 .litm--printed-cards .litm-hero-board .litm-title_tag::after {
-	background: color-mix(in srgb, var(--tag-color) 30%, transparent);
+	background: var(--litm-tag-color-30);
 }
 
 .litm--printed-cards .litm-hero-board .litm-title_tag:hover::after {
-	background: color-mix(in srgb, var(--tag-color) 50%, transparent);
+	background: var(--litm-tag-color-50);
 }
 
 .litm--printed-cards .story-theme-card__header > .flexcol {
@@ -9611,7 +9686,7 @@ body.theme-dark
 	padding: 1px var(--spacer-12);
 	/* Every strip (Quest, Relationships, Special Improvements) is centred. */
 	text-align: center;
-	background: color-mix(in srgb, var(--litm-banner-bg) 22%, transparent);
+	background: var(--litm-banner-bg-22);
 	font-size: var(--font-size-11);
 	font-style: normal;
 	font-variant-caps: small-caps;
@@ -10002,7 +10077,7 @@ body.theme-dark
 	min-height: 0;
 	margin: auto 0;
 	padding: 0;
-	border: 1px solid color-mix(in srgb, var(--litm-banner-ink) 45%, transparent);
+	border: 1px solid var(--litm-banner-ink-45);
 	border-radius: var(--litm-card-radius);
 	background: transparent;
 	box-shadow: none;
@@ -10010,7 +10085,7 @@ body.theme-dark
 	color: var(--litm-banner-ink);
 
 	&:hover {
-		background: color-mix(in srgb, var(--litm-banner-ink) 22%, transparent);
+		background: var(--litm-banner-ink-22);
 		box-shadow: none;
 		text-shadow: none;
 	}
@@ -10135,66 +10210,17 @@ body.theme-dark
    the Fellowship, sienna for everything else — tags sit one per ruled line,
    the settings column becomes a band across the top, and the footer lists
    the chosen tags as chips. Everything is scoped under .litm--roll-cards, so
-   the Classic look cannot change. Token names follow the Cards sheet's
-   (--litm-card-*, --litm-banner-*) so the two can share them later.
+   the Classic look cannot change. The tokens it shares with the Cards sheet
+   (--litm-card-*, --litm-banner-*) are defined once, in 25.
    ======================================== */
 
 .litm--roll-cards {
-	--litm-card-surface: url("assets/journal/parchment.webp") center / 100% 100%;
-	--litm-card-border: color-mix(
-		in srgb,
-		var(--color-litm-banner) 70%,
-		transparent
-	);
-	--litm-card-radius: var(--radius-md);
+	/* Ruled lines sit lighter in the roll window than on the sheet. */
 	--litm-card-rule: color-mix(
 		in srgb,
 		var(--color-litm-banner) 35%,
 		transparent
 	);
-	--litm-card-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
-	--litm-card-ink: var(--color-dark-1);
-	/* Turns a coloured icon into the ink colour. */
-	--litm-card-ink-filter: brightness(0);
-	--litm-banner-ink: #f6efe4;
-	--litm-banner-kit: #a0522d;
-	--litm-banner-fellowship: var(--color-litm-track-milestone);
-	/* How far the might colour is pushed toward black under the cream ink. */
-	--litm-banner-mix: 85%;
-	/* The Cards sheet's plaque: notched corners, and half its height above
-	   the card's top edge, which each card makes room for. */
-	--litm-banner-overhang: calc(0.8 * var(--font-size-14) + var(--spacer-4));
-	--litm-banner-mask:
-		radial-gradient(circle at 0 0, transparent 6px, black 6.5px) top left /
-		51% 51% no-repeat,
-		radial-gradient(circle at 100% 0, transparent 6px, black 6.5px) top right /
-		51% 51% no-repeat,
-		radial-gradient(circle at 0 100%, transparent 6px, black 6.5px) bottom left /
-		51% 51% no-repeat,
-		radial-gradient(circle at 100% 100%, transparent 6px, black 6.5px) bottom
-		right / 51% 51% no-repeat;
-}
-
-/* Dark parchment, lighter ink, and deeper banners: the might colours turn
-   pastel in the dark theme. */
-body.theme-dark .litm--roll-cards:not(.theme-light),
-.themed.theme-dark .litm--roll-cards:not(.theme-light),
-.litm--roll-cards.theme-dark {
-	--litm-card-surface: url("assets/journal/parchment-dark.webp") center / cover;
-	--litm-card-ink: var(--color-light-1);
-	--litm-card-ink-filter: brightness(0) invert(1);
-	--litm-banner-mix: 45%;
-}
-
-/* Colour-blind mode: the Cards sheet's Okabe-Ito banner hues, already dark.
-   `.application` matches the dark-theme token block's specificity; being
-   later in the file, this one wins in both themes. */
-body.litm--colorblind .application.litm--roll-cards {
-	--color-litm-might-origin: #00785a;
-	--color-litm-might-adventure: #b34700;
-	--color-litm-might-greatness: #1f5f99;
-	--litm-banner-fellowship: #8a4d78;
-	--litm-banner-mix: 85%;
 }
 
 /* Settings become a band across the top; the board takes the full width. */
@@ -10254,10 +10280,21 @@ body.litm--colorblind .application.litm--roll-cards {
 		.litm--roll-dialog-theme-group,
 		.litm--roll-dialog-section-break:not(:has(> .litm--roll-dialog-theme-group))
 	) {
+	--litm-level: var(--litm-banner-kit);
 	--litm-banner-bg: color-mix(
 		in srgb,
-		var(--litm-banner-kit) var(--litm-banner-mix),
+		var(--litm-level) var(--litm-banner-mix),
 		black
+	);
+	--litm-banner-bg-22: color-mix(
+		in srgb,
+		var(--litm-banner-bg) 22%,
+		transparent
+	);
+	--litm-banner-bg-40: color-mix(
+		in srgb,
+		var(--litm-banner-bg) 40%,
+		transparent
 	);
 	position: relative;
 	display: flex;
@@ -10273,36 +10310,20 @@ body.litm--colorblind .application.litm--roll-cards {
 	/* A theme card's colour washes up from its foot, as on the Cards sheet. */
 	&:is([data-level], [data-banner]) {
 		background:
-			linear-gradient(
-				to bottom,
-				transparent 30%,
-				color-mix(in srgb, var(--litm-banner-bg) 40%, transparent)
-			),
+			linear-gradient(to bottom, transparent 30%, var(--litm-banner-bg-40)),
 			var(--litm-card-surface);
 	}
 
 	&[data-level="origin"] {
-		--litm-banner-bg: color-mix(
-			in srgb,
-			var(--color-litm-might-origin) var(--litm-banner-mix),
-			black
-		);
+		--litm-level: var(--litm-might-origin);
 	}
 
 	&[data-level="adventure"] {
-		--litm-banner-bg: color-mix(
-			in srgb,
-			var(--color-litm-might-adventure) var(--litm-banner-mix),
-			black
-		);
+		--litm-level: var(--litm-might-adventure);
 	}
 
 	&[data-level="greatness"] {
-		--litm-banner-bg: color-mix(
-			in srgb,
-			var(--color-litm-might-greatness) var(--litm-banner-mix),
-			black
-		);
+		--litm-level: var(--litm-might-greatness);
 	}
 
 	&[data-banner="fellowship"] {
@@ -10350,12 +10371,10 @@ body.litm--colorblind .application.litm--roll-cards {
 	text-transform: none;
 	text-align: center;
 	color: var(--litm-banner-ink);
-	text-shadow: 0 1px 0 rgb(0 0 0 / 0.4);
+	text-shadow: 0 1px 0 var(--color-overlay-black-40);
 	background: var(--litm-banner-bg);
 	mask: var(--litm-banner-mask);
-	box-shadow:
-		inset 0 2px 0 rgb(0 0 0 / 0.4),
-		inset 0 -2px 0 rgb(0 0 0 / 0.4);
+	box-shadow: var(--litm-banner-rim);
 
 	& i,
 	& img {
@@ -10510,7 +10529,7 @@ body.litm--colorblind .application.litm--roll-cards {
 		   that would vanish into it. */
 		&:not(.is-locked):hover,
 		&:has(litm-super-checkbox[value]:not([value=""])) {
-			background: rgb(255 255 255 / 0.15);
+			background: var(--litm-overlay-white-15);
 		}
 	}
 
@@ -10577,7 +10596,7 @@ body.litm--colorblind .application.litm--roll-cards {
 
 .litm--roll-cards
 	.litm--roll-dialog-tag:has(litm-super-checkbox[value="scratched"]) {
-	background: color-mix(in srgb, var(--color-litm-tag) 25%, transparent);
+	background: var(--color-litm-tag-25);
 }
 
 /* A chosen line shows what it adds, as the chips do. Statuses add their tier
@@ -10788,12 +10807,12 @@ body.litm--colorblind .application.litm--roll-cards {
 
 	/* Positive Might favours the Heroes, as a positive line does. */
 	&[data-sign="1"] {
-		border-color: var(--color-litm-might-origin);
+		border-color: var(--litm-might-origin);
 		background: var(--color-litm-might-origin-bg);
 	}
 
 	&[data-sign="-1"] {
-		border-color: var(--color-litm-might-adventure);
+		border-color: var(--litm-might-adventure);
 		background: var(--color-litm-might-adventure-bg);
 	}
 
@@ -10918,16 +10937,19 @@ body.litm--colorblind .application.litm--roll-cards {
 			content: none;
 		}
 
+		--litm-tag-chip: color-mix(
+			in srgb,
+			var(--tag-color) var(--litm-chip-mix),
+			transparent
+		);
+		--litm-tag-color-20: color-mix(in srgb, var(--tag-color) 20%, transparent);
+
 		&::after {
-			background: color-mix(
-				in srgb,
-				var(--tag-color) var(--litm-chip-mix),
-				transparent
-			);
+			background: var(--litm-tag-chip);
 		}
 
 		&.scratched::after {
-			background: color-mix(in srgb, var(--tag-color) 20%, transparent);
+			background: var(--litm-tag-color-20);
 		}
 	}
 
@@ -11112,7 +11134,7 @@ body.litm--colorblind .application.litm--roll-cards {
 		display: block;
 		margin: 0 calc(-1 * var(--spacer-8)) var(--spacer-4);
 		padding: 1px var(--spacer-12);
-		background: color-mix(in srgb, var(--litm-banner-bg) 22%, transparent);
+		background: var(--litm-banner-bg-22);
 		font-size: var(--font-size-11);
 		font-style: normal;
 		font-variant-caps: small-caps;
@@ -11144,7 +11166,7 @@ body.litm--colorblind .application.litm--roll-cards {
 	/* Bands on the value cells only: a tier cell spans rows that start on
 	   different bands, which left Greatness unlike Origin and Adventure. */
 	& .litm--might-table tbody tr:nth-child(odd) td:not(.litm--might-table-tier) {
-		background: color-mix(in srgb, var(--litm-card-ink) 7%, transparent);
+		background: var(--litm-card-ink-7);
 	}
 
 	/* A picker, not a reference card: the tooltip's roomy cells shrink to
@@ -11238,6 +11260,20 @@ body.litm--colorblind .application.litm--roll-cards {
 	}
 }
 
+/* The Might table's tier numbers (3640) take the Cards' might colours, so
+   colour-blind mode still remaps them here. */
+.litm--roll-cards .litm--might-scale-origin {
+	color: var(--litm-might-origin);
+}
+
+.litm--roll-cards .litm--might-scale-adventure {
+	color: var(--litm-might-adventure);
+}
+
+.litm--roll-cards .litm--might-scale-greatness {
+	color: var(--litm-might-greatness);
+}
+
 /* A pick fills its whole cell, so a tier and its picked row read as one
    block. The Heroes' own Might is the plus (green); Area, Size and Group
    take from it (red). */
@@ -11246,11 +11282,7 @@ body.litm--colorblind .application.litm--roll-cards {
 	tbody
 	tr
 	td:has(> .litm--might-pick.is-active) {
-	background: color-mix(
-		in srgb,
-		var(--color-litm-might-adventure) 35%,
-		transparent
-	);
+	background: var(--litm-might-adventure-35);
 }
 
 .litm--might-picker
@@ -11258,11 +11290,7 @@ body.litm--colorblind .application.litm--roll-cards {
 	tbody
 	tr
 	td:has(> .litm--might-pick.is-own.is-active) {
-	background: color-mix(
-		in srgb,
-		var(--color-litm-might-origin) 35%,
-		transparent
-	);
+	background: var(--litm-might-origin-35);
 }
 
 /* A tier's coloured icon and number vanish into the fill; on it they read
