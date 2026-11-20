@@ -58,17 +58,21 @@ export class HandlebarsPartials {
 		"systems/litmv2/templates/partials/play-tag.html",
 		"systems/litmv2/templates/partials/lost-relationship.html",
 		"systems/litmv2/templates/partials/roll-tag.html",
+		"systems/litmv2/templates/partials/roll-plaque.html",
 		"systems/litmv2/templates/partials/play-theme-tags.html",
 		"systems/litmv2/templates/partials/play-theme-tracks.html",
 		"systems/litmv2/templates/partials/theme-special-improvements.html",
 		"systems/litmv2/templates/partials/theme-card-header.html",
 		"systems/litmv2/templates/partials/sacrifice-theme.html",
 		"systems/litmv2/templates/partials/theme-description.html",
+		"systems/litmv2/templates/partials/flip-button.html",
+		"systems/litmv2/templates/partials/banner-icon.html",
 		"systems/litmv2/templates/partials/play-profile-img.html",
 		"systems/litmv2/templates/partials/rating-star.html",
 		"systems/litmv2/templates/partials/control-legend.html",
 		"systems/litmv2/templates/partials/weakness-chevron.html",
 		"systems/litmv2/templates/partials/hidden-mark.html",
+		"systems/litmv2/templates/partials/party-overview.html",
 		// The character-selection control. Listed here rather than on an owning
 		// sheet because the target-picker dialogs render it through a top-level
 		// renderTemplate with no ApplicationV2 lifecycle to hang it off.

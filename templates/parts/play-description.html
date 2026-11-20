@@ -31,7 +31,15 @@
 	{{/if}}
 	{{else}}
 	{{#if enriched.description}}
+	{{#if cardsLayout}}
+	{{!-- Clamped like a theme description; the hero name in the header toggles it. --}}
+	<div class="theme-card__description litm--hero-description" id="litm-hero-description-{{document.id}}"
+		data-action="toggleThemeDescription" data-tooltip="{{localize 'LITM.Ui.click_toggle_description'}}">
+		<div class="theme-card__description-body enriched-content" data-field="system.description">{{{enriched.description}}}</div>
+	</div>
+	{{else}}
 	<div class="enriched-content" data-field="system.description">{{{enriched.description}}}</div>
+	{{/if}}
 	{{/if}}
 	{{#if (eq type "journey")}}
 	{{#if enriched.tags}}

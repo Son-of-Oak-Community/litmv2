@@ -5,13 +5,18 @@
  */
 
 import {
+	byThemeCardOrder,
 	effectToPlain,
 	isEffectVisible,
 	resolveTagActorId,
 } from "../../active-effects/effect-queries.js";
 import { StatusTagData } from "../../active-effects/status-tag-data.js";
-import { ACTOR_TAG_TYPES, EFFECT_GROUP_LABELS } from "../../system/config.js";
-import { localize as t } from "../../utils.js";
+import {
+	ACTOR_TAG_TYPES,
+	BURN_POWER,
+	EFFECT_GROUP_LABELS,
+} from "../../system/config.js";
+import { levelIcon, localize as t } from "../../utils.js";
 import { StoryTagsStore } from "../story-tags/story-tags-store.js";
 
 /**
@@ -26,6 +31,133 @@ export const sortByTypeThenName = (tags, typeOrder) =>
 		if (typeA !== typeB) return typeA - typeB;
 		return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
 	});
+
+/**
+ * The Cards footer's chips: every chosen tag with what it adds, what adds
+ * Power first, as the roll card lists them. Only the highest status of each
+ * sign counts toward Power (`LitmRoll.calculatePower`), so a lower one is
+ * marked not counted and the chips add up to the tags' share of the total.
+ * @param {{key: string, name: string, type: string, state: string,
+ *   tier?: number, narrator?: boolean}[]} rows
+ * @returns {{key: string, label: string, value: number, counted: boolean,
+ *   narrator: boolean}[]}
+ */
+export function summarizeChips(rows) {
+	const unique = [...new Map(rows.map((r) => [r.key, r])).values()];
+	const value = (r) => {
+		if (r.type === "status_tag")
+			return r.state === "negative" ? -(r.tier ?? 0) : (r.tier ?? 0);
+		if (r.state === "scratched") return BURN_POWER;
+		return r.state === "negative" ? -1 : 1;
+	};
+	const chips = unique.map((r) => ({
+		key: r.key,
+		label: r.name,
+		value: value(r),
+		counted: true,
+		narrator: !!r.narrator,
+	}));
+	for (const sign of [1, -1]) {
+		const statuses = chips.filter(
+			(c, i) => unique[i].type === "status_tag" && Math.sign(c.value) === sign,
+		);
+		const strongest = Math.max(0, ...statuses.map((c) => Math.abs(c.value)));
+		let kept = false;
+		for (const c of statuses) {
+			c.counted = !kept && Math.abs(c.value) === strongest;
+			kept ||= c.counted;
+		}
+	}
+	// Stable: within each sign the chips keep the window's order.
+	return chips.sort((a, b) => (b.value > 0) - (a.value > 0));
+}
+
+/**
+ * The book's name for a Might: Favored or Imperiled from ±3, Extremely
+ * from ±6 (and past it, as a group's Might adds up, Core Book "Groups");
+ * "" for Equal and the small steps.
+ * @param {number} might
+ * @returns {string}
+ */
+export function mightName(might) {
+	const size = Math.abs(might);
+	if (size < 3) return "";
+	const extreme = size >= 6 ? "extremely_" : "";
+	return t(
+		`LITM.Ui.might_${extreme}${might > 0 ? "favored" : "imperiled"}_short`,
+	);
+}
+
+/**
+ * The Classic scale's segments for a Might, which may run past its ±6 (a
+ * group's Might, or columns combined in the Cards picker, p.177): the segment
+ * that lights, and what each end segment reads. Past an end, that end lights
+ * and shows the real value, so the scale agrees with the number beside it.
+ * @param {number} might
+ * @returns {{ radio: number, low: string, high: string }}
+ */
+export function classicMightScale(might) {
+	const sign = (n) => (n > 0 ? `+${n}` : `${n}`);
+	return {
+		radio: Math.max(-6, Math.min(6, might)),
+		low: sign(Math.min(might, -6)),
+		high: sign(Math.max(might, 6)),
+	};
+}
+
+/**
+ * The Might the Cards picker's table adds up: the Might column is the
+ * Heroes' own Might, and Area, Size and Group are what they face, summed as
+ * the book sums "an army (5) of dragons (5)" into Might 10. The Action's
+ * Might is the one less the other.
+ * @param {{might?: number|null, area?: number|null, size?: number|null, group?: number|null}} picks
+ * @returns {number}
+ */
+export function mightFromPicks(picks) {
+	const against = ["area", "size", "group"].reduce(
+		(total, column) => total + (picks[column] ?? 0),
+		0,
+	);
+	return (picks.might ?? 0) - against || 0;
+}
+
+/** The rows of the book's Might table, 0–6, with their tier and accent. */
+export function mightScaleRows() {
+	// [level, rowspan, the Might a click on the tier picks]
+	const tiers = {
+		0: ["origin", 2, 0],
+		2: ["adventure", 3, 3],
+		5: ["greatness", 2, 6],
+	};
+	const accents = { 0: "origin", 3: "adventure", 6: "greatness" };
+	return Array.from({ length: 7 }, (_, value) => ({
+		value,
+		accent: accents[value] ?? null,
+		tier: tiers[value]
+			? {
+					level: tiers[value][0],
+					label: t(`LITM.Terms.${tiers[value][0]}`),
+					rowspan: tiers[value][1],
+					might: tiers[value][2],
+					first: value,
+					last: value + tiers[value][1] - 1,
+				}
+			: null,
+		area: t(`LITM.Ui.might_scale_area_${value}`),
+		size: t(`LITM.Ui.might_scale_size_${value}`),
+		group: t(`LITM.Ui.might_scale_group_${value}`),
+	}));
+}
+
+/**
+ * The class the Cards look is scoped under, from the player's
+ * `look` setting. Classic gets none, so it cannot change.
+ * @param {string} look
+ * @returns {string|null}
+ */
+export function rollLookClass(look) {
+	return look === "cards" ? "litm--roll-cards" : null;
+}
 
 /**
  * Build the row decorator every tag list shares: selection state, lock
@@ -219,6 +351,55 @@ function effectGroup(rawTag, actor, parentImg) {
 	};
 }
 
+/**
+ * A theme card's banner, as on the Cards sheet: the Fellowship theme is gold,
+ * any other theme takes its Might level's colour. Groups without either get
+ * the kit banner.
+ * @param {Item} theme
+ * @returns {{banner?: "fellowship", level?: string}}
+ */
+function themeBanner(theme) {
+	if (theme.system?.isFellowship) return { banner: "fellowship" };
+	const level = theme.system?.level;
+	return level ? { level } : {};
+}
+
+/**
+ * A theme card's banner icon, as on the Cards sheet: a story theme's image is
+ * its portrait (or the default bag), so its banner shows its level instead.
+ * Classic keeps the image.
+ * @param {Item} theme
+ * @param {boolean} cards  Whether the window has the Cards look.
+ */
+const themeIcon = (theme, cards) =>
+	cards && theme.type === "story_theme"
+		? levelIcon(theme.system?.level)
+		: theme.img;
+
+/**
+ * A Cards theme card shows its enabled tags, scratched ones too, which the
+ * decorator locks; a disabled tag is out of play, scratched or not. Classic
+ * lists only what is in play.
+ * @param {ActiveEffect} e
+ * @param {boolean} cards  Whether the window has the Cards look.
+ */
+const isOnThemeCard = (e, cards) =>
+	e.active || (cards && !e.disabled && e.system?.isScratched === true);
+
+const THEME_ITEM_TYPES = new Set(["theme", "story_theme"]);
+
+/**
+ * An actor's tags as the roll lists them: what is in play, and in the Cards
+ * look a theme's scratched tags. `appliedEffects` alone holds only the first.
+ * @param {Actor} actor
+ * @param {boolean} cards  Whether the window has the Cards look.
+ * @returns {ActiveEffect[]}
+ */
+const rollEffects = (actor, cards) =>
+	[...actor.allApplicableEffects()].filter((e) =>
+		THEME_ITEM_TYPES.has(e.parent?.type) ? isOnThemeCard(e, cards) : e.active,
+	);
+
 /** The scene's own tags, headed as on the roller's Story tab. */
 const SCENE_STORY_GROUP = () => ({
 	themeName: t("LITM.Tags.story"),
@@ -236,7 +417,7 @@ const GROUP_ICONS = {
  * {@link effectGroup} — the shape shared by the contributed panel and the
  * GM viewer tabs.
  */
-function pushThemeGroup(themeMap, rawTag, actor, parentImg, tag) {
+function pushThemeGroup(themeMap, rawTag, actor, parentImg, tag, cards) {
 	const { key, label, img, icon } = effectGroup(rawTag, actor, parentImg);
 	if (!themeMap.has(key)) {
 		const item = actor.items?.get(key);
@@ -248,8 +429,9 @@ function pushThemeGroup(themeMap, rawTag, actor, parentImg, tag) {
 				: (GROUP_ORDER[key] ?? GROUP_ORDER[item?.type] ?? 3);
 		themeMap.set(key, {
 			themeName: label,
-			themeImg: img,
+			themeImg: item?.type === "story_theme" ? themeIcon(item, cards) : img,
 			icon,
+			...(THEME_ITEM_TYPES.has(item?.type) ? themeBanner(item) : {}),
 			order,
 			sort: item?.sort ?? 0,
 			tags: [],
@@ -277,8 +459,8 @@ const GROUP_ORDER = {
 
 /**
  * A theme-group map's groups by category, themes in sheet order, each group's
- * tags as the sheet lists them: title tag first, then as stored
- * (`HeroData#themes`).
+ * tags as the sheet lists them: title tag, power tags, weaknesses
+ * (`byThemeCardOrder`, as `HeroData#themes`).
  */
 const groupsByCategory = (themeMap) =>
 	[...themeMap.values()]
@@ -288,10 +470,7 @@ const groupsByCategory = (themeMap) =>
 		)
 		.map((g) => ({
 			...g,
-			tags: g.tags.toSorted(
-				(a, b) =>
-					(b.system?.isTitleTag ? 1 : 0) - (a.system?.isTitleTag ? 1 : 0),
-			),
+			tags: g.tags.toSorted(byThemeCardOrder),
 		}));
 
 /**
@@ -339,7 +518,14 @@ export function buildContributedTagGroups(dialog, { decorateTag, isOwner }) {
 			const themeImg = rawTag.themeId
 				? (actor.items.get(rawTag.themeId)?.img ?? null)
 				: null;
-			pushThemeGroup(themeMap, rawTag, actor, themeImg, tag);
+			pushThemeGroup(
+				themeMap,
+				rawTag,
+				actor,
+				themeImg,
+				tag,
+				dialog.isCardsLook,
+			);
 		}
 	}
 
@@ -352,7 +538,7 @@ export function buildContributedTagGroups(dialog, { decorateTag, isOwner }) {
 				ownCharacter.name,
 				ownCharacter.prototypeToken?.texture?.src || ownCharacter.img,
 			);
-			for (const e of ownCharacter.appliedEffects) {
+			for (const e of rollEffects(ownCharacter, dialog.isCardsLook)) {
 				// Helping is one of the Hero's tags, never a status (p.157).
 				if (e.type === "status_tag" || !isEffectVisible(e)) continue;
 				if (isLostRelationship(e)) continue;
@@ -376,6 +562,7 @@ export function buildContributedTagGroups(dialog, { decorateTag, isOwner }) {
 					ownCharacter,
 					e.parent?.img ?? null,
 					tag,
+					dialog.isCardsLook,
 				);
 			}
 		}
@@ -449,6 +636,7 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 	};
 
 	const isVisibleTag = (e) => e.active && isEffectVisible(e);
+	const cards = dialog.isCardsLook;
 
 	// Hero statuses
 	const heroStatuses = sys.statusEffects
@@ -480,11 +668,14 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 	// Hero themes and story-themes both expose theme-tag groups to the dialog.
 	const themeContainers = [...(sys.themes ?? []), ...(sys.storyThemes ?? [])];
 	for (const { theme, tags } of themeContainers) {
-		const activeTags = tags.filter((e) => e.active).map(withSelection);
+		const activeTags = tags
+			.filter((e) => isOnThemeCard(e, cards))
+			.map(withSelection);
 		if (activeTags.length) {
 			characterTagGroups.push({
 				themeName: theme.name,
-				themeImg: theme.img,
+				themeImg: themeIcon(theme, cards),
+				...themeBanner(theme),
 				tags: activeTags,
 			});
 		}
@@ -515,11 +706,14 @@ export function buildOwnerContext(dialog, { decorateTag }) {
 	}
 
 	for (const { theme, tags } of fellowship.themes) {
-		const activeTags = tags.filter((e) => e.active).map(withSelection);
+		const activeTags = tags
+			.filter((e) => isOnThemeCard(e, cards))
+			.map(withSelection);
 		if (activeTags.length) {
 			fellowshipTagGroups.push({
 				themeName: theme.name,
-				themeImg: theme.img,
+				themeImg: themeIcon(theme, cards),
+				...themeBanner(theme),
 				tags: activeTags,
 			});
 		}
@@ -645,7 +839,7 @@ function buildActorEffectGroups(
 	{ decorateTag, tagTypeOrder, allStoryItems = [], isOwner },
 ) {
 	const themeMap = new Map();
-	// Use appliedEffects (active only). For actor-level effects (status_tag,
+	// Tags in play, and a theme's scratched ones. For actor-level effects (status_tag,
 	// story_tag, relationship_tag), group by type rather than parent name to
 	// avoid a catch-all actor group.
 	//
@@ -653,7 +847,7 @@ function buildActorEffectGroups(
 	// the point. It now also feeds the Acting Together picker that players see,
 	// so non-GMs get the same visibility filter `buildOwnerContext` applies.
 	const isGM = game.user.isGM;
-	for (const e of actor.appliedEffects) {
+	for (const e of rollEffects(actor, dialog.isCardsLook)) {
 		if ((!isGM && !isEffectVisible(e)) || isLostRelationship(e)) continue;
 		const sel = dialog.getSelection(e.uuid);
 		const rawTag = effectToPlain(e);
@@ -664,7 +858,14 @@ function buildActorEffectGroups(
 			contributorId: sel.contributorId,
 			narrator: sel.narrator,
 		});
-		pushThemeGroup(themeMap, rawTag, actor, e.parent?.img ?? null, tag);
+		pushThemeGroup(
+			themeMap,
+			rawTag,
+			actor,
+			e.parent?.img ?? null,
+			tag,
+			dialog.isCardsLook,
+		);
 	}
 	// Add actor story items to this tab
 	const actorStory = allStoryItems

@@ -67,6 +67,7 @@ export class HeroSheet extends LitmActorSheet {
 			toggleTier: { handler: HeroSheet.#onToggleTier, buttons: [0, 2] },
 			openCamping: HeroSheet.#onOpenCamping,
 			browseThemes: HeroSheet.#onBrowseThemes,
+			editNotes: HeroSheet._onEditNotes,
 		},
 		form: {
 			handler: HeroSheet.#onSubmitForm,
@@ -93,6 +94,7 @@ export class HeroSheet extends LitmActorSheet {
 				"systems/litmv2/templates/partials/edit-theme-tags-activatable.html",
 				"systems/litmv2/templates/partials/icon-fellowship-hint.html",
 				"systems/litmv2/templates/partials/hidden-toggle.html",
+				"systems/litmv2/templates/partials/hero-relationships.html",
 			],
 		},
 	};
@@ -201,7 +203,14 @@ export class HeroSheet extends LitmActorSheet {
 				const themes = this.document.items.filter(
 					(i) => i.type === "theme" && !i.system.isFellowship,
 				);
-				if (!themes.length) return false;
+				// Nothing to replace yet: add it through the drop handler, so it is
+				// refused (Fellowship theme, themebook, limit) as a drop would be.
+				if (!themes.length) {
+					const source = await foundry.utils.fromUuid(entry.uuid);
+					if (!source) return false;
+					const created = await this._onDropItem(new Event("drop"), source);
+					return Array.isArray(created) && created.length > 0;
+				}
 				const options = themes
 					.map(
 						(th, ix) =>
@@ -254,6 +263,33 @@ export class HeroSheet extends LitmActorSheet {
 
 	static #onOpenCamping() {
 		game.litmv2?.LitmCampingScene?.open();
+	}
+
+	/**
+	 * Open the hero's notes in a rich-text dialog and save them on confirm.
+	 * @this {HeroSheet}
+	 */
+	static async _onEditNotes() {
+		// The button is hidden too; this also stops a stale one on a now-locked hero.
+		if (!this.isEditable) return;
+		const id = `litm-notes-${this.document.id}`;
+		// A fixed id would otherwise stack a second dialog with a duplicate DOM id.
+		const open = foundry.applications.instances.get(id);
+		if (open) return open.bringToFront();
+		const { escapeHTML } = foundry.utils;
+		const result = await foundry.applications.api.DialogV2.input({
+			id,
+			window: {
+				title: `${game.i18n.localize("LITM.Ui.notes")}: ${this.document.name}`,
+				icon: "fa-solid fa-feather-pointed",
+			},
+			classes: ["litm-notes-dialog"],
+			position: { width: 560 },
+			content: `<prose-mirror name="notes" data-document-uuid="${this.document.uuid}" value="${escapeHTML(this.document.system.notes)}"></prose-mirror>`,
+			ok: { label: game.i18n.localize("LITM.Ui.notes_save") },
+			rejectClose: false,
+		});
+		if (result) await this.document.update({ "system.notes": result.notes });
 	}
 
 	/** @override */
@@ -407,6 +443,8 @@ export class HeroSheet extends LitmActorSheet {
 						_id: fellowshipTheme.id,
 						id: fellowshipTheme.id,
 						img: fellowshipTheme.img,
+						levelLabel: data.levelLabel,
+						levelIcon: data.levelIcon,
 						themeTag: data.themeTag,
 						system: data.system,
 					};

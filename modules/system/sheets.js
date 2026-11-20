@@ -1,7 +1,9 @@
 import { LitmActiveEffectSheet } from "../active-effects/active-effect-sheet.js";
 import { ChallengeSheet } from "../actor/challenge/challenge-sheet.js";
 import { FellowshipSheet } from "../actor/fellowship/fellowship-sheet.js";
+import { FellowshipSheetCards } from "../actor/fellowship/fellowship-sheet-cards.js";
 import { HeroSheet } from "../actor/hero/hero-sheet.js";
+import { HeroSheetCards } from "../actor/hero/hero-sheet-cards.js";
 import { JourneySheet } from "../actor/journey/journey-sheet.js";
 import { StoryThemeActorSheet } from "../actor/story-theme/story-theme-actor-sheet.js";
 import { ActionSheet } from "../item/action/action-sheet.js";
@@ -74,6 +76,15 @@ export class LitmSheets {
 		);
 		foundry.documents.collections.Actors.registerSheet(
 			"litmv2",
+			HeroSheetCards,
+			{
+				types: ["hero"],
+				makeDefault: false,
+				label: "LITM.Sheets.hero_cards",
+			},
+		);
+		foundry.documents.collections.Actors.registerSheet(
+			"litmv2",
 			ChallengeSheetLandscape,
 			{
 				types: ["challenge"],
@@ -97,6 +108,15 @@ export class LitmSheets {
 				types: ["fellowship"],
 				makeDefault: false,
 				label: "LITM.Sheets.fellowship_landscape",
+			},
+		);
+		foundry.documents.collections.Actors.registerSheet(
+			"litmv2",
+			FellowshipSheetCards,
+			{
+				types: ["fellowship"],
+				makeDefault: false,
+				label: "LITM.Sheets.fellowship_cards",
 			},
 		);
 		foundry.documents.collections.Actors.registerSheet(

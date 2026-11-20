@@ -378,6 +378,63 @@ describe("LitmRollDialog reseat after the owner reloads", () => {
 	});
 });
 
+describe("Cards Might picker", () => {
+	const act = (dialog, name, dataset) =>
+		asUser("gm", () =>
+			LitmRollDialog.DEFAULT_OPTIONS.actions[name].call(dialog, null, {
+				dataset,
+			}),
+		);
+	const narrator = () => {
+		const dialog = make("gm", { ownerId: "player" });
+		dialog.render = vi.fn();
+		return dialog;
+	};
+	const might = (dialog) => dialog.extractRollData().might;
+
+	it("subtracts the picked opposition from the Heroes' Might", () => {
+		const dialog = narrator();
+		act(dialog, "pickMight", { column: "might", value: "3" });
+		act(dialog, "pickMight", { column: "size", value: "5" });
+		act(dialog, "pickMight", { column: "group", value: "5" });
+		expect(might(dialog)).toBe(-7);
+	});
+
+	it("drops picks a ± step has moved away from", () => {
+		const dialog = narrator();
+		act(dialog, "pickMight", { column: "size", value: "5" });
+		act(dialog, "mightStep", { step: "1" });
+		act(dialog, "pickMight", { column: "group", value: "2" });
+		expect(might(dialog)).toBe(-2);
+	});
+
+	it("leaves the Might alone when the roller tries it on a called roll", () => {
+		const dialog = make("player", { ownerId: "player" });
+		dialog.tabGroups = {};
+		dialog.render = vi.fn();
+		asUser("player", () =>
+			dialog.configureSharedRoll({
+				ownerId: "player",
+				narratorUserId: "gm",
+				syncSession: "call",
+			}),
+		);
+		const playerActs = (name, dataset) =>
+			asUser("player", () =>
+				LitmRollDialog.DEFAULT_OPTIONS.actions[name].call(dialog, null, {
+					dataset,
+				}),
+			);
+		const sent = messages.length;
+		playerActs("mightStep", { step: "1" });
+		playerActs("pickMight", { column: "group", value: "2" });
+		expect(might(dialog)).toBe(0);
+		// Turned away before anything is sent or redrawn.
+		expect(messages.length).toBe(sent);
+		expect(dialog.render).not.toHaveBeenCalled();
+	});
+});
+
 describe("Helping Each Other", () => {
 	// p.157: the help is one of the helper's tags, never a status.
 	const allyEffect = (type) => {

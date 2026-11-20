@@ -1,14 +1,14 @@
 <section class="flexcol gap-lg">
 	<!-- Fellowship Theme -->
 	{{#if theme}}
-	<fieldset class="theme-card item draggable" data-item-id="{{theme._id}}">
-		<legend class="flexrow gap-sm">{{#if theme.system.themebook}}<span
+	<fieldset class="theme-card item draggable" data-item-id="{{theme._id}}" data-banner="fellowship">
+		<legend class="flexrow gap-sm">{{#if @root.cardsLayout}}<span class="litm-banner theme-card__book">{{> "systems/litmv2/templates/partials/banner-icon.html" src="systems/litmv2/assets/media/icons/fellowship.svg" action="editItem" itemId=theme._id label=(localize "LITM.Ui.click_to_edit_theme") tooltip=theme.levelLabel}}{{theme.system.themebook}}</span>{{else}}{{#if theme.system.themebook}}<span
 				class="theme-card__book">{{theme.system.themebook}}</span>{{/if}}<button type="button"
 				data-action="editItem" data-item-id="{{theme._id}}"
 				data-tooltip="{{localize 'LITM.Ui.click_to_edit_theme'}}"
 				aria-label="{{localize 'LITM.Ui.click_to_edit_theme'}}">
 				<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-			</button>
+			</button>{{/if}}
 			<button type="button" data-action="removeItem" data-item-id="{{theme._id}}"
 				data-tooltip="{{localize 'LITM.Ui.remove_theme'}}" aria-label="{{localize 'LITM.Ui.remove_theme'}}">
 				<i class="fa-solid fa-trash" aria-hidden="true"></i>
@@ -49,14 +49,18 @@
 
 		<div class="grid-2col">
 			{{#each storyThemes as |theme|}}
-			<fieldset class="theme-card story-theme-card item draggable" data-item-id="{{theme._id}}">
+			<fieldset class="theme-card story-theme-card item draggable" data-item-id="{{theme._id}}" data-level="{{theme.system.level}}">
 				<legend class="flexrow gap-xs">
+					{{#if @root.cardsLayout}}
+					<span class="litm-banner theme-card__book">{{> "systems/litmv2/templates/partials/banner-icon.html" src=theme.levelIcon action="editItem" itemId=theme._id label=(localize "LITM.Ui.click_to_edit_story_theme") tooltip=theme.levelLabel}}{{localize "LITM.Terms.story"}}</span>
+					{{else}}
 					<span class="litm-banner theme-card__book">{{localize "LITM.Terms.story"}}</span>
 					<button type="button" data-action="editItem" data-item-id="{{theme._id}}"
 						data-tooltip="{{localize 'LITM.Ui.click_to_edit_story_theme'}}"
 						aria-label="{{localize 'LITM.Ui.click_to_edit_story_theme'}}">
 						<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
 					</button>
+					{{/if}}
 					<button type="button" data-action="removeItem" data-item-id="{{theme._id}}"
 						data-tooltip="{{localize 'LITM.Ui.remove_story_theme'}}"
 						aria-label="{{localize 'LITM.Ui.remove_story_theme'}}">
@@ -92,14 +96,14 @@
 	</fieldset>
 
 	<!-- Story Tags & Statuses -->
-	<fieldset>
+	<fieldset class="litm-fellowship-tags">
 		<legend class="control flexrow gap-sm">
 			<span class="flex1">{{localize "LITM.Terms.story_tags_statuses"}}</span>
-			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="story_tag"
+			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="story_tag" data-prompt-name
 				data-tooltip="{{localize 'LITM.Ui.add_tag'}}" aria-label="{{localize 'LITM.Ui.add_tag'}}">
 				<i class="fa-solid fa-scroll" aria-hidden="true"></i>
 			</button>
-			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="status_tag"
+			<button type="button" class="noflex" data-action="addStoryTag" data-tag-type="status_tag" data-prompt-name
 				data-tooltip="{{localize 'LITM.Ui.add_status'}}" aria-label="{{localize 'LITM.Ui.add_status'}}">
 				<i class="fa-solid fa-droplet" aria-hidden="true"></i>
 			</button>

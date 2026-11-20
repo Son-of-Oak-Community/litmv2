@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HeroData } from "../modules/actor/hero/hero-data.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 import { fakeHeroModel } from "./__helpers__/hero.js";
 import { stubSettings } from "./__helpers__/settings.js";
@@ -68,6 +69,22 @@ describe("HeroData.themes", () => {
 		expect(themes.map((t) => t.theme.name)).toEqual(["A-theme", "B-theme"]);
 		// Title tag sorts first within a theme's tag list
 		expect(themes[0].tags.map((e) => e.name)).toEqual(["title", "proud"]);
+	});
+
+	it("breaks sort ties by name so all-zero sorts render deterministically", () => {
+		const themes = ["Theme 10", "Theme 3", "Theme 1", "Theme 2"].map((name) => {
+			const theme = fakeItem({ type: "theme", name });
+			theme.sort = 0;
+			theme.system = { isFellowship: false };
+			return theme;
+		});
+		const { model } = makeHero({ items: themes });
+		expect(model.themes.map((t) => t.theme.name)).toEqual([
+			"Theme 1",
+			"Theme 2",
+			"Theme 3",
+			"Theme 10",
+		]);
 	});
 
 	it("collapses duplicate title tags to a single one (read-side guard)", () => {
@@ -312,5 +329,11 @@ describe("HeroData limit readout, Narrator-run Hero", () => {
 		model.parent.hasPlayerOwner = false;
 		model.prepareDerivedData();
 		expect(model.limit.value).toBe(model.limit.max);
+	});
+});
+
+describe("HeroData schema", () => {
+	it("defaults notes to an empty string", () => {
+		expect(HeroData.defineSchema().notes.options.initial).toBe("");
 	});
 });
