@@ -25,6 +25,12 @@
 			<i class="fa-solid fa-dove" aria-hidden="true"></i>
 		</button>
 		{{/if}}
+		{{#if editable}}
+		<button type="button" data-action="editNotes"
+			data-tooltip="{{localize 'LITM.Ui.notes'}}" aria-label="{{localize 'LITM.Ui.notes'}}">
+			<i class="fa-solid fa-feather-pointed" aria-hidden="true"></i>
+		</button>
+		{{/if}}
 		{{#if showCamping}}
 		<button type="button" data-action="openCamping"
 			data-tooltip="{{localize 'LITM.Ui.camping_open'}}" aria-label="{{localize 'LITM.Ui.camping_open'}}">

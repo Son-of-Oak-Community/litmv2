@@ -8572,3 +8572,8 @@ button.litm-camping-scene__hero-link {
 .litm--roll-request-might {
 	font-weight: 600;
 }
+
+/* Notes dialog: give the editor room to write in. */
+.litm-notes-dialog prose-mirror {
+	min-height: 16rem;
+}
