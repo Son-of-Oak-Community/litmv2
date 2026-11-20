@@ -22,7 +22,7 @@
 			{{/if}}
 			<div class="theme-card__lower">
 				{{> systems/litmv2/templates/partials/play-theme-tracks.html fellowship}}
-				{{#if fellowship.system.quest.description}}<blockquote class="theme-card__quest"><span class="theme-card__quest-label">{{localize 'LITM.Terms.quest'}}</span><q>{{fellowship.system.quest.description}}</q></blockquote>{{/if}}
+				{{#if fellowship.system.quest.description}}<blockquote class="theme-card__quest"><span class="theme-card__quest-label">{{localize 'LITM.Terms.quest'}}</span>{{fellowship.system.quest.description}}</blockquote>{{/if}}
 				{{> systems/litmv2/templates/partials/theme-special-improvements.html fellowship}}
 			</div>
 			{{else}}
@@ -66,7 +66,7 @@
 			{{#if @root.cardsLayout}}
 			<div class="theme-card__lower">
 				{{> systems/litmv2/templates/partials/play-theme-tracks.html theme}}
-				{{#if theme.system.quest.description}}<blockquote class="theme-card__quest"><span class="theme-card__quest-label">{{localize 'LITM.Terms.quest'}}</span><q>{{theme.system.quest.description}}</q></blockquote>{{/if}}
+				{{#if theme.system.quest.description}}<blockquote class="theme-card__quest"><span class="theme-card__quest-label">{{localize 'LITM.Terms.quest'}}</span>{{theme.system.quest.description}}</blockquote>{{/if}}
 				{{> systems/litmv2/templates/partials/theme-special-improvements.html theme}}
 			</div>
 			{{else}}
