@@ -43,3 +43,35 @@ describe("LitmActorSheet._onAddStoryTag status prompt", () => {
 		expect(sheet.document.system.addStatus).not.toHaveBeenCalled();
 	});
 });
+
+describe("LitmActorSheet._onAddStoryTag story-tag prompt", () => {
+	const target = { dataset: { tagType: "story_tag", promptName: "" } };
+	let sheet;
+
+	beforeEach(() => {
+		sheet = {
+			document: { system: { addStoryTag: vi.fn() } },
+			_notifyStoryTags: vi.fn(),
+		};
+	});
+
+	const submit = (name) => {
+		foundry.applications.api.DialogV2.input = vi
+			.fn()
+			.mockResolvedValue(name === undefined ? null : { name });
+		return LitmActorSheet._onAddStoryTag.call(sheet, null, target);
+	};
+
+	it("adds a tag with the typed name", async () => {
+		await submit("  rope  ");
+		const [effect] = sheet.document.system.addStoryTag.mock.calls[0];
+		expect(effect.name).toBe("rope");
+		expect(effect.type).toBe("story_tag");
+		expect(sheet._notifyStoryTags).toHaveBeenCalled();
+	});
+
+	it.each([["   "], [undefined]])("adds nothing for %j", async (name) => {
+		await submit(name);
+		expect(sheet.document.system.addStoryTag).not.toHaveBeenCalled();
+	});
+});
