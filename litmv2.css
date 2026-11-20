@@ -1193,9 +1193,21 @@ section.standard-form.litm-theme-browser-body {
 	--tag-color: var(--color-litm-limit);
 }
 
-/* Banner — decorative plaque with notched corners */
+/* Banner — decorative plaque with notched corners. The mask is a token so
+   other banners can cut the same notches. */
+:root {
+	--litm-banner-mask:
+		radial-gradient(circle at 0 0, transparent 6px, black 6.5px) top left /
+		51% 51% no-repeat,
+		radial-gradient(circle at 100% 0, transparent 6px, black 6.5px) top right /
+		51% 51% no-repeat,
+		radial-gradient(circle at 0 100%, transparent 6px, black 6.5px) bottom left /
+		51% 51% no-repeat,
+		radial-gradient(circle at 100% 100%, transparent 6px, black 6.5px) bottom
+		right / 51% 51% no-repeat;
+}
+
 .litm-banner {
-	--banner-notch: 6px;
 	--banner-bg: var(--color-litm-banner);
 	display: inline-block;
 	background: var(--banner-bg);
@@ -1207,33 +1219,11 @@ section.standard-form.litm-theme-browser-body {
 	letter-spacing: 0.2em;
 	text-transform: uppercase;
 	color: var(--color-text-primary);
-	mask:
-		radial-gradient(
-			circle at 0 0,
-			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		top left,
-		radial-gradient(
-			circle at 100% 0,
-			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		top right,
-		radial-gradient(
-			circle at 0 100%,
-			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		bottom left,
-		radial-gradient(
-			circle at 100% 100%,
-			transparent var(--banner-notch),
-			black calc(var(--banner-notch) + 0.5px)
-		)
-		bottom right;
-	mask-size: 51% 51%;
-	mask-repeat: no-repeat;
+	mask: var(--litm-banner-mask);
+}
+
+.litm-banner--sm {
+	font-size: var(--font-size-11);
 }
 
 /* Ingress — intro paragraph style for ProseMirror editor */
@@ -2693,9 +2683,26 @@ section.standard-form.litm-theme-browser-body {
 	opacity: 0.4;
 }
 
+/* Only as wide as its icon, so the hover and the focus ring hug the book. */
 .litm .empty-state > button {
 	all: unset;
+	display: block;
+	width: fit-content;
+	margin-inline: auto;
 	cursor: pointer;
+
+	& > img {
+		transition: opacity var(--transition-fast) ease;
+	}
+
+	&:is(:hover, :focus-visible) > img {
+		opacity: 0.8;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--color-warm-1);
+		outline-offset: 2px;
+	}
 }
 
 /* Receded sections — visually lighter for lower-priority content */
@@ -2721,6 +2728,50 @@ section.standard-form.litm-theme-browser-body {
 
 .litm-hero-sheet fieldset.litm--receded .hint {
 	font-size: var(--font-size-12);
+}
+
+/* Hero kit sections (empty fellowship, relationships, Moment of
+   Fulfillment) — what used to be inline styles in hero-play-content.html. */
+.litm .litm-kit-empty {
+	text-align: center;
+}
+
+.litm .litm-kit-empty > button {
+	cursor: pointer;
+	margin-inline: auto;
+}
+
+.litm .litm--relationship-name {
+	white-space: nowrap;
+}
+
+/* Edit-mode relationship and status rows: name, field, then the row's controls. */
+.litm .litm--relationships > li.form-group,
+.litm .litm--statuses > li.form-group {
+	gap: var(--spacer-8);
+	align-items: center;
+	justify-content: space-between;
+}
+
+.litm .litm-hero-board__mof ul.plain {
+	gap: 0;
+}
+
+.litm .litm-hero-board__mof ul.plain > li {
+	margin-bottom: 0.5rem;
+}
+
+.litm .litm-hero-board__mof h4 {
+	margin: 0;
+}
+
+.litm .litm-hero-board__mof .litm--mof-actions {
+	justify-content: flex-end;
+}
+
+/* A theme's or the Fellowship's quest in Edit mode: Foundry's blockquote margin off. */
+.litm blockquote.litm--quest {
+	margin: 0;
 }
 
 .litm--play-statuses {
@@ -3723,6 +3774,7 @@ section.standard-form.litm-theme-browser-body {
 	align-items: center;
 	gap: var(--spacer-4);
 	cursor: pointer;
+	-webkit-user-select: none;
 	user-select: none;
 }
 
@@ -3893,6 +3945,14 @@ section.standard-form.litm-theme-browser-body {
 
 .litm--roll-dialog-tabs [data-tab].active img {
 	border-color: var(--color-border);
+}
+
+/* The Fellowship's default icon is drawn white: ink it on the light theme.
+   Portraits and custom art keep their colours. */
+.litm--roll
+	:is(.litm--roll-dialog-tabs, .litm--roll-dialog-actor-label)
+	img[src$="icons/fellowship.svg"] {
+	filter: var(--litm-icon-filter);
 }
 
 /* ========================================
@@ -6774,7 +6834,8 @@ body.theme-dark .application:not(.theme-light),
 	--color-litm-secret-glow-soft: rgba(232, 168, 50, 0.33);
 
 	& .hint img:not(.litm--inline-icon),
-	& .empty-state > img {
+	& .empty-state > img,
+	& .empty-state > button > img {
 		filter: invert(1) sepia(0.3) hue-rotate(305deg);
 	}
 
