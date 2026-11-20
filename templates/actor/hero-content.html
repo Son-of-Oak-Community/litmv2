@@ -35,7 +35,13 @@
 	</div>
 	{{else}}
 	<div class="litm-hero-board__themes empty-state">
+		{{#if @root.isOwner}}
+		<button type="button" data-action="browseThemes" data-tooltip="{{localize 'LITM.Ui.theme_browser_browse'}}" aria-label="{{localize 'LITM.Ui.theme_browser_browse'}}">
+			<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
+		</button>
+		{{else}}
 		<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
+		{{/if}}
 		<p class="hint">{{localize "LITM.Ui.no_themes"}}</p>
 	</div>
 	{{/if}}
@@ -153,9 +159,9 @@
 			{{/if}}
 			<hr />
 			{{#if (or relationshipEntries.length lostRelationships.length)}}
-			<ul class="plain">
+			<ul class="plain litm--relationships">
 				{{#each relationshipEntries as |relationship|}}
-				<li class="form-group" style="gap: 8px; align-items: center; justify-content: space-between">
+				<li class="form-group">
 					<span class="flex2">{{relationship.name}}</span>
 					{{#if relationship.effectId}}
 					<input class="flex3" type="text" name="effects.{{relationship.effectId}}.name" value="{{relationship.tag}}"
