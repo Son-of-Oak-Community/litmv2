@@ -9604,10 +9604,6 @@ body.theme-dark
 	color: var(--color-text-secondary);
 }
 
-.litm--printed-cards .theme-card__quest q {
-	quotes: "\201C" "\201D";
-}
-
 /* Theme note: quiet, after the quest. It adds only a three-line minimum to
    the card's height, then grows into whatever the row's tallest card leaves
    free, so a short card shows its whole note instead of three lines over a
@@ -11091,10 +11087,6 @@ body.litm--colorblind .application.litm--roll-cards {
 		font-style: italic;
 		font-size: var(--font-size-14);
 		color: var(--color-text-primary);
-
-		& q {
-			quotes: "\201C" "\201D";
-		}
 	}
 
 	& .theme-card__quest-label {
