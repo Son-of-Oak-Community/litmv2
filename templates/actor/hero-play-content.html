@@ -21,7 +21,13 @@
 	</div>
 	{{else}}
 	<div class="litm-hero-board__themes empty-state">
+		{{#if @root.isOwner}}
+		<button type="button" data-action="browseThemes" data-tooltip="{{localize 'LITM.Ui.theme_browser_browse'}}" aria-label="{{localize 'LITM.Ui.theme_browser_browse'}}">
+			<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
+		</button>
+		{{else}}
 		<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
+		{{/if}}
 		<p class="hint">{{localize "LITM.Ui.no_themes"}}</p>
 	</div>
 	{{/if}}
@@ -31,7 +37,7 @@
 		{{#if backpack}}
 		<fieldset>
 			<legend class="flexrow gap-sm">
-				<span class="litm-banner" style="font-size: var(--font-size-11)">{{backpack.name}}</span>
+				<span class="litm-banner litm-banner--sm">{{backpack.name}}</span>
 				<button type="button" class="noflex" data-action="editItem" data-item-id="{{backpack.id}}"
 					data-tooltip="{{localize 'LITM.Ui.edit_backpack'}}" aria-label="{{localize 'LITM.Ui.edit_backpack'}}">
 					<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
@@ -39,7 +45,7 @@
 			</legend>
 
 			{{#if backpack.tags.length}}
-			<div class="flexrow gap-sm" style="flex-wrap: wrap">
+			<div class="litm-kit-card__tags flexrow gap-sm">
 				{{#each backpack.tags as |tag|}} {{#unless tag.disabled}}
 				{{> systems/litmv2/templates/partials/play-tag.html
 					_id=tag._id
@@ -117,9 +123,9 @@
 				{{> systems/litmv2/templates/partials/theme-description.html description=fellowship.system.description id=fellowship._id}}
 			</div>
 			{{else}}
-			<p class="hint" style="text-align: center">
+			<p class="hint litm-kit-empty">
 				<button type="button" data-action="viewActor" data-actor-id="{{fellowshipActorId}}"
-					data-tooltip="{{localize 'LITM.Ui.click_to_edit_fellowship'}}" style="cursor: pointer;margin-inline:auto">
+					data-tooltip="{{localize 'LITM.Ui.click_to_edit_fellowship'}}">
 					{{> systems/litmv2/templates/partials/icon-fellowship-hint.html}}
 					{{localize "LITM.Ui.fellowship_no_theme"}}
 				</button>
@@ -135,7 +141,7 @@
 						{{#if relationship.img}}
 						<img class="relationship-img noflex" src="{{relationship.img}}" alt="{{relationship.name}}" />
 						{{/if}}
-						<span style="white-space: nowrap">{{relationship.name}}</span>
+						<span class="litm--relationship-name">{{relationship.name}}</span>
 					</div>
 					{{> systems/litmv2/templates/partials/play-tag.html
 					_id=relationship.effectId
@@ -199,11 +205,11 @@
 	{{#if momentOfFulfillmentVisible.length}}
 	<fieldset class="litm-hero-board__mof litm--receded">
 		<legend class="litm-banner">{{localize "LITM.Hero.moment_of_fulfillment"}}</legend>
-		<ul class="plain" style="gap: 0px">
+		<ul class="plain">
 			{{#each momentOfFulfillmentVisible as |moment|}}
-			<li class="flexcol gap-sm" style="margin-bottom: 0.5rem">
+			<li class="flexcol gap-sm">
 				{{#if moment.name}}
-				<h4 style="margin: 0">{{moment.name}}</h4>
+				<h4>{{moment.name}}</h4>
 				{{/if}} {{#if moment.enrichedDescription}}
 				<div class="enriched-content">{{{moment.enrichedDescription}}}</div>
 				{{/if}}

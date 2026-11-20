@@ -201,7 +201,14 @@ export class HeroSheet extends LitmActorSheet {
 				const themes = this.document.items.filter(
 					(i) => i.type === "theme" && !i.system.isFellowship,
 				);
-				if (!themes.length) return false;
+				// Nothing to replace yet: add it through the drop handler, so it is
+				// refused (Fellowship theme, themebook, limit) as a drop would be.
+				if (!themes.length) {
+					const source = await foundry.utils.fromUuid(entry.uuid);
+					if (!source) return false;
+					const created = await this._onDropItem(new Event("drop"), source);
+					return Array.isArray(created) && created.length > 0;
+				}
 				const options = themes
 					.map(
 						(th, ix) =>
