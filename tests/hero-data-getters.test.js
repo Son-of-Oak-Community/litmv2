@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HeroData } from "../modules/actor/hero/hero-data.js";
 import { fakeActor, fakeEffect, fakeItem } from "./__helpers__/factories.js";
 import { fakeHeroModel } from "./__helpers__/hero.js";
 import { stubSettings } from "./__helpers__/settings.js";
@@ -312,5 +313,11 @@ describe("HeroData limit readout, Narrator-run Hero", () => {
 		model.parent.hasPlayerOwner = false;
 		model.prepareDerivedData();
 		expect(model.limit.value).toBe(model.limit.max);
+	});
+});
+
+describe("HeroData schema", () => {
+	it("defaults notes to an empty string", () => {
+		expect(HeroData.defineSchema().notes.options.initial).toBe("");
 	});
 });
