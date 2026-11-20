@@ -160,7 +160,7 @@
 		{{#if backpack}}
 		<fieldset{{#if @root.cardsLayout}} class="litm-kit-card litm-kit-card--backpack"{{/if}}>
 			<legend class="control flexrow gap-sm{{#if @root.cardsLayout}} litm-kit-card__head{{/if}}">
-				{{#if @root.cardsLayout}}{{> "systems/litmv2/templates/partials/banner-icon.html" src="systems/litmv2/assets/media/icons/backpack.svg" action="editItem" itemId=backpack.id label=(localize "LITM.Ui.edit_backpack")}}{{/if}}
+				{{#if @root.cardsLayout}}{{> "systems/litmv2/templates/partials/banner-icon.html" src="systems/litmv2/assets/media/icons/backpack.svg" action="editItem" itemId=backpack.id label=(localize "LITM.Ui.edit_backpack")}}{{> "systems/litmv2/templates/partials/banner-icon.html" glyph="fa-tag" action="addStoryTag" tagType="story_tag" promptName=true label=(localize "LITM.Ui.add_tag")}}{{/if}}
 				<span class="litm-banner theme-card__book">{{backpack.name}}</span>
 				{{#unless @root.cardsLayout}}
 				<button type="button" class="noflex" data-action="editItem" data-item-id="{{backpack.id}}"
