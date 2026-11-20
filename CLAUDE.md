@@ -110,6 +110,8 @@ Typed sheets inherit through `LitmSheetMixin` → `LitmActorSheet` (items: `Litm
 
 All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — sheets switch templates by overriding `_getEditModeTemplate()` and `_configureRenderParts()`. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
 
+`HeroSheet`'s `editNotes` (DialogV2 + `<prose-mirror>` over `system.notes`, a Play-mode button shown only when the sheet `editable`) lives on the base sheet, so every hero sheet subclass has it.
+
 `LitmActorSheet` also owns the roll dialog (`hasRollDialog`, `rollDialogInstance`, `renderRollDialog`, `resetRollDialog`, `updateRollDialog`). They live on the base, not on `HeroSheet`, because Acting Together rides the Fellowship actor — and because the roll-dialog HUD and the roll sockets address whatever actor the `rollDialogOwner` flag names, without checking its type.
 
 ### Roll Flow
