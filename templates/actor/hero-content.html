@@ -22,7 +22,7 @@
 
 			{{> systems/litmv2/templates/partials/play-theme-tracks.html theme}}
 
-			<blockquote style="margin: 0">
+			<blockquote class="litm--quest">
 				{{theme.system.quest.description}}
 			</blockquote>
 
@@ -35,7 +35,13 @@
 	</div>
 	{{else}}
 	<div class="litm-hero-board__themes empty-state">
+		{{#if @root.editable}}
+		<button type="button" data-action="browseThemes" data-tooltip="{{localize 'LITM.Ui.theme_browser_browse'}}" aria-label="{{localize 'LITM.Ui.theme_browser_browse'}}">
+			<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
+		</button>
+		{{else}}
 		<img height="64" width="64" src="systems/litmv2/assets/media/icons/book.svg" alt="" aria-hidden="true" />
+		{{/if}}
 		<p class="hint">{{localize "LITM.Ui.no_themes"}}</p>
 	</div>
 	{{/if}}
@@ -85,9 +91,9 @@
 					<i class="fa-solid fa-droplet" aria-hidden="true"></i>
 				</button>
 			</legend>
-			<ul class="plain">
+			<ul class="plain litm--statuses">
 				{{#each statuses as |tag|}}
-				<li class="form-group status" style="gap: 8px; align-items: center;justify-content: space-between">
+				<li class="form-group status">
 					<span class="litm--tag-name-wrapper litm-status{{#if tag.system.isHidden}} litm--tag-hidden{{/if}}">
 						<input class="litm--tag-item-name" type="text" name="effects.{{tag.id}}.name" value="{{tag.name}}"
 							placeholder="{{localize 'LITM.Ui.tag_name'}}" />
@@ -137,7 +143,7 @@
 					{{> systems/litmv2/templates/partials/play-theme-tracks.html fellowship}}
 
 					<div class="flexcol gap-xs">
-						<blockquote style="margin: 0">
+						<blockquote class="litm--quest">
 							{{fellowship.system.quest.description}}
 						</blockquote>
 					</div>
@@ -153,9 +159,9 @@
 			{{/if}}
 			<hr />
 			{{#if (or relationshipEntries.length lostRelationships.length)}}
-			<ul class="plain">
+			<ul class="plain litm--relationships">
 				{{#each relationshipEntries as |relationship|}}
-				<li class="form-group" style="gap: 8px; align-items: center; justify-content: space-between">
+				<li class="form-group">
 					<span class="flex2">{{relationship.name}}</span>
 					{{#if relationship.effectId}}
 					<input class="flex3" type="text" name="effects.{{relationship.effectId}}.name" value="{{relationship.tag}}"
@@ -241,9 +247,9 @@
 		</legend>
 
 		{{#if momentsOfFulfillment.length}}
-		<ul class="plain" style="gap: 0px">
+		<ul class="plain">
 			{{#each momentOfFulfillmentEntries as |moment|}}
-			<li class="flexcol gap-sm" style="margin-bottom: 0.5rem">
+			<li class="flexcol gap-sm">
 				<div class="form-group stacked">
 					<label>{{localize "LITM.Terms.name"}}</label>
 					<input type="text" name="system.mof.{{moment.idx}}.name" value="{{moment.name}}" />
@@ -255,7 +261,7 @@
 						{{{ moment.enrichedDescription }}}
 					</prose-mirror>
 				</div>
-				<div class="flexrow" style="justify-content: flex-end">
+				<div class="flexrow litm--mof-actions">
 					<button type="button" class="noflex" data-action="removeMomentOfFulfillment" data-index="{{moment.idx}}"
 						data-tooltip="{{localize 'LITM.Ui.remove'}}" aria-label="{{localize 'LITM.Ui.remove'}}">
 						<i class="fa-solid fa-trash" aria-hidden="true"></i>

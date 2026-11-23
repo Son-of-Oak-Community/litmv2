@@ -203,7 +203,22 @@ export class HeroSheet extends LitmActorSheet {
 				const themes = this.document.items.filter(
 					(i) => i.type === "theme" && !i.system.isFellowship,
 				);
-				if (!themes.length) return false;
+				// Nothing to replace yet: add it through the drop handler, so it is
+				// refused (Fellowship theme, themebook, limit) as a drop would be.
+				if (!themes.length) {
+					// A themebook re-shapes one of the Hero's themes, and there is none
+					// yet: the drop's refusal would point at themes that don't exist.
+					if (entry.kind === "book") {
+						ui.notifications.warn(
+							game.i18n.localize("LITM.Ui.warn_themebook_no_theme"),
+						);
+						return false;
+					}
+					const source = await foundry.utils.fromUuid(entry.uuid);
+					if (!source) return false;
+					const created = await this._onDropItem(new Event("drop"), source);
+					return Array.isArray(created) && created.length > 0;
+				}
 				const options = themes
 					.map(
 						(th, ix) =>
