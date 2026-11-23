@@ -2928,6 +2928,11 @@ section.standard-form.litm-theme-browser-body {
 	display: none;
 }
 
+/* Hero notes dialog: give the editor room to write in. */
+.litm--notes-dialog prose-mirror {
+	min-height: 16rem;
+}
+
 /* ========================================
    7. Challenge Sheet
    Limit labels, might display, shields, outcomes, rating stars.

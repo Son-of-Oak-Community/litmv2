@@ -6,6 +6,7 @@ import {
 } from "../../active-effects/effect-queries.js";
 import { scratchTag } from "../../active-effects/scratchable-mixin.js";
 import { ActionsApp } from "../../apps/actions-app.js";
+import { NotesDialog } from "../../apps/notes-dialog.js";
 import { findBurnedSelection } from "../../apps/roll/burn-cap.js";
 import {
 	blockPlayerInitiatedRoll,
@@ -67,6 +68,7 @@ export class HeroSheet extends LitmActorSheet {
 			toggleTier: { handler: HeroSheet.#onToggleTier, buttons: [0, 2] },
 			openCamping: HeroSheet.#onOpenCamping,
 			browseThemes: HeroSheet.#onBrowseThemes,
+			editNotes: HeroSheet.#onEditNotes,
 		},
 		form: {
 			handler: HeroSheet.#onSubmitForm,
@@ -254,6 +256,34 @@ export class HeroSheet extends LitmActorSheet {
 
 	static #onOpenCamping() {
 		game.litmv2?.LitmCampingScene?.open();
+	}
+
+	/**
+	 * Open the hero's notes in a rich-text dialog and save them on confirm.
+	 * @this {HeroSheet}
+	 */
+	static async #onEditNotes() {
+		// The button is hidden too; this also stops a stale one on a now-locked hero.
+		if (!this.isEditable) return;
+		// The uuid, not the id: unlinked tokens of one Hero share its id.
+		const id = `litm-notes-${this.document.uuid.replaceAll(".", "-")}`;
+		// A fixed id would otherwise stack a second dialog with a duplicate DOM id.
+		const open = foundry.applications.instances.get(id);
+		if (open) return open.bringToFront();
+		const { escapeHTML } = foundry.utils;
+		const result = await NotesDialog.input({
+			id,
+			window: {
+				title: `${game.i18n.localize("LITM.Ui.notes")}: ${this.document.name}`,
+				icon: "fa-solid fa-feather-pointed",
+			},
+			classes: ["litm--notes-dialog"],
+			position: { width: 560 },
+			content: `<prose-mirror name="notes" data-document-uuid="${this.document.uuid}" value="${escapeHTML(this.document.system.notes)}"></prose-mirror>`,
+			ok: { label: game.i18n.localize("LITM.Ui.notes_save") },
+			rejectClose: false,
+		});
+		if (result) await this.document.update({ "system.notes": result.notes });
 	}
 
 	/** @override */
