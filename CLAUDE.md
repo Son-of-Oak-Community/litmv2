@@ -117,10 +117,12 @@ All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — sheets s
 ```
 HeroSheet roll → LitmRollDialog (tag selection)
   → calculatePower()
-  → new LitmRoll("2d6 + {power}", ...)  -- two plain d6; `DoubleSix` only reads rolls older versions stored
+  → new LitmRoll("2d6 + {power}", ...)  -- two plain d6; `DoubleSix` is never rolled: it gives Dice So Nice its d12-shaped d6 and reads pre-v14 cards
   → ChatMessage rendered, "litm.roll" hook fires (auto-scratch, gain improvements)
   → socket broadcast resets dialogs on all clients
 ```
+
+Do not remove `DoubleSix`: without it the themed dice render as cubes. Dice So Nice reads registered dice once, at startup, so test a dice change on a freshly reloaded world, not one that already loaded the old code.
 
 The dialog's `#selectionMap` is the source of truth for tag selections, not form fields.
 
