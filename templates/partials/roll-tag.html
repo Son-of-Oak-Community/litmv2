@@ -4,14 +4,14 @@
       action suggestion sparkles, and the Narrator's-invocation lock. --}}
 <li>
 	<label
-		class="litm--roll-dialog-tag litm--{{tag.type}} {{#if tag.locked}}is-locked{{/if}} {{#if tag.isNarrator}}is-narrator{{/if}} {{#if tag.state}}is-selected{{/if}} {{#if tag.isPositiveSuggestion}}is-suggested-positive{{/if}} {{#if tag.isNegativeSuggestion}}is-suggested-negative{{/if}}"
-		for="rd-{{tag.key}}" data-action="toggleRollTag" data-tag-type="{{tag.type}}"
+		class="litm--roll-dialog-tag litm--{{tag.type}} {{#if tag.system.isTitleTag}}is-title{{/if}} {{#if tag.isUnavailable}}is-scratched{{/if}} {{#if tag.locked}}is-locked{{/if}} {{#if tag.isNarrator}}is-narrator{{/if}} {{#if tag.state}}is-selected{{/if}} {{#if tag.isPositiveSuggestion}}is-suggested-positive{{/if}} {{#if tag.isNegativeSuggestion}}is-suggested-negative{{/if}}"
+		for="rd-{{tag.key}}" data-action="toggleRollTag" data-tag-type="{{tag.type}}"{{#if tag.value}} data-tier="{{tag.value}}"{{/if}}
 		{{#if tag.isNarrator}}data-tooltip="{{localize 'LITM.Ui.narrator_call_invoked_by_narrator'}}"
 		{{else if tag.isPositiveSuggestion}}data-tooltip="{{localize 'LITM.Actions.suggestion_helpful'}}"
 		{{else if tag.isNegativeSuggestion}}data-tooltip="{{localize 'LITM.Actions.suggestion_hindering'}}"{{/if}}>
 		<span class="litm--sro">{{localize "LITM.Ui.select"}}</span>
 		<litm-super-checkbox name="{{tag.key}}" id="rd-{{tag.key}}" value="{{tag.state}}" data-type="{{tag.type}}"
-			states="{{tag.states}}" aria-label="{{tag.displayName}}" {{#if tag.locked}}disabled aria-disabled="true" data-locked="true"
+			{{#if tag.value}}data-tier="{{tag.value}}"{{/if}} states="{{tag.states}}" aria-label="{{tag.displayName}}" {{#if tag.locked}}disabled aria-disabled="true" data-locked="true"
 			{{/if}}></litm-super-checkbox>
 		{{!-- A relationship reads like the Hero sheet: who, then the tag. --}}
 		{{#if tag.targetName}}<span class="litm--roll-dialog-tag-target flexrow noflex gap-sm">

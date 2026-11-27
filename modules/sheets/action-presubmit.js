@@ -46,6 +46,7 @@ export function bindActionPresubmit(app, { getForm, submit }) {
 
 			const action = actionBtn.dataset.action;
 			const dataset = { ...actionBtn.dataset };
+			const controls = actionBtn.getAttribute?.("aria-controls");
 
 			app._suppressNextChange = true;
 			submit(form)
@@ -55,6 +56,7 @@ export function bindActionPresubmit(app, { getForm, submit }) {
 					if (!fn) return;
 					const syntheticTarget = document.createElement("button");
 					Object.assign(syntheticTarget.dataset, dataset);
+					if (controls) syntheticTarget.setAttribute("aria-controls", controls);
 					fn.call(app, event, syntheticTarget);
 				})
 				.catch(console.error);

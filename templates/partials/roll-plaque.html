@@ -1,0 +1,8 @@
+{{!-- A theme card's plaque: the theme's name, which is its main tag. In the
+      Cards look the plaque is that tag's own row, so the card's list leaves
+      it out. --}}
+<div class="{{label}}">
+	{{#if group.themeImg}}<img src="{{group.themeImg}}" alt="{{group.themeName}}" />{{else if group.icon}}<i class="{{group.icon}}" aria-hidden="true"></i>{{/if}}
+	{{#if @root.isCardsLook}}{{#each group.tags as |tag|}}{{#if tag.system.isTitleTag}}<ul class="plain litm--roll-plaque-tag">{{> "systems/litmv2/templates/partials/roll-tag.html" tag=tag}}</ul>{{/if}}{{/each}}{{/if}}
+	<span class="litm--roll-plaque-name">{{group.themeName}}</span>
+</div>

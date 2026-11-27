@@ -124,6 +124,20 @@ export function dedupeTitleTags(effects) {
 }
 
 /**
+ * A theme's tags in the order its card lists them: the title tag, then power
+ * tags, then weaknesses. A stable sort, so each group keeps its stored order.
+ * Works on effects and on their plain/decorated copies alike.
+ * @param {{type?: string, system?: {isTitleTag?: boolean}}} a
+ * @param {{type?: string, system?: {isTitleTag?: boolean}}} b
+ * @returns {number}
+ */
+export function byThemeCardOrder(a, b) {
+	const rank = (t) =>
+		t.system?.isTitleTag ? 0 : t.type === "weakness_tag" ? 2 : 1;
+	return rank(a) - rank(b);
+}
+
+/**
  * Find the first applicable effect matching a predicate.
  * @param {Actor} actor
  * @param {Function} predicate - Test function receiving each effect

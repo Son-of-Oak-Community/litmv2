@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { dedupeTitleTags } from "../modules/active-effects/effect-queries.js";
+import {
+	byThemeCardOrder,
+	dedupeTitleTags,
+} from "../modules/active-effects/effect-queries.js";
 
 const tag = (name, isTitleTag = false) => ({ name, system: { isTitleTag } });
 
@@ -33,5 +36,30 @@ describe("dedupeTitleTags", () => {
 		const a = { name: "loose" };
 		const b = tag("title", true);
 		expect(dedupeTitleTags([a, b])).toEqual([a, b]);
+	});
+});
+
+describe("byThemeCardOrder", () => {
+	const t = (name, type, isTitleTag = false) => ({
+		name,
+		type,
+		system: { isTitleTag },
+	});
+
+	it("lists the title, then power tags, then weaknesses, each in stored order", () => {
+		const sorted = [
+			t("soft spot", "weakness_tag"),
+			t("bow", "power_tag"),
+			t("Devoted", "power_tag", true),
+			t("reckless", "weakness_tag"),
+			t("keen", "power_tag"),
+		].sort(byThemeCardOrder);
+		expect(sorted.map((x) => x.name)).toEqual([
+			"Devoted",
+			"bow",
+			"keen",
+			"soft spot",
+			"reckless",
+		]);
 	});
 });

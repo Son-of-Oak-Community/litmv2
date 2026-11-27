@@ -1,4 +1,5 @@
 import {
+	byThemeCardOrder,
 	countsTowardLimit,
 	dedupeTitleTags,
 } from "../../active-effects/effect-queries.js";
@@ -228,15 +229,16 @@ export class HeroData extends LimitsMixin(
 	#themeContainers(predicate) {
 		return this.parent.items
 			.filter(predicate)
-			.sort((a, b) => a.sort - b.sort)
+			.sort(
+				(a, b) =>
+					a.sort - b.sort ||
+					a.name.localeCompare(b.name, undefined, { numeric: true }),
+			)
 			.map((theme) => ({
 				theme,
 				tags: dedupeTitleTags(
 					[...theme.effects].filter((e) => THEME_TAG_TYPES.has(e.type)),
-				).sort(
-					(a, b) =>
-						(b.system.isTitleTag ? 1 : 0) - (a.system.isTitleTag ? 1 : 0),
-				),
+				).sort(byThemeCardOrder),
 			}));
 	}
 
@@ -271,9 +273,7 @@ export class HeroData extends LimitsMixin(
 		}
 		const themes = [...themeMap.values()].map(({ theme, tags: t }) => ({
 			theme,
-			tags: dedupeTitleTags(t).sort(
-				(a, b) => (b.system.isTitleTag ? 1 : 0) - (a.system.isTitleTag ? 1 : 0),
-			),
+			tags: dedupeTitleTags(t).sort(byThemeCardOrder),
 		}));
 		return { themes, tags };
 	}

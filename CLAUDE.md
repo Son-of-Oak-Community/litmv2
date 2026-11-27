@@ -12,6 +12,7 @@ Foundry source is symlinked at `./foundry/` (client code in `public/`, CSS at `p
 
 - `npm test` — Vitest unit-test suite
 - `npm run test:shuffle -- --sequence.seed=N` — the suite serially in a shuffled order, as CI runs it. Most files share one module graph per worker (`isolate: false`); a file that mocks modules is isolated automatically, and one that patches shared state opts in with a `// vitest-isolate: <why>` comment (`vitest.config.js`)
+- `npm run check` / `npm run check:fix` — Biome lint + format (also `lint`, `format`)
 - `npm run i18n:check` — find missing/superfluous localization keys
 - `npm run i18n:diff` — translator diagnostic; diffs each non-English language against `lang/en.json`
 
@@ -108,7 +109,13 @@ Journey --------- Nx vignette (one marked generalConsequences)
 
 Typed sheets inherit through `LitmSheetMixin` → `LitmActorSheet` (items: `LitmItemSheet`); each has a `Landscape` variant. Challenge & Journey also mix in `TagStringSyncMixin`.
 
-All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — sheets switch templates by overriding `_getEditModeTemplate()` and `_configureRenderParts()`. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
+`HeroSheetCards` (`modules/actor/hero/hero-sheet-cards.js`; chosen by the player's client setting `look` — "Cards Look", which also styles the roll window — through `LitmActor#_getSheetClass`, unless Configure Sheet picked a sheet for that hero; root class `.litm-hero-cards`, CSS in `litmv2.css` §25) extends `PrintedCardsMixin(HeroSheet)`, sets `cardsLayout` for the template branches that differ, and owns `toggleHeroPanel` (portrait-panel fold, stored in the client setting `heroPanelCollapsed`) and card drag-reorder: themes by `item.sort`, the Fellowship card (another actor's item) by the hero flag `fellowshipIndex` (`card-order.js`). In both modes a theme's note is on the card's back, never the face.
+
+`PrintedCardsMixin` (`modules/sheets/printed-cards-mixin.js`) is the reusable part: the `.litm--printed-cards` root class (card tokens, card face §25b, board and kit cards §25c) and the `flipThemeCard` action (flip state lives on the sheet instance, not in data). It also keeps the description clamp measured as the sheet resizes (`_measureDescription`, which `HeroSheetCards` overrides for its name toggle). Any actor sheet can mix it in; `HeroSheetCards` and `FellowshipSheetCards` do, so other sheets look unchanged. `FellowshipSheetCards` (`modules/actor/fellowship/fellowship-sheet-cards.js`) swaps only the Play content template and sets `cardsLayout` on the content part alone — the shared header reads that flag as the hero's portrait panel. The same `look` setting picks it (`LitmActor.CARDS_SHEETS`).
+
+The roll window's Cards look (`LitmRollDialog#isCardsLook`, root class `litm--roll-cards`, CSS §26) is read from the `look` setting on each window's first render, so it is per client: the Narrator and the roller can view one shared roll in different looks, and an open window keeps its look. It changes which tags exist, not only how they look — a theme's scratched tags stay on its card, locked (`isOnThemeCard` / `rollEffects` in `roll-dialog-context.js`) — so every tag-list builder takes `dialog.isCardsLook`; a new builder that forgets it disagrees with Classic. The footer chips (`summarizeChips`) and the Might table (`mightFromPicks`, picks local to the window; only the Might they add up to syncs) are presentation of state the dialog already owns.
+
+All actor sheets support **dual modes** (Play/Edit, `E` keybinding) — `_isEditMode` drives it; `_configureRenderParts()` swaps in the `PLAY_HEADER_TEMPLATE` / `PLAY_DESCRIPTION_TEMPLATE` / `PLAY_CONTENT_TEMPLATE` statics in play mode. Action handlers are private static methods referenced by string key in `DEFAULT_OPTIONS.actions`.
 
 `HeroSheet`'s `editNotes` (`NotesDialog` + `<prose-mirror>` over `system.notes`, a Play-mode button shown only when the sheet `editable`) lives on the base sheet, so every hero sheet subclass has it. `NotesDialog` (`modules/apps/notes-dialog.js`) asks before Escape or X throws away changed text, and turns the editor's own save (its button, Ctrl/Cmd+S) into Save Notes.
 
@@ -168,9 +175,7 @@ unit-tested):
   `#handleSacrificeBonusChange`, which revert, and in `setType`; the markup is
   not the boundary. **The GM may set the move and the Might on any
   roll, called or not** — judging Might is the Narrator's job (p.272), so the
-  settings column renders for them even as a non-owner viewer. That is a
-  deliberate widening of the pre-branch behaviour, where the column was
-  owner-only.
+  settings column renders for them even as a non-owner viewer.
 - **Nothing that contributes to Power is read from the form.** `extractRollData`
   takes it all from the dialog's own fields, because `FormDataExtended` skips
   `:disabled` controls — reading Might off the form would drop exactly the value
@@ -214,8 +219,7 @@ to match.
 
 There is **no durable chat record** of a call. Pickup is the existing roll-dialog
 HUD strip in `#players`, driven by the same `rollDialogOwner` flag every other
-open roll uses; the roll posts its own card. `litm.narratorCallReceived` is gone
-with the receive step it named.
+open roll uses; the roll posts its own card.
 
 **Closing a view is not ending the roll — except for the Narrator.** A player
 viewer can close their window without retracting the owner's presence. The
@@ -578,10 +582,11 @@ New `.webp` assets must be added to the `preloads` array in `LitmConfig`. All im
 ## Design System
 
 The system has a fully-implemented visual identity — **not aspirational**. New UI
-must match it. Full detail (tokens, patterns, composition recipes, anti-references)
-lives in `.claude/rules/design-system.md`, which auto-loads for `templates/**`,
-`*.css`, and the `sheets`/`apps`/`components`/`renderers` modules.
+must match it. The reference is `litmv2.css` itself: its header indexes numbered
+sections (tag system, theme cards, roll dialog, roster §21, …), and §1 Global
+defines the tokens (`--font-*`, `--color-litm-*`, …).
 
-**Read that rule before writing any UI, template, or CSS.** If you catch yourself
+**Before writing any UI, template, or CSS, find the matching section and reuse its
+classes and tokens.** If you catch yourself
 writing inline `style="..."` or `border-radius: 999px`, stop — there is a litm
 token or class for it.

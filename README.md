@@ -17,6 +17,10 @@ This is an unofficial, community-made system for playing **Legend in the Mist** 
 
 2. Create a new world using the "Legend in the Mist: Unofficial" system.
 
+## How to use it
+
+Hotkeys, rolling, tags, camping and settings: see the **[Player & Narrator Guide](docs/user-guide.md)**.
+
 \*_This is a fan-made project. Legend in the Mist is a game by **Son of Oak Game Studio**._
 
 _If you feel like you could contribute something don't hesitate with contacting me @aMediocreDad._

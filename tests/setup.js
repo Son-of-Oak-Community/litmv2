@@ -356,3 +356,9 @@ globalThis.CONFIG = {
 		improveThreshold: 3,
 	},
 };
+
+// Node has no ResizeObserver; the Cards sheets observe their own root.
+globalThis.ResizeObserver ??= class {
+	observe() {}
+	disconnect() {}
+};
