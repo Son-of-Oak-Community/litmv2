@@ -120,6 +120,20 @@ describe("_syncAddonEffectsOnUpdate (updateItem)", () => {
 		expect(actor.deleteEmbeddedDocuments).not.toHaveBeenCalled();
 		expect(actor.createEmbeddedDocuments).not.toHaveBeenCalled();
 	});
+
+	// Issue #240: the addon stores its limits' state, written during play (+/-,
+	// reveal, a status recalc). A resync then would put a reduced status back
+	// to its written tier and re-create a tag that play removed.
+	it("leaves the effects alone when only the addon's limits changed", async () => {
+		const { addon, actor } = build();
+		const limits = [{ id: "L1", label: "Cleanse", max: 4, value: 1 }];
+		callAll("updateItem", addon, { system: { limits } }, {}, ME);
+		callAll("updateItem", addon, { name: "Miasmatic" }, {}, ME);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(actor.deleteEmbeddedDocuments).not.toHaveBeenCalled();
+		expect(actor.createEmbeddedDocuments).not.toHaveBeenCalled();
+		expect(actor.updateEmbeddedDocuments).not.toHaveBeenCalled();
+	});
 });
 
 describe("_cleanupAddonEffectsOnDelete (deleteItem)", () => {

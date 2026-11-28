@@ -380,7 +380,10 @@ describe("applyLimitUpdates", () => {
 		const journey = (limits) =>
 			fakeActor({
 				type: "journey",
-				system: { limits, setLimits: vi.fn().mockResolvedValue(undefined) },
+				system: {
+					allLimits: limits,
+					setLimits: vi.fn().mockResolvedValue(undefined),
+				},
 			});
 
 		it("does not rewrite an actor whose limits are unchanged", async () => {
@@ -429,7 +432,7 @@ describe("applyLimitUpdates", () => {
 			const challenge = fakeActor({
 				type: "challenge",
 				system: {
-					limits: [{ id: "C1", label: "Harm", max: 3, hidden: false }],
+					allLimits: [{ id: "C1", label: "Harm", max: 3, hidden: false }],
 					setLimits: vi.fn().mockResolvedValue(undefined),
 				},
 			});
@@ -447,7 +450,7 @@ describe("applyLimitUpdates", () => {
 			const hero = fakeActor({
 				type: "hero",
 				system: {
-					limits: [{ id: "H1", label: "Despair", max: 5 }],
+					allLimits: [{ id: "H1", label: "Despair", max: 5 }],
 					setLimits: vi.fn().mockResolvedValue(undefined),
 				},
 			});

@@ -485,6 +485,8 @@ Each effect has a `type` mapping to a TypeDataModel in `modules/active-effects/`
 
 **Addon items**: `syncAddonEffects` parses addon `system.tags`, creates effects flagged with `flags.litmv2.addonId`. `resyncAddonEffects` deletes and recreates on update.
 
+**Addon limits** are tracked like the Challenge's own. `system.limits` stays the Challenge's stored list; `system.allLimits` adds the limits only an addon brings, and that is what the sidebar, the limit picker and the recalc read. Their state (value, `advanced`, `hidden`) is stored on the embedded addon item: `setLimits` routes each entry to its store, `removeLimit` deletes one. A label the Challenge already has stays the Challenge's limit, at the higher max (`getEffectiveMax`).
+
 **Never hand-build effect creation data.** `effect-factories.js` has a factory per tag type; `parseTagStringMatch()` (`modules/item/action/tag-string.js`) converts a `CONFIG.litmv2.tagStringRe` match into AE creation data.
 
 ## Key Conventions

@@ -22,7 +22,7 @@ async function recalculate(model) {
 	const actor = model.parent;
 	if (!actor?.isOwner) return { reached: [] };
 
-	const oldLimits = model.limits;
+	const oldLimits = model.allLimits;
 	if (!oldLimits.length) return { reached: [] };
 
 	const effects = [...actor.allApplicableEffects()]
@@ -90,7 +90,8 @@ export function toggleLimitHiddenIn(limits, limitId) {
  *   - `async setLimits(limits)`   → writes `flags.litmv2.limits`
  *   - `getEffectiveMax(limit)`    → `limit.max`
  *
- * ChallengeData overrides `get limits()` and `setLimits()`.
+ * ChallengeData overrides `get limits()` and `setLimits()`, and `allLimits`,
+ * `removeLimit()` and `getEffectiveMax()` for the limits its addons bring.
  * HeroData overrides `getEffectiveMax()`.
  *
  * @param {typeof TypeDataModel} Base
@@ -123,8 +124,28 @@ export function LimitsMixin(Base) {
 		 * @returns {Promise<void>}
 		 */
 		async toggleLimitHidden(limitId) {
-			const limits = toggleLimitHiddenIn(this.limits, limitId);
+			const limits = toggleLimitHiddenIn(this.allLimits, limitId);
 			if (limits) return this.setLimits(limits);
+		}
+
+		/**
+		 * Every limit this actor tracks: its own, plus any its items bring.
+		 * Read this to show, pick or recalculate limits; `setLimits` takes
+		 * entries from it. Default: the actor's own `limits`. ChallengeData adds
+		 * its addons' limits.
+		 * @returns {object[]}
+		 */
+		get allLimits() {
+			return this.limits;
+		}
+
+		/**
+		 * Delete a limit. Statuses linked to it are the caller's to unlink.
+		 * @param {string} limitId
+		 * @returns {Promise<void>}
+		 */
+		async removeLimit(limitId) {
+			return this.setLimits(this.limits.filter((l) => l.id !== limitId));
 		}
 
 		/**

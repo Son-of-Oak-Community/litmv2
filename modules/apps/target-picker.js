@@ -127,34 +127,27 @@ export async function pickLimit() {
 
 	for (const actor of actors) {
 		if (typeof actor.system?.limits === "undefined") continue;
-		// For challenge actors, derive source from whether the id exists in the
-		// canonical (non-addon) schema field. Other actor types are always "flag".
+		// A Challenge's limits are stored on it or on its addons ("system");
+		// every other actor type keeps them in a flag.
 		const isChallenge = actor.type === "challenge";
 		// Same rule as the sidebar: a limit saved before `hidden` existed counts
-		// as hidden, and so does an addon's, which carries no flag.
+		// as hidden.
 		const seesAll = game.user.isGM || (!isChallenge && actor.isOwner);
-		const limits = (actor.system.limits ?? []).filter(
+		const limits = (actor.system.allLimits ?? actor.system.limits).filter(
 			(l) => seesAll || l.hidden === false,
 		);
 		if (!limits.length) continue;
 
-		const ownIds = isChallenge
-			? new Set((actor.system._source?.limits ?? []).map((l) => l.id))
-			: null;
-
+		const source = isChallenge ? "system" : "flag";
 		for (const l of limits) {
-			const source = isChallenge
-				? ownIds.has(l.id)
-					? "system"
-					: "addon"
-				: "flag";
+			const max = actor.system.getEffectiveMax?.(l) ?? l.max;
 			candidates.push({
 				id: `${actor.id}::${l.id}`,
 				label: actor.system.maskedName ?? actor.name,
 				// The limit is the row's context line. It used to be crammed into
 				// the label behind an em-dash; a roster row has a second line for
 				// exactly this.
-				meta: `${l.label || t("LITM.Terms.limit")} (${l.value ?? 0}/${l.max ?? "—"})`,
+				meta: `${l.label || t("LITM.Terms.limit")} (${l.value ?? 0}/${max ?? "—"})`,
 				img: actor.img,
 				actor,
 				limit: l,

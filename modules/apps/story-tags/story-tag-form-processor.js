@@ -225,8 +225,8 @@ export async function applyLimitUpdates(
 			result.storyLimits = next;
 	}
 
-	// Actor limits: flag-backed (hero / journey) and a Challenge's
-	// `system.limits`; `setLimits` routes each to its store.
+	// Actor limits: flag-backed (hero / journey), a Challenge's
+	// `system.limits` and its addons'; `setLimits` routes each to its store.
 	const flagUpdates = [];
 	for (const [source, sourceLimits] of Object.entries(limitsData)) {
 		if (source === "story") continue;
@@ -234,7 +234,7 @@ export async function applyLimitUpdates(
 		if (!actor?.isOwner) continue;
 		if (!FLAG_LIMIT_TYPES.has(actor.type) && actor.type !== "challenge")
 			continue;
-		const existing = actor.system.limits;
+		const existing = actor.system.allLimits;
 		const fields = actor.type === "hero" ? ["label"] : ["label", "max"];
 		const updated = existing.map((limit) =>
 			withEditedLimitFields(

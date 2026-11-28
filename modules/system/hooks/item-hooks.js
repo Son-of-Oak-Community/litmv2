@@ -4,7 +4,11 @@ import { parseTagString } from "../../item/action/tag-string.js";
 import { LitmItem } from "../../item/litm-item.js";
 import { settleNascent } from "../../item/theme/nascent-theme.js";
 import { error } from "../../logger.js";
-import { getDefaultItemIcon, levelIcon } from "../../utils.js";
+import {
+	getDefaultItemIcon,
+	getStoryTagSidebar,
+	levelIcon,
+} from "../../utils.js";
 
 export function registerItemHooks() {
 	_prepareThemeOnCreate();
@@ -14,7 +18,25 @@ export function registerItemHooks() {
 	_syncThemeImageOnLevelChange();
 	_syncAddonEffectsOnUpdate();
 	_cleanupAddonEffectsOnDelete();
+	_refreshSidebarOnAddonChange();
 	_syncStoryThemeItemToActor();
+}
+
+/**
+ * An addon brings its Challenge limits, which the story-tag sidebar lists and
+ * whose state lives on the addon item. The sidebar re-renders for effects,
+ * not items, so adding, changing or removing an addon has to nudge it.
+ */
+function _refreshSidebarOnAddonChange() {
+	const refresh = (item) => {
+		if (item.type !== "addon" || item.parent?.documentName !== "Actor") return;
+		const sidebar = getStoryTagSidebar();
+		if (!sidebar?.rendered) return;
+		sidebar.invalidateCache();
+		sidebar.render();
+	};
+	for (const hook of ["createItem", "updateItem", "deleteItem"])
+		Hooks.on(hook, refresh);
 }
 
 /**
@@ -124,9 +146,13 @@ function _syncStoryThemeItemToActor() {
 }
 
 function _syncAddonEffectsOnUpdate() {
-	Hooks.on("updateItem", (item, _data, _options, userId) => {
+	Hooks.on("updateItem", (item, data, _options, userId) => {
 		if (userId !== game.userId) return;
 		if (item.type !== "addon") return;
+		// Only a change to the tags themselves. The addon also stores the state
+		// of its limits, written during play; a resync then would put back the
+		// tiers and tags play had changed.
+		if (!("tags" in (data?.system ?? {}))) return;
 		const actor = item.parent;
 		if (actor?.documentName !== "Actor") return;
 		resyncAddonEffects(actor, item).catch(console.error);
