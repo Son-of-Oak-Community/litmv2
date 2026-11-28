@@ -27,12 +27,12 @@ Sheet (Cards)** in that hero's **Configure Sheet** menu instead.
 
 For the hero's owner, in Play and Edit mode:
 
-| Icon | Does |
-|---|---|
-| A theme's icon | Opens that theme's sheet |
-| Fellowship | Opens the Fellowship sheet |
-| Backpack | Opens the backpack |
-| Statuses droplet | Adds a status |
+| Icon             | Does                       |
+| ---------------- | -------------------------- |
+| A theme's icon   | Opens that theme's sheet   |
+| Fellowship       | Opens the Fellowship sheet |
+| Backpack         | Opens the backpack         |
+| Statuses droplet | Adds a status              |
 
 A viewer sees the plain icons, with no buttons.
 

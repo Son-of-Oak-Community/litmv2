@@ -3,8 +3,8 @@
 What this Foundry system does for your table, and where to find it. Rules
 questions belong to the Core Book; this guide covers the software.
 
-**New here?** Open **Game Settings → Tours** and run *Hero Sheet Basics*,
-*Story Tag Sidebar*, *Fellowship* and (Narrators) *Narrator's Call*.
+**New here?** Open **Game Settings → Tours** and run _Hero Sheet Basics_,
+_Story Tag Sidebar_, _Fellowship_ and (Narrators) _Narrator's Call_.
 
 ---
 
@@ -12,15 +12,15 @@ questions belong to the Core Book; this guide covers the software.
 
 All of them can be rebound in **Configure Controls → Legend in the Mist**.
 
-| Key | Does |
-|-----|------|
-| `R` | **Player:** open your Hero's roll window (or ask the Narrator for a roll, if your table requires that). **Narrator:** open the Narrator's Call — pick who rolls. |
-| `C` | Open/close the sheet of the selected token, or your own Hero. |
-| `T` | Open/close the Tags sidebar window. |
-| `F` | Open/close the Fellowship sheet. |
-| `E` | Switch the topmost sheet between **Play** and **Edit** mode. |
-| `Alt+T` | In a text field, wrap the selection in `[brackets]` — instant tag markup. |
-| `Alt+A` | Open your Hero's Actions browser. |
+| Key     | Does                                                                                                                                                             |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `R`     | **Player:** open your Hero's roll window (or ask the Narrator for a roll, if your table requires that). **Narrator:** open the Narrator's Call — pick who rolls. |
+| `C`     | Open/close the sheet of the selected token, or your own Hero.                                                                                                    |
+| `T`     | Open/close the Tags sidebar window.                                                                                                                              |
+| `F`     | Open/close the Fellowship sheet.                                                                                                                                 |
+| `E`     | Switch the topmost sheet between **Play** and **Edit** mode.                                                                                                     |
+| `Alt+T` | In a text field, wrap the selection in `[brackets]` — instant tag markup.                                                                                        |
+| `Alt+A` | Open your Hero's Actions browser.                                                                                                                                |
 
 `C`, `T` and the Narrator's `R` bring a buried window to the front rather than
 closing it; press again to close.
@@ -35,12 +35,12 @@ themes, tags and the hero's description.
 
 Clicking things in Play mode:
 
-| Gesture | On a tag | On a status |
-|---------|----------|-------------|
-| Click | Add it to your roll | Add it to your roll |
-| `Shift`+Click | Burn it (+3 Power, scratched after the roll) | — |
-| `Alt`+Click | Scratch / unscratch it | — |
-| Right-Click | — | Reduce it by one tier |
+| Gesture       | On a tag                                     | On a status           |
+| ------------- | -------------------------------------------- | --------------------- |
+| Click         | Add it to your roll                          | Add it to your roll   |
+| `Shift`+Click | Burn it (+3 Power, scratched after the roll) | —                     |
+| `Alt`+Click   | Scratch / unscratch it                       | —                     |
+| Right-Click   | —                                            | Reduce it by one tier |
 
 Hovering any chip shows the gestures it supports.
 
@@ -141,7 +141,7 @@ A roll window is not private. When someone has one open, a strip above the
 player list shows it — **click it to join** and watch or contribute live.
 
 - **Narrator's Call.** The Narrator picks who rolls (and optionally which
-  Action). The roll window opens on that player's screen *and* the Narrator's.
+  Action). The roll window opens on that player's screen _and_ the Narrator's.
   The Narrator sets the move and Might; the player picks their tags and presses
   Roll.
 - **Acting Together.** The Narrator calls a roll for the whole Fellowship. Each
@@ -191,13 +191,13 @@ Joining a roll, reacting, Sacrifice and camp actions are always allowed.
 One place for the scene's story tags and every tracked actor's tags, statuses
 and limits. Type into the quick-add box and press Enter:
 
-| You type | You get |
-|----------|---------|
-| `fog` | story tag |
-| `slippery ground!` | single-use story tag |
-| `wounded-3` | status at tier 3 |
-| `drunk-` | status, tier chosen later |
-| `wall:4` | limit with max 4 |
+| You type           | You get                   |
+| ------------------ | ------------------------- |
+| `fog`              | story tag                 |
+| `slippery ground!` | single-use story tag      |
+| `wounded-3`        | status at tier 3          |
+| `drunk-`           | status, tier chosen later |
+| `wall:4`           | limit with max 4          |
 
 Statuses stack: adding the same status again marks the new tier and shifts
 higher if it's taken. When a status linked to a **limit** fills it, the
@@ -208,12 +208,12 @@ target is overcome and the Narrator gets a chat notice.
 Write tags in square brackets anywhere text is enriched — journals, Action
 descriptions, vignettes — and they render as chips:
 
-| Markup | Chip |
-|--------|------|
-| `[torch]` | story tag |
-| `[torch!]` | single-use story tag |
-| `[burning-2]` | status, tier 2 |
-| `[guards:3]` | limit, max 3 |
+| Markup        | Chip                                         |
+| ------------- | -------------------------------------------- |
+| `[torch]`     | story tag                                    |
+| `[torch!]`    | single-use story tag                         |
+| `[burning-2]` | status, tier 2                               |
+| `[guards:3]`  | limit, max 3                                 |
 | `[-reckless]` | weakness — drag onto a theme to add it there |
 
 Drag a chip onto an actor or the Tags window to apply it.
@@ -280,24 +280,24 @@ Fellowship) opens a camp or sojourn for everyone:
 
 World (Narrator):
 
-| Setting | Default | |
-|---------|---------|---|
-| Hero Limit | 5 | Tier at which a Hero is overcome. Above 5 is homebrew. |
-| Theme Limit | 4 | Themes per Hero. |
-| Improve Track Length | 3 | Marks needed to advance a theme. |
-| Automatic Improve Marking | on | Off: chat card offers a button instead. |
-| Allow Player-Initiated Rolls | on | Off: players request rolls. |
-| Require Narrator Approval | off | Player rolls wait for approval. |
-| Use Fellowship | on | Shared Fellowship actor and relationship tags. |
-| Show Camping Threats | on | Threats section in camps. |
+| Setting                      | Default |                                                        |
+| ---------------------------- | ------- | ------------------------------------------------------ |
+| Hero Limit                   | 5       | Tier at which a Hero is overcome. Above 5 is homebrew. |
+| Theme Limit                  | 4       | Themes per Hero.                                       |
+| Improve Track Length         | 3       | Marks needed to advance a theme.                       |
+| Automatic Improve Marking    | on      | Off: chat card offers a button instead.                |
+| Allow Player-Initiated Rolls | on      | Off: players request rolls.                            |
+| Require Narrator Approval    | off     | Player rolls wait for approval.                        |
+| Use Fellowship               | on      | Shared Fellowship actor and relationship tags.         |
+| Show Camping Threats         | on      | Threats section in camps.                              |
 
 Per player:
 
-| Setting | Default | |
-|---------|---------|---|
-| Cards Look | Classic | Cards: hero and Fellowship sheets and the roll window as printed cards. |
-| Themed Dice | on | Custom dice (needs Dice So Nice). |
-| Auto Pop-out Tags Sidebar | off | Open the Tags window on load. |
-| Token Tags: Statuses Only | off | Hide story/backpack tags on tokens. |
-| Always Show Token Tags | off | No hover needed. |
-| Colorblind-safe Palette | off | Distinct chip colours for colour vision deficiency. |
+| Setting                   | Default |                                                                         |
+| ------------------------- | ------- | ----------------------------------------------------------------------- |
+| Cards Look                | Classic | Cards: hero and Fellowship sheets and the roll window as printed cards. |
+| Themed Dice               | on      | Custom dice (needs Dice So Nice).                                       |
+| Auto Pop-out Tags Sidebar | off     | Open the Tags window on load.                                           |
+| Token Tags: Statuses Only | off     | Hide story/backpack tags on tokens.                                     |
+| Always Show Token Tags    | off     | No hover needed.                                                        |
+| Colorblind-safe Palette   | off     | Distinct chip colours for colour vision deficiency.                     |
