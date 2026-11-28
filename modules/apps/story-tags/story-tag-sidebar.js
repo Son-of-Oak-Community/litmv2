@@ -519,7 +519,7 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		// the Narrator revealed.
 		if ((isChallenge || usesFlagLimits) && actorDoc) {
 			const seesAll = game.user.isGM || (usesFlagLimits && actorDoc.isOwner);
-			const rawLimits = (actorDoc.system.limits ?? []).filter(
+			const rawLimits = actorDoc.system.allLimits.filter(
 				(l) => seesAll || l.hidden === false,
 			);
 			const overridden = rawLimits.map((l) => ({
@@ -1454,12 +1454,11 @@ export class StoryTagSidebar extends foundry.applications.api.HandlebarsApplicat
 		const source = target.dataset.source;
 		if (!(await confirmDelete("LITM.Terms.limit"))) return;
 
-		// Actor limits (hero/journey flags, challenge system.limits)
+		// Actor limits (hero/journey flags, a challenge's own and its addons')
 		if (source && source !== "story") {
 			const actor = this.#resolveActor(source);
 			if (!actor?.isOwner) return;
-			const existing = actor.system.limits;
-			await actor.system.setLimits(existing.filter((l) => l.id !== limitId));
+			await actor.system.removeLimit(limitId);
 			// Clear limitId on any effects referencing this limit
 			// (includes transferred backpack story_tags — route via parent)
 			const updates = [...actor.allApplicableEffects()]

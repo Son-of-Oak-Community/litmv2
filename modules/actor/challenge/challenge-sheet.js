@@ -186,7 +186,6 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 			limitedView: true,
 			enriched: await this._enrichFields("description"),
 			concealed: sys.concealName ? { alias: sys.publicName } : null,
-			// Addon-only limits carry no `hidden`, so they stay hidden.
 			limits: (sys.derivedLimits ?? [])
 				.filter((l) => l.hidden === false)
 				.map(({ label, max, value }) => ({
@@ -250,13 +249,13 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 	async #prepareLimitsAndMight(isPlay) {
 		const sys = this.system;
 		// In play, a player sees the limits revealed to them, as in the limited
-		// view (addon-only limits carry no `hidden`, so they stay hidden).
+		// view, addon limits among them. Edit mode lists the Challenge's own;
+		// an addon's are edited on the addon.
 		const limitsSource = isPlay
 			? (sys.derivedLimits || sys.limits || []).filter(
 					(l) => game.user.isGM || l.hidden === false,
 				)
 			: sys.limits || [];
-		const canonicalIds = new Set((sys.limits ?? []).map((l) => l.id));
 		const limits = await Promise.all(
 			limitsSource.map(async (limit) => {
 				const hasGroupedStatuses = this.document.effects.some(
@@ -268,8 +267,7 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 					...limit,
 					enrichedOutcome: await enrichPlainText(limit.outcome, this.document),
 					isImpossible: limit.max === 0,
-					isOwn: canonicalIds.has(limit.id),
-					isAutoManaged: hasGroupedStatuses || !canonicalIds.has(limit.id),
+					isAutoManaged: hasGroupedStatuses,
 				};
 			}),
 		);
@@ -425,16 +423,16 @@ export class ChallengeSheet extends TagStringSyncMixin(LitmActorSheet) {
 	// The +/- are Advance and Set Back by one. They go through `advanceLimit` so
 	// the shift lands as an offset the status recalc keeps, and a limit reached
 	// this way is announced like any other.
+	// The limit is named by id: the rows a viewer sees are not the stored list
+	// (addon limits follow the own ones, and hidden ones are left out).
 	static async #onIncreaseLimit(_event, target) {
-		const limit = this.system.limits[Number(target.dataset.index)];
-		if (!limit || limit.max === 0) return;
-		await this.system.advanceLimit(limit.id, 1);
+		await this.system.advanceLimit(target.dataset.limitId, 1);
+		this._notifyStoryTags();
 	}
 
 	static async #onDecreaseLimit(_event, target) {
-		const limit = this.system.limits[Number(target.dataset.index)];
-		if (!limit || limit.max === 0) return;
-		await this.system.advanceLimit(limit.id, -1);
+		await this.system.advanceLimit(target.dataset.limitId, -1);
+		this._notifyStoryTags();
 	}
 
 	static async #onToggleLimitHidden(_event, target) {

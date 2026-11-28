@@ -1,6 +1,6 @@
 import { startsHiddenOn } from "../../active-effects/effect-queries.js";
 import { syncTagStringEffects } from "../../item/action/tag-string.js";
-import { advanceSystemLimit } from "../mixins/actor-limits.js";
+import { advanceLimitIn } from "../mixins/actor-limits.js";
 import { EffectTagsMixin } from "../mixins/effect-tags-mixin.js";
 import { LimitsMixin } from "../mixins/limits-mixin.js";
 
@@ -200,14 +200,12 @@ export class ChallengeData extends LimitsMixin(
 		this.derivedRoles = roles.map((r) => r.role);
 		this.derivedCategories = roles.map((r) => r.label);
 
-		// Derived limits: merge by lowercase label, keep higher max.
-		// `this.limits` stays canonical (the schema-prepared own property); the
-		// merged form is exposed via `this.derivedLimits` and consumers that
-		// want the display form select between them explicitly.
-		this.derivedLimits = ChallengeData.#mergeLimits(
-			this.limits,
-			addons.flatMap((a) => a.system.limits),
-		);
+		// Derived limits: every tracked limit at its effective max, for display.
+		// `this.limits` stays the Challenge's own stored list.
+		this.derivedLimits = this.allLimits.map((limit) => ({
+			...limit,
+			max: this.getEffectiveMax(limit),
+		}));
 
 		// Derived might: concatenate
 		this.derivedMight = [
@@ -234,34 +232,65 @@ export class ChallengeData extends LimitsMixin(
 		}));
 	}
 
-	/**
-	 * Merge two limit arrays by lowercase label match, keeping the higher max.
-	 * Base limits are authoritative for id, outcome, and value.
-	 * @param {object[]} baseLimits
-	 * @param {object[]} addonLimits
-	 * @returns {object[]}
-	 */
-	static #mergeLimits(baseLimits, addonLimits) {
-		const merged = baseLimits.map((l) => ({ ...l }));
-		const labelMap = new Map(merged.map((l, i) => [l.label.toLowerCase(), i]));
+	/** @returns {Item[]} This Challenge's addon items. */
+	get #addons() {
+		return this.parent?.items?.filter((i) => i.type === "addon") ?? [];
+	}
 
-		for (const addonLimit of addonLimits) {
-			if (!addonLimit.label) continue;
-			const key = addonLimit.label.toLowerCase();
-			const existingIndex = labelMap.get(key);
-			if (existingIndex !== undefined) {
-				// Merge: keep higher max
-				if (addonLimit.max > merged[existingIndex].max) {
-					merged[existingIndex].max = addonLimit.max;
-				}
-			} else {
-				// Append unique limit
-				labelMap.set(key, merged.length);
-				merged.push({ ...addonLimit });
+	/**
+	 * The limits only an addon brings, each with the addon that stores it. A
+	 * label the Challenge already has is the Challenge's limit, and of two
+	 * addons naming the same new limit the first one holds it.
+	 * @returns {{ addon: Item, limit: object }[]}
+	 */
+	#addonLimits() {
+		const own = this.limits;
+		const labels = new Set(own.map((l) => l.label.toLowerCase()));
+		const ids = new Set(own.map((l) => l.id));
+		const found = [];
+		for (const addon of this.#addons) {
+			for (const limit of addon.system.limits ?? []) {
+				const key = limit.label?.toLowerCase();
+				if (!key || labels.has(key) || ids.has(limit.id)) continue;
+				labels.add(key);
+				ids.add(limit.id);
+				found.push({ addon, limit });
 			}
 		}
+		return found;
+	}
 
-		return merged;
+	/**
+	 * The Challenge's own limits, then the ones only its addons bring. An
+	 * addon's limit is tracked like an own one (value, Advance offset,
+	 * visibility), and that state is stored on the addon item.
+	 * @override
+	 * @returns {object[]}
+	 */
+	get allLimits() {
+		return [
+			...this.limits,
+			...this.#addonLimits().map(({ limit }) => ({ ...limit })),
+		];
+	}
+
+	/**
+	 * A limit's max is the highest any addon gives a limit of that name.
+	 * @override
+	 * @param {object} limit
+	 * @returns {number}
+	 */
+	getEffectiveMax(limit) {
+		const key = limit.label?.toLowerCase();
+		let max = limit.max;
+		if (!key) return max;
+		for (const addon of this.#addons) {
+			for (const other of addon.system.limits ?? []) {
+				if (other.label?.toLowerCase() === key && other.max > max)
+					max = other.max;
+			}
+		}
+		return max;
 	}
 
 	/**
@@ -329,29 +358,79 @@ export class ChallengeData extends LimitsMixin(
 	}
 
 	/**
-	 * Persist the canonical `system.limits` array. Callers pass the desired
-	 * state; addon-derived limits (which live on the addon items) should not
-	 * appear here. With `this.limits` left canonical in {@link prepareDerivedData},
-	 * the spread-then-write idiom (`[...actor.system.limits, newLimit]`) works
-	 * without further filtering.
+	 * Persist limits. Entries the Challenge owns, and new ones, become the
+	 * stored `system.limits`. An entry from {@link allLimits} that an addon
+	 * brought is written to that addon item instead, and only when it changed.
+	 * An addon's limit left out of the list is left as it is, so both
+	 * `[...system.limits, newLimit]` and an edited `allLimits` are safe to pass;
+	 * {@link removeLimit} deletes one.
 	 * @override
 	 * @param {object[]} limits
 	 * @returns {Promise<void>}
 	 */
 	async setLimits(limits) {
-		return this.parent.update({ "system.limits": limits });
+		const holders = new Map(
+			this.#addonLimits().map(({ addon, limit }) => [limit.id, addon]),
+		);
+		const edits = new Map(
+			limits.filter((l) => holders.has(l.id)).map((l) => [l.id, l]),
+		);
+		const itemUpdates = [];
+		for (const addon of new Set(holders.values())) {
+			let changed = false;
+			const next = addon.system.limits.map((stored) => {
+				const edit = edits.get(stored.id);
+				if (!edit || holders.get(stored.id) !== addon) return stored;
+				const differs = Object.keys(edit).some((k) => edit[k] !== stored[k]);
+				changed ||= differs;
+				return differs ? { ...stored, ...edit } : stored;
+			});
+			if (changed) itemUpdates.push({ _id: addon.id, "system.limits": next });
+		}
+
+		const result = await this.parent.update({
+			"system.limits": limits.filter((l) => !holders.has(l.id)),
+		});
+		if (itemUpdates.length)
+			await this.parent.updateEmbeddedDocuments("Item", itemUpdates);
+		return result;
 	}
 
 	/**
-	 * Advance (or set back) a limit by `delta`. Only operates on canonical
-	 * `system.limits` entries; addon-derived limits resolve to `null` so
-	 * callers can warn the user.
+	 * Delete a limit: an own one from `system.limits`, an addon's from the
+	 * addon item.
+	 * @override
+	 * @param {string} limitId
+	 * @returns {Promise<void>}
+	 */
+	async removeLimit(limitId) {
+		const held = this.#addonLimits().find(({ limit }) => limit.id === limitId);
+		if (!held) return super.removeLimit(limitId);
+		await this.parent.updateEmbeddedDocuments("Item", [
+			{
+				_id: held.addon.id,
+				"system.limits": held.addon.system.limits.filter(
+					(l) => l !== held.limit,
+				),
+			},
+		]);
+	}
+
+	/**
+	 * Advance (or set back) a limit by `delta`, an addon's limit included, up
+	 * to its effective max. Resolves to `null` for an id nobody tracks.
 	 * @param {string} limitId
 	 * @param {number} delta
 	 * @returns {Promise<import("../actor-limits.js").LimitChangeResult|null>}
 	 */
 	async advanceLimit(limitId, delta) {
-		return advanceSystemLimit(this.parent, limitId, delta);
+		const limits = this.allLimits;
+		const limit = limits.find((l) => l.id === limitId);
+		if (!limit) return null;
+		return advanceLimitIn(this.parent, limits, limitId, delta, {
+			max: this.getEffectiveMax(limit),
+			write: (updated) => this.setLimits(updated),
+		});
 	}
 
 	/**

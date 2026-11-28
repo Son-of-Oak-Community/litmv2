@@ -24,6 +24,10 @@ export class AddonData extends foundry.abstract.TypeDataModel {
 					outcome: new fields.StringField({ initial: "" }),
 					max: new fields.NumberField({ initial: 3, min: 0, integer: true }),
 					value: new fields.NumberField({ initial: 0, min: 0, integer: true }),
+					// On a Challenge the addon's limit is tracked like the Challenge's
+					// own, and its state is kept here (see ChallengeData#allLimits).
+					advanced: new fields.NumberField({ initial: 0, integer: true }),
+					hidden: new fields.BooleanField({ initial: true }),
 				}),
 				{ initial: () => [] },
 			),

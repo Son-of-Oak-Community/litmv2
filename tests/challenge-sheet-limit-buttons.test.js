@@ -5,16 +5,17 @@ import { ChallengeSheet } from "../modules/actor/challenge/challenge-sheet.js";
 // and Set Back by one, so they go through `advanceLimit`: a direct write of
 // `value` would be erased by the next status recalc, and would never announce
 // a limit reached.
-const click = (action, sheet, index = 0) =>
+const click = (action, sheet, limitId = "lim-1") =>
 	ChallengeSheet.DEFAULT_OPTIONS.actions[action].call(
 		sheet,
 		{},
-		{ dataset: { index: String(index) } },
+		{ dataset: { limitId } },
 	);
 
 const makeSheet = (limits) => ({
 	system: { limits, advanceLimit: vi.fn().mockResolvedValue({}) },
 	document: { update: vi.fn() },
+	_notifyStoryTags: vi.fn(),
 });
 
 describe("Challenge sheet limit +/- buttons", () => {
@@ -34,16 +35,11 @@ describe("Challenge sheet limit +/- buttons", () => {
 		expect(sheet.document.update).not.toHaveBeenCalled();
 	});
 
-	it("leaves an immunity (max 0) alone", async () => {
-		const sheet = makeSheet([{ ...limit, max: 0 }]);
-		await click("increaseLimit", sheet);
-		await click("decreaseLimit", sheet);
-		expect(sheet.system.advanceLimit).not.toHaveBeenCalled();
-	});
-
-	it("ignores an index with no limit", async () => {
+	// The row names its limit by id, not by its place in the stored list: an
+	// addon's limit (issue #240) is in no stored list of the Challenge's.
+	it("advances the limit the row names, wherever it is stored", async () => {
 		const sheet = makeSheet([limit]);
-		await click("increaseLimit", sheet, 3);
-		expect(sheet.system.advanceLimit).not.toHaveBeenCalled();
+		await click("increaseLimit", sheet, "addon-limit");
+		expect(sheet.system.advanceLimit).toHaveBeenCalledWith("addon-limit", 1);
 	});
 });

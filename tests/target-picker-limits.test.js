@@ -14,12 +14,12 @@ const limit = (id, label, extra = {}) => ({
 	...extra,
 });
 
-/** An actor carrying limits; `stored` are the ids in the challenge's own data. */
+/** An actor carrying limits. */
 function withLimits(
 	id,
 	type,
 	limits,
-	{ observer = true, isOwner = false, stored } = {},
+	{ observer = true, isOwner = false } = {},
 ) {
 	return {
 		id,
@@ -28,12 +28,7 @@ function withLimits(
 		name: id,
 		img: `${id}.webp`,
 		isOwner,
-		system: {
-			limits,
-			_source: {
-				limits: (stored ?? limits.map((l) => l.id)).map((lid) => ({ id: lid })),
-			},
-		},
+		system: { limits, allLimits: limits },
 		testUserPermission: vi.fn(() => observer),
 	};
 }
@@ -193,19 +188,28 @@ describe("pickLimit: where the picked Limit lives", () => {
 		game.user.isGM = true;
 	});
 
-	it("tells a challenge's own Limit from one an add-on contributes", async () => {
-		const serpent = withLimits(
-			"Serpent",
-			"challenge",
-			[limit("own", "Wounds"), limit("addon", "Venom")],
-			{ stored: ["own"] },
-		);
+	// Issue #240: an add-on's Limit is tracked like the Challenge's own, so it
+	// is offered and can be advanced from chat.
+	it("offers a Limit an add-on contributes like the challenge's own", async () => {
+		const serpent = withLimits("Serpent", "challenge", [
+			limit("own", "Wounds"),
+		]);
+		serpent.system.allLimits = [
+			...serpent.system.limits,
+			limit("addon", "Venom"),
+		];
 		world([serpent]);
 
 		dialog(0);
-		expect((await pickLimit()).source).toBe("system");
+		expect(await pickLimit()).toMatchObject({
+			limitId: "own",
+			source: "system",
+		});
 		dialog(1);
-		expect((await pickLimit()).source).toBe("addon");
+		expect(await pickLimit()).toMatchObject({
+			limitId: "addon",
+			source: "system",
+		});
 	});
 
 	it("marks every other actor's Limit as flag-backed", async () => {

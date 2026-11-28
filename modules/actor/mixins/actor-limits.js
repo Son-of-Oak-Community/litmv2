@@ -110,10 +110,34 @@ export async function advanceFlagLimit(actor, limitId, delta, { max } = {}) {
 export async function advanceSystemLimit(actor, limitId, delta) {
 	// Read from _source to get the canonical (non-addon-derived) limits array.
 	const limits = actor.system._source?.limits ?? [];
-	const result = _shiftLimit(limits, limitId, delta);
+	return advanceLimitIn(actor, limits, limitId, delta, {
+		write: (updated) => actor.update({ "system.limits": updated }),
+	});
+}
+
+/**
+ * Apply a delta to one limit of a list the caller read and knows how to
+ * write back. Returns the change result, or `null` if the id is not in the
+ * list.
+ * @param {Actor} actor
+ * @param {object[]} limits
+ * @param {string} limitId
+ * @param {number} delta
+ * @param {object} options
+ * @param {(updated: object[]) => Promise<unknown>} options.write  Persists the list.
+ * @param {number} [options.max]  An effective max that differs from the stored one.
+ * @returns {Promise<LimitChangeResult|null>}
+ */
+export async function advanceLimitIn(
+	actor,
+	limits,
+	limitId,
+	delta,
+	{ write, max },
+) {
+	const result = _shiftLimit(limits, limitId, delta, max);
 	if (!result) return null;
-	if (!result.change.immune)
-		await actor.update({ "system.limits": result.updated });
+	if (!result.change.immune) await write(result.updated);
 	_announceIfReached(actor, result.change);
 	return result.change;
 }

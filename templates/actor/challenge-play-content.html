@@ -27,7 +27,7 @@
 					</div>
 					{{else}}
 					<div class="limit-controls">
-						<button type="button" class="limit-adjust" data-action="decreaseLimit" data-index="{{@index}}"
+						<button type="button" class="limit-adjust" data-action="decreaseLimit" data-limit-id="{{limit.id}}"
 							data-tooltip="{{localize 'LITM.Ui.decrease'}}" aria-label="{{localize 'LITM.Ui.decrease'}}">
 							<i class="fa-solid fa-minus" aria-hidden="true"></i>
 						</button>
@@ -37,13 +37,13 @@
 								class="limit-shield {{#if @checked}}filled{{else}}empty{{/if}}" alt="" aria-hidden="true" />
 							{{/progress-buttons}}
 						</div>
-						<button type="button" class="limit-adjust" data-action="increaseLimit" data-index="{{@index}}"
+						<button type="button" class="limit-adjust" data-action="increaseLimit" data-limit-id="{{limit.id}}"
 							data-tooltip="{{localize 'LITM.Ui.increase'}}" aria-label="{{localize 'LITM.Ui.increase'}}">
 							<i class="fa-solid fa-plus" aria-hidden="true"></i>
 						</button>
 					</div>
 					{{/if}}
-					{{#if (and @root.isOwner limit.isOwn)}}
+					{{#if @root.isOwner}}
 					<button type="button" data-action="toggleLimitHidden" data-limit-id="{{limit.id}}"
 						data-tooltip="{{localize 'LITM.Ui.toggle_vignette_hidden'}}" aria-label="{{localize 'LITM.Ui.toggle_vignette_hidden'}}">
 						<i class="fa-solid {{ifThen (eq limit.hidden false) 'fa-eye' 'fa-eye-slash'}}" aria-hidden="true"></i>

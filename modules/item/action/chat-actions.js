@@ -442,12 +442,8 @@ async function _reduceStatusOnActor(
  */
 async function _applyProcess({ success, limitInfo, chosenTiers }) {
 	if (!limitInfo) return null;
-	const { actor, limitId, source } = limitInfo;
+	const { actor, limitId } = limitInfo;
 
-	if (source === "addon") {
-		ui.notifications.warn(t("LITM.Actions.apply_process_addon_limit"));
-		return null;
-	}
 	if (typeof actor.system?.advanceLimit !== "function") {
 		ui.notifications.warn(t("LITM.Actions.apply_process_no_limit"));
 		return null;
